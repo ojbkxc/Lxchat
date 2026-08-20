@@ -43,11 +43,44 @@ data class ToolPresentationMetadata(
 )
 
 /**
+ * Complete metadata for one tool, bundling model-facing definition, risk, visibility tier,
+ * and approval policy — the single source of truth a [ToolProvider] exports. Previously these
+ * values were scattered across [definitions], [riskLevel], [requiresApprovalByDefault], and
+ * [ToolTierPolicy] hardcoded lookup tables, which made adding a tool easy to get wrong.
+ */
+data class ToolDescriptor(
+    val definition: ToolDefinition,
+    val riskLevel: RiskLevel = RiskLevel.ReadOnly,
+    val tier: ToolTier = ToolTier.Dangerous,
+    val requiresApproval: Boolean = false,
+)
+
+/**
  * Interface for tool providers that supply tool definitions and execution
  * logic to the LLM generation pipeline. Each implementation manages a
  * specific category of tools (memory, web search, RAG, shell, etc.).
  */
 interface ToolProvider {
+    /**
+     * The complete tool descriptors this provider exposes for the given context.
+     * Returns empty list when the provider is disabled.
+     *
+     * New providers should override this instead of the individual [definitions],
+     * [riskLevel], [requiresApprovalByDefault], or [ToolTierPolicy] lookup tables.
+     * The default bridges to the legacy methods so existing providers stay compatible.
+     */
+    fun toolDescriptors(ctx: GenerationContext): List<ToolDescriptor> {
+        return definitions(ctx).map { def ->
+            val name = def.function.name
+            ToolDescriptor(
+                definition = def,
+                riskLevel = riskLevel(name),
+                tier = ToolTierPolicy.tierOf(name),
+                requiresApproval = requiresApprovalByDefault(name),
+            )
+        }
+    }
+
     /** The tool definitions this provider exposes for the given context.
      *  Returns empty list when the provider is disabled. */
     fun definitions(ctx: GenerationContext): List<ToolDefinition>

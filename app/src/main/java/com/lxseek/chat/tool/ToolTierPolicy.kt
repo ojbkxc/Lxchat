@@ -12,44 +12,88 @@ enum class ToolTier {
     Dangerous,
 }
 
-/** Policy that maps tool names to tiers and decides which tiers to register. */
+/** Policy that decides which tiers to register based on context. */
 object ToolTierPolicy {
-    private val CORE_TOOLS = setOf(
-        "list_shells", "execute_shell_command",
-        "file_read", "file_glob", "file_grep",
-        "memory_list", "memory_read", "memory_create", "memory_edit",
-        "list_tasks",
-    )
-    private val EXTENDED_TOOLS = setOf(
-        "list_processes", "system_stats", "tail_follow",
-        "web_search", "rag_search", "view_image",
-        "get_action_trace", "memory_update",
-        "get_shell_job", "list_shell_jobs", "wait_for_job",
-        "create_plan", "update_plan_item", "edit_plan",
-        "ask_user",
-        // file_write/file_edit are HighRisk but essential Agent-mode capabilities (code/file
-        // editing). Tier classification controls *visibility*, not *safety* — RiskLevel plus
-        // the providers' internal confirm gate still guard these tools. Placing them in Extended
-        // ensures the "extended" tier retains full editing capability for Agent mode. Plan mode
-        // (Core + Extended) still excludes them via filterByAgentMode, which filters HighRisk
-        // regardless of tier, so Plan stays read-only as intended.
-        "file_write", "file_edit",
-    )
-
-    fun tierOf(toolName: String): ToolTier = when {
-        toolName in CORE_TOOLS -> ToolTier.Core
-        toolName in EXTENDED_TOOLS -> ToolTier.Extended
-        else -> ToolTier.Dangerous
+    /**
+     * Look up a tool's tier from its [ToolDescriptor]. Providers that override
+     * [ToolProvider.toolDescriptors] supply their own tier; the legacy path
+     * (this method) only exists as fallback for providers that still return
+     * [ToolProvider.definitions] without descriptors.
+     *
+     * When a tool name is not found the result is [ToolTier.Dangerous] — the
+     * safest default.
+     */
+    fun tierOf(toolName: String): ToolTier {
+        // Legacy fallback for providers that have not migrated to toolDescriptors.
+        // New tools should declare their tier inside ToolDescriptor instead.
+        return LEGACY_TIERS[toolName] ?: ToolTier.Dangerous
     }
 
-    fun allowedTiers(ctx: GenerationContext): Set<ToolTier> = when (ctx.toolTier) {
-        "core" -> setOf(ToolTier.Core)
-        "extended" -> setOf(ToolTier.Core, ToolTier.Extended)
-        "all" -> setOf(ToolTier.Core, ToolTier.Extended, ToolTier.Dangerous)
-        else -> when (ctx.agentMode) {
-            AgentMode.Plan -> setOf(ToolTier.Core, ToolTier.Extended)
-            AgentMode.Agent -> setOf(ToolTier.Core, ToolTier.Extended, ToolTier.Dangerous)
-            AgentMode.Auto -> setOf(ToolTier.Core, ToolTier.Extended, ToolTier.Dangerous)
+    /** Derive tier from a [ToolProvider]'s [ToolDescriptor] list for the given tool name. */
+    fun tierOf(name: String, descriptors: List<ToolDescriptor>): ToolTier =
+        descriptors.firstOrNull { it.definition.function.name == name }?.tier
+            ?: tierOf(name)
+
+    /**
+     * Collect a flat name → descriptor map from a list of providers, preferring the
+     * first provider that handles each tool.
+     */
+    fun descriptorMap(
+        providers: List<ToolProvider>,
+        ctx: com.lxseek.chat.viewmodel.GenerationContext,
+    ): Map<String, ToolDescriptor> {
+        val map = LinkedHashMap<String, ToolDescriptor>()
+        for (provider in providers) {
+            for (desc in provider.toolDescriptors(ctx)) {
+                map.putIfAbsent(desc.definition.function.name, desc)
+            }
         }
+        return map
     }
+
+    fun allowedTiers(ctx: com.lxseek.chat.viewmodel.GenerationContext): Set<ToolTier> =
+        when (ctx.toolTier) {
+            "core" -> setOf(ToolTier.Core)
+            "extended" -> setOf(ToolTier.Core, ToolTier.Extended)
+            "all" -> setOf(ToolTier.Core, ToolTier.Extended, ToolTier.Dangerous)
+            else -> when (ctx.agentMode) {
+                AgentMode.Plan -> setOf(ToolTier.Core, ToolTier.Extended)
+                AgentMode.Agent -> setOf(ToolTier.Core, ToolTier.Extended, ToolTier.Dangerous)
+                AgentMode.Auto -> setOf(ToolTier.Core, ToolTier.Extended, ToolTier.Dangerous)
+            }
+        }
+
+    // ── Legacy lookup kept for providers that haven't migrated to ToolDescriptor ──
+    // Once every provider overrides toolDescriptors() these entries can be deleted.
+    private val LEGACY_TIERS: Map<String, ToolTier> = mapOf(
+        // Core
+        "list_shells" to ToolTier.Core,
+        "execute_shell_command" to ToolTier.Core,
+        "file_read" to ToolTier.Core,
+        "file_glob" to ToolTier.Core,
+        "file_grep" to ToolTier.Core,
+        "memory_list" to ToolTier.Core,
+        "memory_read" to ToolTier.Core,
+        "memory_create" to ToolTier.Core,
+        "memory_edit" to ToolTier.Core,
+        "list_tasks" to ToolTier.Core,
+        // Extended
+        "list_processes" to ToolTier.Extended,
+        "system_stats" to ToolTier.Extended,
+        "tail_follow" to ToolTier.Extended,
+        "web_search" to ToolTier.Extended,
+        "rag_search" to ToolTier.Extended,
+        "view_image" to ToolTier.Extended,
+        "get_action_trace" to ToolTier.Extended,
+        "memory_update" to ToolTier.Extended,
+        "get_shell_job" to ToolTier.Extended,
+        "list_shell_jobs" to ToolTier.Extended,
+        "wait_for_job" to ToolTier.Extended,
+        "create_plan" to ToolTier.Extended,
+        "update_plan_item" to ToolTier.Extended,
+        "edit_plan" to ToolTier.Extended,
+        "ask_user" to ToolTier.Extended,
+        "file_write" to ToolTier.Extended,
+        "file_edit" to ToolTier.Extended,
+    )
 }

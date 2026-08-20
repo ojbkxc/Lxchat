@@ -5,11 +5,13 @@ import android.speech.SpeechRecognizer
 import com.lxseek.chat.util.AppLog as Log
 import com.lxseek.chat.speech.AudioCaptureManager
 import com.lxseek.chat.speech.SpeechRecognizerManager
+import com.lxseek.chat.speech.StreamingVAD
 import com.lxseek.chat.speech.VoskTranscriber
 import com.lxseek.chat.speech.WhisperTranscriber
 import com.lxseek.chat.util.TtsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -83,7 +85,7 @@ class VoiceConversationController(
 
     private var captureJob: Job? = null
     private var observeJob: Job? = null
-    private var ttsObserverJob: Job? = null
+
     private var sendJob: Job? = null
     private var partialJob: Job? = null
     private var stopSystemWatchdog: Job? = null
@@ -127,9 +129,7 @@ class VoiceConversationController(
         }
         observeJob?.cancel()
         observeJob = scope.launch { observeLlmAndTts() }
-        if (ttsObserverJob == null) {
-            ttsObserverJob = scope.launch { observeTtsPlaying() }
-        }
+
     }
 
     /**
@@ -183,8 +183,7 @@ class VoiceConversationController(
         Log.i(TAG, "finishConversationTurn: mode=${_mode.value}, state=${_state.value}")
         observeJob?.cancel()
         observeJob = null
-        ttsObserverJob?.cancel()
-        ttsObserverJob = null
+
         singleAsrTimeoutJob?.cancel()
         singleAsrTimeoutJob = null
         when (_mode.value) {
@@ -260,9 +259,9 @@ class VoiceConversationController(
 
     private fun beginListening() {
         if (!active) return
-        // Guard against duplicate starts from the two TTS observers (observeLlmAndTts and
-        // observeTtsPlaying) racing on a very short reply: a second beginListening while
-        // already LISTENING would open a second mic/session.
+        // Guard against duplicate starts from the merged TTS observer racing on a very
+        // short reply: a second beginListening while already LISTENING would open a
+        // second mic/session.
         if (_state.value == State.LISTENING) {
             Log.d(TAG, "beginListening: already listening, ignoring duplicate start")
             return
@@ -387,26 +386,7 @@ class VoiceConversationController(
         return downloaded.first()
     }
 
-    /** VAD thresholds for streaming auto-segmentation (ChatGPT/Gemini live mode). */
-    private val streamingSilenceThreshold = 0.05f
-    private val streamingSilenceDurationMs = 1600L
-
-    /** Require this many consecutive above-threshold chunks before marking hasSpeech=true (short noise filter). */
-    private val streamingMinTriggerChunks = 3
-    /** Calibration phase duration: collect ambient noise samples for this many ms before VAD kicks in. */
-    private val streamingCalibrationMs = 500L
-    /** Dynamic threshold multiplier applied to rolling average amplitude (mean * 0.3). */
-    private val streamingThresholdRatio = 0.3f
-    /** Base additive constant (normalized) for dynamic threshold to avoid zero threshold in silent rooms. */
-    private val streamingThresholdBaseAdd = 0.02f
-    /** Noise floor multiplier: dynamic threshold is at least noiseFloor * 3.0. */
-    private val streamingNoiseFloorMultiplier = 3.0f
-    /** Sliding window size (in chunks) for rolling average amplitude used in adaptive threshold. */
-    private val streamingRollingWindowSize = 30
-    /** Hysteresis ratio: amplitude must drop below threshold * 0.6 to end speech (prevents brief dips). */
-    private val streamingHysteresisRatio = 0.6f
-    /** Minimum segment duration in ms; segments shorter than this are discarded as noise. */
-    private val streamingMinSegmentMs = 150L
+    // VAD thresholds and calibration constants have been moved to StreamingVAD.kt.
 
     /**
      * Streaming Vosk capture for CONVERSATION mode: PCM chunks feed Vosk in real
@@ -461,17 +441,18 @@ class VoiceConversationController(
                 return@launch
             }
 
-            var silenceStartMs = 0L
-            var speakStartMs = 0L
-            var hasSpeech = false
-            var triggerCounter = 0
-            var dynamicThreshold = streamingSilenceThreshold
-            val calibrationAmps = mutableListOf<Float>()
-            val calibrationStartMs = System.currentTimeMillis()
-            var calibrated = false
-            // Rolling window for adaptive threshold (sliding window of recent chunk amplitudes).
-            val rollingWindow = ArrayDeque<Float>()
-            var noiseFloor = streamingSilenceThreshold
+            val vad = StreamingVAD(
+                onSpeechEnd = { segmentMs ->
+                    val finalText = voskTranscriber.endSegment()
+                    if (finalText != null && finalText.isNotBlank()) {
+                        _partialTranscript.value = ""
+                        Log.i(TAG, "Streaming utterance sent asynchronously: '$finalText' (${segmentMs}ms)")
+                        scope.launch { handleTranscriptionResult(finalText) }
+                    } else {
+                        Log.i(TAG, "VAD segment ended but empty text (${segmentMs}ms), skipping")
+                    }
+                },
+            )
             // Slice-feed statistics: how many PCM chunks / bytes have been pushed into Vosk.
             var chunkCount = 0L
             var totalBytes = 0L
@@ -496,98 +477,13 @@ class VoiceConversationController(
                         Log.i(TAG, "Streaming feed: $chunkCount chunks (~${totalBytes / 32000}s audio) pushed to Vosk")
                     }
 
-                    val amp = rawAmp
-
-                    // Calibration phase: collect ambient noise samples for 0.5s before VAD engages.
-                    // Audio is still fed to Vosk above so ASR is not delayed.
-                    if (!calibrated) {
-                        if (System.currentTimeMillis() - calibrationStartMs < streamingCalibrationMs) {
-                            calibrationAmps.add(amp)
-                            return@collect
-                        }
-                        if (calibrationAmps.isNotEmpty()) {
-                            val avgNoise = calibrationAmps.average().toFloat()
-                            noiseFloor = avgNoise
-                            dynamicThreshold = (avgNoise * streamingThresholdRatio + streamingThresholdBaseAdd)
-                                .coerceAtLeast(streamingSilenceThreshold)
-                            Log.i(TAG, "VAD calibrated: avgNoise=$avgNoise, dynamicThreshold=$dynamicThreshold")
-                            calibrationAmps.clear()
-                        }
-                        calibrated = true
-                    }
-
-                    // Adaptive threshold with sliding window: maintain rolling average of the last
-                    // N chunk amplitudes and update dynamicThreshold = max(mean*0.3, noiseFloor*3, 0.05).
-                    rollingWindow.addLast(amp)
-                    if (rollingWindow.size > streamingRollingWindowSize) {
-                        rollingWindow.removeFirst()
-                    }
-                    if (rollingWindow.isNotEmpty()) {
-                        val rollingAvg = rollingWindow.average().toFloat()
-                        if (rollingAvg < noiseFloor) {
-                            noiseFloor = rollingAvg
-                        }
-                        dynamicThreshold = maxOf(
-                            rollingAvg * streamingThresholdRatio,
-                            noiseFloor * streamingNoiseFloorMultiplier,
-                            streamingSilenceThreshold
-                        )
-                    }
-
-                    // Hysteresis: speech starts when amp >= dynamicThreshold, but only ends when
-                    // amp drops below dynamicThreshold * hysteresisRatio (0.6). This prevents brief
-                    // amplitude dips from cutting sentences short.
-                    val silenceThreshold = dynamicThreshold * streamingHysteresisRatio
-
-                    // Short noise filter: require MIN_TRIGGER_CHUNKS consecutive above-threshold chunks
-                    // before treating this as real speech (filters coughs / table bumps / short clicks).
-                    if (amp >= dynamicThreshold) {
-                        triggerCounter++
-                    } else {
-                        triggerCounter = 0
-                    }
-
-                    // Reset silence timer whenever amplitude is above the hysteresis floor.
-                    if (amp >= silenceThreshold) {
-                        silenceStartMs = 0L
-                    }
-
-                    if (triggerCounter >= streamingMinTriggerChunks && !hasSpeech) {
-                        hasSpeech = true
-                        speakStartMs = System.currentTimeMillis()
-                        Log.i(TAG, "VAD: speech start (amp=$amp, threshold=$dynamicThreshold)")
-                    }
-
-                    if (hasSpeech) {
-                        // Silence detection with hysteresis: amplitude below threshold * 0.6 for
-                        // streamingSilenceDurationMs ends the segment.
-                        if (amp < silenceThreshold) {
-                            if (silenceStartMs == 0L) {
-                                silenceStartMs = System.currentTimeMillis()
-                                Log.d(TAG, "VAD: silence start (amp=$amp < $silenceThreshold), segment may end in ${streamingSilenceDurationMs}ms")
-                            } else if (System.currentTimeMillis() - silenceStartMs >= streamingSilenceDurationMs) {
-                                // Silence detected: end segment. Discard segments shorter than
-                                // streamingMinSegmentMs (noise/clicks); only send meaningful speech.
-                                val finalText = voskTranscriber.endSegment()
-                                val segmentMs = System.currentTimeMillis() - speakStartMs
-                                silenceStartMs = 0L
-                                hasSpeech = false
-                                triggerCounter = 0
-                                if (segmentMs >= streamingMinSegmentMs &&
-                                    finalText != null && finalText.isNotBlank()) {
-                                    _partialTranscript.value = ""
-                                    Log.i(TAG, "Streaming utterance sent asynchronously: '$finalText' (${segmentMs}ms)")
-                                    scope.launch { handleTranscriptionResult(finalText) }
-                                } else if (segmentMs < streamingMinSegmentMs) {
-                                    Log.i(TAG, "Discarded short segment (${segmentMs}ms < ${streamingMinSegmentMs}ms)")
-                                } else {
-                                    Log.i(TAG, "VAD segment ended but empty text (${segmentMs}ms), skipping")
-                                }
-                                // Continue collecting 鈥?do NOT stop capture or streaming session
-                            }
-                        }
-                    }
+                    // VAD: feed raw amplitude to StreamingVAD which handles calibration,
+                    // adaptive threshold, hysteresis, and min-segment filtering internally.
+                    // On speech end it calls voskTranscriber.endSegment() and dispatches
+                    // the transcript to the LLM via the onSpeechEnd callback above.
+                    vad.feedAmplitude(rawAmp)
                 }
+
             } catch (e: Throwable) {
                 Log.e(TAG, "Streaming capture flow crashed: ${e.javaClass.simpleName}: ${e.message}", e)
                 if (active) { _state.value = State.IDLE }
@@ -942,40 +838,50 @@ class VoiceConversationController(
         }
     }
 
-    private suspend fun observeLlmAndTts() {
-        isLoading.collectLatest { loading ->
-            if (loading) {
-                llmWasLoading = true
-            } else if (llmWasLoading && waitingForLlm) {
-                waitingForLlm = false
-                llmWasLoading = false
-                if (!active) return@collectLatest
-                if (isStreamingConversation || ttsAutoPlayOn()) {
-                    _state.value = State.SPEAKING
-                    withTimeoutOrNull(TTS_START_GRACE_MS) {
-                        TtsManager.isPlaying.first { it }
-                    }
+    /**
+     * Merged observer for LLM loading state and TTS playback. Runs two concurrent
+     * collectors inside a single [coroutineScope] so one [observeJob] cancellation
+     * tears down both, eliminating the separate ttsObserverJob.
+     *
+     *  - isLoading collector: when the LLM finishes, transitions to SPEAKING and
+     *    waits for TTS to start (grace period). If TTS never starts, resumes listening.
+     *  - isPlaying collector: when TTS finishes playing, resumes listening.
+     */
+    private suspend fun observeLlmAndTts() = coroutineScope {
+        launch {
+            isLoading.collectLatest { loading ->
+                if (loading) {
+                    llmWasLoading = true
+                } else if (llmWasLoading && waitingForLlm) {
+                    waitingForLlm = false
+                    llmWasLoading = false
                     if (!active) return@collectLatest
-                    if (!TtsManager.isPlaying.value && _state.value == State.SPEAKING) {
+                    if (isStreamingConversation || ttsAutoPlayOn()) {
+                        _state.value = State.SPEAKING
+                        withTimeoutOrNull(TTS_START_GRACE_MS) {
+                            TtsManager.isPlaying.first { it }
+                        }
+                        if (!active) return@collectLatest
+                        if (!TtsManager.isPlaying.value && _state.value == State.SPEAKING) {
+                            if (!isStreamingConversation) beginListening()
+                            else _state.value = State.LISTENING
+                        }
+                    } else {
                         if (!isStreamingConversation) beginListening()
                         else _state.value = State.LISTENING
                     }
-                } else {
-                    if (!isStreamingConversation) beginListening()
-                    else _state.value = State.LISTENING
                 }
             }
         }
-    }
-
-    private suspend fun observeTtsPlaying() {
-        TtsManager.isPlaying.collect { playing ->
-            if (!active) return@collect
-            if (!playing && _state.value == State.SPEAKING) {
-                delay(300)
-                if (active && !TtsManager.isPlaying.value && _state.value == State.SPEAKING) {
-                    if (!isStreamingConversation) beginListening()
-                    else _state.value = State.LISTENING
+        launch {
+            TtsManager.isPlaying.collect { playing ->
+                if (!active) return@collect
+                if (!playing && _state.value == State.SPEAKING) {
+                    delay(300)
+                    if (active && !TtsManager.isPlaying.value && _state.value == State.SPEAKING) {
+                        if (!isStreamingConversation) beginListening()
+                        else _state.value = State.LISTENING
+                    }
                 }
             }
         }

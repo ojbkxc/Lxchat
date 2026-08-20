@@ -27,6 +27,7 @@ import com.lxseek.chat.tool.ToolExecutionEvent
 import com.lxseek.chat.tool.ToolExecutionResult
 import com.lxseek.chat.tool.ToolImageStore
 import com.lxseek.chat.tool.ToolPresentationMetadata
+import com.lxseek.chat.tool.ToolDescriptor
 import com.lxseek.chat.tool.ToolProvider
 import com.lxseek.chat.tool.ToolTier
 import com.lxseek.chat.tool.ToolTierPolicy
@@ -134,51 +135,54 @@ internal class GenerationToolExecutor private constructor(
     }
 
     override fun definitions(context: GenerationContext): List<ToolDefinition> =
-        providers.flatMap { it.definitions(context) }.filterByAgentMode(context).filterByTier(context)
+        descriptors(context).map { it.definition }
+
+    /** Build the flat tool-descriptor map once per context; used by filtering and approval. */
+    private fun descriptors(context: GenerationContext): List<ToolDescriptor> {
+        val descs = providers.flatMap { it.toolDescriptors(context) }
+        return descs.filterByAgentMode(context).filterByTier(context)
+    }
 
     /** Filter out tools whose risk level is not allowed by the current [AgentMode]. */
-    private fun List<ToolDefinition>.filterByAgentMode(context: GenerationContext): List<ToolDefinition> {
+    private fun List<ToolDescriptor>.filterByAgentMode(context: GenerationContext): List<ToolDescriptor> {
         if (context.agentMode == AgentMode.Agent || context.agentMode == AgentMode.Auto) return this
-        return filter { def ->
-            val risk = providers.firstOrNull { it.handles(def.function.name) }
-                ?.riskLevel(def.function.name) ?: RiskLevel.ReadOnly
-            context.agentMode.allowsRisk(risk)
-        }
+        return filter { context.agentMode.allowsRisk(it.riskLevel) }
     }
 
     /** Filter out tools whose tier is not allowed by the current context's tool tier policy. */
-    private fun List<ToolDefinition>.filterByTier(context: GenerationContext): List<ToolDefinition> {
+    private fun List<ToolDescriptor>.filterByTier(context: GenerationContext): List<ToolDescriptor> {
         val allowedTiers = ToolTierPolicy.allowedTiers(context)
         if (allowedTiers.size == ToolTier.values().size) return this
-        return filter { def -> ToolTierPolicy.tierOf(def.function.name) in allowedTiers }
+        return filter { it.tier in allowedTiers }
     }
 
     fun imageDefinitions(context: GenerationContext): List<ToolDefinition> =
-        imageGenProvider?.definitions(context).orEmpty()
+        imageGenProvider?.toolDescriptors(context).orEmpty()
+            .filterByAgentMode(context).map { it.definition }
 
     fun memoryDefinitions(context: GenerationContext): List<ToolDefinition> =
-        providers.filterIsInstance<MemoryToolProvider>().flatMap { it.definitions(context) }
-            .filterByAgentMode(context)
+        providers.filterIsInstance<MemoryToolProvider>().flatMap { it.toolDescriptors(context) }
+            .filterByAgentMode(context).map { it.definition }
 
     fun webSearchDefinitions(context: GenerationContext): List<ToolDefinition> =
-        providers.filterIsInstance<WebSearchToolProvider>().flatMap { it.definitions(context) }
-            .filterByAgentMode(context)
+        providers.filterIsInstance<WebSearchToolProvider>().flatMap { it.toolDescriptors(context) }
+            .filterByAgentMode(context).map { it.definition }
 
     fun ragDefinitions(context: GenerationContext): List<ToolDefinition> =
-        providers.filterIsInstance<RagToolProvider>().flatMap { it.definitions(context) }
-            .filterByAgentMode(context)
+        providers.filterIsInstance<RagToolProvider>().flatMap { it.toolDescriptors(context) }
+            .filterByAgentMode(context).map { it.definition }
 
     fun shellDefinitions(context: GenerationContext): List<ToolDefinition> =
         providers.filterIsInstance<ShellToolProvider>()
-            .flatMap { it.definitions(context) }
-            .filter { it.function.name !in FILE_TOOL_NAMES }
-            .filterByAgentMode(context)
+            .flatMap { it.toolDescriptors(context) }
+            .filter { it.definition.function.name !in FILE_TOOL_NAMES }
+            .filterByAgentMode(context).map { it.definition }
 
     fun fileDefinitions(context: GenerationContext): List<ToolDefinition> =
         providers.filterIsInstance<ShellToolProvider>()
-            .flatMap { it.definitions(context) }
-            .filter { it.function.name in FILE_TOOL_NAMES }
-            .filterByAgentMode(context)
+            .flatMap { it.toolDescriptors(context) }
+            .filter { it.definition.function.name in FILE_TOOL_NAMES }
+            .filterByAgentMode(context).map { it.definition }
 
     override fun presentationMetadata(name: String): ToolPresentationMetadata? {
         if (name.isBlank()) return null
@@ -230,11 +234,10 @@ internal class GenerationToolExecutor private constructor(
                 )
 
             // ── Approval dispatch ───────────────────────────────────
-            // Sandbox static analysis: decide whether the outer dispatcher needs to prompt.
-            // Tools with an internal confirm gate (file_write/file_edit) are skipped here to
-            // avoid double-prompting; the provider handles their confirmation internally.
-            val riskLevel = provider.riskLevel(call.name)
-            val requiresApproval = provider.requiresApprovalByDefault(call.name)
+            // Look up metadata from the merged ToolDescriptor map (single source of truth).
+            val desc = ToolTierPolicy.descriptorMap(providers, call.context)[call.name]
+            val riskLevel = desc?.riskLevel ?: RiskLevel.ReadOnly
+            val requiresApproval = desc?.requiresApproval ?: false
             if (needsOuterApproval(call.name, riskLevel, requiresApproval, call.context.agentMode)) {
                 val approvalRequest = ToolApprovalRequest(
                     toolName = call.name,
