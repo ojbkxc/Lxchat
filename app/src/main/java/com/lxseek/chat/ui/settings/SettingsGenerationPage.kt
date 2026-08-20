@@ -73,9 +73,6 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val ttsSpeechRate by viewModel.settings.ttsSpeechRate.collectAsState()
     val ttsAvailable by TtsManager.isAvailable.collectAsState()
     val ttsLangMissingData by TtsManager.langMissingData.collectAsState()
-    val ttsInitStatus by TtsManager.lastInitStatus.collectAsState()
-    val ttsSpeakResult by TtsManager.lastSpeakResult.collectAsState()
-    val ttsLangResult by TtsManager.lastLanguageResult.collectAsState()
     val ttsDiagnostic = TtsManager.getDiagnosticInfo()
     val ttsContext = LocalContext.current
     val shareIncludeThinking by viewModel.settings.shareIncludeThinking.collectAsState()
@@ -679,7 +676,6 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             }
                         }
                         add {
-
                             SettingsVoskModelsSection(
                                 context = ttsContext,
                                 voskTranscriber = viewModel.voiceConversation.getVoskTranscriber(),
@@ -687,29 +683,7 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                 onVoiceLanguageChange = { viewModel.settings.setVoiceLanguage(it) },
                             )
                         }
-                        add {
-                            SettingsAsrDiagnosticsSection(
-                                context = ttsContext,
-                                asrEnginePref = asrEnginePref,
-                                controller = viewModel.voiceConversation,
-                                voskTranscriber = viewModel.voiceConversation.getVoskTranscriber(),
-                                asrUseRemote = asrUseRemote,
-                                asrRemoteBaseUrl = asrRemoteBaseUrl,
-                                asrRemoteApiKey = asrRemoteApiKey,
-                                asrRemoteModel = asrRemoteModel,
-                                voiceLanguage = voiceLanguage,
-                            )
-                        }
                     },
-                )
-
-                SettingsVoiceLogSection(
-                    context = ttsContext,
-                    ttsDiagnostic = ttsDiagnostic,
-                    ttsInitStatus = ttsInitStatus,
-                    ttsSpeakResult = ttsSpeakResult,
-                    ttsLangResult = ttsLangResult,
-                    voskTranscriber = viewModel.voiceConversation.getVoskTranscriber(),
                 )
             }
 

@@ -862,6 +862,19 @@
     <string name="rating_failed">Failed to submit. Please try again.</string>
     <string name="rating_privacy">Your rating opens as a pre-filled GitHub issue in your browser. You can review it before submitting.</string>
 
+    <!-- Logs -->
+    <string name="settings_logs">Logs</string>
+    <string name="settings_logs_desc">Unified app, TTS, and speech recognition logs</string>
+    <string name="logs_app_log_title">App Log (All Modules)</string>
+    <string name="logs_tts_log_title">TTS Log</string>
+    <string name="logs_asr_log_title">ASR / Vosk Diagnostics</string>
+    <string name="logs_copy">Copy</string>
+    <string name="logs_export">Export</string>
+    <string name="logs_no_logs">No logs recorded yet</string>
+    <string name="logs_copied">Copied</string>
+    <string name="logs_exported">Saved to Downloads/LxChat/%1$s</string>
+    <string name="logs_export_failed">Failed to save</string>
+
     <!-- Data Control -->
     <string name="settings_data_control">Data Control</string>
     <string name="settings_data_control_desc">Export or import your data</string>

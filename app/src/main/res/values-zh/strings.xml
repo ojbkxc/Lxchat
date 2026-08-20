@@ -973,6 +973,19 @@
     <string name="rating_failed">提交失败，请重试。</string>
     <string name="rating_privacy">您的评分将在浏览器中打开为预填的 GitHub issue，您可在提交前审阅。</string>
 
+    <!-- Logs -->
+    <string name="settings_logs">日志</string>
+    <string name="settings_logs_desc">统一查看应用、TTS 和语音识别日志</string>
+    <string name="logs_app_log_title">应用日志（所有模块）</string>
+    <string name="logs_tts_log_title">TTS 日志</string>
+    <string name="logs_asr_log_title">语音识别 / Vosk 诊断</string>
+    <string name="logs_copy">复制</string>
+    <string name="logs_export">导出</string>
+    <string name="logs_no_logs">暂无日志记录</string>
+    <string name="logs_copied">已复制</string>
+    <string name="logs_exported">已保存到下载/LxChat/%1$s</string>
+    <string name="logs_export_failed">保存失败</string>
+
     <!-- Data Control -->
     <string name="settings_data_control">数据控制</string>
     <string name="settings_data_control_desc">导出或导入您的数据</string>
