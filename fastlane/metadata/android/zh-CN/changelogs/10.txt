@@ -1,0 +1,7 @@
+* 版本升级至 1.0.9 (versionCode 10)
+* TTS：修复自动播放不工作（提取 playTtsForMessage 共用方法，含 init 重试和 grace window）
+* TTS：添加"正在朗读…"文字指示和引擎不可用 Snackbar 提示
+* 分享：复制选中消息为纯文本（剪贴板）
+* 分享：高级导出过滤设置（包含思考过程 / 工具调用开关）
+* 分享：长按消息进入多选模式
+* Build & Release：版本号从 build.gradle.kts 自动读取，消除手动输入版本不一致问题

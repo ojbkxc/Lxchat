@@ -1,0 +1,5 @@
+* 版本升级至 1.0.7（versionCode 8）
+* 修复远程 shell 命令确认对话框的 MarkdownDimens 崩溃（CompositionLocalProvider 自给自足）
+* 重构 ChatApp.kt：提取底部栏、欢迎页和滚动按钮到独立文件（938→757 行）
+* 包名重命名 com.newoether.lxchat → com.lxseek.chat，开发者名称 → ojbkxc
+* CI 版本一致性校验：build.gradle.kts versionName 必须与 git tag 一致

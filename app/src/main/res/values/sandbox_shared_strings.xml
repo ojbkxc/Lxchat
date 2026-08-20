@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sandbox_shared_storage">Shared Storage</string>
+    <string name="sandbox_shared_storage_desc">Optionally expose the device’s shared storage to the Linux sandbox.</string>
+    <string name="sandbox_shared_storage_mounted">Mounted at /mnt/shared</string>
+    <string name="sandbox_shared_storage_permission_required">Enabled · storage access is still required</string>
+    <string name="sandbox_shared_storage_grant">Grant Storage Access</string>
+    <string name="sandbox_shared_storage_warning">This lets sandbox commands read and modify photos, downloads, and other shared files. Mutating tool calls require confirmation.</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_view_image">查看图片</string>
+    <string name="tool_viewing_image">正在查看图片 %1$s…</string>
+    <string name="tool_progress_viewing">正在查看…</string>
+    <string name="tool_viewed_image">已查看图片 %1$s</string>
+    <string name="tool_viewed_image_default">已查看图片</string>
+</resources>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_title">MCP</string>
+    <string name="mcp_desc">连接外部工具服务器</string>
+    <string name="mcp_servers">MCP 服务器</string>
+    <string name="mcp_no_servers">暂无 MCP 服务器</string>
+    <string name="mcp_no_servers_desc">添加 Streamable HTTP 或 SSE 端点后，其工具即可用于对话。</string>
+    <string name="mcp_add_server">添加 MCP 服务器</string>
+    <string name="mcp_edit_server">编辑 MCP 服务器</string>
+    <string name="mcp_delete_title">删除 MCP 服务器？</string>
+    <string name="mcp_delete_message">删除 %1$s 并移除其工具？</string>
+    <string name="mcp_connection">连接</string>
+    <string name="mcp_transport">传输方式</string>
+    <string name="mcp_transport_streamable_http">Streamable HTTP</string>
+    <string name="mcp_transport_sse">SSE</string>
+    <string name="mcp_name">名称</string>
+    <string name="mcp_url">服务器 URL</string>
+    <string name="mcp_url_error">请输入有效的 http:// 或 https:// URL</string>
+    <string name="mcp_headers">自定义请求头</string>
+    <string name="mcp_headers_desc">仅添加服务器必需的请求头。请求头值会加密存储。</string>
+    <string name="mcp_no_headers">暂无自定义请求头</string>
+    <string name="mcp_headers_error">每行必须使用“名称: 值”格式</string>
+    <string name="mcp_header_name">请求头名称</string>
+    <string name="mcp_header_value">请求头值</string>
+    <string name="mcp_header_name_error">请输入唯一且非保留的 HTTP 请求头名称</string>
+    <string name="mcp_header_value_error">请输入不含控制字符的值</string>
+    <string name="mcp_add_header">添加请求头</string>
+    <string name="mcp_delete_header">删除请求头</string>
+    <string name="mcp_show_header_value">显示请求头值</string>
+    <string name="mcp_hide_header_value">隐藏请求头值</string>
+    <string name="mcp_timeout">超时（秒）</string>
+    <string name="mcp_timeout_desc">5–300 秒</string>
+    <string name="mcp_status">状态</string>
+    <string name="mcp_status_idle">空闲</string>
+    <string name="mcp_status_connecting">正在连接…</string>
+    <string name="mcp_status_connected">已连接</string>
+    <string name="mcp_tools_enabled">已启用 %1$d 个工具</string>
+    <string name="mcp_status_error">连接错误</string>
+    <string name="mcp_refresh">重新连接</string>
+    <string name="mcp_tools_count">工具（%1$d）</string>
+    <string name="mcp_tool_no_description">无描述</string>
+</resources>

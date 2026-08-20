@@ -1,0 +1,3 @@
+* Bump version to 1.0.8 (versionCode 9)
+* Add TTS voice read-aloud for assistant messages (TtsManager + settings + UI speaker button)
+* Fix AGENTS.md drift — align version to 1.0.7/8, TTS CI green, MarkdownDimens fix verified

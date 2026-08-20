@@ -1,0 +1,985 @@
+package com.lxseek.chat.ui.settings
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.lxseek.chat.R
+import com.lxseek.chat.model.ModelId
+import com.lxseek.chat.model.apiModelName
+import com.lxseek.chat.ui.components.clearFocusOnTap
+import com.lxseek.chat.ui.components.providerIcon
+import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
+import com.lxseek.chat.util.Constants
+import com.lxseek.chat.util.noOpBringIntoView
+import com.lxseek.chat.viewmodel.ChatViewModel
+
+// Shape constants matching SettingsGroup's per-position rounding (12dp outer edges, 4dp where cards meet).
+// Each encodes top-corners / bottom-corners for its place in the group.
+private val FullRounded   = RoundedCornerShape(12.dp)
+private val TopRounded    = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
+private val BottomRounded = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
+private val MidRounded    = RoundedCornerShape(4.dp)
+private val FlatShape     = RoundedCornerShape(0.dp)
+private val FlatToBottom  = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
+private val FourBottom    = RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp)
+
+private val RemoteModelProviders = listOf(
+    Constants.PROVIDER_GOOGLE,
+    Constants.PROVIDER_OPENAI,
+    Constants.PROVIDER_ANTHROPIC,
+    Constants.PROVIDER_DEEPSEEK,
+    Constants.PROVIDER_QWEN,
+    Constants.PROVIDER_GROQ,
+    Constants.PROVIDER_OLLAMA,
+    Constants.PROVIDER_OPEN_ROUTER,
+)
+
+internal data class ModelProviderGroup(
+    val providerName: String,
+    val models: List<String>,
+)
+
+internal fun customModelGroups(
+    customModels: Set<String>,
+    providerOrder: List<String>,
+): List<ModelProviderGroup> {
+    val providerPositions = providerOrder.withIndex().associate { (index, name) -> name to index }
+    return customModels
+        .groupBy { ModelId.parse(it).providerName }
+        .map { (providerName, models) ->
+            ModelProviderGroup(
+                providerName = providerName,
+                models = models.sortedBy { ModelId.parse(it).apiModelName.lowercase() },
+            )
+        }
+        .sortedWith(
+            compareBy<ModelProviderGroup>(
+                { providerPositions[it.providerName] ?: Int.MAX_VALUE },
+                { it.providerName.lowercase() },
+            )
+        )
+}
+
+internal fun fetchedModelGroups(
+    availableModels: Map<String, List<String>>,
+    customModels: Set<String>,
+    modelAliases: Map<String, String>,
+    query: String,
+): List<ModelProviderGroup> {
+    val normalizedQuery = query.trim()
+    return availableModels.mapNotNull { (providerName, models) ->
+        val providerMatches =
+            normalizedQuery.isNotEmpty() &&
+                providerName.contains(normalizedQuery, ignoreCase = true)
+        val filteredModels = models
+            .asSequence()
+            .filterNot { it in customModels }
+            .distinct()
+            .filter { model ->
+                normalizedQuery.isEmpty() ||
+                    providerMatches ||
+                    ModelId.parse(model).apiModelName.contains(
+                        normalizedQuery,
+                        ignoreCase = true,
+                    ) ||
+                    modelAliases[model]?.contains(normalizedQuery, ignoreCase = true) == true
+            }
+            .toList()
+        filteredModels.takeIf { it.isNotEmpty() }?.let {
+            ModelProviderGroup(providerName = providerName, models = it)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
+    val allowSpatialTransitions = LocalLxChatMotionPolicy.current.allowSpatialTransitions
+    val enabledModels by viewModel.settings.enabledModels.collectAsState()
+    val availableModels by viewModel.settings.availableModels.collectAsState()
+    val customModels by viewModel.settings.customModels.collectAsState()
+    val customProviders by viewModel.settings.customProviders.collectAsState()
+    val modelAliases by viewModel.settings.modelAliases.collectAsState()
+    val selectedModel by viewModel.settings.selectedModel.collectAsState()
+    var showActiveModelDialog by remember { mutableStateOf(false) }
+    var showModelAliasDialog by remember { mutableStateOf<String?>(null) }
+    var showCustomModelDialog by remember { mutableStateOf(false) }
+    var editingCustomModel by remember { mutableStateOf<String?>(null) }
+    var deletingCustomModel by remember { mutableStateOf<String?>(null) }
+    var customModelProvider by rememberSaveable { mutableStateOf("") }
+    var customModelId by rememberSaveable { mutableStateOf("") }
+    var customModelAlias by rememberSaveable { mutableStateOf("") }
+    var customModelProviderMenuExpanded by remember { mutableStateOf(false) }
+    var modelSearchQuery by rememberSaveable { mutableStateOf("") }
+    val expandedProviders = remember { mutableStateMapOf<String, MutableTransitionState<Boolean>>() }
+    val modelBlockHeights = remember { mutableStateMapOf<String, Float>() }
+
+    val showDocFab by viewModel.settings.showDocumentationFab.collectAsState()
+    val lastFingerprint by viewModel.settings.lastModelsFetchFingerprint.collectAsState()
+    val providerChoices = remember(customProviders) {
+        (RemoteModelProviders + customProviders.map { it.name }).distinct()
+    }
+    val manualModelGroups = remember(customModels, providerChoices, modelAliases, modelSearchQuery) {
+        val base = customModelGroups(customModels, providerChoices)
+        val normalizedQuery = modelSearchQuery.trim()
+        if (normalizedQuery.isEmpty()) {
+            base
+        } else {
+            base.mapNotNull { group ->
+                val providerMatches = group.providerName.contains(normalizedQuery, ignoreCase = true)
+                val filteredModels = group.models.filter { model ->
+                    providerMatches ||
+                        ModelId.parse(model).apiModelName.contains(normalizedQuery, ignoreCase = true) ||
+                        modelAliases[model]?.contains(normalizedQuery, ignoreCase = true) == true
+                }
+                filteredModels.takeIf { it.isNotEmpty() }?.let { group.copy(models = it) }
+            }
+        }
+    }
+    val autoFetchedModelGroups = remember(
+        availableModels,
+        customModels,
+        modelAliases,
+        modelSearchQuery,
+    ) {
+        fetchedModelGroups(
+            availableModels = availableModels,
+            customModels = customModels,
+            modelAliases = modelAliases,
+            query = modelSearchQuery,
+        )
+    }
+    val normalizedSearchQuery = modelSearchQuery.trim()
+    val searchActive = normalizedSearchQuery.isNotEmpty()
+    val autoProviderStateKeys = remember(availableModels) {
+        availableModels.keys.mapTo(linkedSetOf()) { providerName -> "auto:$providerName" }
+    }
+
+    LaunchedEffect(providerChoices) {
+        if (customModelProvider !in providerChoices) {
+            customModelProvider = providerChoices.firstOrNull().orEmpty()
+        }
+    }
+
+    // Search-driven bulk changes are intentional jump cuts. Replacing the transition-state
+    // identity lets the content start at its destination, while header taps keep mutating the
+    // same state object and therefore retain their normal expand/collapse animation.
+    LaunchedEffect(searchActive) {
+        if (searchActive) {
+            val knownAutoProviders = expandedProviders.keys
+                .filterTo(linkedSetOf()) { it.startsWith("auto:") }
+                .apply { addAll(autoProviderStateKeys) }
+            knownAutoProviders.forEach { providerStateKey ->
+                expandedProviders[providerStateKey] = MutableTransitionState(true)
+            }
+        }
+    }
+
+    // A provider fetched during an active search joins expanded without replaying the bulk
+    // transition or reopening a provider that the user manually collapsed.
+    LaunchedEffect(searchActive, autoProviderStateKeys) {
+        if (searchActive) {
+            autoProviderStateKeys.forEach { providerStateKey ->
+                if (providerStateKey !in expandedProviders) {
+                    expandedProviders[providerStateKey] = MutableTransitionState(true)
+                }
+            }
+        }
+    }
+
+    // Auto-fetch models when entering the page if provider config has changed
+    LaunchedEffect(Unit) {
+        val current = viewModel.computeProviderFingerprint()
+        if (current != lastFingerprint) {
+            viewModel.fetchAvailableModels()
+        }
+    }
+
+    CollapsingSettingsLazyScaffold(
+        title = stringResource(R.string.models_title),
+        onBack = onBack,
+        contentHorizontalPadding = 0.dp,
+        floatingActionButton = { if (showDocFab) DocumentationFab("models.md") }
+    ) {
+            // ── Default Model section ──
+            item(key = "section_default_title") {
+                SectionLabel(
+                    text = stringResource(R.string.models_default),
+                    firstInPage = true
+                )
+            }
+
+            item(key = "default_model") {
+                val activeAlias = modelAliases[selectedModel]
+                val activeParsed = com.lxseek.chat.model.ModelId.parse(selectedModel)
+                val providerName = activeParsed.providerName
+                val activeDisplayName = activeAlias ?: activeParsed.apiModelName
+                val activeIconRes = providerIcon(providerName)
+                val isActiveLocal = providerName.equals(Constants.PROVIDER_LOCAL, ignoreCase = true)
+                val hasEnabledModels = enabledModels.isNotEmpty()
+
+                CardSurface(shape = FullRounded) {
+                    SettingsItem(
+                        headlineContent = {
+                            Text(
+                                if (!hasEnabledModels) stringResource(R.string.models_no_models) else activeDisplayName,
+                                color = if (!hasEnabledModels) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        supportingContent = if (hasEnabledModels) {
+                            { Text(providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) }
+                        } else null,
+                        leadingContent = {
+                            val tint = if (hasEnabledModels) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            when {
+                                !hasEnabledModels -> Icon(Icons.Default.Chat, null, tint = tint, modifier = Modifier.size(24.dp))
+                                isActiveLocal -> Icon(Icons.Default.AutoAwesome, null, tint = tint, modifier = Modifier.size(24.dp))
+                                activeIconRes != 0 -> Icon(painterResource(activeIconRes), null, tint = tint, modifier = Modifier.size(24.dp))
+                                else -> Icon(Icons.Default.Chat, null, tint = tint, modifier = Modifier.size(24.dp))
+                            }
+                        },
+                        modifier = Modifier.heightIn(min = 66.dp).clickable(enabled = hasEnabledModels) { showActiveModelDialog = true }
+                    )
+                }
+            }
+
+            // ── Manually added models ──
+            item(key = "section_manual_title") {
+                SectionLabel(
+                    text = stringResource(R.string.models_manual),
+                    firstInPage = false
+                )
+            }
+
+            if (manualModelGroups.isEmpty()) {
+                item(key = "manual_empty") {
+                    CardSurface(shape = TopRounded) {
+                        SettingsItem(
+                            headlineContent = {
+                                Text(
+                                    stringResource(R.string.models_manual_empty),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Default.Chat,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                )
+                            },
+                            modifier = Modifier.heightIn(min = 64.dp),
+                        )
+                    }
+                }
+            } else {
+                modelProviderGroups(
+                    keyPrefix = "manual",
+                    groups = manualModelGroups,
+                    firstHeaderStartsSection = true,
+                    lastGroupClosesSection = false,
+                    allowSpatialTransitions = allowSpatialTransitions,
+                    searchActive = searchActive,
+                    enabledModels = enabledModels,
+                    modelAliases = modelAliases,
+                    expandedProviders = expandedProviders,
+                    modelBlockHeights = modelBlockHeights,
+                    onAliasClick = null,
+                    onDetailsClick = { model ->
+                        val parsed = ModelId.parse(model)
+                        editingCustomModel = model
+                        customModelProvider = parsed.providerName
+                        customModelId = parsed.modelName
+                        customModelAlias = modelAliases[model].orEmpty()
+                        showCustomModelDialog = true
+                    },
+                    onEnabledChange = { model, enabled ->
+                        viewModel.settings.setEnabledModels(
+                            if (enabled) enabledModels + model else enabledModels - model
+                        )
+                    },
+                )
+            }
+
+            item(key = "manual_add") {
+                CardSurface(shape = BottomRounded, addTopGap = true) {
+                    SettingsAddItem(
+                        label = stringResource(R.string.models_add_custom),
+                        onClick = {
+                            editingCustomModel = null
+                            customModelId = ""
+                            customModelAlias = ""
+                            if (customModelProvider !in providerChoices) {
+                                customModelProvider = providerChoices.firstOrNull().orEmpty()
+                            }
+                            showCustomModelDialog = true
+                        },
+                    )
+                }
+            }
+
+            // ── Automatically fetched models ──
+            item(key = "section_auto_fetch_title") {
+                SectionLabel(
+                    text = stringResource(R.string.models_auto_fetch),
+                    firstInPage = false
+                )
+            }
+
+            item(key = "sync") {
+                CardSurface(shape = TopRounded) {
+                    SettingsItem(
+                        headlineContent = { Text(stringResource(R.string.models_sync)) },
+                        supportingContent = { Text(stringResource(R.string.models_sync_desc)) },
+                        leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        modifier = Modifier.clickable { viewModel.fetchAvailableModels() }
+                    )
+                }
+            }
+
+            item(key = "auto_search") {
+                CardSurface(shape = MidRounded, addTopGap = true) {
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                        OutlinedTextField(
+                            value = modelSearchQuery,
+                            onValueChange = { modelSearchQuery = it },
+                            singleLine = true,
+                            placeholder = { Text(stringResource(R.string.models_search_hint)) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = null)
+                            },
+                            trailingIcon = if (modelSearchQuery.isNotEmpty()) {
+                                {
+                                    IconButton(onClick = { modelSearchQuery = "" }) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription =
+                                                stringResource(R.string.models_clear_search),
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                disabledBorderColor = Color.Transparent,
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+
+            if (autoFetchedModelGroups.isEmpty()) {
+                item(key = "auto_empty") {
+                    CardSurface(shape = BottomRounded, addTopGap = true) {
+                        SettingsItem(
+                            headlineContent = {
+                                Text(
+                                    stringResource(
+                                        if (normalizedSearchQuery.isEmpty()) {
+                                            R.string.models_auto_empty
+                                        } else {
+                                            R.string.models_search_empty
+                                        }
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                )
+                            },
+                            modifier = Modifier.heightIn(min = 64.dp),
+                        )
+                    }
+                }
+            } else {
+                modelProviderGroups(
+                    keyPrefix = "auto",
+                    groups = autoFetchedModelGroups,
+                    firstHeaderStartsSection = false,
+                    lastGroupClosesSection = true,
+                    allowSpatialTransitions = allowSpatialTransitions,
+                    searchActive = searchActive,
+                    enabledModels = enabledModels,
+                    modelAliases = modelAliases,
+                    expandedProviders = expandedProviders,
+                    modelBlockHeights = modelBlockHeights,
+                    onAliasClick = { showModelAliasDialog = it },
+                    onDetailsClick = null,
+                    onEnabledChange = { model, enabled ->
+                        viewModel.settings.setEnabledModels(
+                            if (enabled) enabledModels + model else enabledModels - model
+                        )
+                    },
+                )
+            }
+
+            if (showDocFab) {
+                item(key = "doc_spacer") { Spacer(modifier = Modifier.height(80.dp)) }
+            }
+    }
+
+    // ── Active Model Dialog ──
+    if (showActiveModelDialog) {
+        AlertDialog(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            onDismissRequest = { showActiveModelDialog = false },
+            title = { Text(stringResource(R.string.models_select_default), fontWeight = FontWeight.Bold) },
+            text = {
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    items(enabledModels.toList(), key = { it }) { model ->
+                        val alias = modelAliases[model]
+                        val parsed = com.lxseek.chat.model.ModelId.parse(model)
+                        val displayName = alias ?: parsed.apiModelName
+                        val providerName = parsed.providerName
+
+                        SettingsItem(
+                            headlineContent = {
+                                Text(displayName, fontWeight = if (model == selectedModel) FontWeight.Bold else FontWeight.Normal)
+                            },
+                            supportingContent = {
+                                Text(providerName, style = MaterialTheme.typography.bodySmall)
+                            },
+                            leadingContent = {
+                                RadioButton(
+                                    selected = model == selectedModel,
+                                    onClick = {
+                                        viewModel.settings.setSelectedModel(model)
+                                        showActiveModelDialog = false
+                                    }
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                viewModel.settings.setSelectedModel(model)
+                                showActiveModelDialog = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showActiveModelDialog = false }) { Text(stringResource(R.string.provider_close)) } }
+        )
+    }
+
+    // ── Add / edit Custom Model Dialog ──
+    if (showCustomModelDialog) {
+        val originalModelId = editingCustomModel
+        val normalizedProvider = customModelProvider.trim()
+        val normalizedModelId = customModelId.trim()
+        val normalizedAlias = customModelAlias.trim()
+        val pendingModelId = if (
+            normalizedProvider.isNotEmpty() &&
+            normalizedModelId.isNotEmpty()
+        ) {
+            ModelId(normalizedProvider, normalizedModelId).prefixed
+        } else {
+            ""
+        }
+        val modelAlreadyExists =
+            pendingModelId in customModels && pendingModelId != originalModelId
+        val canSaveModel = pendingModelId.isNotEmpty() && !modelAlreadyExists
+
+        AlertDialog(
+            modifier = Modifier.clearFocusOnTap(),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            onDismissRequest = {
+                customModelProviderMenuExpanded = false
+                showCustomModelDialog = false
+            },
+            title = {
+                Text(
+                    stringResource(
+                        if (originalModelId == null) {
+                            R.string.models_add_custom
+                        } else {
+                            R.string.models_edit_custom
+                        }
+                    ),
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    ExposedDropdownMenuBox(
+                        expanded = customModelProviderMenuExpanded,
+                        onExpandedChange = { customModelProviderMenuExpanded = it },
+                    ) {
+                        OutlinedTextField(
+                            value = customModelProvider,
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            label = { Text(stringResource(R.string.embedding_provider_label)) },
+                            leadingIcon = {
+                                val iconRes = providerIcon(customModelProvider)
+                                if (iconRes != 0) {
+                                    Icon(
+                                        painterResource(iconRes),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Cloud, contentDescription = null)
+                                }
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = customModelProviderMenuExpanded
+                                )
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .menuAnchor(
+                                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                    enabled = true,
+                                )
+                                .fillMaxWidth(),
+                        )
+                        ExposedDropdownMenu(
+                            expanded = customModelProviderMenuExpanded,
+                            onDismissRequest = {
+                                customModelProviderMenuExpanded = false
+                            },
+                            matchTextFieldWidth = false,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            tonalElevation = 6.dp,
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            providerChoices.forEach { providerName ->
+                                DropdownMenuItem(
+                                    text = { Text(providerName) },
+                                    onClick = {
+                                        customModelProvider = providerName
+                                        customModelProviderMenuExpanded = false
+                                    },
+                                    leadingIcon = {
+                                        val iconRes = providerIcon(providerName)
+                                        if (iconRes != 0) {
+                                            Icon(
+                                                painterResource(iconRes),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        } else {
+                                            Icon(
+                                                Icons.Default.Cloud,
+                                                contentDescription = null,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Box(modifier = Modifier.noOpBringIntoView()) {
+                        OutlinedTextField(
+                            value = customModelId,
+                            onValueChange = { customModelId = it },
+                            singleLine = true,
+                            label = { Text(stringResource(R.string.model_id_label)) },
+                            isError = modelAlreadyExists,
+                            supportingText = if (modelAlreadyExists) {
+                                { Text(stringResource(R.string.models_custom_exists)) }
+                            } else {
+                                null
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Box(modifier = Modifier.noOpBringIntoView()) {
+                        OutlinedTextField(
+                            value = customModelAlias,
+                            onValueChange = { customModelAlias = it },
+                            singleLine = true,
+                            label = { Text(stringResource(R.string.models_alias_hint)) },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (originalModelId != null) {
+                        TextButton(
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error,
+                            ),
+                            onClick = {
+                                customModelProviderMenuExpanded = false
+                                showCustomModelDialog = false
+                                deletingCustomModel = originalModelId
+                            },
+                        ) {
+                            Text(stringResource(R.string.delete))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    TextButton(
+                        onClick = {
+                            customModelProviderMenuExpanded = false
+                            showCustomModelDialog = false
+                        }
+                    ) {
+                        Text(stringResource(R.string.provider_cancel))
+                    }
+
+                    TextButton(
+                        enabled = canSaveModel,
+                        onClick = {
+                            if (originalModelId == null) {
+                                viewModel.settings.addCustomModel(
+                                    provider = normalizedProvider,
+                                    modelName = normalizedModelId,
+                                    alias = normalizedAlias,
+                                )
+                            } else {
+                                viewModel.updateCustomModel(
+                                    oldModelId = originalModelId,
+                                    provider = normalizedProvider,
+                                    modelId = normalizedModelId,
+                                    alias = normalizedAlias,
+                                )
+                            }
+                            customModelProviderMenuExpanded = false
+                            showCustomModelDialog = false
+                        },
+                    ) {
+                        Text(
+                            stringResource(
+                                if (originalModelId == null) {
+                                    R.string.add
+                                } else {
+                                    R.string.save
+                                }
+                            )
+                        )
+                    }
+                }
+            },
+        )
+    }
+
+    deletingCustomModel?.let { model ->
+        val parsed = ModelId.parse(model)
+        val displayName = modelAliases[model] ?: parsed.apiModelName
+        AlertDialog(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            onDismissRequest = { deletingCustomModel = null },
+            title = {
+                Text(
+                    stringResource(R.string.models_delete_custom_title),
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.models_delete_custom_text,
+                        displayName,
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                    onClick = {
+                        viewModel.deleteCustomModel(model)
+                        deletingCustomModel = null
+                    },
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingCustomModel = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    // ── Model Alias Dialog ──
+    showModelAliasDialog?.let { model ->
+        val aliasState = rememberTextFieldState(modelAliases[model] ?: "")
+
+        AlertDialog(
+            modifier = Modifier.clearFocusOnTap(),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            onDismissRequest = { showModelAliasDialog = null },
+            title = { Text(stringResource(R.string.models_rename), fontWeight = FontWeight.Bold) },
+            text = {
+                val parsed = com.lxseek.chat.model.ModelId.parse(model)
+                Column(Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.models_rename_current, parsed.apiModelName), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(modifier = Modifier.noOpBringIntoView()) {
+                        OutlinedTextField(
+                            state = aliasState,
+                            label = { Text(stringResource(R.string.models_alias_hint)) },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text(parsed.apiModelName) }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.settings.updateModelAlias(model, aliasState.text.toString())
+                    showModelAliasDialog = null
+                }) { Text(stringResource(R.string.provider_save)) }
+            },
+            dismissButton = { TextButton(onClick = { showModelAliasDialog = null }) { Text(stringResource(R.string.provider_cancel)) } }
+        )
+    }
+}
+
+private fun LazyListScope.modelProviderGroups(
+    keyPrefix: String,
+    groups: List<ModelProviderGroup>,
+    firstHeaderStartsSection: Boolean,
+    lastGroupClosesSection: Boolean,
+    allowSpatialTransitions: Boolean,
+    searchActive: Boolean,
+    enabledModels: Set<String>,
+    modelAliases: Map<String, String>,
+    expandedProviders: MutableMap<String, MutableTransitionState<Boolean>>,
+    modelBlockHeights: MutableMap<String, Float>,
+    onAliasClick: ((String) -> Unit)?,
+    onDetailsClick: ((String) -> Unit)?,
+    onEnabledChange: (String, Boolean) -> Unit,
+) {
+    groups.forEachIndexed { providerIndex, group ->
+        val providerName = group.providerName
+        val models = group.models
+        val providerStateKey = "$keyPrefix:$providerName"
+        val transitionState = expandedProviders.getOrPut(providerStateKey) {
+            MutableTransitionState(false)
+        }
+        val isFirstProvider = providerIndex == 0
+        val isLastProvider = providerIndex == groups.lastIndex
+        val topRadius = if (isFirstProvider && firstHeaderStartsSection) 24f else 5f
+        val collapsedBottomRadius =
+            if (isLastProvider && lastGroupClosesSection) 24f else 5f
+
+        item(key = "${keyPrefix}_header_$providerName") {
+            val isExpanded = transitionState.targetState
+            val currentHeight = modelBlockHeights[providerStateKey] ?: 0f
+            val collapsedRatio =
+                (1f - currentHeight / collapsedBottomRadius).coerceIn(0f, 1f)
+            val bottomRadius = (collapsedBottomRadius * collapsedRatio).dp
+            val headerShape = RoundedCornerShape(
+                topStart = topRadius.dp,
+                topEnd = topRadius.dp,
+                bottomStart = bottomRadius,
+                bottomEnd = bottomRadius,
+            )
+
+            CardSurface(
+                shape = headerShape,
+                addTopGap = !(isFirstProvider && firstHeaderStartsSection),
+            ) {
+                val headerIconRes = providerIcon(providerName)
+                val isLocalHeader =
+                    providerName.equals(Constants.PROVIDER_LOCAL, ignoreCase = true)
+                SettingsItem(
+                    headlineContent = { Text(providerName) },
+                    supportingContent = {
+                        val enabledCount = models.count { it in enabledModels }
+                        Text(
+                            stringResource(
+                                if (searchActive) {
+                                    R.string.models_search_count_status
+                                } else {
+                                    R.string.models_count_status
+                                },
+                                enabledCount,
+                                models.size,
+                            )
+                        )
+                    },
+                    leadingContent = {
+                        when {
+                            isLocalHeader -> Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                            headerIconRes != 0 -> Icon(
+                                painterResource(headerIconRes),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                            else -> Icon(
+                                Icons.Default.Cloud,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    },
+                    trailingContent = {
+                        Icon(
+                            if (isExpanded) {
+                                Icons.Default.KeyboardArrowUp
+                            } else {
+                                Icons.Default.KeyboardArrowDown
+                            },
+                            contentDescription = null,
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        transitionState.targetState = !transitionState.targetState
+                    },
+                )
+            }
+        }
+
+        item(key = "${keyPrefix}_models_$providerName") {
+            val density = LocalDensity.current
+            key(transitionState) {
+                AnimatedVisibility(
+                    visibleState = transitionState,
+                    enter = if (allowSpatialTransitions) {
+                        expandVertically()
+                    } else {
+                        fadeIn()
+                    },
+                    exit = if (allowSpatialTransitions) {
+                        shrinkVertically()
+                    } else {
+                        fadeOut()
+                    },
+                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                        modelBlockHeights[providerStateKey] =
+                            coordinates.size.height / density.density
+                    },
+                ) {
+                    Column {
+                        models.forEachIndexed { modelIndex, model ->
+                            val isLastModel = modelIndex == models.lastIndex
+                            val modelShape = when {
+                                isLastModel && isLastProvider && lastGroupClosesSection ->
+                                    FlatToBottom
+                                isLastModel -> FourBottom
+                                else -> FlatShape
+                            }
+                            CardSurface(shape = modelShape) {
+                                val isEnabled = model in enabledModels
+                                val alias = modelAliases[model]
+                                val parsed = ModelId.parse(model)
+                                val displayName = alias ?: parsed.apiModelName
+                                SettingsItem(
+                                    headlineContent = { Text(displayName) },
+                                    supportingContent = if (alias != null) {
+                                        { Text(parsed.apiModelName) }
+                                    } else {
+                                        null
+                                    },
+                                    trailingContent = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (onDetailsClick != null) {
+                                                IconButton(
+                                                    onClick = { onDetailsClick(model) },
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Edit,
+                                                        contentDescription =
+                                                            stringResource(
+                                                                R.string.models_custom_details
+                                                            ),
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(20.dp),
+                                                    )
+                                                }
+                                            } else if (onAliasClick != null) {
+                                                IconButton(
+                                                    onClick = { onAliasClick(model) },
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Edit,
+                                                        contentDescription =
+                                                            stringResource(
+                                                                R.string.models_rename
+                                                            ),
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(20.dp),
+                                                    )
+                                                }
+                                            }
+                                            Checkbox(
+                                                checked = isEnabled,
+                                                onCheckedChange = {
+                                                    onEnabledChange(model, it)
+                                                },
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier.padding(start = 16.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

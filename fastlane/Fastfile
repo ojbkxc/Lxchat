@@ -1,0 +1,83 @@
+default_platform(:android)
+
+platform :android do
+  desc "Build F-Droid Release APK"
+  lane :build_fdroid do
+    gradle(
+      task: "assembleFdroidRelease",
+      project_dir: ".."
+    )
+    apk_path = "../app/build/outputs/apk/fdroid/release/app-fdroid-release.apk"
+    UI.message("APK built at: #{apk_path}")
+    apk_path
+  end
+
+  desc "Build Play Release APK"
+  lane :build_play do
+    gradle(
+      task: "assemblePlayRelease",
+      project_dir: ".."
+    )
+  end
+
+  desc "Upload APK to GitHub Release for a given tag"
+  lane :github_release do |options|
+    tag = options[:tag] || UI.input("Enter git tag (e.g. v1.0.6): ")
+    apk_path = options[:apk_path] || "../app/build/outputs/apk/fdroid/release/app-fdroid-release.apk"
+    version = tag.gsub(/^v/, "")
+    asset_name = "LxChat-v#{version}-android-arm64-v8a.apk"
+
+    sh("cp #{apk_path} ../#{asset_name}")
+
+    gh_action = "gh release create #{tag} ../#{asset_name} " \
+      "--title \"LxChat #{tag}\" " \
+      "--notes \"See fastlane/metadata/android/en-US/changelogs/#{read_version_code}.txt for changelog\""
+    sh(gh_action)
+  end
+
+  desc "Validate F-Droid metadata structure"
+  lane :validate_metadata do
+    metadata_dir = "metadata/android"
+    ["en-US", "zh-CN"].each do |lang|
+      ["title.txt", "short_description.txt", "full_description.txt"].each do |file|
+        path = "#{metadata_dir}/#{lang}/#{file}"
+        UI.user_error!("Missing #{path}") unless File.exist?(path)
+        content = File.read(path).strip
+        UI.user_error!("Empty #{path}") if content.empty?
+      end
+    end
+    UI.success("F-Droid metadata validated: en-US + zh-CN")
+  end
+
+  desc "Generate changelog for current versionCode from git log"
+  lane :generate_changelog do
+    version_code = read_version_code
+    last_tag = sh("git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo ''").strip
+    if last_tag.empty?
+      commits = sh("git log --oneline --format='- %s' HEAD~10..HEAD")
+    else
+      commits = sh("git log --oneline --format='- %s' #{last_tag}..HEAD")
+    end
+
+    ["en-US", "zh-CN"].each do |lang|
+      dir = "metadata/android/#{lang}/changelogs"
+      FileUtils.mkdir_p(dir)
+      File.write("#{dir}/#{version_code}.txt", commits)
+      UI.success("Wrote #{dir}/#{version_code}.txt")
+    end
+  end
+
+  desc "Full release: build + GitHub release + validate metadata"
+  lane :release do |options|
+    validate_metadata
+    apk_path = build_fdroid
+    github_release(tag: options[:tag], apk_path: apk_path)
+  end
+
+  def read_version_code
+    gradle_file = File.read("../app/build.gradle.kts")
+    match = gradle_file.match(/versionCode\s*=\s*(\d+)/)
+    UI.user_error!("Cannot find versionCode in build.gradle.kts") unless match
+    match[1]
+  end
+end

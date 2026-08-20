@@ -1,0 +1,5 @@
+* Bump version to 1.0.7 (versionCode 8)
+* Fix MarkdownDimens crash in remote shell command confirmation dialog (CompositionLocalProvider self-sufficient)
+* Refactor ChatApp.kt: extract bottom bar, welcome page, and scroll button into separate files (938→757 lines)
+* Rename package com.newoether.lxchat → com.lxseek.chat, developer name → ojbkxc
+* CI version consistency check: build.gradle.kts versionName must match git tag

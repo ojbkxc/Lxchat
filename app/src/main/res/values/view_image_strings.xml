@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_view_image">View Image</string>
+    <string name="tool_viewing_image">Viewing image %1$s…</string>
+    <string name="tool_progress_viewing">Viewing…</string>
+    <string name="tool_viewed_image">Viewed image %1$s</string>
+    <string name="tool_viewed_image_default">Viewed image</string>
+</resources>

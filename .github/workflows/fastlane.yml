@@ -1,0 +1,29 @@
+name: Fastlane
+
+on:
+  pull_request:
+    paths:
+      - 'fastlane/**'
+      - '.github/workflows/fastlane.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'fastlane/**'
+      - '.github/workflows/fastlane.yml'
+
+jobs:
+  validate-metadata:
+    name: Validate F-Droid Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: fastlane
+
+      - name: Validate metadata
+        run: bundle exec fastlane android validate_metadata
+        working-directory: fastlane

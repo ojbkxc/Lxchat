@@ -1,0 +1,13 @@
+LxChat is a fully open-source, BYOK (Bring Your Own Key) Android LLM client for power users. It connects directly to 8+ AI providers with no intermediary servers or tracking. All conversations stay local on your device.
+
+Features:
+* Multi-round agentic tool calling: web search (Brave, Serper, Tavily, SearXNG), code execution, remote shell execution, file operations (read/write/edit/glob/grep), memory management, and semantic conversation search
+* Remote device control via Conch protocol: end-to-end encrypted (ECDH + AES-256-GCM + HMAC-SHA256) with multi-device support and MCP integration for Claude Desktop
+* Non-linear branching: edit any past message and explore alternative conversation paths without losing context, powered by a tree-structured Room database
+* On-device LLM inference via llama.cpp (GGUF) and local embeddings for RAG-powered semantic search
+* Deep reasoning support: leading reasoning models (OpenAI, Anthropic, Google, DeepSeek, Qwen) with streaming think-tag rendering
+* Active memory and saved memory files for persistent context across conversations
+* Context window management with real-time token counting and sliding window
+* .lxchat export/import (conversations, memories, prompts, settings, keys) and import from Claude and ChatGPT exports
+* Markdown rendering with syntax highlighting, LaTeX math, image and file attachments
+* English and Chinese language support

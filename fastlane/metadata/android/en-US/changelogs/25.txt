@@ -1,0 +1,11 @@
+* Network proxy support (HTTP / HTTPS / SOCKS5) with a bypass list
+* Custom font support with import/export
+* OpenRouter can now be used for embeddings, with API-key auto-fill
+* web_fetch now returns full page content (it was returning only navigation)
+* Image transcription morphs in place instead of flashing away
+* Smoother scale+fade animations for thought blocks and appended steps
+* Custom OpenAI providers auto-resolve the /v1 Base URL
+* Generation parameter reset is now instant
+* Edit / delete / regenerate are disabled while a response is generating
+* Consistent bottom spacing across all settings pages
+* Fixes: message-delete race (no more zombie messages), out-of-memory on large export, double scroll on a new chat, rating dialog double title

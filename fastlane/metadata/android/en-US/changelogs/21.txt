@@ -1,0 +1,5 @@
+* Image generation: a generate_image tool that creates pictures from a prompt and shows them inline (BYOK, reuses an existing provider's model & credentials)
+* New "Multimodal" settings group for Transcription and Image generation
+* Long-press any full-screen image to Save to gallery, Share, or view Info
+* On-device Linux sandbox now downloads its Alpine rootfs at install time (verified by checksum) instead of bundling it, with a download progress bar
+* Various UI polish (collapsing Settings title, provider page, snackbar behavior)

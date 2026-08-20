@@ -1,0 +1,6 @@
+* 远程 Shell 和文件操作（Conch 协议，ECDH + AES-256-GCM 加密）
+* 新增文件工具：file_read、file_write、file_edit、file_glob、file_grep
+* 语义对话搜索工具（search_conversations）
+* 多设备 Shell 配置（支持命名设备）
+* MCP 集成，支持 Claude Desktop 远程访问
+* 更新 README 和截图

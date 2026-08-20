@@ -1,0 +1,22 @@
+package com.lxseek.chat.tool
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Test
+
+class SearxngSearchUrlTest {
+    @Test
+    fun searxngUsesInstanceDefaultsAndCanonicalizesTrailingSlash() {
+        val url = searxngSearchUrl(
+            configuredBaseUrl = "https://search.example.test/",
+            query = "hello world/中文",
+        )
+
+        assertEquals(
+            "https://search.example.test/search?q=hello+world%2F%E4%B8%AD%E6%96%87&format=json",
+            url,
+        )
+        assertFalse(url.contains("engines="))
+        assertFalse(url.contains(".test//search"))
+    }
+}

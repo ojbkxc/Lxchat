@@ -1,0 +1,6 @@
+* Remote shell and file operations via Conch protocol (ECDH + AES-256-GCM encrypted)
+* New file tools: file_read, file_write, file_edit, file_glob, file_grep
+* Semantic conversation search tool (search_conversations)
+* Multi-device shell configuration with named devices
+* MCP integration for Claude Desktop remote access
+* Updated README and screenshots

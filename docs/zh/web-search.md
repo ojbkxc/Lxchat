@@ -1,0 +1,121 @@
+# 网络搜索
+
+让模型实时搜索互联网并获取网页内容。启用后，模型可以查询最新信息、验证事实、获取文档或研究主题——全部通过工具调用自主完成。
+
+## 支持的提供商
+
+| 提供商 | 描述 | 免费额度 | 设置 |
+|----------|-------------|-----------|-------|
+| **DuckDuckGo Lite** | 匿名、无需 API 密钥 | 有（无限，尽力服务） | 无需设置 — 开箱即用 |
+| **Brave** | 隐私优先的搜索 API | 有（2,000 次/月） | [api.search.brave.com](https://api.search.brave.com/) |
+| **Kagi** | 高级个性化搜索 API | 无（按量付费） | [kagi.com/api](https://kagi.com/api) |
+| **Serper** | 快速 Google Search API | 有（2,500 次/月） | [serper.dev](https://serper.dev) |
+| **Tavily** | AI 优化的搜索，专为 LLM 代理构建 | 有（1,000 次/月） | [tavily.com](https://tavily.com) |
+| **SearXNG** | 自托管元搜索引擎 | 自托管（无限） | 你自己的实例 |
+
+## 设置
+
+### DuckDuckGo Lite
+
+DuckDuckGo Lite 是**默认**搜索提供商 — 无需 API 密钥，立即可用。
+
+1. 在 LxChat 中，前往 **设置 → 网络搜索**
+2. 选择 **DuckDuckGo Lite** 作为搜索提供商
+3. 无需密钥或 URL — 立即开始搜索
+
+!!! note "尽力而为的服务"
+    DuckDuckGo Lite 使用对 `lite.duckduckgo.com` 的 HTML 抓取。DDG 可能更改其布局、限速或阻止自动化请求。它作为明确的尽力而为、无需密钥的选项提供。如果需要可靠性，请配置以下基于 API 的提供商之一。
+
+### Brave
+
+1. 从 [Brave Search API](https://api.search.brave.com/) 获取 API 密钥
+2. 在 LxChat 中，前往 **设置 → 网络搜索**
+3. 选择 **Brave** 作为搜索提供商
+4. 粘贴 API 密钥
+
+### Kagi
+
+1. 在 [Kagi API Portal](https://kagi.com/api/keys) 创建 API 密钥
+2. 在 LxChat 中，前往 **设置 → 网络搜索**
+3. 选择 **Kagi**
+4. 粘贴 API 密钥
+
+LxChat 使用 Kagi 当前的 v1 Search API。搜索费用由 Kagi 按 API 账户用量计费。
+
+### Serper
+
+1. 从 [serper.dev](https://serper.dev) 获取 API 密钥
+2. 在 LxChat 中，前往 **设置 → 网络搜索**
+3. 选择 **Serper**
+4. 粘贴 API 密钥
+
+### Tavily
+
+1. 从 [tavily.com](https://tavily.com) 获取 API 密钥
+2. 在 LxChat 中，前往 **设置 → 网络搜索**
+3. 选择 **Tavily**
+4. 粘贴 API 密钥
+
+### SearXNG
+
+1. 搭建 SearXNG 实例（自托管）或使用公共实例
+2. 在 LxChat 中，前往 **设置 → 网络搜索**
+3. 选择 **SearXNG**
+4. 输入实例的 **Base URL**（如 `https://searx.be`）
+5. API 密钥可选（仅实例需要认证时才需要）
+
+!!! warning "公共实例"
+    公共 SearXNG 实例通常有速率限制或不可靠。建议自托管以确保一致使用。
+
+---
+
+## 配置
+
+### 最大结果数
+
+设置每次搜索获取的结果数：**1–10**。更多结果给模型更多上下文，但消耗更多 token。
+
+### 启用/禁用
+
+在网络搜索设置页面切换**启用网络搜索**。禁用后，模型无法调用网络搜索工具。
+
+---
+
+## 模型如何使用搜索
+
+当你询问需要当前或外部信息的问题时，模型自动调用网络搜索：
+
+1. **搜索**：模型用其制定的查询调用搜索 API
+2. **获取**：模型可选地从结果 URL 获取完整页面内容
+3. **综合**：模型读取结果并整合到回复中
+
+你将在对话中看到每次搜索和获取作为内联工具卡片。
+
+### 示例
+
+```text
+你："Python 的最新版本是什么？"
+模型：[搜索 "latest Python version 2026"]
+       [读取结果]
+       "Python 3.14.0 于 2025 年 10 月发布..."
+```
+
+---
+
+## 网页获取
+
+除了搜索，模型可以获取和阅读特定网页。当模型在搜索结果中遇到 URL 时，它可以调用 `web_fetch` 获取完整页面内容：
+
+- 获取的内容转换为 Markdown
+- 模型处理并提取相关信息
+- 获取结果显示为工具卡片
+
+---
+
+## 隐私考虑
+
+使用网络搜索时：
+
+- 你的查询发送给搜索提供商（Brave、Serper 等），而非 LxChat
+- LxChat 不记录或存储你的搜索查询（除了在对话本身中）
+- SearXNG 自托管提供最多的隐私——查询保留在你的基础设施上

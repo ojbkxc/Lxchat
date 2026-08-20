@@ -1,0 +1,7 @@
+* Bump version to 1.0.9 (versionCode 10)
+* TTS: fix auto-play not working (extract playTtsForMessage with init retry + grace window)
+* TTS: add "Reading aloud..." text indicator and engine-unavailable snackbar
+* Share: copy selected messages as plain text (clipboard)
+* Share: advanced export filter settings (include thinking / tool calls toggles)
+* Share: long-press a message to enter multi-selection mode
+* Build & Release: version now read from build.gradle.kts as single source of truth

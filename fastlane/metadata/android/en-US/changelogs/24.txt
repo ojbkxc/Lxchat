@@ -1,0 +1,11 @@
+* DuckDuckGo Lite web search, faster and lighter
+* Editable default prompts with per-prompt settings
+* Haptic feedback on long-press, drawer, and images
+* In-app crash log viewer with copy button
+* Sandbox SAF DocumentsProvider and root home
+* Auto-fetch models on provider config change
+* Blur effects performance toggle
+* Robust LaTeX inline math with CJK support
+* Settings spring+scale+fade transitions
+* Optimized streaming markdown/LaTeX
+* Fixes: NPE crash, negative padding, touch, IME

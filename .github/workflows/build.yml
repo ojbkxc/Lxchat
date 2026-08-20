@@ -1,0 +1,142 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          # Source of truth depends on the trigger:
+          # - push (tag v*): extract version from the pushed tag (refs/tags/v1.0.62 -> 1.0.62).
+          #   This makes `git tag v1.0.62 && git push origin v1.0.62` the only release step.
+          # - workflow_dispatch (manual, no tag): fall back to the versionName hardcoded in
+          #   app/build.gradle.kts so manual runs still produce a sensible version.
+          if [ "${{ github.event_name }}" = "push" ]; then
+            PUSH_TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${PUSH_TAG#v}"
+          else
+            VERSION=$(grep '?: "' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          fi
+          TAG="v${VERSION}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Resolved version: $VERSION (tag: $TAG) from ${{ github.event_name }}"
+
+  build-android:
+    needs: get-version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.get-version.outputs.version }}
+      TAG: ${{ needs.get-version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "ndk;28.2.13676358"
+
+      - name: Set NDK environment
+        run: |
+          NDK_HOME=$(ls -d $ANDROID_HOME/ndk/28.2.13676358 2>/dev/null || ls -d $ANDROID_HOME/ndk/*/ 2>/dev/null | sort -V | tail -1 | sed 's:/$::')
+          echo "ANDROID_NDK_HOME=$NDK_HOME" >> $GITHUB_ENV
+          echo "NDK_HOME=$NDK_HOME"
+
+      - name: Restore signing key
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > ${{ github.workspace }}/release.jks
+          cat >> local.properties <<EOF
+          storeFile=${{ github.workspace }}/release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Build PRoot native binaries
+        run: |
+          chmod +x build-proot.sh
+          ./build-proot.sh force
+
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and verify Kotlin source budget
+        run: |
+          chmod +x ./gradlew
+          ./gradlew -p build-logic test
+          ./gradlew verifyKotlinFileSize
+
+      - name: Build F-Droid Release APK
+        run: ./gradlew assembleFdroidRelease -PappVersionName=${VERSION}
+
+      - name: Rename and collect APK
+        run: |
+          mkdir -p dist
+          APK=$(find app/build/outputs/apk/fdroid/release -name '*.apk' -print -quit)
+          cp "$APK" "dist/LxChat-v${VERSION}-android-arm64-v8a.apk"
+          echo "Produced: dist/LxChat-v${VERSION}-android-arm64-v8a.apk"
+          ls -lh dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-android
+          path: dist/*.apk
+          if-no-files-found: error
+
+  release:
+    needs: [get-version, build-android]
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.get-version.outputs.tag }}
+      VERSION: ${{ needs.get-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          {
+            echo "## LxChat $TAG"
+            echo ""
+            echo "### Downloads"
+            echo ""
+            echo "- \`LxChat-v${VERSION}-android-arm64-v8a.apk\` — Android APK (arm64-v8a)"
+          } > /tmp/release_notes.md
+          gh release create "$TAG" \
+            --title "LxChat $TAG" \
+            --notes-file /tmp/release_notes.md \
+            --target ${{ github.sha }} \
+            $(find dist -type f)

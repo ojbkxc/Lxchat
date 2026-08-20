@@ -1,0 +1,121 @@
+site_name: LxChat User Manual
+site_description: Guide for configuring and using LxChat
+site_url: https://ojbkxc.github.io/LxChat/
+repo_url: https://github.com/ojbkxc/lxchat
+repo_name: ojbkxc/lxchat
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - search.highlight
+    - search.share
+
+plugins:
+  - i18n:
+      docs_structure: folder
+      fallback_to_default: true
+      languages:
+        - locale: en
+          name: English
+          default: true
+          build: true
+        - locale: zh
+          name: 简体中文
+          build: true
+          nav_translations:
+            Home: 首页
+            Getting Started: 快速开始
+            Conversations: 对话
+            API Providers: API 提供商
+            System Prompts: 系统提示词
+            Agentic Tools: 代理工具
+            Overview: 概述
+            Web Search: 网络搜索
+            Remote Shell (Conch): 远程 Shell (Conch)
+            Knowledge Management: 知识管理
+            Conversation Search: 对话搜索
+            Embedding / RAG: 嵌入 / RAG
+            Memory & Cache: 记忆与缓存
+            Local Models: 本地模型
+            PDF Import: PDF 导入
+            Data Portability: 数据迁移
+            FAQ: 常见问题
+            Models: 模型
+            Manage Models: 管理模型
+            Generation: 生成参数
+            Parameters: 生成设置
+            Title Generation: 标题生成
+            Image Transcription: 图像转录
+            Image Generation: 图像生成
+            Appearance: 外观
+            Appearance & Language: 外观与语言
+            Language: 语言
+            Shell Setup: Shell 设置
+            Sandbox: 沙盒
+            About: 关于
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Conversations: conversations.md
+  - API Providers: provider.md
+  - Models:
+      - Manage Models: models.md
+  - Generation:
+      - Parameters: generation.md
+      - Title Generation: title-generation.md
+  - Image Transcription: transcription.md
+  - Image Generation: image-generation.md
+  - System Prompts: system-prompts.md
+  - Agentic Tools:
+      - Overview: tools.md
+      - Web Search: web-search.md
+      - Remote Shell (Conch):
+          - Shell Setup: shell.md
+          - Sandbox: sandbox.md
+  - Knowledge Management:
+      - Conversation Search: search.md
+      - Embedding / RAG: embedding.md
+      - Memory & Cache: memory.md
+  - Local Models: local-model.md
+  - PDF Import: pdf-import.md
+  - Data Portability: import-export.md
+  - Network Proxy: proxy.md
+  - Appearance & Language:
+      - Appearance: appearance.md
+      - Language: language.md
+  - FAQ: faq.md
+  - About: about.md

@@ -1,0 +1,9 @@
+# Put this exact-match location in the public virtual host.
+# Only anonymous submissions are exposed. The collection API remains private.
+location = /api/rating {
+    limit_except POST OPTIONS { deny all; }
+    client_max_body_size 64k;
+    proxy_pass http://127.0.0.1:8091;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}

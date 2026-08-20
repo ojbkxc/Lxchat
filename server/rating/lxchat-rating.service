@@ -1,0 +1,26 @@
+[Unit]
+Description=LxChat rating API
+After=network.target
+
+[Service]
+Type=simple
+User=lxchat-rating
+Group=lxchat-rating
+ExecStart=/usr/bin/python3 /opt/lxchat-rating/lxchat-rating-api.py
+Restart=on-failure
+RestartSec=2
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/lxchat-rating
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

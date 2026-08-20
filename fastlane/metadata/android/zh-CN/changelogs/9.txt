@@ -1,0 +1,3 @@
+* 版本升级至 1.0.8（versionCode 9）
+* 新增助手消息 TTS 语音播报功能（TtsManager + 设置项 + UI 喇叭按钮）
+* 修复 AGENTS.md 漂移 — 版本对齐 1.0.7/8，TTS CI 全绿，MarkdownDimens 修复已验证

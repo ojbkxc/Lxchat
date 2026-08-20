@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Match data_extraction_rules.xml on Android 11 and below. LxChat backup is explicit. -->
+    <exclude domain="root" path="." />
+</full-backup-content>

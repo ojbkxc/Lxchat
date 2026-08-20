@@ -1,0 +1,7 @@
+* Fix crash when submitting crash reports (showSnackbar suspend function now properly called from coroutine scope)
+* Fix compilation error with DebugLog (use debug level instead of non-existent info level)
+* Language support simplified to English and Chinese only
+* Removed all custom fonts (23 MB size reduction), now uses system fonts
+* Enabled R8 code shrinking and resource shrinking for smaller APK
+* Crash reports, ratings, and update checks now redirect to ojbkxc/lxchat repository
+* Embedded Conch shell server via gomobile for enhanced remote device control

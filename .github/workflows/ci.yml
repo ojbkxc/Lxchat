@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "ndk;28.2.13676358"
+
+      - name: Set NDK environment
+        run: |
+          NDK_HOME=$(ls -d $ANDROID_HOME/ndk/28.2.13676358 2>/dev/null || ls -d $ANDROID_HOME/ndk/*/ 2>/dev/null | sort -V | tail -1 | sed 's:/$::')
+          echo "ANDROID_NDK_HOME=$NDK_HOME" >> $GITHUB_ENV
+
+      - name: Build PRoot native binaries
+        run: |
+          chmod +x build-proot.sh
+          ./build-proot.sh force
+
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and verify Kotlin source budget
+        run: |
+          chmod +x ./gradlew
+          ./gradlew -p build-logic test
+          ./gradlew verifyKotlinFileSize
+
+      - name: Build F-Droid Debug APK
+        run: ./gradlew assembleFdroidDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lxchat-fdroid-debug
+          path: app/build/outputs/apk/fdroid/debug/*.apk
+          if-no-files-found: error

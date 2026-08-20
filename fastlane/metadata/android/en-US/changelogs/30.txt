@@ -1,0 +1,10 @@
+* Automation system: recurring tasks with loop mode and a headless worker
+* Native backup / restore with a portable settings archive (database migration v21→22)
+* Groq provider support
+* Per-conversation drafts (text + attachments) and per-conversation generation state
+* Immediate attachment copy with progress, queued-send banner, per-run lifecycle
+* Task scheduling refinements and MCP tooling improvements
+* Grouped thinking blocks, tool image previews, custom endpoint protocols
+* Vietnamese translation
+* Performance: faster list recomposition, image decoding, and database queries
+* Fixes: Android 15 removeFirst/removeLast crash, llama.cpp engine thread safety, streaming lifecycle and UI stability, and 8 reported issues
