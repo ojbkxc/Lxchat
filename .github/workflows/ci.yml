@@ -41,7 +41,18 @@ jobs:
           ./gradlew verifyKotlinFileSize
 
       - name: Build F-Droid Debug APK
-        run: ./gradlew assembleFdroidDebug
+        run: |
+          set +e
+          ./gradlew assembleFdroidDebug --console=plain > /tmp/build.log 2>&1
+          CODE=$?
+          if [ $CODE -ne 0 ]; then
+            echo "::group::gradle-error-tail"
+            tail -120 /tmp/build.log
+            echo "::endgroup::"
+            ERR=$(tail -80 /tmp/build.log | base64 -w0)
+            echo "::error file=assembleFdroidDebug line=1::base64=$ERR"
+            exit $CODE
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
