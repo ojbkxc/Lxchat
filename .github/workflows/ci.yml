@@ -48,8 +48,13 @@ jobs:
           set +e
           ./gradlew assembleFdroidDebug --console=plain > /tmp/build.log 2>&1
           CODE=$?
+          git config user.email "ci@lxseek.chat"
+          git config user.name "LxChat CI"
+          git checkout -B ci-logs 2>/dev/null
+          mkdir -p ci-logs
           if [ $CODE -ne 0 ]; then
             {
+              echo "#REPORT=FAIL"
               echo "#CI_SHA=$GITHUB_SHA"
               echo "#CI_REF=$GITHUB_REF"
               echo "====ERR_MARKERS===="; grep -n -E "FAILURE:|What went wrong|Execution failed for task|Caused by:|e: file:|error:|ERROR:|ninja:|clang|arm-linux|ndk|Could not|Cannot|not found|No such" /tmp/build.log | head -80
@@ -58,17 +63,15 @@ jobs:
               echo "====ETASK===="; grep -n -A 8 "Execution failed for task" /tmp/build.log | head -120
               echo "====E_DIR===="; grep -n "e: " /tmp/build.log | head -120
               echo "====BOT===="; tail -8 /tmp/build.log
-            } > /tmp/err.txt 2>&1
-            git config user.email "ci@lxseek.chat"
-            git config user.name "LxChat CI"
-            git checkout -B ci-logs 2>/dev/null
-            mkdir -p ci-logs
-            cp /tmp/err.txt ci-logs/build-failure.txt
-            git add ci-logs/build-failure.txt
-            git commit -m "ci: capture build failure log" -q 2>/dev/null
-            git push --force origin ci-logs 2>&1 | tail -2
-            exit $CODE
+            } > ci-logs/build-failure.txt 2>&1
+            echo "FAIL $GITHUB_SHA" > ci-logs/build-status.txt
+          else
+            echo "PASS $GITHUB_SHA" > ci-logs/build-status.txt
           fi
+          git add ci-logs/
+          git commit -m "ci report $GITHUB_SHA" -q 2>/dev/null
+          git push --force origin ci-logs 2>&1 | tail -2
+          exit $CODE
 
       - uses: actions/upload-artifact@v4
         with:
