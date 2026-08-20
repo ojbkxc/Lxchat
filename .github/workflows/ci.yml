@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -46,16 +49,22 @@ jobs:
           ./gradlew assembleFdroidDebug --console=plain > /tmp/build.log 2>&1
           CODE=$?
           if [ $CODE -ne 0 ]; then
-            echo "::group::gradle-fail-block"
-            grep -n -A 40 "FAILURE: Build failed" /tmp/build.log | tail -50
-            grep -n -A 5 "Execution failed for task" /tmp/build.log | head -60
-            echo "::endgroup::"
             {
-              echo "==FAIL=="; grep -n -A 40 "FAILURE: Build failed" /tmp/build.log | tail -45
-              echo "==ETASK=="; grep -n -A 6 "Execution failed for task" /tmp/build.log | head -70
-              echo "==E=="; grep -n "e: " /tmp/build.log | head -50
-              echo "==BOT=="; tail -6 /tmp/build.log
-            } | base64 -w0 | head -c 60000 | sed 's/.*/::error file=assembleFdroidDebug line=1::base64=&/'
+              echo "====ERR_MARKERS===SO"; grep -n -E "FAILURE:|What went wrong|Execution failed for task|Caused by:|e: file:|error:|ERROR:|ninja:|clang|arm-linux|ndk|Could not|Cannot|not found|No such" /tmp/build.log | head -80
+              echo "====FAIL_BLOCK===SO"; grep -n -A 40 "FAILURE: Build failed" /tmp/build.log | tail -45
+              echo "====WHATS_WRONG===SO"; grep -n -A 30 "What went wrong" /tmp/build.log | head -80
+              echo "====ETASK===SO"; grep -n -A 8 "Execution failed for task" /tmp/build.log | head -120
+              echo "====E_DIR===SO"; grep -n "e: " /tmp/build.log | head -120
+              echo "====BOT===SO"; tail -8 /tmp/build.log
+            } > /tmp/err.txt 2>&1
+            git config user.email "ci@lxseek.chat"
+            git config user.name "LxChat CI"
+            git checkout -B ci-logs 2>/dev/null
+            mkdir -p ci-logs
+            cp /tmp/err.txt ci-logs/build-failure.txt
+            git add ci-logs/build-failure.txt
+            git commit -m "ci: capture build failure log" -q 2>/dev/null
+            git push --force origin ci-logs 2>&1 | tail -2
             exit $CODE
           fi
 
