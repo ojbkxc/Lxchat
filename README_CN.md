@@ -146,8 +146,6 @@ LxChat 是一个基于 **[Agora](https://github.com/ojbkxc/Agora)** 的派生项
 
 📖 **[浏览用户手册](https://ojbkxc.github.io/LxChat/)** — 24 个页面，涵盖安装、提供商、工具、搜索、记忆、Shell 等。
 
-🏗️ **[架构指南](ARCHITECTURE.md)** — 完整的代码库导览：数据层、API 提供商、JNI、UI 及数据流。
-
 ## 快速开始
 
 ### 环境要求

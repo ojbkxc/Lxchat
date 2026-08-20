@@ -145,8 +145,6 @@ The internal identifiers (`agora_db`, `agora_llama`, `agora_proot`, the `Agora*`
 
 📖 **[Browse the User Manual](https://ojbkxc.github.io/LxChat/)** — 24 pages covering installation, providers, tools, search, memory, shell, and more.
 
-🏗️ **[Architecture Guide](ARCHITECTURE.md)** — complete codebase walkthrough: data layer, API providers, JNI, UI, and data flows.
-
 ## Getting Started
 
 ### Prerequisites
