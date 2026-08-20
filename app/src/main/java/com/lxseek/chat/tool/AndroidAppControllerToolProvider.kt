@@ -150,7 +150,7 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         val svc = service()
         if (svc == null) {
             put("error", "accessibility_off")
-            put("items", buildJsonArray())
+            put("items", buildJsonArray { })
         } else {
             svc.activePackage()?.let { put("activePackage", it) }
             put("items", buildJsonArray {
