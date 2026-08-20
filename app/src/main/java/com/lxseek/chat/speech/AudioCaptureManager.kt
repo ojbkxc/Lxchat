@@ -65,10 +65,14 @@ class AudioCaptureManager(private val context: Context) {
         try {
             outputFile = File(context.cacheDir, "audio_${System.currentTimeMillis()}.pcm")
             pcmOutputStream = FileOutputStream(outputFile)
+            Log.i(TAG, "Using VOICE_RECOGNITION audio source: Android's built-in AEC/NS keeps the mic feed to the user's voice only, not TTS from the speaker")
             Log.i(TAG, "Starting AudioRecord: rate=$SAMPLE_RATE, mono, PCM16, bufferSize=$bufferSize, perm=${hasRecordPermission()}")
 
+            // VOICE_RECOGNITION (instead of MIC): the system applies echo cancellation
+            // and noise suppression so the recording never contains speaker (TTS) audio.
+            // 16 kHz is the standard supported sample rate for this source.
             audioRecord = AudioRecord(
-                MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
                 SAMPLE_RATE,
                 CHANNEL_CONFIG,
                 AUDIO_FORMAT,

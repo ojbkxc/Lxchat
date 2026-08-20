@@ -485,15 +485,9 @@ class VoiceConversationController(
                     // UI voiceprint uses the boosted value; VAD below stays on the raw RMS
                     // so its silence thresholds are unaffected by the display scaling.
                     _amplitude.value = (rawAmp * AMPLITUDE_BOOST).coerceIn(0f, 1f)
-                    // Echo guard: when TTS is playing, don't feed audio to Vosk —
-                    // the mic picks up TTS output which would cause a feedback loop.
-                    // Still update amplitude for UI, but skip ASR and reset VAD state.
-                    if (TtsManager.isPlaying.value) {
-                        hasSpeech = false
-                        silenceStartMs = 0L
-                        triggerCounter = 0
-                        return@collect
-                    }
+                    // With VOICE_RECOGNITION the system performs echo cancellation, so TTS
+                    // playback no longer gates ASR feedback: audio keeps flowing into Vosk
+                    // while the assistant speaks (real-time conversation is not paused).
                     voskTranscriber.acceptWaveform(chunk)
                     chunkCount++
                     totalBytes += chunk.size
