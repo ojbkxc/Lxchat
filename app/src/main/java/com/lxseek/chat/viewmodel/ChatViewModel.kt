@@ -293,8 +293,6 @@ class ChatViewModel(
      *  provider is deleted and must render gracefully instead of crashing. */
     fun getProviderInstanceOrNull(name: String): LlmProvider? = providerRegistry.getInstanceOrNull(name)
 
-
-
     private val scrollRequests = ScrollRequestCoordinator()
     private val selectionController: ConversationSelectionController by lazy {
         ConversationSelectionController(
@@ -351,9 +349,7 @@ class ChatViewModel(
     val currentActiveModel: StateFlow<String> get() = selectionController.currentActiveModel
 
     fun getProviderForModel(modelId: String): String = providerRegistry.providerForModel(modelId)
-    
 
-        
     // ── Remote shell command confirmation gate ───────────────────────────
     /** Shell-command confirmation policy + pending-prompt handshake (see [ShellConfirmationController]). */
     val pendingShellCommand: StateFlow<ShellConfirmationController.PendingShellCommand?>
