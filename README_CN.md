@@ -28,7 +28,7 @@
 
 ---
 
-**LxChat** — 为 AI 重度用户打造的 BYOK Android 客户端。接入 8+ 内置提供商（外加无限自定义端点），使用自己的 API 密钥，支持对话分支树、llama.cpp 本地推理、加密远程 Shell 控制。所有数据存储在本地，无日志泄露。开源，MIT 协议。
+**LxChat** — 为 AI 重度用户打造的 BYOK Android 客户端。接入 9+ 内置提供商（外加无限自定义端点），使用自己的 API 密钥，支持对话分支树、llama.cpp 本地推理、加密远程 Shell 控制，并可将工作流定时自动化。所有数据存储在本地，无日志泄露。开源，MIT 协议。
 
 ## 截图
 
@@ -50,7 +50,7 @@
 ## 功能特性
 
 ### 多提供商接入
-- **8 个内置提供商：** OpenAI、Anthropic、Google Gemini、DeepSeek、通义千问（DashScope）、OpenRouter、Ollama、本地（GGUF via llama.cpp）
+- **9 个内置提供商：** OpenAI、Anthropic、Google Gemini、DeepSeek、通义千问（DashScope）、Groq、OpenRouter、Ollama、本地（GGUF via llama.cpp）
 - **无限自定义提供商**，支持任意 Base URL 和 API 密钥
 - **BYOK：** 使用自己的 API 密钥 — 无需订阅，无中间层
 - **每个提供商支持多个 API 密钥**，可命名别名，方便轮换
@@ -75,6 +75,12 @@
 - **本地 embedding** — 设备端语义搜索（RAG）对话历史
 - **Ollama** 提供商 — 接入局域网自托管模型
 
+### 语音与 ASR 输入
+- **在线转写** — 通过 OpenAI 兼容的 Whisper 端点（BYOK）实现
+- **离线转写** — 基于 Vosk 模型，无需联网
+- **系统语音识别** — 设备原生识别，零配置兜底
+- **单次口述** 直接填入输入框，以及 **多轮实时语音对话**，带动态声波可视化
+
 ### 远程设备控制（Conch 协议）
 - ECDH 密钥交换 + AES-256-GCM 加密 + HMAC-SHA256 签名
 - 令牌桶速率限制 + 基于 nonce 的防重放保护
@@ -87,6 +93,12 @@
 - 可独立选择 embedding 模型（远程或本地），不依赖聊天模型
 - **上下文窗口管理** — 实时 token 计数和滑动窗口
 - 可视化上下文范围指示器，淡化窗口外的消息
+
+### 自动化与定时任务
+- **类 Cron 定时** — 通过 `CronExpression` 在指定时间运行提示词或工作流
+- **循环执行** — 借助 `LoopManager` 按间隔重复任务
+- **后台执行** — 经 `AutomationScheduler` 与闹钟接收器，脱离前台应用独立运行
+- 将工具、搜索、记忆串联为定时多步智能体任务
 
 ### 数据可移植
 - **.lxchat 导出/导入：** 对话、记忆、提示词、设置、API 密钥打包为单一可移植文件

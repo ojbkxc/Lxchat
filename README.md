@@ -28,7 +28,7 @@
 
 ---
 
-**LxChat** — a BYOK Android client for AI power users. Connect to 8+ built-in providers (plus unlimited custom endpoints) with your own keys, branch conversations non-linearly, run models locally via llama.cpp, and control remote machines through encrypted shell. Everything stored on-device, nothing logged elsewhere. Open source, MIT licensed.
+**LxChat** — a BYOK Android client for AI power users. Connect to 9+ built-in providers (plus unlimited custom endpoints) with your own keys, branch conversations non-linearly, run models locally via llama.cpp, control remote machines through encrypted shell, and automate workflows on a schedule. Everything stored on-device, nothing logged elsewhere. Open source, MIT licensed.
 
 ## Screenshots
 
@@ -50,7 +50,7 @@
 ## Features
 
 ### Multi-Provider Access
-- **8 built-in providers:** OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen (DashScope), OpenRouter, Ollama, Local (GGUF via llama.cpp)
+- **9 built-in providers:** OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen (DashScope), Groq, OpenRouter, Ollama, Local (GGUF via llama.cpp)
 - **Unlimited custom providers** with arbitrary base URLs and API keys
 - **BYOK:** Bring your own API keys — no subscriptions, no middlemen
 - **Multiple API keys per provider** with named aliases for easy rotation
@@ -74,6 +74,12 @@
 - **Local embeddings** for on-device semantic search (RAG)
 - **Ollama** provider for self-hosted models on your local network
 
+### Voice & ASR Input
+- **Online transcription** via OpenAI-compatible Whisper endpoints (BYOK)
+- **Offline transcription** with Vosk models — no network required
+- **On-device system speech recognition** as a zero-config fallback
+- **Single-shot dictation** to the input box, and **multi-turn voice conversations** with live waveform visualization
+
 ### Remote Device Control (Conch Protocol)
 - ECDH key exchange + AES-256-GCM encryption + HMAC-SHA256 signing
 - Token bucket rate limiting and nonce-based anti-replay protection
@@ -86,6 +92,12 @@
 - Selectable embedding model (remote or local), independent of chat model
 - **Context window management** with real-time token counting and sliding window
 - Visual context rollout indicator dims messages outside the active window
+
+### Automation & Scheduled Tasks
+- **Cron-style scheduling** — run prompts or workflows at fixed times via `CronExpression`
+- **Recurring loops** — repeat tasks on an interval with `LoopManager`
+- **Background execution** through `AutomationScheduler` and an alarm receiver, independent of the foreground app
+- Chain tools, search, and memory into timed multi-step agentic jobs
 
 ### Data Portability
 - **.lxchat Export/Import:** Conversations, memories, prompts, settings, and API keys in one portable file
