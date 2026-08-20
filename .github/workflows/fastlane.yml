@@ -6,7 +6,7 @@ on:
       - 'fastlane/**'
       - '.github/workflows/fastlane.yml'
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - 'fastlane/**'
       - '.github/workflows/fastlane.yml'
