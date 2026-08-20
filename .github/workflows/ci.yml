@@ -46,11 +46,16 @@ jobs:
           ./gradlew assembleFdroidDebug --console=plain > /tmp/build.log 2>&1
           CODE=$?
           if [ $CODE -ne 0 ]; then
-            echo "::group::gradle-error-tail"
-            tail -120 /tmp/build.log
+            echo "::group::gradle-fail-block"
+            grep -n -A 40 "FAILURE: Build failed" /tmp/build.log | tail -50
+            grep -n -A 5 "Execution failed for task" /tmp/build.log | head -60
             echo "::endgroup::"
-            ERR=$(tail -80 /tmp/build.log | base64 -w0)
-            echo "::error file=assembleFdroidDebug line=1::base64=$ERR"
+            {
+              echo "==FAIL=="; grep -n -A 40 "FAILURE: Build failed" /tmp/build.log | tail -45
+              echo "==ETASK=="; grep -n -A 6 "Execution failed for task" /tmp/build.log | head -70
+              echo "==E=="; grep -n "e: " /tmp/build.log | head -50
+              echo "==BOT=="; tail -6 /tmp/build.log
+            } | base64 -w0 | head -c 60000 | sed 's/.*/::error file=assembleFdroidDebug line=1::base64=&/'
             exit $CODE
           fi
 
