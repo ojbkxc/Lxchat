@@ -50,12 +50,14 @@ jobs:
           CODE=$?
           if [ $CODE -ne 0 ]; then
             {
-              echo "====ERR_MARKERS===SO"; grep -n -E "FAILURE:|What went wrong|Execution failed for task|Caused by:|e: file:|error:|ERROR:|ninja:|clang|arm-linux|ndk|Could not|Cannot|not found|No such" /tmp/build.log | head -80
-              echo "====FAIL_BLOCK===SO"; grep -n -A 40 "FAILURE: Build failed" /tmp/build.log | tail -45
-              echo "====WHATS_WRONG===SO"; grep -n -A 30 "What went wrong" /tmp/build.log | head -80
-              echo "====ETASK===SO"; grep -n -A 8 "Execution failed for task" /tmp/build.log | head -120
-              echo "====E_DIR===SO"; grep -n "e: " /tmp/build.log | head -120
-              echo "====BOT===SO"; tail -8 /tmp/build.log
+              echo "#CI_SHA=$GITHUB_SHA"
+              echo "#CI_REF=$GITHUB_REF"
+              echo "====ERR_MARKERS===="; grep -n -E "FAILURE:|What went wrong|Execution failed for task|Caused by:|e: file:|error:|ERROR:|ninja:|clang|arm-linux|ndk|Could not|Cannot|not found|No such" /tmp/build.log | head -80
+              echo "====FAIL_BLOCK===="; grep -n -A 40 "FAILURE: Build failed" /tmp/build.log | tail -45
+              echo "====WHATS_WRONG===="; grep -n -A 30 "What went wrong" /tmp/build.log | head -80
+              echo "====ETASK===="; grep -n -A 8 "Execution failed for task" /tmp/build.log | head -120
+              echo "====E_DIR===="; grep -n "e: " /tmp/build.log | head -120
+              echo "====BOT===="; tail -8 /tmp/build.log
             } > /tmp/err.txt 2>&1
             git config user.email "ci@lxseek.chat"
             git config user.name "LxChat CI"
