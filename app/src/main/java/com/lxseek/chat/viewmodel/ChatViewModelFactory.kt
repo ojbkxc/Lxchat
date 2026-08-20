@@ -56,7 +56,7 @@ class ChatViewModelFactory(
                 autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
                 taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-                mcpRegistry, mcpToolProvider, taskExecutionEngine, androidControlToolProvider,
+                mcpRegistry, mcpToolProvider, androidControlToolProvider, taskExecutionEngine,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
