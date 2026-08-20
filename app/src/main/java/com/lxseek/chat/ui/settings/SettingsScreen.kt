@@ -217,6 +217,15 @@ private data class SettingsCategory(
     @DrawableRes val iconRes: Int? = null,
 )
 
+/** A searchable settings entry: [title] is the display name, [route] is the category key used by
+ *  [SettingsScreen] to navigate, and [keywords] are extra terms (description, group name) used for
+ *  matching the user's query. */
+data class SearchableSettingItem(
+    val title: String,
+    val route: String,
+    val keywords: List<String>,
+)
+
 private data class SettingsGroupData(
     val titleRes: Int? = null,
     val items: List<SettingsCategory>
@@ -270,6 +279,7 @@ private val settingsGroups = listOf(
 @Composable
 fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
     var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
     val isSyncingModels by viewModel.isSyncingModels.collectAsState()
     val fetchingModelsMessage = stringResource(R.string.snackbar_fetching_models)
@@ -315,59 +325,66 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "about" -> SettingsAboutPage(viewModel, onBack = { selectedCategory = null })
                 "logs" -> SettingsLogsPage(viewModel, onBack = { selectedCategory = null })
                 else -> {
+                    // Build searchable entries from every group so the search field can filter them.
+                    val searchableItems = settingsGroups.flatMap { group ->
+                        group.items.map { cat ->
+                            SearchableSettingItem(
+                                title = stringResource(cat.titleRes),
+                                route = cat.key,
+                                keywords = buildList {
+                                    add(stringResource(cat.descriptionRes))
+                                    if (group.titleRes != null) add(stringResource(group.titleRes))
+                                },
+                            )
+                        }
+                    }
+                    val trimmedQuery = searchQuery.trim()
+                    val matchedItems = if (trimmedQuery.isEmpty()) emptyList()
+                    else searchableItems.filter { item ->
+                        item.title.contains(trimmedQuery, ignoreCase = true) ||
+                            item.keywords.any { it.contains(trimmedQuery, ignoreCase = true) }
+                    }
                     CollapsingSettingsLazyScaffold(
                         title = stringResource(R.string.settings_title),
                         onBack = onBack,
-                        listState = listState
+                        listState = listState,
+                        header = {
+                            SettingsSearchField(
+                                query = searchQuery,
+                                onQueryChange = { searchQuery = it },
+                            )
+                        }
                     ) {
-                        items(settingsGroups.size) { groupIndex ->
-                            val group = settingsGroups[groupIndex]
-                            Column(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                if (group.titleRes != null) {
+                        if (searchQuery.isNotBlank()) {
+                            if (matchedItems.isEmpty()) {
+                                item {
                                     Text(
-                                        text = stringResource(group.titleRes),
-                                        style = MaterialTheme.typography.labelLarge,
+                                        text = stringResource(R.string.settings_search_no_results),
+                                        style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
                                     )
                                 }
-                                group.items.forEachIndexed { index, cat ->
-                                    val isLastItem = index == group.items.lastIndex
+                            } else {
+                                items(matchedItems) { item ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { selectedCategory = cat.key }
+                                            .clickable { selectedCategory = item.route; searchQuery = "" }
                                             .padding(horizontal = 16.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        if (cat.iconRes != null) {
-                                            Icon(
-                                                painter = painterResource(cat.iconRes),
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(24.dp),
-                                            )
-                                        } else {
-                                            Icon(
-                                                imageVector = checkNotNull(cat.icon),
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(24.dp),
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp),
+                                        )
                                         Spacer(modifier = Modifier.width(16.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                text = stringResource(cat.titleRes),
+                                                text = item.title,
                                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
-                                            )
-                                            Spacer(modifier = Modifier.height(3.dp))
-                                            Text(
-                                                text = stringResource(cat.descriptionRes),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                         Icon(
@@ -376,17 +393,82 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                         )
                                     }
-                                    if (!isLastItem) {
-                                        HorizontalDivider(
-                                            thickness = 0.5.dp,
-                                            color = MaterialTheme.colorScheme.outlineVariant,
-                                            modifier = Modifier.padding(horizontal = 16.dp),
-                                        )
-                                    }
+                                    HorizontalDivider(
+                                        thickness = 0.5.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                    )
                                 }
                             }
-                            if (groupIndex < settingsGroups.size - 1) {
-                                Spacer(modifier = Modifier.height(24.dp))
+                        } else {
+                            items(settingsGroups.size) { groupIndex ->
+                                val group = settingsGroups[groupIndex]
+                                Column(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (group.titleRes != null) {
+                                        Text(
+                                            text = stringResource(group.titleRes),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                        )
+                                    }
+                                    group.items.forEachIndexed { index, cat ->
+                                        val isLastItem = index == group.items.lastIndex
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { selectedCategory = cat.key }
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (cat.iconRes != null) {
+                                                Icon(
+                                                    painter = painterResource(cat.iconRes),
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(24.dp),
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = checkNotNull(cat.icon),
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(24.dp),
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = stringResource(cat.titleRes),
+                                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                                                )
+                                                Spacer(modifier = Modifier.height(3.dp))
+                                                Text(
+                                                    text = stringResource(cat.descriptionRes),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                            )
+                                        }
+                                        if (!isLastItem) {
+                                            HorizontalDivider(
+                                                thickness = 0.5.dp,
+                                                color = MaterialTheme.colorScheme.outlineVariant,
+                                                modifier = Modifier.padding(horizontal = 16.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                                if (groupIndex < settingsGroups.size - 1) {
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                }
                             }
                         }
                     }
@@ -395,4 +477,42 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
         }
 
     }
+}
+
+/** Search field rendered at the top of the settings list. Filters [settingsGroups] entries by
+ *  title, description, and group name. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        placeholder = { Text(stringResource(R.string.settings_search_placeholder)) },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+    )
 }

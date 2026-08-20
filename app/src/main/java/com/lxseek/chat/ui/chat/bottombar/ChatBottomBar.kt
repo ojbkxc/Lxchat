@@ -156,6 +156,9 @@ fun ChatBottomBar(
     onVoiceConversationToggle: () -> Unit = {},
     onSingleAsrToggle: () -> Unit = {},
     onStopSingleAsr: () -> Unit = {},
+    // Forwarded to ComposerSendButton so transient prompts (e.g. "select a model first")
+    // go through the ViewModel snackbar channel instead of a raw Toast.
+    onToast: (String) -> Unit = {},
 ) {
     val allowSpatialTransitions = LocalLxChatMotionPolicy.current.allowSpatialTransitions
     val scrollState = rememberScrollState()
@@ -373,7 +376,7 @@ fun ChatBottomBar(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Image, null, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Image, stringResource(R.string.photos), modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(stringResource(R.string.photos))
                                 }
@@ -387,7 +390,7 @@ fun ChatBottomBar(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Videocam, null, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Videocam, stringResource(R.string.videos), modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(stringResource(R.string.videos))
                                 }
@@ -401,7 +404,7 @@ fun ChatBottomBar(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.AttachFile, null, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.AttachFile, stringResource(R.string.files), modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(stringResource(R.string.files))
                                 }
@@ -490,7 +493,7 @@ fun ChatBottomBar(
                                 onValueChange = { modelSearchQuery = it },
                                 placeholder = { Text(stringResource(R.string.models_search_hint)) },
                                 singleLine = true,
-                                leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp)) },
+                                leadingIcon = { Icon(Icons.Default.Search, "搜索", modifier = Modifier.size(18.dp)) },
                                 trailingIcon = if (modelSearchQuery.isNotEmpty()) {
                                     { IconButton(onClick = { modelSearchQuery = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.models_clear_search)) } }
                                 } else null,
@@ -658,7 +661,7 @@ fun ChatBottomBar(
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Terminal, null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.Terminal, stringResource(R.string.code_execution), modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Text(stringResource(R.string.code_execution))
                                         Spacer(modifier = Modifier.width(10.dp))
@@ -677,7 +680,7 @@ fun ChatBottomBar(
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Language, null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.Language, stringResource(R.string.google_search), modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Text(stringResource(R.string.google_search))
                                         Spacer(modifier = Modifier.width(10.dp))
@@ -697,7 +700,7 @@ fun ChatBottomBar(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(androidx.compose.ui.res.painterResource(id = com.lxseek.chat.R.drawable.neurology_24), null, modifier = Modifier.size(18.dp))
+                                    Icon(androidx.compose.ui.res.painterResource(id = com.lxseek.chat.R.drawable.neurology_24), stringResource(R.string.thinking), modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(stringResource(R.string.thinking))
@@ -732,7 +735,7 @@ fun ChatBottomBar(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
                                             Icons.Default.Speed,
-                                            contentDescription = null,
+                                            contentDescription = stringResource(R.string.openai_service_tier_title),
                                             modifier = Modifier.size(18.dp),
                                         )
                                         Spacer(modifier = Modifier.width(12.dp))
@@ -766,7 +769,7 @@ fun ChatBottomBar(
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Language, null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.Language, stringResource(R.string.web_search), modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Text(stringResource(R.string.web_search))
                                     }
@@ -785,7 +788,7 @@ fun ChatBottomBar(
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Terminal, null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.Terminal, stringResource(R.string.shell_title), modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Text(stringResource(R.string.shell_title))
                                     }
@@ -803,7 +806,7 @@ fun ChatBottomBar(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Compress, null, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Compress, stringResource(R.string.context_compact), modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(stringResource(R.string.context_compact))
                                 }
@@ -814,7 +817,7 @@ fun ChatBottomBar(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Tune, null, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Tune, stringResource(R.string.advanced_settings), modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(stringResource(R.string.advanced_settings))
                                 }
@@ -856,6 +859,7 @@ fun ChatBottomBar(
                     onCollapse = onCollapse,
                     onVoiceConversationToggle = onVoiceConversationToggle,
                     onStopSingleAsr = onStopSingleAsr,
+                    onToast = onToast,
                 )
         }
         }

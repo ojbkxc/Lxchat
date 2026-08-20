@@ -164,6 +164,8 @@
 
     <!-- Settings - Main -->
     <string name="settings_title">设置</string>
+    <string name="settings_search_placeholder">搜索设置…</string>
+    <string name="settings_search_no_results">没有匹配的设置项</string>
     <string name="settings_provider">提供商</string>
     <string name="settings_provider_desc">API 密钥、基础 URL 和提供商选择</string>
     <string name="settings_prompts">系统指令</string>
@@ -567,6 +569,7 @@
     <string name="theme_mode">主题模式</string>
     <string name="theme_mode_light">浅色</string>
     <string name="theme_mode_dark">深色</string>
+    <string name="theme_mode_amoled">AMOLED 纯黑</string>
     <string name="theme_mode_follow_device">跟随系统</string>
     <string name="color_scheme">配色方案</string>
     <string name="color_scheme_midnight">午夜</string>
@@ -866,6 +869,7 @@
     <string name="cancel">取消</string>
     <string name="save">保存</string>
     <string name="delete">删除</string>
+    <string name="reply">回复</string>
     <string name="rename">重命名</string>
     <string name="quit">退出</string>
 

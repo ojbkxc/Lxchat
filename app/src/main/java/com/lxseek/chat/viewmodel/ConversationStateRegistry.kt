@@ -1,5 +1,7 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.util.NetworkMonitor
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,13 +41,52 @@ class ConversationStateRegistry {
      *  per conversation and the multi-conversation generating indicator. */
     val activeConversationIds: StateFlow<Set<String>> = _activeConversationIds.asStateFlow()
 
+    // ── Network restoration retry wiring ──────────────────────────────────
+    // When ChatViewModel binds a NetworkMonitor here, every conversation's queued guidance is
+    // subscribed to the offline→online edge. A restoration triggers each non-empty queue's
+    // existing onQueueDrainRequested callback, so previously-failed sends are re-drained without
+    // a manual user action. States created later (getOrCreate) inherit the binding automatically.
+    private class NetworkBinding(
+        val monitor: NetworkMonitor,
+        val scope: CoroutineScope,
+    )
+    private var networkBinding: NetworkBinding? = null
+
+    /**
+     * Subscribe every present (and future) conversation's queued guidance to [monitor]'s
+     * connectivity-restoration edge. On offline→online, each conversation with pending queue
+     * entries re-drains through its installed [ConversationGenerationState.onQueueDrainRequested]
+     * callback. Re-invoking replaces the prior binding. The [scope] owns the collector jobs;
+     * cancelling it (e.g. ViewModel clearing) tears down every subscription.
+     */
+    fun bindNetworkMonitor(monitor: NetworkMonitor, scope: CoroutineScope) {
+        networkBinding = NetworkBinding(monitor, scope)
+        states.values.forEach { bindNetworkMonitorOnState(it, monitor, scope) }
+    }
+
+    private fun bindNetworkMonitorOnState(
+        state: ConversationGenerationState,
+        monitor: NetworkMonitor,
+        scope: CoroutineScope,
+    ) {
+        state.bindNetworkMonitor(monitor, scope) {
+            // onQueueDrainRequested is installed by attachUiCallbacks; until then a restoration
+            // is a no-op (safe-call). Once installed, the normal drain path runs.
+            state.onQueueDrainRequested?.invoke(state)
+        }
+    }
+
     fun getOrCreate(conversationId: String): ConversationGenerationState {
         val state = states.computeIfAbsent(conversationId) {
             ConversationGenerationState(
                 conversationId = it,
                 onRegistryActive = ::markActive,
                 onRegistryIdle = ::markIdle,
-            )
+            ).also { newState ->
+                // New conversations inherit the active network binding so their queued guidance
+                // retries on restoration without waiting for an explicit rebind.
+                networkBinding?.let { bindNetworkMonitorOnState(newState, it.monitor, it.scope) }
+            }
         }
         // Re-applying the current binder is idempotent and closes the race where a state is
         // created concurrently with an Activity/ViewModel attaching its UI observer.
@@ -164,6 +205,7 @@ class ConversationStateRegistry {
             uiCallbackOwner = null
             uiCallbackBinder = null
         }
+        networkBinding = null
         pendingDrainHandoffs.values.forEach(Job::cancel)
         pendingDrainHandoffs.clear()
         states.values.forEach {

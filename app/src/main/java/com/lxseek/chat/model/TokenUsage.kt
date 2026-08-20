@@ -34,6 +34,27 @@ data class TokenUsage(
             addReported(reasoningTokenCount, other.reasoningTokenCount),
     )
 
+    /**
+     * Human-readable usage summary in thousands of tokens, e.g. "12k / 32k".
+     * Falls back to raw counts below 1k so tiny contexts do not collapse to "0k".
+     */
+    fun formattedUsage(): String {
+        val used = (inputTokenCount ?: 0) + (outputTokenCount ?: 0)
+        return if (totalTokenCount >= 1_000) {
+            "${used / 1_000}k / ${totalTokenCount / 1_000}k"
+        } else {
+            "$used / $totalTokenCount"
+        }
+    }
+
+    /** Fraction of the reported total budget already consumed, clamped to [0, 1]. */
+    fun usageRatio(): Float = if (totalTokenCount > 0) {
+        ((inputTokenCount ?: 0) + (outputTokenCount ?: 0)).toFloat() / totalTokenCount
+            .coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
     companion object {
         fun fromPersisted(
             totalTokenCount: Int,

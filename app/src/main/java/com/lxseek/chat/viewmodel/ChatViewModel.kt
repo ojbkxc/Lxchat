@@ -23,6 +23,7 @@ import com.lxseek.chat.data.PredefinedVariables
 import com.lxseek.chat.data.ShellDeviceConfig
 
 import com.lxseek.chat.data.local.ChatEntity
+import com.lxseek.chat.data.local.GlobalSearchResult
 import com.lxseek.chat.data.repository.ConversationRepository
 import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.model.AttachmentItem
@@ -36,6 +37,7 @@ import com.lxseek.chat.sandbox.SandboxManagerFactory
 import com.lxseek.chat.service.LxChatForegroundService
 import com.lxseek.chat.tool.ToolApprovalResult
 import com.lxseek.chat.util.DebugLog
+import com.lxseek.chat.util.NetworkMonitor
 import com.lxseek.chat.util.TtsManager
 import com.lxseek.chat.util.PdfPageRenderer
 import com.lxseek.chat.util.SnackbarEvent
@@ -83,6 +85,13 @@ class ChatViewModel(
 ) : AndroidViewModel(application) {
 
     val settings: SettingsRepository = settingsRepository
+
+    // Lightweight connectivity monitor used to pre-check before sending and to surface a
+    // snackbar when the device is offline. Registered lazily; callers use isOnline() / online.
+    private val networkMonitor = NetworkMonitor(appContext)
+
+    /** Synchronous online check backed by ConnectivityManager. */
+    fun isOnline(): Boolean = networkMonitor.isOnline()
 
     /**
      * Conversation/message persistence behind the repository layer. CRUD, cascade-delete,
@@ -287,6 +296,7 @@ class ChatViewModel(
         dataControl.destroy()
         voiceConversation.dispose()
         TtsManager.stop()
+        networkMonitor.unregister()
     }
 
     /** Nullable on purpose: the provider settings page recomposes one frame after a custom
@@ -569,6 +579,12 @@ class ChatViewModel(
                 }
             }
         }
+        // Register the connectivity callback so [NetworkMonitor.online] actually emits updates,
+        // then bind it to the registry so every conversation's queued guidance auto-retries on
+        // offline→online restoration. viewModelScope owns the collector jobs; onCleared
+        // unregisters the callback and cancelling the scope tears down the subscriptions.
+        networkMonitor.register()
+        generationRegistry.bindNetworkMonitor(networkMonitor, viewModelScope)
     }
 
     /** Every conversation currently mutating its message tree through foreground generation or
@@ -819,6 +835,8 @@ class ChatViewModel(
     suspend fun semanticSearch(query: String, limit: Int = 20) =
         semanticSearchService.search(query, limit)
     suspend fun searchMessages(query: String, limit: Int = 20) = convRepo.searchMessages(query, limit)
+    fun searchMessagesGlobally(query: String): Flow<List<GlobalSearchResult>> =
+        convRepo.searchMessagesGlobally(query)
     fun addShellDevice(device: ShellDeviceConfig) {
         settings.addShellDevice(device)
     }
@@ -965,7 +983,16 @@ class ChatViewModel(
         images: List<String> = emptyList(),
         attachments: List<SelectedAttachment> = emptyList(),
         onAccepted: suspend () -> Unit = {},
-    ): SendAcceptance? = composerSendAdapter.sendMessage(text, images, attachments, onAccepted)
+    ): SendAcceptance? {
+        // Pre-check connectivity before entering the generation pipeline. Local (on-device)
+        // models work offline, so the gate only applies to remote providers. Emitting a
+        // snackbar here avoids creating a doomed ERROR message row that the user must dismiss.
+        if (!networkMonitor.isOnline()) {
+            emitSnackbar(appContext.getString(R.string.network_unavailable))
+            return null
+        }
+        return composerSendAdapter.sendMessage(text, images, attachments, onAccepted)
+    }
 
     suspend fun fetchModelsForProvider(name: String): List<String> =
         providerModelSyncUi.fetchModelsForProvider(name)

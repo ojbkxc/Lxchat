@@ -1,6 +1,6 @@
 package com.lxseek.chat.ui.chat.bottombar
 
-import android.widget.Toast
+
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
@@ -73,6 +73,10 @@ internal fun ComposerSendButton(
     onCollapse: () -> Unit,
     onVoiceConversationToggle: () -> Unit = {},
     onStopSingleAsr: () -> Unit = {},
+    // Surfaces transient user-facing messages (e.g. "select a model first") via the parent's
+    // ViewModel snackbar channel instead of a raw Toast, so the message respects the app's
+    // unified snackbar styling and lifecycle.
+    onToast: (String) -> Unit = {},
 ) {
     val haptics = LocalLxChatHaptics.current
     val context = LocalContext.current
@@ -191,11 +195,7 @@ internal fun ComposerSendButton(
                     // model selected). Prompt the user to pick a model instead of silently
                     // doing nothing. isSwitching is already handled by the early return above.
                     if (!isModelValid) {
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.toast_select_model_first),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        onToast(context.getString(R.string.toast_select_model_first))
                         return@FloatingActionButton
                     }
                     if (canSend) {

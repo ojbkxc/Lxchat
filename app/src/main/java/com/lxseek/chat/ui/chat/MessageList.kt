@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -36,10 +38,20 @@ import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import com.lxseek.chat.R
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.ContextBudget
 import com.lxseek.chat.api.util.contextWindowRetainedMessageIds
@@ -59,6 +71,8 @@ import com.lxseek.chat.ui.chat.message.REGENERATION_ABORT_RESTORE_DURATION_MS
 import com.lxseek.chat.ui.chat.message.REGENERATION_EXIT_DURATION_MS
 import com.lxseek.chat.ui.chat.message.SegmentAppearanceRegistry
 import com.lxseek.chat.ui.chat.message.hasActiveAnswerSegment
+import com.lxseek.chat.ui.common.LocalLxChatHaptics
+import com.lxseek.chat.ui.components.MessageSkeletonRow
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
 import com.lxseek.chat.viewmodel.RegenerationTransitionRequest
 import kotlinx.coroutines.Job
@@ -126,6 +140,11 @@ internal fun MessageList(
     onFork: (String) -> Unit = {},
     onShare: (String) -> Unit = {},
     onDelete: (String) -> Unit = {},
+    /**
+     * Invoked with a message id when a row is swiped to reveal the reply action.
+     * Defaults to a no-op; callers wire it to the composer's quote-reply flow.
+     */
+    onSwipeToReply: (String) -> Unit = {},
     ttsPlayingMessageId: String? = null,
     onToggleTts: (String) -> Unit = {},
     searchQuery: String = "",
@@ -659,6 +678,15 @@ internal fun MessageList(
             lifecycleAppearanceRegistry.markKnown(message.id)
         }
 
+        // Wrap the row in a swipe-to-reveal layer so horizontal drags expose delete
+        // (left) and reply (right) actions. Disabled during selection and for retained
+        // regeneration-exit placeholders to avoid stealing gestures from the fade.
+        val swipeEnabled = !selectionMode && !isRetainedRegenerationExit
+        SwipeToRevealMessage(
+            enabled = swipeEnabled,
+            onDelete = { onDelete(message.id) },
+            onReply = { onSwipeToReply(message.id) },
+        ) {
         MessageItem(
             message = message,
             segmentAppearanceRegistry = segmentAppearanceRegistry,
@@ -844,7 +872,10 @@ internal fun MessageList(
                 }
             },
             thoughtExpandedStates = thoughtExpandedStates,
+            onSwipeToDelete = { onDelete(message.id) },
+            onSwipeToReply = { onSwipeToReply(message.id) },
         )
+        }
     }
 
     Box(modifier = modifier) {
@@ -859,6 +890,14 @@ internal fun MessageList(
             state = state,
             userScrollEnabled = userScrollEnabled
         ) {
+            // Skeleton placeholders while the conversation history is still loading and no
+            // messages have been projected yet. Keeps the list from looking empty during the
+            // initial database fetch and mirrors the shape of a real message row.
+            if (messages.list.isEmpty() && isLoading) {
+                items(count = 6, key = { index -> "lxchat:message-skeleton:$index" }) {
+                    MessageSkeletonRow()
+                }
+            }
             items(turns, key = { turn -> stableVisualKey(turn.key) }) { turn ->
                 // A turn's key and composition survive when the next USER is appended. Only the
                 // new turn enters; the previous assistant never moves to a different Lazy item.
@@ -917,6 +956,114 @@ internal fun MessageList(
             item(key = AbsoluteBottomSentinelKey) {
                 Spacer(Modifier.fillMaxWidth().height(1.dp))
             }
+        }
+    }
+}
+
+/**
+ * Swipe-to-reveal wrapper for a message row. A horizontal drag displaces the
+ * foreground content to expose a delete action (left swipe, red) or a reply
+ * action (right swipe, themed primary). Releasing past half the reveal width
+ * invokes the corresponding callback; otherwise the row springs back to rest.
+ *
+ * The gesture is limited to the horizontal axis so the enclosing LazyColumn
+ * keeps full authority over vertical scrolling and inner tap/long-press
+ * recognizers continue to receive events that are not horizontal drags.
+ */
+@Composable
+private fun SwipeToRevealMessage(
+    enabled: Boolean,
+    onDelete: () -> Unit,
+    onReply: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val revealWidthPx = with(density) { 72.dp.toPx() }
+    val dragThresholdPx = revealWidthPx * 0.5f
+    val scope = rememberCoroutineScope()
+    val offset = remember { Animatable(0f) }
+    val haptics = LocalLxChatHaptics.current
+    val deleteLabel = stringResource(R.string.delete)
+    val replyLabel = stringResource(R.string.reply)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (enabled) {
+                    Modifier.pointerInput(enabled) {
+                        detectHorizontalDragGestures(
+                            onDragCancel = {
+                                scope.launch { offset.animateTo(0f, tween(180)) }
+                            },
+                            onDragEnd = {
+                                val current = offset.value
+                                scope.launch {
+                                    if (current < -dragThresholdPx) {
+                                        haptics.destructiveConfirmed()
+                                        onDelete()
+                                    } else if (current > dragThresholdPx) {
+                                        haptics.selection()
+                                        onReply()
+                                    }
+                                    offset.animateTo(0f, tween(180))
+                                }
+                            },
+                            onHorizontalDrag = { change, delta ->
+                                change.consume()
+                                scope.launch {
+                                    offset.snapTo(
+                                        (offset.value + delta)
+                                            .coerceIn(-revealWidthPx, revealWidthPx),
+                                    )
+                                }
+                            },
+                        )
+                    }
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        val currentOffset = offset.value
+        // Background action layer: only painted while the row is displaced, so a
+        // resting row renders exactly as before (no colored rectangle behind it).
+        if (abs(currentOffset) > 1f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        if (currentOffset < 0) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                    ),
+                contentAlignment = if (currentOffset < 0) {
+                    Alignment.CenterEnd
+                } else {
+                    Alignment.CenterStart
+                },
+            ) {
+                Icon(
+                    imageVector = if (currentOffset < 0) {
+                        Icons.Default.Delete
+                    } else {
+                        Icons.AutoMirrored.Filled.Reply
+                    },
+                    contentDescription = if (currentOffset < 0) deleteLabel else replyLabel,
+                    tint = if (currentOffset < 0) {
+                        MaterialTheme.colorScheme.onError
+                    } else {
+                        MaterialTheme.colorScheme.onPrimary
+                    },
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+            }
+        }
+        // Foreground content, translated horizontally by the live drag offset.
+        Box(modifier = Modifier.graphicsLayer { translationX = offset.value }) {
+            content()
         }
     }
 }

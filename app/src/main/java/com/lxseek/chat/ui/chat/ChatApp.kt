@@ -57,6 +57,10 @@ import com.lxseek.chat.viewmodel.RegenerationTransitionStage
 import com.lxseek.chat.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** CompositionLocal for the active-conversation loading flag, so descendants can read it
+ *  without an explicit prop drill. Defaults to false. */
+val LocalIsLoading = compositionLocalOf { false }
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalFoundationApi::class,
@@ -373,7 +377,10 @@ fun ChatApp(
         haptics = haptics,
     )
 
-    CompositionLocalProvider(LocalLxChatHaptics provides haptics) {
+    CompositionLocalProvider(
+        LocalLxChatHaptics provides haptics,
+        LocalIsLoading provides isLoading,
+    ) {
     ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = drawerEnabled,
@@ -436,6 +443,7 @@ fun ChatApp(
                         currentConversationId = currentConversationId,
                         currentConversationTitle = currentConversation?.title,
                         totalTokens = totalTokens,
+                        contextWindow = contextWindow,
                         appName = appName,
                         searchActive = conversationSearchActive,
                         searchQuery = conversationSearchQuery,

@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -75,6 +76,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
+import com.lxseek.chat.data.local.GlobalSearchResult
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.flow.flowOf
 import com.lxseek.chat.ui.chat.search.DrawerSearchBar
 import com.lxseek.chat.ui.chat.search.SearchResultItem
 import com.lxseek.chat.ui.chat.search.rememberDrawerSearchState
@@ -136,6 +148,7 @@ internal fun ChatDrawerContent(
     val currentConversationId by viewModel.currentConversationId.collectAsState()
     val isSwitching by viewModel.isSwitching.collectAsState()
     val generatingConversationIds by viewModel.generatingConversationIds.collectAsState()
+    var showGlobalSearch by remember { mutableStateOf(false) }
 
     ModalDrawerSheet(
         drawerShape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
@@ -199,6 +212,21 @@ internal fun ChatDrawerContent(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (!search.isActive) {
+                FilledTonalButton(
+                    onClick = {
+                        focusManager.clearFocus()
+                        showGlobalSearch = true
+                    },
+                    modifier = Modifier.fillMaxWidth().height(42.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("全局搜索", style = ChatType.drawerButton)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 FilledTonalButton(
                     onClick = {
                         focusManager.clearFocus()
@@ -452,4 +480,160 @@ internal fun ChatDrawerContent(
             }
         }
     }
+
+    if (showGlobalSearch) {
+        GlobalSearchDialog(
+            viewModel = viewModel,
+            onDismiss = { showGlobalSearch = false },
+            onResultClick = { conversationId ->
+                viewModel.selectConversation(conversationId)
+                scope.launch { drawerState.closeWithMotionPolicy(motionPolicy) }
+                showGlobalSearch = false
+            },
+        )
+    }
 }
+
+/**
+ * Cross-conversation search dialog: a text field plus reactive results from
+ * [ChatViewModel.searchMessagesGlobally]. Each result shows the owning conversation title and a
+ * snippet of the matching message with the query highlighted. Tapping a result selects that
+ * conversation and dismisses the dialog + drawer.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GlobalSearchDialog(
+    viewModel: ChatViewModel,
+    onDismiss: () -> Unit,
+    onResultClick: (String) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val resultsFlow = remember(query) {
+        if (query.isBlank()) flowOf(emptyList<GlobalSearchResult>())
+        else viewModel.searchMessagesGlobally(query.trim())
+    }
+    val results by resultsFlow.collectAsState()
+    val noResultsText = stringResource(R.string.search_no_results)
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f),
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Text("全局搜索", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text("搜索所有对话中的消息") },
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                when {
+                    query.isBlank() -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "输入关键词以搜索所有对话",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                    results.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                noResultsText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(results, key = { it.messageId }) { result ->
+                                GlobalSearchResultRow(
+                                    result = result,
+                                    query = query.trim(),
+                                    onClick = { onResultClick(result.conversationId) },
+                                )
+                                HorizontalDivider()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GlobalSearchResultRow(
+    result: GlobalSearchResult,
+    query: String,
+    onClick: () -> Unit,
+) {
+    val highlightColor = MaterialTheme.colorScheme.primary
+    val snippet = remember(result.text, query, highlightColor) {
+        buildMatchSnippet(result.text, query, highlightColor)
+    }
+    Surface(
+        onClick = onClick,
+        color = Color.Transparent,
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            Text(
+                text = result.conversationTitle ?: "(未命名)",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = snippet,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** Builds a short snippet around the first match of [query] in [text], highlighting the match. */
+private fun buildMatchSnippet(text: String, query: String, highlightColor: Color): AnnotatedString =
+    buildAnnotatedString {
+        if (query.isBlank()) {
+            append(text.take(80))
+            return@buildAnnotatedString
+        }
+        val idx = text.indexOf(query, ignoreCase = true)
+        if (idx < 0) {
+            append(text.take(80))
+            return@buildAnnotatedString
+        }
+        val contextChars = 40
+        val start = (idx - contextChars).coerceAtLeast(0)
+        val end = (idx + query.length + contextChars).coerceAtMost(text.length)
+        if (start > 0) append("…")
+        append(text.substring(start, idx))
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = highlightColor)) {
+            append(text.substring(idx, idx + query.length))
+        }
+        append(text.substring(idx + query.length, end))
+        if (end < text.length) append("…")
+    }

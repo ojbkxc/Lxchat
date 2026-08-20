@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -63,6 +64,12 @@ internal fun ChatTopBar(
     currentConversationId: String?,
     currentConversationTitle: String? = null,
     totalTokens: Int,
+    /**
+     * Configured context window for the active conversation, in tokens. When > 0 and
+     * [totalTokens] > 0, a thin usage progress bar is rendered below the top bar content.
+     * The bar turns orange above 80% utilization and red above 95%.
+     */
+    contextWindow: Int = 0,
     appName: String = stringResource(R.string.app_name),
     searchActive: Boolean = false,
     searchQuery: String = "",
@@ -404,6 +411,26 @@ internal fun ChatTopBar(
                 }
                 }
             }
+        }
+        // Token usage progress bar: shown only when both used tokens and the configured
+        // context window are positive. Color escalates from primary to orange (>80%) to
+        // error red (>95%) so users can anticipate a needed context compact.
+        if (contextWindow > 0 && totalTokens > 0) {
+            val usageRatio = (totalTokens.toFloat() / contextWindow).coerceIn(0f, 1f)
+            val usageColor = when {
+                usageRatio > 0.95f -> MaterialTheme.colorScheme.error
+                usageRatio > 0.80f -> Color(0xFFFF9800)
+                else -> MaterialTheme.colorScheme.primary
+            }
+            LinearProgressIndicator(
+                progress = { usageRatio },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .height(2.dp),
+                color = usageColor,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
         }
     }
 }

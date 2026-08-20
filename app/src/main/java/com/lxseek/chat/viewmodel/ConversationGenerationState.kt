@@ -11,6 +11,7 @@ import com.lxseek.chat.model.RunState
 import com.lxseek.chat.model.RuntimeRunIdentity
 import com.lxseek.chat.model.SlotReleaseReason
 import com.lxseek.chat.model.Transition
+import com.lxseek.chat.util.NetworkMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -507,6 +508,9 @@ class ConversationGenerationState(
 
     /** Runtime disposal is not a user Stop and therefore does not create a durable Stop effect. */
     internal fun dispose(): List<QueuedSend> {
+        // Cancel the network-restoration collector before the queue is emptied so a late
+        // restoration signal cannot invoke a stale onRetry against a disposed store.
+        guidanceLeases.unbindNetworkMonitor()
         val pendingGuidance = guidanceLeases.disposePending()
         val job = synchronized(genLock) { resources.currentGenerationJob() }
         resources.cancelStreamsAnd(job)
@@ -533,6 +537,28 @@ class ConversationGenerationState(
      */
     fun settleGuidanceClaim(leaseId: String, durable: Boolean): Boolean =
         guidanceLeases.settle(leaseId, durable)
+
+    // ── Network restoration retry (delegates to the guidance lease store) ──
+    // When connectivity is restored after a failed boundary send returned its batch to the
+    // queue, this re-drains automatically. The [onRetry] callback is supplied by the registry
+    // and normally resolves to [onQueueDrainRequested] so the existing drain path is reused.
+
+    /** Subscribe this conversation's queued guidance to [monitor]'s restoration edge. */
+    fun bindNetworkMonitor(
+        monitor: NetworkMonitor,
+        scope: CoroutineScope,
+        onRetry: () -> Unit,
+    ): Job = guidanceLeases.bindNetworkMonitor(monitor, scope, onRetry)
+
+    /** Cancel the network-restoration subscription installed by [bindNetworkMonitor]. */
+    fun unbindNetworkMonitor() = guidanceLeases.unbindNetworkMonitor()
+
+    /**
+     * Manually request a retry of this conversation's pending queue. Returns true only when the
+     * queue is non-empty and [onRetry] was actually invoked.
+     */
+    fun retryFailedOnNetworkRestored(onRetry: () -> Unit): Boolean =
+        guidanceLeases.retryFailedOnNetworkRestored(onRetry)
 
     data class StopResult(
         val stoppedMessage: ChatMessage?,

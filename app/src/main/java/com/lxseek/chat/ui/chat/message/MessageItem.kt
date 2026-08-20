@@ -99,6 +99,18 @@ internal fun MessageItem(
     thoughtExpandedStates: SnapshotStateMap<String, Boolean> = remember { mutableStateMapOf() },
     isTtsPlaying: Boolean = false,
     onToggleTts: () -> Unit = {},
+    /**
+     * Optional callback invoked when the row is swiped to reveal the delete action.
+     * When null, the surrounding list falls back to the standard delete confirmation flow.
+     * Supplied by [com.lxseek.chat.ui.chat.MessageList]'s swipe-to-reveal gesture.
+     */
+    onSwipeToDelete: (() -> Unit)? = null,
+    /**
+     * Optional callback invoked when the row is swiped to reveal the reply action.
+     * When null, the reply gesture is a no-op. Supplied by
+     * [com.lxseek.chat.ui.chat.MessageList]'s swipe-to-reveal gesture.
+     */
+    onSwipeToReply: (() -> Unit)? = null,
 ) {
     var showSegmentDetail by remember { mutableStateOf(false) }
     var detailUsesExplicitBackHandler by remember { mutableStateOf(false) }

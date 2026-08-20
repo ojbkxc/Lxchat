@@ -931,4 +931,40 @@ interface ChatDao : ChatAutomationDao {
         renameConversationProviderModelReferences(oldProvider, newProvider)
         renameTaskProviderModelReferences(oldProvider, newProvider)
     }
+
+    /** Search messages across ALL conversations. Returns matching message text together with its
+     *  owning conversation title, ordered by most recent first. Mirrors [searchMessages] filtering
+     *  so protocol/compact rows and task executions stay excluded. [query] must be pre-escaped for
+     *  LIKE (see ConversationRepository.escapeLikePattern). */
+    @Query(
+        """
+        SELECT m.id AS messageId,
+               m.conversationId,
+               m.text,
+               m.participant AS participant,
+               c.title AS conversationTitle,
+               m.timestamp
+        FROM messages m
+        INNER JOIN conversations c ON m.conversationId = c.id
+        WHERE c.taskId IS NULL
+          AND m.participant IN ('USER', 'MODEL')
+          AND m.text != ''
+          AND substr(m.id, 1, 5) != 'tool_'
+          AND substr(m.id, 1, 7) != 'result_'
+          AND m.text LIKE '%' || :query || '%' ESCAPE '\\'
+        ORDER BY m.timestamp DESC
+        LIMIT 50
+        """
+    )
+    fun searchMessagesGlobally(query: String): Flow<List<GlobalSearchResult>>
 }
+
+/** Cross-conversation search projection: a matching message plus its owning conversation title. */
+data class GlobalSearchResult(
+    val messageId: String,
+    val conversationId: String,
+    val text: String,
+    val participant: String,
+    val conversationTitle: String?,
+    val timestamp: Long,
+)

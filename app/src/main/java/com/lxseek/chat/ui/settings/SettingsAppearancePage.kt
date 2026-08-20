@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BrightnessLow
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
@@ -124,6 +125,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val isDark = when (themeMode) {
         "LIGHT" -> false
         "DARK" -> true
+        "AMOLED" -> true
         else -> systemDark
     }
     CollapsingSettingsScaffold(
@@ -163,16 +165,19 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         val selectedLabel = when (themeMode) {
                             "LIGHT" -> stringResource(R.string.theme_mode_light)
                             "DARK" -> stringResource(R.string.theme_mode_dark)
+                            "AMOLED" -> stringResource(R.string.theme_mode_amoled)
                             else -> stringResource(R.string.theme_mode_follow_device)
                         }
                         val selectedIcon = when (themeMode) {
                             "LIGHT" -> Icons.Default.LightMode
                             "DARK" -> Icons.Default.DarkMode
+                            "AMOLED" -> Icons.Default.BrightnessLow
                             else -> Icons.Default.SettingsBrightness
                         }
                         val options = listOf(
                             "LIGHT" to Pair(stringResource(R.string.theme_mode_light), Icons.Default.LightMode),
                             "DARK" to Pair(stringResource(R.string.theme_mode_dark), Icons.Default.DarkMode),
+                            "AMOLED" to Pair(stringResource(R.string.theme_mode_amoled), Icons.Default.BrightnessLow),
                             "FOLLOW_DEVICE" to Pair(stringResource(R.string.theme_mode_follow_device), Icons.Default.SettingsBrightness)
                         )
                         SettingsItem(
@@ -204,7 +209,8 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             val isSelected = when (mode) {
                                                 "LIGHT" -> themeMode == "LIGHT"
                                                 "DARK" -> themeMode == "DARK"
-                                                else -> themeMode != "LIGHT" && themeMode != "DARK"
+                                                "AMOLED" -> themeMode == "AMOLED"
+                                                else -> themeMode != "LIGHT" && themeMode != "DARK" && themeMode != "AMOLED"
                                             }
                                             DropdownMenuItem(
                                                 text = { Text(label) },

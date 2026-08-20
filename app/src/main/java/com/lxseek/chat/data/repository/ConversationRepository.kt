@@ -4,6 +4,7 @@ import com.lxseek.chat.data.local.ChatDao
 import com.lxseek.chat.data.local.ChatEntity
 import com.lxseek.chat.data.local.ConversationDraftAttachmentReference
 import com.lxseek.chat.data.local.EmbeddingEntity
+import com.lxseek.chat.data.local.GlobalSearchResult
 import com.lxseek.chat.data.local.IndexableMessage
 import com.lxseek.chat.data.local.MessageAttachmentReference
 import com.lxseek.chat.data.local.MessageEntity
@@ -496,6 +497,10 @@ class ConversationRepository(
 
     suspend fun searchMessages(query: String, limit: Int = 10): List<MessageEntity> =
         chatDao.searchMessages(escapeLikePattern(query), limit)
+
+    /** Reactive cross-conversation message search. Emits whenever matching rows change. */
+    fun searchMessagesGlobally(query: String): Flow<List<GlobalSearchResult>> =
+        chatDao.searchMessagesGlobally(escapeLikePattern(query))
 
     /** Escapes LIKE wildcards so a literal "%"/"_" in the user's query matches itself
      *  instead of matching everything (paired with ESCAPE '\' in the DAO query). */

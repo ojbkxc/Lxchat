@@ -122,19 +122,19 @@ private fun AssistantStatusRow(status: AssistantStatusPresentation) {
                 )
                 AssistantStatusKind.SUCCESS -> Icon(
                     Icons.Default.CheckCircle,
-                    contentDescription = null,
+                    contentDescription = "Completed",
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.tertiary,
                 )
                 AssistantStatusKind.STOPPED -> Icon(
                     Icons.Default.Stop,
-                    contentDescription = null,
+                    contentDescription = "Stopped",
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.error,
                 )
                 AssistantStatusKind.INFO -> Icon(
                     Icons.Default.Info,
-                    contentDescription = null,
+                    contentDescription = "Error",
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.error,
                 )
@@ -427,15 +427,27 @@ internal fun AssistantMessageContent(
                 ) {
                     if (isError) {
                         Surface(color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f), contentColor = MaterialTheme.colorScheme.onErrorContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                                Icon(Icons.Default.Info, null, modifier = Modifier.size(16.dp).padding(top = 2.dp), tint = MaterialTheme.colorScheme.error)
-                                Spacer(modifier = Modifier.width(12.dp))
-                                NoAutoScrollSelectionContainer {
-                                    Text(
-                                        renderedText.ifEmpty { stringResource(R.string.failed_to_generate) },
-                                        style = ChatType.errorBody,
-                                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                                    )
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.Top) {
+                                    Icon(Icons.Default.Info, contentDescription = "Error", modifier = Modifier.size(16.dp).padding(top = 2.dp), tint = MaterialTheme.colorScheme.error)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    NoAutoScrollSelectionContainer {
+                                        Text(
+                                            renderedText.ifEmpty { stringResource(R.string.failed_to_generate) },
+                                            style = ChatType.errorBody,
+                                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                }
+                                // Differentiated recovery action based on the inferred
+                                // GenerationError category. The error text comes from
+                                // GenerationError.userMessage(), so we match its known patterns.
+                                val errorAction = inferErrorAction(renderedText)
+                                TextButton(
+                                    onClick = { onRegenerate(message.id) },
+                                    modifier = Modifier.padding(start = 28.dp, top = 4.dp),
+                                ) {
+                                    Text(errorAction.label)
                                 }
                             }
                         }
@@ -477,7 +489,7 @@ internal fun AssistantMessageContent(
                         genImages.forEachIndexed { idx, path ->
                             coil.compose.AsyncImage(
                                 model = path,
-                                contentDescription = null,
+                                contentDescription = "Generated image",
                                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -555,7 +567,7 @@ internal fun AssistantMessageContent(
                             ) {
                                 Icon(
                                     Icons.Default.ContentCopy,
-                                    contentDescription = null,
+                                    contentDescription = "Copy",
                                     modifier = Modifier.size(16.dp),
                                     tint = enabledActionTint,
                                 )
@@ -599,7 +611,7 @@ internal fun AssistantMessageContent(
                         ) {
                             Icon(
                                 Icons.Default.Refresh,
-                                contentDescription = null,
+                                contentDescription = "Retry",
                                 modifier = Modifier.size(19.dp),
                                 tint = terminalActionTint,
                             )
@@ -644,7 +656,7 @@ internal fun AssistantMessageContent(
                             ) {
                                 Icon(
                                     Icons.Default.MoreVert,
-                                    contentDescription = null,
+                                    contentDescription = "More actions",
                                     modifier = Modifier.size(18.dp),
                                     tint = enabledActionTint,
                                 )
@@ -682,7 +694,7 @@ internal fun AssistantMessageContent(
                                     leadingIcon = {
                                         Icon(
                                             Icons.Default.Delete,
-                                            contentDescription = null,
+                                            contentDescription = "Delete",
                                             tint = destructiveActionTint,
                                         )
                                     },
@@ -712,7 +724,7 @@ internal fun AssistantMessageContent(
                                 ) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                                        contentDescription = null,
+                                        contentDescription = "Previous branch",
                                         modifier = Modifier.size(16.dp),
                                     )
                                 }
@@ -729,7 +741,7 @@ internal fun AssistantMessageContent(
                                 ) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                        contentDescription = null,
+                                        contentDescription = "Next branch",
                                         modifier = Modifier.size(16.dp),
                                     )
                                 }
@@ -741,5 +753,49 @@ internal fun AssistantMessageContent(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+}
+
+/**
+ * Differentiated recovery action for an assistant error bubble.
+ *
+ * [GenerationError] is not stored on [ChatMessage] — only its [userMessage] text survives —
+ * so [inferErrorAction] matches the known English patterns produced by [userMessage] to
+ * pick the most helpful button label. All actions currently trigger regeneration; the
+ * label itself is the user-facing differentiation (e.g. "检查网络" vs "重试").
+ */
+private enum class ErrorAction(val label: String) {
+    CHECK_NETWORK("检查网络"),
+    RETRY_LATER("稍后重试"),
+    INCREASE_MAX_TOKENS("增加 Max Tokens"),
+    RETRY("重试"),
+}
+
+private fun inferErrorAction(text: String): ErrorAction {
+    val lower = text.lowercase()
+    return when {
+        // GenerationError.Network — "Network error (...)", "Connection refused", "Unknown host"
+        lower.contains("network error") ||
+            lower.contains("connection refused") ||
+            lower.contains("unknown host") ||
+            lower.contains("connection reset") ||
+            lower.contains("tls failure") -> ErrorAction.CHECK_NETWORK
+
+        // GenerationError.Api with rate-limit code — "Rate limit exceeded" or code contains "rate_limit"
+        lower.contains("rate limit") ||
+            lower.contains("rate_limit") -> ErrorAction.RETRY_LATER
+
+        // GenerationError.OutputTruncated — "Response hit the output token limit"
+        lower.contains("token limit") ||
+            lower.contains("cut off") ||
+            lower.contains("max_tokens") ||
+            lower.contains("output token") -> ErrorAction.INCREASE_MAX_TOKENS
+
+        // GenerationError.IncompleteStream — "ended the response early", "incomplete"
+        lower.contains("ended the response early") ||
+            lower.contains("incomplete") -> ErrorAction.RETRY
+
+        // Everything else (Api, SseParse, ToolExecution, Transcription, etc.) → generic retry
+        else -> ErrorAction.RETRY
     }
 }

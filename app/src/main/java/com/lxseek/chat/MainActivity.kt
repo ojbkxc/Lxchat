@@ -180,6 +180,7 @@ class MainActivity : ComponentActivity() {
             val isDark = when (themeModeEnum) {
                 com.lxseek.chat.ui.theme.ThemeMode.LIGHT -> false
                 com.lxseek.chat.ui.theme.ThemeMode.DARK -> true
+                com.lxseek.chat.ui.theme.ThemeMode.AMOLED -> true
                 com.lxseek.chat.ui.theme.ThemeMode.FOLLOW_DEVICE -> systemDark
             }
 

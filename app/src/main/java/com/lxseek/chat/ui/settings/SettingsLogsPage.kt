@@ -161,8 +161,8 @@ fun SettingsLogsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 title = stringResource(R.string.logs_app_log_title),
                 text = appLog,
                 noLogText = stringResource(R.string.logs_no_logs),
-                onCopy = { copyText(context, "App Log", appLog) },
-                onExport = { exportLog(context, "=== App Log (All Modules) ===\n$appLog") },
+                onCopy = { copyText(context, viewModel, "App Log", appLog) },
+                onExport = { exportLog(context, viewModel, "=== App Log (All Modules) ===\n$appLog") },
                 onClear = {
                     AppLog.clear()
                     appLog = AppLog.getText()
@@ -173,8 +173,8 @@ fun SettingsLogsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 title = stringResource(R.string.logs_tts_log_title),
                 text = ttsLog,
                 noLogText = stringResource(R.string.logs_no_logs),
-                onCopy = { copyText(context, "TTS Log", ttsLog) },
-                onExport = { exportLog(context, ttsLog) },
+                onCopy = { copyText(context, viewModel, "TTS Log", ttsLog) },
+                onExport = { exportLog(context, viewModel, ttsLog) },
                 onClear = {
                     TtsManager.clearLog()
                     ttsLog = TtsManager.getLogText()
@@ -185,8 +185,8 @@ fun SettingsLogsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 title = stringResource(R.string.logs_asr_log_title),
                 text = asrLogText,
                 noLogText = stringResource(R.string.logs_no_logs),
-                onCopy = { copyText(context, "ASR Log", asrLogText) },
-                onExport = { exportLog(context, asrLogText) },
+                onCopy = { copyText(context, viewModel, "ASR Log", asrLogText) },
+                onExport = { exportLog(context, viewModel, asrLogText) },
                 onClear = null,
             )
         }
@@ -236,14 +236,14 @@ private fun SettingsLogBlock(
     )
 }
 
-private fun copyText(context: Context, label: String, text: String) {
+private fun copyText(context: Context, viewModel: ChatViewModel, label: String, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, text))
-    android.widget.Toast.makeText(context, context.getString(R.string.logs_copied), android.widget.Toast.LENGTH_SHORT).show()
+    viewModel.emitSnackbar(context.getString(R.string.logs_copied))
 }
 
-private fun exportLog(context: Context, payload: String) {
+private fun exportLog(context: Context, viewModel: ChatViewModel, payload: String) {
     val name = CrashReporter.exportDiagnostics(context, payload)
     val msg = if (name != null) context.getString(R.string.logs_exported, name) else context.getString(R.string.logs_export_failed)
-    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+    viewModel.emitSnackbar(msg)
 }

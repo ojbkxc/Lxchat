@@ -3,9 +3,13 @@ package com.lxseek.chat.viewmodel
 import com.lxseek.chat.model.AttachmentMeta
 import com.lxseek.chat.model.SelectedAttachment
 import com.lxseek.chat.util.AttachmentFiles
+import com.lxseek.chat.util.NetworkMonitor
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -122,6 +126,51 @@ internal class GuidanceLeaseStore(
     fun disposePending(): List<QueuedSend> = synchronized(lock) {
         disposed = true
         _queuedSends.value.also { _queuedSends.value = emptyList() }
+    }
+
+    // ── Network restoration retry ─────────────────────────────────────────
+    // A failed boundary send returns its batch to the front of [queuedSends] (see [settle]).
+    // While the device is offline those entries sit idle; once connectivity is restored they
+    // should be re-drained automatically instead of waiting for the next manual Send.
+
+    /** Active network-restoration collector, retained so [unbindNetworkMonitor] can cancel it. */
+    private var networkRetryJob: Job? = null
+
+    /**
+     * Subscribe this store to [monitor]'s connectivity-restoration edge. On every offline→online
+     * transition, if the queue still holds pending (typically previously-failed) guidance,
+     * [onRetry] is invoked to request a fresh drain. Idempotent: re-binding replaces the prior
+     * subscription. The returned [Job] is also stored for [unbindNetworkMonitor].
+     */
+    fun bindNetworkMonitor(
+        monitor: NetworkMonitor,
+        scope: CoroutineScope,
+        onRetry: () -> Unit,
+    ): Job {
+        unbindNetworkMonitor()
+        val job = scope.launch {
+            monitor.onlineRestored.collect { retryFailedOnNetworkRestored(onRetry) }
+        }
+        networkRetryJob = job
+        return job
+    }
+
+    /** Cancel any active network-restoration subscription installed by [bindNetworkMonitor]. */
+    fun unbindNetworkMonitor() {
+        networkRetryJob?.cancel()
+        networkRetryJob = null
+    }
+
+    /**
+     * Manually request a retry of the pending queue. Returns true (and invokes [onRetry]) only
+     * when the queue is non-empty, so callers can fire it unconditionally on a restoration signal
+     * without spuriously triggering an empty drain. Used by [bindNetworkMonitor] internally and
+     * exposed for explicit retry requests (e.g. a user "retry" affordance).
+     */
+    fun retryFailedOnNetworkRestored(onRetry: () -> Unit): Boolean {
+        if (_queuedSends.value.isEmpty()) return false
+        onRetry()
+        return true
     }
 }
 

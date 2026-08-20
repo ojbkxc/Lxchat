@@ -142,4 +142,28 @@ sealed class GenerationError {
         Cancelled -> "Generation cancelled."
         Timeout -> "Request timed out."
     }
+
+    /**
+     * Localized (zh-CN) human-readable message suitable for displaying in the UI.
+     *
+     * Unlike [userMessage] (which returns English diagnostic text), this variant produces
+     * concise Chinese descriptions that map directly to differentiated recovery actions
+     * in the assistant error bubble (retry / check network / raise Max Tokens).
+     */
+    fun userFriendlyMessage(): String = when (this) {
+        is Network -> "网络连接失败：$message"
+        is Api -> "API 错误：$message"
+        is SseParse -> "数据解析错误"
+        is IncompleteStream -> "响应不完整，请重试"
+        is OutputTruncated -> "输出被截断，请增加 Max Tokens"
+        is ToolExecution -> "工具执行失败：$message"
+        is Transcription -> "转码失败：$message"
+        is Embedding -> "嵌入计算失败"
+        is LocalModel -> "本地模型错误：$message"
+        is Configuration -> "配置错误：$message"
+        is RequestFormat -> "请求格式错误：$details"
+        is Unknown -> cause.localizedMessage ?: "未知错误"
+        Cancelled -> "生成已取消"
+        Timeout -> "请求超时"
+    }
 }

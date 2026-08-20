@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import java.io.File
 
-enum class ThemeMode { LIGHT, DARK, FOLLOW_DEVICE }
+enum class ThemeMode { LIGHT, DARK, AMOLED, FOLLOW_DEVICE }
 
 /**
  * Returns the effective [FontFamily] for non-mono typography based on the font preference.
@@ -83,10 +83,14 @@ fun LxChatTheme(
     val darkTheme = when (themeMode) {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
+        ThemeMode.AMOLED -> true
         ThemeMode.FOLLOW_DEVICE -> systemDark
     }
 
     val colorScheme = when {
+        // AMOLED is an explicit true-black choice; it overrides dynamic color and presets so the
+        // pure-black background/surface are preserved on OLED panels.
+        themeMode == ThemeMode.AMOLED -> remember { amoledDarkColorScheme() }
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

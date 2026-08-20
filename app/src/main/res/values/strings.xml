@@ -170,6 +170,7 @@
     <string name="asr_clear_log">Clear ASR Log</string>
     <string name="asr_log_cleared">ASR log cleared</string>
     <string name="toast_select_model_first">Please select a model first</string>
+    <string name="network_unavailable">网络不可用，请检查网络连接</string>
     <string name="voice_conversation_listening">Listening…</string>
     <string name="voice_conversation_processing">Thinking…</string>
     <string name="voice_conversation_speaking">Speaking…</string>
@@ -223,6 +224,8 @@
 
     <!-- Settings - Main -->
     <string name="settings_title">Settings</string>
+    <string name="settings_search_placeholder">Search settings…</string>
+    <string name="settings_search_no_results">No matching settings</string>
     <string name="settings_provider">Providers</string>
     <string name="settings_provider_desc">API keys, base URL, and provider selection</string>
     <string name="settings_prompts">System Prompts</string>
@@ -652,6 +655,7 @@
     <string name="theme_mode">Theme Mode</string>
     <string name="theme_mode_light">Light</string>
     <string name="theme_mode_dark">Dark</string>
+    <string name="theme_mode_amoled">AMOLED</string>
     <string name="theme_mode_follow_device">Follow Device</string>
     <string name="color_scheme">Color Scheme</string>
     <string name="color_scheme_midnight">Midnight</string>
@@ -789,6 +793,7 @@
     <string name="generate_title">Generate Title</string>
     <string name="rename">Rename</string>
     <string name="delete">Delete</string>
+    <string name="reply">Reply</string>
     <string name="rename_chat">Rename Chat</string>
     <string name="delete_chat">Delete Chat?</string>
     <string name="delete_chat_confirm">Are you sure you want to delete this conversation? This action cannot be undone.</string>

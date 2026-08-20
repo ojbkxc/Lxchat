@@ -248,6 +248,7 @@ internal fun ChatAppBottomBarSection(
                             onVoiceConversationToggle = onVoiceConversationToggle,
                             onSingleAsrToggle = onSingleAsrToggle,
                             onStopSingleAsr = onStopSingleAsr,
+                            onToast = viewModel::emitSnackbar,
                         )
                     }
                 }

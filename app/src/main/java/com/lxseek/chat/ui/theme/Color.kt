@@ -72,3 +72,40 @@ private fun DynamicScheme.toColorScheme(): ColorScheme {
         outline = c(outline), outlineVariant = c(outlineVariant),
     )
 }
+
+/** AMOLED true-black color scheme for OLED power savings.
+ *
+ *  Background and surface are pure #000000 so OLED panels can power off those pixels.
+ *  Foreground tones are tuned for WCAG AA contrast against pure black. Containers use a
+ *  near-black (#1D1B26) so elevated surfaces remain distinguishable without grey elevation. */
+fun amoledDarkColorScheme(): ColorScheme = darkColorScheme(
+    primary = Color(0xFF6750A4),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFF1D1B26),
+    onPrimaryContainer = Color(0xFFEADDFF),
+    secondary = Color(0xFFCCC2DC),
+    onSecondary = Color(0xFF000000),
+    secondaryContainer = Color(0xFF1D1B26),
+    onSecondaryContainer = Color(0xFFE8DEF8),
+    tertiary = Color(0xFFEFB8C8),
+    onTertiary = Color(0xFF000000),
+    tertiaryContainer = Color(0xFF1D1B26),
+    onTertiaryContainer = Color(0xFFFFD8E4),
+    error = Color(0xFFB3261E),
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFF1D1B26),
+    onErrorContainer = Color(0xFFF9DEDC),
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFE3E3E3),
+    surface = Color(0xFF000000),
+    onSurface = Color(0xFFE3E3E3),
+    surfaceVariant = Color(0xFF121212),
+    onSurfaceVariant = Color(0xFFCAC4D0),
+    outline = Color(0xFF938F99),
+    outlineVariant = Color(0xFF49454F),
+    scrim = Color(0xFF000000),
+    inverseSurface = Color(0xFFE3E3E3),
+    inverseOnSurface = Color(0xFF000000),
+    inversePrimary = Color(0xFF6750A4),
+    surfaceTint = Color(0xFF6750A4),
+)

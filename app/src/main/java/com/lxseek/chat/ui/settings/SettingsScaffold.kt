@@ -163,6 +163,7 @@ fun CollapsingSettingsLazyScaffold(
     contentHorizontalPadding: Dp = 16.dp,
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
+    header: @Composable () -> Unit = {},
     content: LazyListScope.() -> Unit
 ) {
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -181,6 +182,7 @@ fun CollapsingSettingsLazyScaffold(
                 .padding(horizontal = contentHorizontalPadding),
             contentPadding = PaddingValues(top = statusBarTop + SettingsBarHeight)
         ) {
+            item { header() }
             content()
             item { Spacer(modifier = Modifier.height(32.dp)) }
         }
