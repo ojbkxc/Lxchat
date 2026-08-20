@@ -68,6 +68,7 @@ class TaskExecutionEngine(
     private val executionCoordinator: ConversationExecutionCoordinator,
     shellConfirmation: ShellConfirmationController,
     mcpToolProvider: McpToolProvider,
+    androidControlToolProvider: com.lxseek.chat.tool.AndroidAppControllerToolProvider,
     private val generationRegistry: ConversationStateRegistry,
     private val automationExecutionGate: AutomationExecutionGate = AutomationExecutionGate(),
     private val pauseConversationLoop: suspend (String) -> Unit = {},
@@ -191,7 +192,7 @@ class TaskExecutionEngine(
         providers = providerRegistry.all,
         context = appContext,
         sandboxFactory = sandboxFactory,
-        additionalToolProviders = listOf(mcpToolProvider),
+        additionalToolProviders = listOf(mcpToolProvider, androidControlToolProvider),
     ).also {
         // Foreground Task/Loop executions share the exact same prompt and session trust state as
         // Chat. ShellConfirmationController itself fails fast when no Activity is visible.

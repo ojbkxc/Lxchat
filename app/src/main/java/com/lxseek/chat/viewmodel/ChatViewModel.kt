@@ -78,6 +78,7 @@ class ChatViewModel(
     private val shellConfirmation: ShellConfirmationController,
     private val mcpRegistry: com.lxseek.chat.mcp.McpRegistry,
     private val mcpToolProvider: com.lxseek.chat.tool.McpToolProvider,
+    private val androidControlToolProvider: com.lxseek.chat.tool.AndroidAppControllerToolProvider,
     private val taskExecutionEngine: com.lxseek.chat.automation.TaskExecutionEngine,
 ) : AndroidViewModel(application) {
 
@@ -246,7 +247,7 @@ class ChatViewModel(
             providers = providerRegistry.all,
             context = appContext,
             sandboxFactory = sandboxFactory,
-            additionalToolProviders = listOf(automationToolProvider, mcpToolProvider),
+            additionalToolProviders = listOf(automationToolProvider, mcpToolProvider, androidControlToolProvider),
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
             gm.onMessagePersisted = { messageId, text -> ragManager.indexMessageForRag(messageId, text) }

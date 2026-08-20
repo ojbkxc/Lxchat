@@ -14,6 +14,7 @@ import com.lxseek.chat.automation.LoopManager
 import com.lxseek.chat.automation.ConversationExecutionCoordinator
 import com.lxseek.chat.automation.AutomationExecutionGate
 import com.lxseek.chat.tool.AutomationToolProvider
+import com.lxseek.chat.tool.AndroidAppControllerToolProvider
 import com.lxseek.chat.tool.McpToolProvider
 import com.lxseek.chat.mcp.McpRegistry
 import com.lxseek.chat.data.local.ChatDao
@@ -44,6 +45,7 @@ class ChatViewModelFactory(
     private val shellConfirmationController: ShellConfirmationController,
     private val mcpRegistry: McpRegistry,
     private val mcpToolProvider: McpToolProvider,
+    private val androidControlToolProvider: AndroidAppControllerToolProvider,
     private val taskExecutionEngine: TaskExecutionEngine,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -54,7 +56,7 @@ class ChatViewModelFactory(
                 autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
                 taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-                mcpRegistry, mcpToolProvider, taskExecutionEngine,
+                mcpRegistry, mcpToolProvider, taskExecutionEngine, androidControlToolProvider,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

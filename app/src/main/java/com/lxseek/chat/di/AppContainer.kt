@@ -18,6 +18,7 @@ import com.lxseek.chat.automation.LoopManager
 import com.lxseek.chat.automation.TaskExecutionEngine
 import com.lxseek.chat.automation.TaskManager
 import com.lxseek.chat.tool.AutomationToolProvider
+import com.lxseek.chat.tool.AndroidAppControllerToolProvider
 import com.lxseek.chat.tool.McpToolProvider
 import com.lxseek.chat.mcp.McpRegistry
 import com.lxseek.chat.sandbox.SandboxManagerFactory
@@ -136,6 +137,11 @@ class AppContainer(private val appContext: Context) {
         McpToolProvider(mcpRegistry)
     }
 
+    /** Text-model device control: read the current app's UI tree and click/type in it. */
+    val androidControlToolProvider: AndroidAppControllerToolProvider by lazy {
+        AndroidAppControllerToolProvider(application)
+    }
+
     /** Lets native import quiesce Task/Loop generation without serializing ordinary executions. */
     val automationExecutionGate: AutomationExecutionGate by lazy { AutomationExecutionGate() }
 
@@ -189,6 +195,7 @@ class AppContainer(private val appContext: Context) {
             shellConfirmation = shellConfirmationController,
             automationExecutionGate = automationExecutionGate,
             mcpToolProvider = mcpToolProvider,
+            androidControlToolProvider = androidControlToolProvider,
             generationRegistry = conversationStateRegistry,
             pauseConversationLoop = { conversationId -> loopManager.stopLoop(conversationId) },
         )
@@ -253,5 +260,6 @@ class AppContainer(private val appContext: Context) {
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, mcpToolProvider, taskExecutionEngine,
+            androidControlToolProvider,
         )
 }

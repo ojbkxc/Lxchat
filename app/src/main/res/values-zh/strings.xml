@@ -596,6 +596,8 @@
     <string name="settings_app_name_desc">自定义顶部栏显示的名称</string>
     <string name="settings_app_name_hint">输入软件名称</string>
     <string name="settings_app_name_reset">恢复默认</string>
+    <string name="android_controller_service_label">LxChat 应用控制</string>
+    <string name="android_controller_service_desc">让 LxChat 读取当前屏幕并在应用内点击/输入（例如打开应用、在微信里发消息），由你通过助手语音或文字下达指令时生效。</string>
     <string name="blur_effects">模糊效果</string>
     <string name="blur_effects_desc">对聊天列表顶部工具栏下方应用模糊。关闭可节省性能。</string>
     <string name="reduce_motion">减少动态效果</string>

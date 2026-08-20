@@ -647,6 +647,8 @@
     <string name="settings_app_name_desc">Customize the name displayed in the top bar</string>
     <string name="settings_app_name_hint">Enter app name</string>
     <string name="settings_app_name_reset">Reset to default</string>
+    <string name="android_controller_service_label">LxChat App Control</string>
+    <string name="android_controller_service_desc">Lets LxChat read the current screen and tap / type inside apps (e.g. open an app, send in WeChat) when you ask it to via the assistant.</string>
     <string name="theme_mode">Theme Mode</string>
     <string name="theme_mode_light">Light</string>
     <string name="theme_mode_dark">Dark</string>
