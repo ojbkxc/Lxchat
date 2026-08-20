@@ -30,6 +30,20 @@
 
 **LxChat** — a BYOK Android client for AI power users. Connect to 9+ built-in providers (plus unlimited custom endpoints) with your own keys, branch conversations non-linearly, run models locally via llama.cpp, control remote machines through encrypted shell, and automate workflows on a schedule. Everything stored on-device, nothing logged elsewhere. Open source, MIT licensed.
 
+## Based On
+
+LxChat is a derivative project based on **[Agora](https://github.com/ojbkxc/Agora)**. It absorbs Agora's full feature set and continues its development under a new name. Capabilities carried over from Agora include:
+
+- **Multi-provider BYOK access** — connect to 9+ LLM providers with your own keys, plus unlimited custom endpoints
+- **Tree-structured branching conversations** — edit any past message and explore alternative branches without losing context
+- **On-device inference** — local GGUF models via llama.cpp, fully offline
+- **Agentic tool chains** — web search, code execution, image generation, memory, and RAG over chat history
+- **Conch encrypted remote shell** — ECDH + AES-256-GCM end-to-end encrypted remote device control
+- **Automation & scheduling** — cron-style and looping timed workflows
+- **Privacy-first design** — everything stored locally, no telemetry
+
+The internal identifiers (`agora_db`, `agora_llama`, `agora_proot`, the `Agora*` class names, etc.) have been fully renamed to `lxchat*` so the original token no longer appears anywhere in the source or the built APK.
+
 ## Screenshots
 
 <table>
