@@ -24,13 +24,15 @@ android {
     ndkVersion = "28.2.13676358"
 
     // Version: prefer gradle properties (passed by CI from git tag) over hardcoded fallback.
-    // Release flow: git tag v1.0.62 && git push origin v1.0.62 -> CI extracts 1.0.62 and
-    // passes -PappVersionName=1.0.62. Local builds without the property use the fallback below.
+    // LxChat is a fresh repo versioned from v1.0.0.
     val appVersionName: String = (project.findProperty("appVersionName") as String?)
-        ?: "1.0.62"
+        ?: "1.0.0"
+    // versionCode must be a positive integer (Android rejects 0). Derive from
+    // CI-provided appVersionCode, else bump to at least 1 from the last segment
+    // (v1.0.0 -> 1, v1.0.1 -> 1, v1.5.3 -> 3). Fall back to 1 locally.
     val appVersionCode: Int = (project.findProperty("appVersionCode") as String?)?.toIntOrNull()
-        ?: appVersionName.substringAfterLast(".").toIntOrNull()
-        ?: 63
+        ?: appVersionName.substringAfterLast(".").toIntOrNull()?.coerceAtLeast(1)
+        ?: 1
 
     defaultConfig {
         applicationId = "com.lxseek.chat"
@@ -151,14 +153,18 @@ tasks.register<Copy>("copyPlayBundle") {
 }
 
 afterEvaluate {
-    tasks.named("assemblePlayRelease") {
-        finalizedBy("copyPlayApk")
+    if (tasks.findByName("assemblePlayRelease") != null) {
+        tasks.named("assemblePlayRelease") {
+            finalizedBy("copyPlayApk")
+        }
     }
     tasks.named("assembleFdroidRelease") {
         finalizedBy("copyFdroidApk")
     }
-    tasks.named("bundlePlayRelease") {
-        finalizedBy("copyPlayBundle")
+    if (tasks.findByName("bundlePlayRelease") != null) {
+        tasks.named("bundlePlayRelease") {
+            finalizedBy("copyPlayBundle")
+        }
     }
 }
 
