@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.lxseek.chat.data.isOpenAiProtocolProvider
 import com.lxseek.chat.api.util.contextWindowUsage
 import com.lxseek.chat.api.util.expandSelectedToolProtocolRows
+import com.lxseek.chat.util.InboundTextBridge
 import com.lxseek.chat.util.gradientBlur
 import com.lxseek.chat.model.ContextBudget
 import com.lxseek.chat.ui.components.AnimatedBlobBackground
@@ -305,6 +306,15 @@ fun ChatApp(
         if (!error.isNullOrEmpty()) {
             viewModel.emitSnackbar(error)
             viewModel.voiceConversation.clearSingleAsrError()
+        }
+    }
+    // System "select text" (PROCESS_TEXT) tokens: surface them into the composer once visible.
+    val inboundText by InboundTextBridge.text.collectAsState()
+    LaunchedEffect(inboundText) {
+        val text = inboundText
+        if (!text.isNullOrBlank()) {
+            textFieldState.edit { replace(0, length, text) }
+            InboundTextBridge.consume()
         }
     }
     val composer = com.lxseek.chat.ui.chat.bottombar.rememberChatComposerState()

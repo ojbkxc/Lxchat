@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.androidcontrol.AndroidUiControllerService
 import com.lxseek.chat.model.ModelId
+import com.lxseek.chat.model.apiModelName
 import com.lxseek.chat.util.TtsManager
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay

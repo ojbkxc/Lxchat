@@ -170,7 +170,10 @@ fun SettingsModelPlazaPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         }
 
         item(key = "plaza_section_discover") {
-            SectionLabel(text = stringResource(R.string.plaza_discover))
+            SectionLabel(
+                text = stringResource(R.string.plaza_discover),
+                firstInPage = false,
+            )
         }
 
         items(discoverableProviders, key = { "plaza_provider_$it" }) { provider ->
