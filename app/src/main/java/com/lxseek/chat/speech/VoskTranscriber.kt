@@ -109,6 +109,49 @@ class VoskTranscriber(private val context: Context) {
 
         fun getBaseLanguageCode(code: String): String =
             code.split("-").first()
+
+        private val CJK_RANGES = arrayOf(
+            '\u3400'..'\u4DBF',  // CJK Ext A
+            '\u4E00'..'\u9FFF',  // CJK Unified
+            '\uF900'..'\uFAFF',  // CJK Compat
+            '\u3000'..'\u303F',  // CJK Symbols / punctuation
+            '\uFF00'..'\uFFEF',  // Fullwidth forms（，。？：！「」）
+        )
+
+        private fun isCjkChar(ch: Char): Boolean {
+            val cp = ch.code
+            for (range in CJK_RANGES) if (cp in range.first.code..range.last.code) return true
+            return false
+        }
+
+        /**
+         * Vosk's zh models emit every word space-separated (e.g. "减慢 晚上 前 了 我 教养 桂花"),
+         * which is noisy for a chat input box. This compacts adjacent CJK segments into a natural
+         * stream while preserving punctuation and leaving non-Chinese text (English, numbers,
+         * timestamps untouched), so output stays readable for any language.
+         */
+        fun normalizeResult(raw: String): String {
+            if (raw.isBlank()) return raw
+            val tokens = raw.trim().split(' ')
+            val sb = StringBuilder(tokens.sumOf { it.length } + raw.length / 2)
+            for ((index, token) in tokens.withIndex()) {
+                if (index > 0) {
+                    val prevChar = sb.last()
+                    val nextChar = token.firstOrNull() ?: ' '
+                    if (isCjkChar(prevChar) && isCjkChar(nextChar)) {
+                        // join two CJK tokens without a space; skip otherwise
+                    } else {
+                        sb.append(' ')
+                    }
+                }
+                sb.append(token)
+            }
+            val joined = sb.toString().trim()
+            // Clean stray full/half-width whitespace that can appear around CJK punctuation.
+            return joined.replace(Regex("\\s+([，。、；：！？〕」』\\)]|[,.;:!?)])(?=\\s*[\\u3400-\\u9FFF\\uFF00-\\uFFEF])")) { m ->
+                m.groupValues[1]
+            }.trim()
+        }
     }
 
     data class LanguageModel(
@@ -455,7 +498,8 @@ class VoskTranscriber(private val context: Context) {
 
                 val finalResult = mergeMultilingualResults(primaryResult, secondaryResult)
                 Log.i(TAG, "Multilingual transcription: $finalResult")
-                return@withContext finalResult.ifBlank {
+                val normalizedMixed = normalizeResult(finalResult)
+                return@withContext normalizedMixed.ifBlank {
                     "[Could not transcribe audio - speak louder or closer to mic]"
                 }
             }
@@ -465,7 +509,7 @@ class VoskTranscriber(private val context: Context) {
             }
 
             Log.i(TAG, "Transcription ($currentLanguage): $primaryResult")
-            return@withContext primaryResult.trim()
+            return@withContext normalizeResult(primaryResult)
 
         } catch (e: Exception) {
             Log.e(TAG, "Transcription failed for $currentLanguage", e)
@@ -682,7 +726,7 @@ class VoskTranscriber(private val context: Context) {
                 val hasResult = recognizer.acceptWaveForm(pcmData, pcmData.size)
                 if (hasResult) {
                     val finalJson = recognizer.finalResult
-                    val finalText = JSONObject(finalJson).optString("text", "").trim()
+                    val finalText = normalizeResult(JSONObject(finalJson).optString("text", "").trim())
                     recognizer.reset()
                     Log.d(TAG, "stream endpoint detected by Vosk: final='$finalText'")
                     if (finalText.isNotBlank()) {
@@ -690,7 +734,7 @@ class VoskTranscriber(private val context: Context) {
                     }
                 } else {
                     val partialJson = recognizer.partialResult
-                    val partialText = JSONObject(partialJson).optString("partial", "")
+                    val partialText = normalizeResult(JSONObject(partialJson).optString("partial", ""))
                     if (partialText.isNotBlank()) {
                         Log.d(TAG, "stream partial: $partialText")
                         callback.onPartialResult(partialText)
@@ -712,7 +756,7 @@ class VoskTranscriber(private val context: Context) {
             val recognizer = streamingRecognizer ?: return null
             return try {
                 val finalJson = recognizer.finalResult
-                val finalText = JSONObject(finalJson).optString("text", "").trim()
+                val finalText = normalizeResult(JSONObject(finalJson).optString("text", "").trim())
                 recognizer.reset()
                 Log.d(TAG, "endSegment: '$finalText'")
                 finalText.takeIf { it.isNotBlank() }
