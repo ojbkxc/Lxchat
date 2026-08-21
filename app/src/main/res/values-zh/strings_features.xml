@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_group_insights">洞察</string>
+    <string name="settings_statistics">用量统计</string>
+    <string name="settings_statistics_desc">会话、消息与 Token 用量</string>
+    <string name="stats_refresh">刷新</string>
+    <string name="stats_overview">概览</string>
+    <string name="stats_conversations">会话数</string>
+    <string name="stats_messages">消息数</string>
+    <string name="stats_output_tokens">输出 Token</string>
+    <string name="stats_runs">运行次数</string>
+    <string name="stats_token_breakdown">Token 明细</string>
+    <string name="stats_input_tokens">输入 Token</string>
+    <string name="stats_reasoning_tokens">思考 Token</string>
+    <string name="stats_details">明细</string>
+    <string name="stats_user_messages">用户消息</string>
+    <string name="stats_model_messages">模型回复</string>
+    <string name="stats_scheduled_tasks">定时任务</string>
+    <string name="stats_by_model">按模型统计</string>
+    <string name="stats_no_models">暂无模型用量记录</string>
+    <string name="stats_trend">近 30 天</string>
+    <string name="stats_empty_title">还没有会话</string>
+    <string name="stats_empty_desc">开始对话后，这里会展示你的用量统计。</string>
+    <string name="stats_messages_count">%1$d 条消息</string>
+    <string name="stats_no_activity">该时段暂无活动</string>
+    <string name="stats_messages_per_day">每日消息数</string>
+</resources>

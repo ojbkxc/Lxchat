@@ -28,7 +28,7 @@ private fun encodeSelectionMap(selections: Map<String?, String>): String =
     Json.encodeToString(selections.mapKeys { it.key ?: "null" })
 
 @Dao
-interface ChatDao : ChatAutomationDao {
+interface ChatDao : ChatAutomationDao, ChatStatisticsDao {
     // Task executions always remain in their owning Task's History.
     @Query("SELECT * FROM conversations WHERE taskId IS NULL ORDER BY lastUpdated DESC")
     fun getAllConversations(): Flow<List<ChatEntity>>

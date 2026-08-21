@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_group_insights">Insights</string>
+    <string name="settings_statistics">Usage statistics</string>
+    <string name="settings_statistics_desc">Conversations, messages, and token usage</string>
+    <string name="stats_refresh">Refresh</string>
+    <string name="stats_overview">Overview</string>
+    <string name="stats_conversations">Conversations</string>
+    <string name="stats_messages">Messages</string>
+    <string name="stats_output_tokens">Output tokens</string>
+    <string name="stats_runs">Runs</string>
+    <string name="stats_token_breakdown">Token breakdown</string>
+    <string name="stats_input_tokens">Input tokens</string>
+    <string name="stats_reasoning_tokens">Reasoning tokens</string>
+    <string name="stats_details">Details</string>
+    <string name="stats_user_messages">User messages</string>
+    <string name="stats_model_messages">Model replies</string>
+    <string name="stats_scheduled_tasks">Scheduled tasks</string>
+    <string name="stats_by_model">By model</string>
+    <string name="stats_no_models">No model usage recorded yet</string>
+    <string name="stats_trend">Last 30 days</string>
+    <string name="stats_empty_title">No conversations yet</string>
+    <string name="stats_empty_desc">Start chatting to see your usage statistics here.</string>
+    <string name="stats_messages_count">%1$d messages</string>
+    <string name="stats_no_activity">No activity in this period</string>
+    <string name="stats_messages_per_day">Messages per day</string>
+</resources>

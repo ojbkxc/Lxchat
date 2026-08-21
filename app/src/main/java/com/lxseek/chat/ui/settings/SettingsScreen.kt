@@ -272,6 +272,9 @@ private val settingsGroups = listOf(
         SettingsCategory("appearance", R.string.settings_appearance, R.string.settings_appearance_desc, Icons.Default.Palette),
         SettingsCategory("language", R.string.language_title, R.string.language_desc, Icons.Default.Translate),
     )),
+    SettingsGroupData(titleRes = R.string.settings_group_insights, items = listOf(
+        SettingsCategory("statistics", R.string.settings_statistics, R.string.settings_statistics_desc, Icons.Default.BarChart),
+    )),
     SettingsGroupData(titleRes = R.string.settings_group_about, items = listOf(
         SettingsCategory("about", R.string.settings_about, R.string.settings_about_desc, Icons.Default.Info),
     )),
@@ -324,6 +327,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "transcription" -> SettingsTranscriptionPage(viewModel, onBack = { selectedCategory = null })
                 "search" -> SettingsSearchPage(viewModel, onBack = { selectedCategory = null })
                 "memory" -> SettingsMemoryPage(viewModel, onBack = { selectedCategory = null })
+                "statistics" -> SettingsStatisticsPage(viewModel, onBack = { selectedCategory = null })
                 "datacontrol" -> SettingsDataControlPage(viewModel, onBack = { selectedCategory = null })
                 "appearance" -> SettingsAppearancePage(viewModel, onBack = { selectedCategory = null })
                 "about" -> SettingsAboutPage(viewModel, onBack = { selectedCategory = null })
