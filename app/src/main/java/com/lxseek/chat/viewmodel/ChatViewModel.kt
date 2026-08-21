@@ -19,9 +19,7 @@ import com.lxseek.chat.data.DataExporter
 import com.lxseek.chat.data.DataImporter
 import com.lxseek.chat.data.MemoryManager
 import com.lxseek.chat.data.PredefinedVariables
-
 import com.lxseek.chat.data.ShellDeviceConfig
-
 import com.lxseek.chat.data.local.ChatEntity
 import com.lxseek.chat.data.local.GlobalSearchResult
 import com.lxseek.chat.data.repository.ConversationRepository
@@ -362,12 +360,10 @@ class ChatViewModel(
 
     // ── Remote shell command confirmation gate ───────────────────────────
     /** Shell-command confirmation policy + pending-prompt handshake (see [ShellConfirmationController]). */
-    val pendingShellCommand: StateFlow<ShellConfirmationController.PendingShellCommand?>
-        get() = shellConfirmation.pendingShellCommand
+    val pendingShellCommand: StateFlow<ShellConfirmationController.PendingShellCommand?> get() = shellConfirmation.pendingShellCommand
 
     /** Called by the UI to resolve a pending confirmation. */
-    fun resolveShellConfirmation(allow: Boolean, alwaysAllowServer: Boolean = false) =
-        shellConfirmation.resolve(allow, alwaysAllowServer)
+    fun resolveShellConfirmation(allow: Boolean, alwaysAllowServer: Boolean = false) = shellConfirmation.resolve(allow, alwaysAllowServer)
 
     fun setShellConfirmEnabled(enabled: Boolean) = shellConfirmation.setEnabled(enabled)
     val pendingQuestion get() = generationManager.askUserController.pendingQuestion
@@ -630,8 +626,7 @@ class ChatViewModel(
 
     val isNewChatMode: StateFlow<Boolean> get() = selectionController.isNewChatMode
     val newChatEntryId: StateFlow<Long> get() = selectionController.newChatEntryId
-    val isTransitioningToNewChat: StateFlow<Boolean>
-        get() = selectionController.isTransitioningToNewChat
+    val isTransitioningToNewChat: StateFlow<Boolean> get() = selectionController.isTransitioningToNewChat
 
     private val _pendingSystemPromptId = MutableStateFlow<String?>(null)
     val pendingSystemPromptId: StateFlow<String?> = _pendingSystemPromptId.asStateFlow()
@@ -803,12 +798,8 @@ class ChatViewModel(
         protocol: com.lxseek.chat.data.CustomEndpointProtocol =
             com.lxseek.chat.data.CustomEndpointProtocol.OPENAI,
     ) = customModelConfiguration.addProvider(name, baseUrl, protocol)
-    fun renameCustomProvider(oldName: String, newName: String) =
-        customModelConfiguration.renameProvider(oldName, newName)
-    fun updateCustomProviderProtocol(
-        name: String,
-        protocol: com.lxseek.chat.data.CustomEndpointProtocol,
-    ) = customModelConfiguration.updateProviderProtocol(name, protocol)
+    fun renameCustomProvider(oldName: String, newName: String) = customModelConfiguration.renameProvider(oldName, newName)
+    fun updateCustomProviderProtocol(name: String, protocol: com.lxseek.chat.data.CustomEndpointProtocol) = customModelConfiguration.updateProviderProtocol(name, protocol)
     fun deleteCustomProvider(name: String) = customModelConfiguration.deleteProvider(name)
 
     fun updateCustomModel(
@@ -832,8 +823,7 @@ class ChatViewModel(
             UpdateChecker.check(getCurrentVersion())
         }
     }
-    suspend fun semanticSearch(query: String, limit: Int = 20) =
-        semanticSearchService.search(query, limit)
+    suspend fun semanticSearch(query: String, limit: Int = 20) = semanticSearchService.search(query, limit)
     suspend fun searchMessages(query: String, limit: Int = 20) = convRepo.searchMessages(query, limit)
     fun searchMessagesGlobally(query: String): Flow<List<GlobalSearchResult>> =
         convRepo.searchMessagesGlobally(query)
@@ -852,45 +842,30 @@ class ChatViewModel(
         )
     }
 
-    suspend fun verifySshHostKey(
-        host: String, port: Int, user: String, password: String
-    ): Result<Pair<String, String>> = sshHostKeyVerifier.verify(host, port, user, password)
+    suspend fun verifySshHostKey(host: String, port: Int, user: String, password: String): Result<Pair<String, String>> = sshHostKeyVerifier.verify(host, port, user, password)
 
-    suspend fun testRemoteEmbedding(
-        modelName: String,
-        baseUrl: String,
-        apiKey: String = "",
-    ): String? = remoteEmbeddingConnectionTester.test(modelName, baseUrl, apiKey)
+    suspend fun testRemoteEmbedding(modelName: String, baseUrl: String, apiKey: String = ""): String? = remoteEmbeddingConnectionTester.test(modelName, baseUrl, apiKey)
 
     fun createNewChat() = selectionController.createNewChat()
 
-    fun selectConversation(
-        id: String,
-        hapticOnCompletion: Boolean = true,
-    ) = selectionController.selectConversation(id, hapticOnCompletion)
+    fun selectConversation(id: String, hapticOnCompletion: Boolean = true) = selectionController.selectConversation(id, hapticOnCompletion)
 
-    fun forkConversationFrom(messageId: String? = null) =
-        conversationForkShareController.fork(messageId)
+    fun forkConversationFrom(messageId: String? = null) = conversationForkShareController.fork(messageId)
 
     fun shareConversation() = conversationForkShareController.shareConversation()
 
-    fun shareGeneration(assistantMessageId: String) =
-        conversationForkShareController.shareGeneration(assistantMessageId)
+    fun shareGeneration(assistantMessageId: String) = conversationForkShareController.shareGeneration(assistantMessageId)
 
-    fun shareMessages(messageIds: Set<String>) =
-        conversationForkShareController.shareMessages(messageIds)
+    fun shareMessages(messageIds: Set<String>) = conversationForkShareController.shareMessages(messageIds)
 
     private val messageExportController by lazy {
         MessageExportController(conversationForkShare, appContext, viewModelScope) { _snackbarMessage.emit(it) }
     }
-    fun copyMessagesAsPlainText(messageIds: Set<String>) =
-        messageExportController.copyMessagesAsPlainText(currentConversationId.value, messageIds)
+    fun copyMessagesAsPlainText(messageIds: Set<String>) = messageExportController.copyMessagesAsPlainText(currentConversationId.value, messageIds)
 
-    fun shareMessagesAsLongImage(messageIds: Set<String>, title: String) =
-        messageExportController.shareMessagesAsLongImage(currentConversationId.value, messageIds, title)
+    fun shareMessagesAsLongImage(messageIds: Set<String>, title: String) = messageExportController.shareMessagesAsLongImage(currentConversationId.value, messageIds, title)
 
-    fun saveLongImageToGallery(messageIds: Set<String>, title: String) =
-        messageExportController.saveLongImageToGallery(currentConversationId.value, messageIds, title)
+    fun saveLongImageToGallery(messageIds: Set<String>, title: String) = messageExportController.saveLongImageToGallery(currentConversationId.value, messageIds, title)
 
     fun renameConversation(id: String, newTitle: String) {
         conversationLifecycleController.rename(id, newTitle)
@@ -973,11 +948,9 @@ class ChatViewModel(
 
     fun regenerate(messageId: String): Boolean = generationController.regenerate(messageId)
 
-    fun switchBranch(parentId: String?, currentMessageId: String, direction: Int) =
-        selectionController.switchBranch(parentId, currentMessageId, direction)
+    fun switchBranch(parentId: String?, currentMessageId: String, direction: Int) = selectionController.switchBranch(parentId, currentMessageId, direction)
 
-    suspend fun editMessage(messageId: String, newText: String): Boolean =
-        generationController.editMessage(messageId, newText)
+    suspend fun editMessage(messageId: String, newText: String): Boolean = generationController.editMessage(messageId, newText)
     suspend fun sendMessage(
         text: String,
         images: List<String> = emptyList(),
@@ -994,8 +967,7 @@ class ChatViewModel(
         return composerSendAdapter.sendMessage(text, images, attachments, onAccepted)
     }
 
-    suspend fun fetchModelsForProvider(name: String): List<String> =
-        providerModelSyncUi.fetchModelsForProvider(name)
+    suspend fun fetchModelsForProvider(name: String): List<String> = providerModelSyncUi.fetchModelsForProvider(name)
 
     fun computeProviderFingerprint(): String = providerModelSyncUi.computeFingerprint()
 
