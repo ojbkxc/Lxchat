@@ -164,11 +164,15 @@ class TaskManager(
         prompt: String,
         cronExpr: String,
         modelId: String?,
+        runAt: Long? = null,
     ): TaskEntity {
         require(name.isNotBlank()) { "Task name is required" }
         require(prompt.isNotBlank()) { "Task prompt is required" }
         require(cronExpr.isBlank() || CronExpression.isValid(cronExpr)) {
             "Invalid cron expression: $cronExpr"
+        }
+        require(runAt == null || cronExpr.isBlank()) {
+            "A one-shot runAt cannot be combined with a cron expression"
         }
         val task = TaskEntity(
             id = UUID.randomUUID().toString(),
@@ -176,6 +180,7 @@ class TaskManager(
             prompt = prompt.trim(),
             modelId = modelId?.trim()?.takeIf { it.isNotEmpty() },
             cronExpr = cronExpr.trim(),
+            runAt = runAt,
             nextRunAt = 0L,
         )
         saveTask(task)

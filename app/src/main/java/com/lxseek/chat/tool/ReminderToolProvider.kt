@@ -4,10 +4,10 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
-import com.lxseek.chat.automation.CronExpression
 import com.lxseek.chat.automation.TaskManager
 import com.lxseek.chat.viewmodel.GenerationContext
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -84,21 +84,11 @@ class ReminderToolProvider(
                 message.isEmpty() -> return error("message is required")
                 time.isEmpty() -> return error("time is required")
             }
-            val cron = buildCron(type, time)
-            if (!CronExpression.isValid(cron)) return error("Computed invalid cron: $cron")
-            val task = taskManager.createTask(
-                name = "Reminder · ${message.take(24)}",
-                prompt = "Reminder: $message. Deliver this reminder clearly to the user.",
-                cronExpr = cron,
-                modelId = null,
-            )
-            buildJsonObject {
-                put("type", SCHEDULE_REMINDER)
-                put("cron", cron)
-                put("message", message)
-                put("task_id", task.id)
-                put("enabled", task.enabled)
-            }.toString()
+            when (type) {
+                "recurring" -> scheduleRecurring(time, message)
+                "one_off_short", "one_off_long" -> scheduleOneOff(time, type, message)
+                else -> error("type must be one of: recurring, one_off_short, one_off_long")
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -106,42 +96,62 @@ class ReminderToolProvider(
         }
     }
 
-    /**
-     * Translate a structured reminder request into a sparing 5-field cron.
-     * - recurring:        "HH:MM" -> "M H * * *"
-     * - one_off_short:    "YYYY-MM-DD HH:MM" -> "M H D Mo *"  (fires that day, not annually-repeating concern for the near future)
-     * - one_off_long:     same as short, but validated to lie in the future.
-     */
-    private fun buildCron(type: String, time: String): String = when (type) {
-        "recurring" -> parseRecurring(time)
-        "one_off_short", "one_off_long" -> parseOneOff(time, type)
-        else -> error("type must be one of: recurring, one_off_short, one_off_long")
-    }
-
-    private fun parseRecurring(time: String): String {
+    /** Daily-repeating reminder: "HH:MM" -> a sparing 5-field cron "M H * * *". */
+    private suspend fun scheduleRecurring(time: String, message: String): String {
         val hm = Regex("""^(\d{1,2}):(\d{2})$""").matchEntire(time.trim())
         if (hm == null) return error("recurring time must be 24h \"HH:MM\" (e.g. 08:00)")
         val hour = hm.groupValues[1].toInt()
         val minute = hm.groupValues[2].toInt()
         if (hour !in 0..23 || minute !in 0..59) return error("recurring time out of range: $time")
-        return "$minute $hour * * *"
+        val cron = "$minute $hour * * *"
+        val task = taskManager.createTask(
+            name = "Reminder · ${message.take(24)}",
+            prompt = "Reminder: $message. Deliver this reminder clearly to the user.",
+            cronExpr = cron,
+            modelId = null,
+        )
+        return buildJsonObject {
+            put("type", SCHEDULE_REMINDER)
+            put("cron", cron)
+            put("message", message)
+            put("task_id", task.id)
+            put("enabled", task.enabled)
+        }.toString()
     }
 
-    private fun parseOneOff(time: String, type: String): String {
+    /** One-shot reminder: a true one-time task via [TaskManager.createTask] runAt, so it never repeats. */
+    private suspend fun scheduleOneOff(time: String, type: String, message: String): String {
         val dt = parseDateTime(time)
-        if (dt == null) return error("one-off time must be absolute \"YYYY-MM-DD HH:MM\", e.g. 2024-05-29 14:30")
+            ?: return error("one-off time must be absolute \"YYYY-MM-DD HH:MM\", e.g. 2024-05-29 14:30")
         val now = LocalDateTime.now()
         if (type == "one_off_short") {
             val diffMin = TimeUnit.MILLISECONDS.toMinutes(
                 java.time.Duration.between(now, dt).toMillis(),
             )
             if (diffMin < 0 || diffMin > 10) {
-                error("one_off_short must target within 10 minutes from now; got $diffMin min")
+                return error("one_off_short must target within 10 minutes from now; got $diffMin min")
             }
         } else if (dt <= now) {
-            error("one_off_long target time must be in the future: $time")
+            return error("one_off_long target time must be in the future: $time")
         }
-        return "${dt.minute} ${dt.hour} ${dt.dayOfMonth} ${dt.monthValue} *"
+        val runAt = dt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        if (runAt <= System.currentTimeMillis()) {
+            return error("one-off target time is already past: $time")
+        }
+        val task = taskManager.createTask(
+            name = "Reminder · ${message.take(24)}",
+            prompt = "Reminder: $message. Deliver this reminder clearly to the user.",
+            cronExpr = "",
+            modelId = null,
+            runAt = runAt,
+        )
+        return buildJsonObject {
+            put("type", SCHEDULE_REMINDER)
+            put("run_at", runAt)
+            put("message", message)
+            put("task_id", task.id)
+            put("enabled", task.enabled)
+        }.toString()
     }
 
     private fun parseDateTime(s: String): LocalDateTime? = runCatching {
