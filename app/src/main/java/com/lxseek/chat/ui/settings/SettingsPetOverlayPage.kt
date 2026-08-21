@@ -1,7 +1,7 @@
 package com.lxseek.chat.ui.settings
 
-import android.provider.Settings
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewModelScope
 import com.lxseek.chat.R
 import com.lxseek.chat.pet.PetOverlayController
 import com.lxseek.chat.viewmodel.ChatViewModel

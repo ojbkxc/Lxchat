@@ -1,5 +1,6 @@
 package com.lxseek.chat.qs
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper

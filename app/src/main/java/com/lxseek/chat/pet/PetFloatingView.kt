@@ -113,7 +113,7 @@ class PetFloatingView @JvmOverloads constructor(
             MotionEvent.ACTION_MOVE -> {
                 val dx = (event.rawX - downRawX).toInt()
                 val dy = (event.rawY - downRawY).toInt()
-                if (!wasDragging && hypot(event.rawX - downRawX, event.rawY - downRawY) > DRAG_THRESHOLD_DP * density) {
+                if (!wasDragging && hypot(event.rawX - downRawX, event.rawY - downRawY) > DRAG_THRESHOLD_DP * resources.displayMetrics.density) {
                     wasDragging = true
                 }
                 if (wasDragging) {
