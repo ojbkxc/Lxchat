@@ -260,6 +260,7 @@ private val settingsGroups = listOf(
         SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
         SettingsCategory("device_control", R.string.settings_device_control, R.string.settings_device_control_desc, Icons.Default.Android),
         SettingsCategory("runtime_status", R.string.settings_runtime_status, R.string.settings_runtime_status_desc, Icons.Default.Speed),
+        SettingsCategory("pet_overlay", R.string.settings_pet_overlay, R.string.settings_pet_overlay_desc, Icons.Default.Android),
         SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
@@ -323,6 +324,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
                 "automation" -> SettingsAutomationPage(viewModel, onBack = { selectedCategory = null })
                 "device_control" -> SettingsDeviceControlPage(viewModel, onBack = { selectedCategory = null })
+                "pet_overlay" -> SettingsPetOverlayPage(viewModel, onBack = { selectedCategory = null })
                 "runtime_status" -> SettingsRuntimeStatusPage(viewModel, onBack = { selectedCategory = null })
                 "im_gateway" -> SettingsImGatewayPage(viewModel, onBack = { selectedCategory = null })
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })

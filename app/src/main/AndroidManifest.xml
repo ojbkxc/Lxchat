@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Draw-over-apps permission for the desktop-pet floating bubble. User-granted via the system
+         overlay screen; the pet stays inert until it is granted. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Optional user-granted access; exact automation remains off by default. -->
@@ -96,6 +99,13 @@
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
+        <!-- Hosts the draggable desktop-pet bubble on the system overlay. Runs only while the user
+             has granted SYSTEM_ALERT_WINDOW and the pet toggle is on. -->
+        <service
+            android:name=".pet.PetOverlayWindowService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
         <!-- Lets a text-only model read and act on the current app via the accessibility
              node tree. Inert until the user enables it in Accessibility settings. -->
         <service
@@ -135,6 +145,18 @@
             android:exported="true"
             android:icon="@drawable/ic_qs_accessibility"
             android:label="@string/qs_accessibility_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Quick Settings tile: toggle the desktop-pet floating bubble. -->
+        <service
+            android:name=".qs.PetToggleTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_pet"
+            android:label="@string/qs_pet_tile_label"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />

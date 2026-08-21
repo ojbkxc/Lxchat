@@ -75,6 +75,7 @@ internal val LOCAL_CHAT_MODELS_JSON = stringPreferencesKey("local_chat_models_js
 internal val CUSTOM_PROVIDERS_JSON = stringPreferencesKey("custom_providers_json")
 internal val SHELL_ENABLED = booleanPreferencesKey("shell_enabled")
 internal val AUTOMATION_TOOLS_ENABLED = booleanPreferencesKey("automation_tools_enabled")
+internal val PET_OVERLAY_ENABLED = booleanPreferencesKey("pet_overlay_enabled")
 internal val EXACT_EXECUTION_ENABLED = booleanPreferencesKey("exact_execution_enabled")
 internal val PROXY_ENABLED = booleanPreferencesKey("proxy_enabled")
 internal val PROXY_TYPE = stringPreferencesKey("proxy_type")

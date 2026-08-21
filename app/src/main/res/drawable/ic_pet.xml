@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Pet bubble head -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M12,2.5A9.5,9.5 0,0 1,21.5 12A9.5,9.5 0,0 1,12 21.5A9.5,9.5 0,0 1,2.5 12A9.5,9.5 0,0 1,12 2.5Z"/>
+    <!-- Left eye -->
+    <path android:fillColor="#3B82F6"
+        android:pathData="M8.4,10.4a1.1,1.1 0,1 1,-2.2 0a1.1,1.1 0,1 1,2.2 0Z"/>
+    <!-- Right eye -->
+    <path android:fillColor="#3B82F6"
+        android:pathData="M17.8,10.4a1.1,1.1 0,1 1,-2.2 0a1.1,1.1 0,1 1,2.2 0Z"/>
+    <!-- Smile -->
+    <path android:fillColor="#3B82F6"
+        android:pathData="M8.2,13.6a3.8,3.8 0,0 0,7.6 0l-1.7,-0.2a2.1,2.1 0,0 1,-4.2 0Z"/>
+</vector>

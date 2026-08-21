@@ -101,6 +101,18 @@ class AppContainer(private val appContext: Context) {
                 com.lxseek.chat.util.DebugLog.e("AppContainer", "zh Vosk model auto-download failed", e)
             }
         }
+        // Desktop pet: restore the floating bubble at launch when the user enabled it.
+        appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                // .first() waits for DataStore's first emission, so a cold start never races the
+                // persisted preference.
+                if (settingsManager.petOverlayEnabled.first()) {
+                    com.lxseek.chat.pet.PetOverlayWindowService.start(appContext)
+                }
+            } catch (e: Throwable) {
+                com.lxseek.chat.util.DebugLog.e("AppContainer", "Desktop pet startup restore failed", e)
+            }
+        }
     }
 
     val taskRepository: TaskRepository by lazy {

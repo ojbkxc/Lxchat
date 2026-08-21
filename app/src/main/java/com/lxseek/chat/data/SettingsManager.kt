@@ -160,6 +160,7 @@ class SettingsManager(private val context: Context) {
 
     val shellEnabled: Flow<Boolean> = context.dataStore.data.map { it[SHELL_ENABLED] ?: true }
     val automationToolsEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTOMATION_TOOLS_ENABLED] ?: false }
+    val petOverlayEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_OVERLAY_ENABLED] ?: false }
     val exactExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[EXACT_EXECUTION_ENABLED] ?: false }
     val proxyEnabled: Flow<Boolean> = context.dataStore.data.map { it[PROXY_ENABLED] ?: false }
     val proxyType: Flow<String> = context.dataStore.data.map { it[PROXY_TYPE] ?: "http" }
@@ -741,6 +742,10 @@ class SettingsManager(private val context: Context) {
         context.dataStore.edit { it[AUTOMATION_TOOLS_ENABLED] = enabled }
     }
 
+    suspend fun savePetOverlayEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[PET_OVERLAY_ENABLED] = enabled }
+    }
+
     suspend fun saveExactExecutionEnabled(enabled: Boolean) {
         context.dataStore.edit { it[EXACT_EXECUTION_ENABLED] = enabled }
     }
@@ -957,6 +962,7 @@ class SettingsManager(private val context: Context) {
             prefs.remove(CUSTOM_PROVIDERS_JSON)
             prefs.remove(SHELL_ENABLED)
             prefs.remove(AUTOMATION_TOOLS_ENABLED)
+            prefs.remove(PET_OVERLAY_ENABLED)
             prefs.remove(EXACT_EXECUTION_ENABLED)
             prefs.remove(PROXY_ENABLED)
             prefs.remove(PROXY_TYPE)
