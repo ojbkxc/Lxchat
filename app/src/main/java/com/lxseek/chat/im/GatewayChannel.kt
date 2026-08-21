@@ -116,7 +116,7 @@ class GatewayChannel(
             runCatching {
                 val o = el.jsonObject
                 ImConversation(
-                    id = str(o, "id"),
+                    id = str(o, "id") ?: "",
                     title = str(o, "title") ?: "Untitled",
                     platform = str(o, "platform") ?: config.platform,
                     lastMessageAtMs = (o["lastMessageAtMs"]?.jsonPrimitive?.contentOrNull
