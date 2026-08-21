@@ -3,6 +3,7 @@ package com.lxseek.chat.ui.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -157,7 +158,10 @@ fun SettingsModelPlazaPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 }
             }
 
-            SectionLabel(text = stringResource(R.string.plaza_discover))
+            SectionLabel(
+                text = stringResource(R.string.plaza_discover),
+                firstInPage = false,
+            )
 
             discoverableProviders.forEach { provider ->
                 DiscoverProviderCard(
