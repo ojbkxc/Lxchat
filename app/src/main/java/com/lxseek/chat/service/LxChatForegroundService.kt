@@ -245,17 +245,21 @@ class LxChatForegroundService : Service() {
 
         fun createChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-            val manager = context.getSystemService(NotificationManager::class.java)
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Generation",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Ongoing notification while LxChat is generating"
-                setShowBadge(false)
-                setSound(null, null)
+            val manager = context.getSystemService(NotificationManager::class.java) ?: return
+            try {
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    "Generation",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Ongoing notification while LxChat is generating"
+                    setShowBadge(false)
+                    setSound(null, null)
+                }
+                manager.createNotificationChannel(channel)
+            } catch (e: Throwable) {
+                DebugLog.w(TAG, "Failed to create notification channel", e)
             }
-            manager.createNotificationChannel(channel)
         }
 
         fun showCompletionNotification(context: Context, responseText: String, conversationId: String) {
@@ -284,16 +288,20 @@ class LxChatForegroundService : Service() {
 
         private fun createCompletionChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-            val channel = NotificationChannel(
-                COMPLETION_CHANNEL_ID,
-                "Response Ready",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Shown when a response finishes generating"
-                setShowBadge(true)
+            val manager = context.getSystemService(NotificationManager::class.java) ?: return
+            try {
+                val channel = NotificationChannel(
+                    COMPLETION_CHANNEL_ID,
+                    "Response Ready",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Shown when a response finishes generating"
+                    setShowBadge(true)
+                }
+                manager.createNotificationChannel(channel)
+            } catch (e: Throwable) {
+                DebugLog.w(TAG, "Failed to create completion notification channel", e)
             }
-            val manager = context.getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
         }
 
         private fun createPendingIntent(

@@ -18,8 +18,20 @@ class LxChatApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        CrashReporter.install(this)
+        try {
+            CrashReporter.install(this)
+        } catch (e: Throwable) {
+            // CrashReporter itself must never crash onCreate. Fall back to platform handler.
+            android.util.Log.e("LxChatApplication", "CrashReporter.install failed", e)
+        }
         // Orphaned Run recovery is the startup barrier for every generator and scheduler.
-        container.startProcessServices()
+        // Background initialization must never kill the process — the UI can still launch
+        // even if recovery/scheduling fails (they self-heal on next interaction).
+        try {
+            container.startProcessServices()
+        } catch (e: Throwable) {
+            android.util.Log.e("LxChatApplication", "startProcessServices failed", e)
+            CrashReporter.note("LxChatApplication.startProcessServices threw ${e.javaClass.simpleName}")
+        }
     }
 }

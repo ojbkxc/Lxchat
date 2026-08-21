@@ -85,13 +85,22 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun attachBaseContext(newBase: Context) {
-        val langCode = kotlinx.coroutines.runBlocking {
-            SettingsManager(newBase).appLanguage.first()
-        }
-        val locale = when (langCode) {
-            "zh" -> java.util.Locale("zh", "CN")
-            "en" -> java.util.Locale("en")
-            else -> null
+        // attachBaseContext runs before Application.onCreate, so CrashReporter is NOT installed
+        // yet — an uncaught exception here is an invisible silent crash. DataStore's first read
+        // can throw IOException (corrupted file, first-install race, scoped-storage issues).
+        // Fall back to the system default locale on any failure rather than killing the process.
+        val locale = try {
+            val langCode = kotlinx.coroutines.runBlocking {
+                SettingsManager(newBase).appLanguage.first()
+            }
+            when (langCode) {
+                "zh" -> java.util.Locale("zh", "CN")
+                "en" -> java.util.Locale("en")
+                else -> null
+            }
+        } catch (e: Throwable) {
+            // Swallow — locale customization is non-essential. Use system default.
+            null
         }
         if (locale != null) {
             java.util.Locale.setDefault(locale)
@@ -124,8 +133,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         handleNavigationIntent(intent)
 
-        com.lxseek.chat.util.DebugLog.init(this)
-        LxChatForegroundService.createChannel(this)
+        // Defensive: DebugLog.init and notification channel creation must not crash onCreate.
+        // Both are non-essential for the app to function and can fail on exotic OEM ROMs.
+        try {
+            com.lxseek.chat.util.DebugLog.init(this)
+        } catch (e: Throwable) {
+            android.util.Log.e("MainActivity", "DebugLog.init failed", e)
+        }
+        try {
+            LxChatForegroundService.createChannel(this)
+        } catch (e: Throwable) {
+            android.util.Log.e("MainActivity", "Notification channel creation failed", e)
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

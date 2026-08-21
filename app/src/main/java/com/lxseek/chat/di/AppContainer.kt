@@ -72,19 +72,38 @@ class AppContainer(private val appContext: Context) {
     /**
      * Starts process services behind the durable Run-recovery barrier. Scheduling before recovery
      * lets an overdue Worker race the orphan cleanup and inspect an impossible half-live graph.
+     *
+     * Every launch is individually guarded: a failure in one background service (recovery,
+     * scheduler, IM, proactive messaging) must not cascade-cancel the others.
      */
     fun startProcessServices() {
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            conversationRepository.ensureRunRecovery()
-            automationScheduler.start()
+            try {
+                conversationRepository.ensureRunRecovery()
+            } catch (e: Throwable) {
+                com.lxseek.chat.util.DebugLog.e("AppContainer", "ensureRunRecovery failed", e)
+            }
+            try {
+                automationScheduler.start()
+            } catch (e: Throwable) {
+                com.lxseek.chat.util.DebugLog.e("AppContainer", "automationScheduler.start failed", e)
+            }
         }
         // IM automatic reply loop: a self-healing receiver that polls once IM is enabled.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            imPollingReceiver.start()
+            try {
+                imPollingReceiver.start()
+            } catch (e: Throwable) {
+                com.lxseek.chat.util.DebugLog.e("AppContainer", "imPollingReceiver.start failed", e)
+            }
         }
         // Proactive messaging: self-healing loop, inert while disabled.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            proactiveMessagingService.start()
+            try {
+                proactiveMessagingService.start()
+            } catch (e: Throwable) {
+                com.lxseek.chat.util.DebugLog.e("AppContainer", "proactiveMessagingService.start failed", e)
+            }
         }
         // Auto-download Chinese Vosk model for ASR on first launch.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -137,7 +156,13 @@ class AppContainer(private val appContext: Context) {
     val localProvider: LocalProvider by lazy { LocalProvider(appContext, settingsRepository) }
 
     val providerRegistry: ProviderRegistry by lazy {
-        ProviderRegistry(settingsRepository, localProvider, appScope).also { it.launchSyncJobs() }
+        ProviderRegistry(settingsRepository, localProvider, appScope).also {
+            try {
+                it.launchSyncJobs()
+            } catch (e: Throwable) {
+                com.lxseek.chat.util.DebugLog.e("AppContainer", "providerRegistry.launchSyncJobs failed", e)
+            }
+        }
     }
 
     /** Serializes every foreground/background generation touching the same conversation. */
@@ -312,7 +337,13 @@ class AppContainer(private val appContext: Context) {
     }
 
     val automationScheduler: AutomationScheduler by lazy {
-        AutomationScheduler(appContext, taskRepository, settingsRepository, appScope).also { it.start() }
+        AutomationScheduler(appContext, taskRepository, settingsRepository, appScope).also {
+            try {
+                it.start()
+            } catch (e: Throwable) {
+                com.lxseek.chat.util.DebugLog.e("AppContainer", "automationScheduler lazy start failed", e)
+            }
+        }
     }
 
     // ── Auto Backup ───────────────────────────────────────────
