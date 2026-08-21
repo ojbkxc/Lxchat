@@ -733,19 +733,13 @@ class SettingsManager(private val context: Context) {
     suspend fun saveShowDocumentationFab(enabled: Boolean) {
         context.dataStore.edit { it[SHOW_DOCUMENTATION_FAB] = enabled }
     }
-
     suspend fun saveShellEnabled(enabled: Boolean) {
         context.dataStore.edit { it[SHELL_ENABLED] = enabled }
     }
-
     suspend fun saveAutomationToolsEnabled(enabled: Boolean) {
         context.dataStore.edit { it[AUTOMATION_TOOLS_ENABLED] = enabled }
     }
-
-    suspend fun savePetOverlayEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[PET_OVERLAY_ENABLED] = enabled }
-    }
-
+    suspend fun savePetOverlayEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_OVERLAY_ENABLED] = enabled } }
     suspend fun saveExactExecutionEnabled(enabled: Boolean) {
         context.dataStore.edit { it[EXACT_EXECUTION_ENABLED] = enabled }
     }
