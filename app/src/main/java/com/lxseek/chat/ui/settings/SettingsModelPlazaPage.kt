@@ -178,7 +178,7 @@ fun SettingsModelPlazaPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     expanded = expandedProviders[provider] == true,
                     onToggle = { expandedProviders[provider] = expandedProviders[provider] != true },
                     onAddModel = { model ->
-                        if (resolveProviderKeyState(provider).first) {
+                        if (provider in keyExistsByProvider || !activeKeyByProvider[provider].isNullOrBlank()) {
                             addModel(provider, model, model.removePrefix("models/"))
                         } else {
                             pendingProvider = provider

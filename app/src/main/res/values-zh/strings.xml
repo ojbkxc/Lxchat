@@ -168,6 +168,16 @@
     <string name="im_gateway_auto_reply_model_hint">Provider/模型，留空使用默认</string>
     <string name="im_gateway_save">保存网关</string>
     <string name="im_gateway_saved">网关已保存</string>
+    <string name="settings_group_proactive">主动行为</string>
+    <string name="im_gateway_proactive_enabled">主动消息</string>
+    <string name="im_gateway_proactive_enabled_desc">允许代理在联系人空闲时主动发起问候</string>
+    <string name="im_gateway_proactive_idle_minutes">问候前的空闲分钟数</string>
+    <string name="im_gateway_proactive_silent_start">静默窗口开始 (HH:MM)</string>
+    <string name="im_gateway_proactive_silent_end">静默窗口结束 (HH:MM)</string>
+    <string name="im_gateway_proactive_ignore_groups">忽略群聊</string>
+    <string name="im_gateway_proactive_ignore_groups_desc">不向群聊发送主动消息</string>
+    <string name="im_gateway_humanize">拟人化打字延迟</string>
+    <string name="im_gateway_humanize_desc">回复前加入随机化轻量延迟</string>
     <string name="im_gateway_validation">启用网关时需要填写网关地址</string>
     <string name="im_gateway_show_token">显示令牌</string>
     <string name="automation_ai_tools">访问任务与循环</string>

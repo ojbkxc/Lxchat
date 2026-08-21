@@ -1267,6 +1267,16 @@
     <string name="im_gateway_auto_reply_model_hint">Provider/Model, blank uses default</string>
     <string name="im_gateway_save">Save gateway</string>
     <string name="im_gateway_saved">Gateway saved</string>
+    <string name="settings_group_proactive">Proactive behavior</string>
+    <string name="im_gateway_proactive_enabled">Proactive messages</string>
+    <string name="im_gateway_proactive_enabled_desc">Let the agent initiate contact with idle IM conversations</string>
+    <string name="im_gateway_proactive_idle_minutes">Idle minutes before greeting</string>
+    <string name="im_gateway_proactive_silent_start">Quiet window start (HH:MM)</string>
+    <string name="im_gateway_proactive_silent_end">Quiet window end (HH:MM)</string>
+    <string name="im_gateway_proactive_ignore_groups">Ignore group chats</string>
+    <string name="im_gateway_proactive_ignore_groups_desc">Never send proactive messages to groups</string>
+    <string name="im_gateway_humanize">Human-like typing delay</string>
+    <string name="im_gateway_humanize_desc">Add a light randomized delay before sending replies</string>
     <string name="im_gateway_validation">Base URL is required when the gateway is enabled</string>
     <string name="im_gateway_show_token">Show token</string>
     <string name="thinking_segment_display_mode">Thinking segments</string>

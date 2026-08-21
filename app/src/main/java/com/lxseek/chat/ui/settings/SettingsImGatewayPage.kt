@@ -1,6 +1,7 @@
 package com.lxseek.chat.ui.settings
 
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -52,6 +53,12 @@ private data class ImGatewayFormState(
     val token: String,
     val pollIntervalMs: String,
     val autoReplyModel: String,
+    val proactiveEnabled: Boolean,
+    val proactiveIdleMinutes: String,
+    val proactiveSilentStart: String,
+    val proactiveSilentEnd: String,
+    val proactiveIgnoreGroups: Boolean,
+    val humanizeMessages: Boolean,
 ) {
     companion object {
         fun from(config: ImGatewayConfig): ImGatewayFormState = ImGatewayFormState(
@@ -61,6 +68,12 @@ private data class ImGatewayFormState(
             token = config.token,
             pollIntervalMs = config.pollIntervalMs.toString(),
             autoReplyModel = config.autoReplyModel,
+            proactiveEnabled = config.proactiveEnabled,
+            proactiveIdleMinutes = config.proactiveIdleMinutes.toString(),
+            proactiveSilentStart = config.proactiveSilentStart,
+            proactiveSilentEnd = config.proactiveSilentEnd,
+            proactiveIgnoreGroups = config.proactiveIgnoreGroups,
+            humanizeMessages = config.humanizeMessages,
         )
     }
 
@@ -71,6 +84,12 @@ private data class ImGatewayFormState(
         token = token,
         pollIntervalMs = pollIntervalMs.trim().toLongOrNull()?.takeIf { it > 0 } ?: 5_000L,
         autoReplyModel = autoReplyModel.trim(),
+        proactiveEnabled = proactiveEnabled,
+        proactiveIdleMinutes = proactiveIdleMinutes.trim().toIntOrNull()?.coerceAtLeast(1) ?: 120,
+        proactiveSilentStart = proactiveSilentStart.trim(),
+        proactiveSilentEnd = proactiveSilentEnd.trim(),
+        proactiveIgnoreGroups = proactiveIgnoreGroups,
+        humanizeMessages = humanizeMessages,
     )
 }
 
@@ -227,6 +246,107 @@ fun SettingsImGatewayPage(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 )
+            },
+        ))
+
+        SettingsGroup(title = stringResource(R.string.settings_group_proactive), items = listOf(
+            {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.im_gateway_proactive_enabled),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.im_gateway_proactive_enabled_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = form.proactiveEnabled,
+                        onCheckedChange = { form = form.copy(proactiveEnabled = it) },
+                    )
+                }
+            },
+            {
+                OutlinedTextField(
+                    value = form.proactiveIdleMinutes,
+                    onValueChange = { input ->
+                        if (input.all(Char::isDigit) || input.isEmpty()) form = form.copy(proactiveIdleMinutes = input)
+                    },
+                    label = { Text(stringResource(R.string.im_gateway_proactive_idle_minutes)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                )
+            },
+            {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = form.proactiveSilentStart,
+                        onValueChange = { form = form.copy(proactiveSilentStart = it) },
+                        label = { Text(stringResource(R.string.im_gateway_proactive_silent_start)) },
+                        placeholder = { Text("HH:MM") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = form.proactiveSilentEnd,
+                        onValueChange = { form = form.copy(proactiveSilentEnd = it) },
+                        label = { Text(stringResource(R.string.im_gateway_proactive_silent_end)) },
+                        placeholder = { Text("HH:MM") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            },
+            {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.im_gateway_proactive_ignore_groups),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.im_gateway_proactive_ignore_groups_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = form.proactiveIgnoreGroups,
+                        onCheckedChange = { form = form.copy(proactiveIgnoreGroups = it) },
+                    )
+                }
+            },
+            {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.im_gateway_humanize),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.im_gateway_humanize_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = form.humanizeMessages,
+                        onCheckedChange = { form = form.copy(humanizeMessages = it) },
+                    )
+                }
             },
         ))
 
