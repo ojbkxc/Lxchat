@@ -108,8 +108,6 @@ class ImToolProvider(
         }
     }
 
-    // ── Tool implementations ──────────────────────────────────
-
     private fun statusResult(channel: MessageChannel?): String {
         if (channel == null) {
             return buildJsonObject {
@@ -124,11 +122,13 @@ class ImToolProvider(
         }.toString()
     }
 
-    private fun conversationsResult(channel: MessageChannel?): String {
+    private suspend fun conversationsResult(channel: MessageChannel?): String {
         if (channel == null || !channel.isConfigured) return notConfiguredJson(channel)
-        val conversations: List<ImConversation> = runCatching {
+        val conversations: List<ImConversation> = try {
             channel.listConversations()
-        }.getOrDefault(emptyList())
+        } catch (e: Exception) {
+            emptyList()
+        }
         return buildJsonObject {
             put("ok", true)
             putJsonArray("conversations") {
@@ -146,14 +146,16 @@ class ImToolProvider(
         }.toString()
     }
 
-    private fun receiveResult(channel: MessageChannel?, args: String): String {
+    private suspend fun receiveResult(channel: MessageChannel?, args: String): String {
         if (channel == null || !channel.isConfigured) return notConfiguredJson(channel)
         val conversationId = argString(args, "conversationId")
         if (conversationId.isBlank()) return errorJson("Missing required argument: conversationId")
         val afterId = argString(args, "afterId")
-        val messages: List<ImMessage> = runCatching {
+        val messages: List<ImMessage> = try {
             channel.fetchMessages(conversationId, afterId.ifBlank { null })
-        }.getOrDefault(emptyList())
+        } catch (e: Exception) {
+            emptyList()
+        }
         return buildJsonObject {
             put("ok", true)
             put("conversationId", conversationId)
@@ -173,15 +175,17 @@ class ImToolProvider(
         }.toString()
     }
 
-    private fun sendResult(channel: MessageChannel?, args: String): String {
+    private suspend fun sendResult(channel: MessageChannel?, args: String): String {
         if (channel == null || !channel.isConfigured) return notConfiguredJson(channel)
         val conversationId = argString(args, "conversationId")
         val text = argString(args, "text")
         if (conversationId.isBlank()) return errorJson("Missing required argument: conversationId")
         if (text.isBlank()) return errorJson("Missing required argument: text")
-        val result: ImSendResult = runCatching {
+        val result: ImSendResult = try {
             channel.sendMessage(conversationId, text)
-        }.getOrDefault(ImSendResult.Failure("send threw unexpectedly"))
+        } catch (e: Exception) {
+            ImSendResult.Failure("send threw unexpectedly")
+        }
         return when (result) {
             is ImSendResult.Success -> buildJsonObject {
                 put("ok", true)
@@ -194,8 +198,6 @@ class ImToolProvider(
             ImSendResult.NotConfigured -> notConfiguredJson(channel)
         }
     }
-
-    // ── Helpers ──────────────────────────────────────────────
 
     private fun argString(args: String, key: String): String {
         if (args.isBlank()) return ""
@@ -227,4 +229,3 @@ class ImToolProvider(
             "im_send",
         )
     }
-}
