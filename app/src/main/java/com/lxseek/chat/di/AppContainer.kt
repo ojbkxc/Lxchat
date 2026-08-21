@@ -318,7 +318,6 @@ class AppContainer(private val appContext: Context) {
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, mcpToolProvider, androidControlToolProvider, imToolProvider,
-            taskExecutionEngine,
-            reminderToolProvider,
+            reminderToolProvider, taskExecutionEngine,
         )
 }

@@ -120,15 +120,16 @@ class ReminderToolProvider(
 
     private fun parseRecurring(time: String): String {
         val hm = Regex("""^(\d{1,2}):(\d{2})$""").matchEntire(time.trim())
-            ?: error("recurring time must be 24h \"HH:MM\" (e.g. 08:00)")
+        if (hm == null) return error("recurring time must be 24h \"HH:MM\" (e.g. 08:00)")
         val hour = hm.groupValues[1].toInt()
         val minute = hm.groupValues[2].toInt()
-        if (hour !in 0..23 || minute !in 0..59) error("recurring time out of range: $time")
+        if (hour !in 0..23 || minute !in 0..59) return error("recurring time out of range: $time")
         return "$minute $hour * * *"
     }
 
     private fun parseOneOff(time: String, type: String): String {
-        val dt = parseDateTime(time) ?: error("one-off time must be absolute \"YYYY-MM-DD HH:MM\", e.g. 2024-05-29 14:30")
+        val dt = parseDateTime(time)
+        if (dt == null) return error("one-off time must be absolute \"YYYY-MM-DD HH:MM\", e.g. 2024-05-29 14:30")
         val now = LocalDateTime.now()
         if (type == "one_off_short") {
             val diffMin = TimeUnit.MILLISECONDS.toMinutes(

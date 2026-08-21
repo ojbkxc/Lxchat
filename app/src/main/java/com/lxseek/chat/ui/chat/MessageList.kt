@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillParentMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -904,7 +903,7 @@ internal fun MessageList(
                 // LxChatBrandMark breathes above a short invitation.
                 item(key = "lxchat:chat-empty-state") {
                     LxChatEmptyState(
-                        modifier = Modifier.fillParentMaxSize(),
+                        modifier = Modifier.fillMaxSize(),
                         title = stringResource(R.string.chat_empty_title),
                         description = stringResource(R.string.chat_empty_desc),
                     )

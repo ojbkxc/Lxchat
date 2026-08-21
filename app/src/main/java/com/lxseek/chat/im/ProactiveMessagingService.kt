@@ -82,7 +82,7 @@ class ProactiveMessagingService(
         val bindings = store.runtimeState.first().conversationBindings
 
         channel.listConversations().forEach { conversation ->
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             // Skip group chats when configured to.
             if (config.proactiveIgnoreGroups && conversation.isGroup) return@forEach
             bindings[conversation.id] ?: return@forEach

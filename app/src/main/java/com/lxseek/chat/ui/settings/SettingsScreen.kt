@@ -235,6 +235,7 @@ private val settingsGroups = listOf(
     SettingsGroupData(titleRes = R.string.settings_group_services, items = listOf(
         SettingsCategory("provider", R.string.settings_provider, R.string.settings_provider_desc, Icons.Default.Cloud),
         SettingsCategory("models", R.string.settings_models, R.string.settings_models_desc, Icons.Default.Chat),
+        SettingsCategory("model_plaza", R.string.settings_model_plaza, R.string.settings_model_plaza_desc, Icons.Default.AutoAwesome),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_responses, items = listOf(
         SettingsCategory("prompts", R.string.settings_prompts, R.string.settings_prompts_desc, Icons.Default.Psychology),
@@ -258,6 +259,7 @@ private val settingsGroups = listOf(
         ),
         SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
         SettingsCategory("device_control", R.string.settings_device_control, R.string.settings_device_control_desc, Icons.Default.Android),
+        SettingsCategory("runtime_status", R.string.settings_runtime_status, R.string.settings_runtime_status_desc, Icons.Default.Speed),
         SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
@@ -310,6 +312,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
         ) { category ->
             when (category) {
                 "provider" -> SettingsProviderPage(viewModel, onBack = { selectedCategory = null })
+                "model_plaza" -> SettingsModelPlazaPage(viewModel, onBack = { selectedCategory = null })
                 "prompts" -> SettingsPromptsPage(viewModel, onBack = { selectedCategory = null })
                 "models" -> SettingsModelsPage(viewModel, onBack = { selectedCategory = null })
                 "generation" -> SettingsGenerationPage(viewModel, onBack = { selectedCategory = null })
@@ -320,6 +323,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
                 "automation" -> SettingsAutomationPage(viewModel, onBack = { selectedCategory = null })
                 "device_control" -> SettingsDeviceControlPage(viewModel, onBack = { selectedCategory = null })
+                "runtime_status" -> SettingsRuntimeStatusPage(viewModel, onBack = { selectedCategory = null })
                 "im_gateway" -> SettingsImGatewayPage(viewModel, onBack = { selectedCategory = null })
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })
                 "language" -> SettingsLanguagePage(viewModel, onBack = { selectedCategory = null })

@@ -119,8 +119,10 @@ class ImPollingReceiver(
         if (fresh.isEmpty()) return
         onMessageHandled?.invoke(conversation.id)
 
-        val mergedText = fresh.joinToString("\n") { it.text }
-        val reply = runOnce(lxchatConvId, mergedText)
+        // Merge the batch of new messages into one synthetic inbound message so the private
+        // runOnce overload (which expects an ImMessage for id/timestamp tracking) can be reused.
+        val merged = fresh.first().copy(text = fresh.joinToString("\n") { it.text })
+        val reply = runOnce(lxchatConvId, merged)
         if (!reply.isNullOrBlank()) {
             channel.sendMessage(conversation.id, reply)
         }
