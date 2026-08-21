@@ -30,6 +30,9 @@ class ImPollingReceiver(
     private val conversationRepository: ConversationRepository,
     private val store: ImGatewayStore,
     private val scope: CoroutineScope,
+    /** Optional callback fired after an inbound message is successfully replied to, e.g. to mark
+     *  the conversation as active so proactive messaging doesn't greet a contact that just spoke. */
+    private val onMessageHandled: ((conversationId: String) -> Unit)? = null,
 ) {
     @Volatile
     private var job: Job? = null
@@ -112,6 +115,7 @@ class ImPollingReceiver(
                 s.copy(seenMessageIds = (s.seenMessageIds + message.id).takeLast(MAX_SEEN))
             }
             if (seen) continue
+            onMessageHandled?.invoke(conversation.id)
             val reply = runOnce(lxchatConvId, message)
             if (!reply.isNullOrBlank()) {
                 channel.sendMessage(conversation.id, reply)

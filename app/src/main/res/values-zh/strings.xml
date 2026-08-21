@@ -729,6 +729,8 @@
 
     <!-- Conversation list / read tools -->
     <string name="conversation_list_empty">未找到任何对话。</string>
+    <string name="chat_empty_title">开始一段对话</string>
+    <string name="chat_empty_desc">随便问点什么或创建任务——剩下的交给 LxChat，按你的方式来。</string>
     <string name="conversation_list_header">显示 %1$d 条对话（第 %2$d-%3$d 条）。</string>
     <string name="conversation_list_more">使用更高的 offset 查看更多对话。</string>
     <string name="conversation_read_header">对话：%1$s（共 %2$d 条消息）</string>

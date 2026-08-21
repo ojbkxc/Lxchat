@@ -108,6 +108,8 @@ class ImToolProvider(
         }
     }
 
+    // ── Tool implementations ──────────────────────────────────
+
     private fun statusResult(channel: MessageChannel?): String {
         if (channel == null) {
             return buildJsonObject {
@@ -198,6 +200,8 @@ class ImToolProvider(
             ImSendResult.NotConfigured -> notConfiguredJson(channel)
         }
     }
+
+    // ── Helpers ──────────────────────────────────────────────
 
     private fun argString(args: String, key: String): String {
         if (args.isBlank()) return ""

@@ -768,6 +768,8 @@
 
     <!-- Conversation list / read tools -->
     <string name="conversation_list_empty">No conversations found.</string>
+    <string name="chat_empty_title">Start a conversation</string>
+    <string name="chat_empty_desc">Ask anything or set up a task — LxChat will handle the rest, your way.</string>
     <string name="conversation_list_header">Showing %1$d conversations (messages %2$d-%3$d).</string>
     <string name="conversation_list_more">Use a higher offset to see more conversations.</string>
     <string name="conversation_read_header">Conversation: %1$s (%2$d messages)</string>

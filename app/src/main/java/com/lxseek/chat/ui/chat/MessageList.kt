@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillParentMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -72,6 +73,7 @@ import com.lxseek.chat.ui.chat.message.REGENERATION_EXIT_DURATION_MS
 import com.lxseek.chat.ui.chat.message.SegmentAppearanceRegistry
 import com.lxseek.chat.ui.chat.message.hasActiveAnswerSegment
 import com.lxseek.chat.ui.common.LocalLxChatHaptics
+import com.lxseek.chat.ui.components.LxChatEmptyState
 import com.lxseek.chat.ui.components.MessageSkeletonRow
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
 import com.lxseek.chat.viewmodel.RegenerationTransitionRequest
@@ -896,6 +898,16 @@ internal fun MessageList(
             if (messages.list.isEmpty() && isLoading) {
                 items(count = 6, key = { index -> "lxchat:message-skeleton:$index" }) {
                     MessageSkeletonRow()
+                }
+            } else if (turns.isEmpty() && !isCompacting) {
+                // Branded welcome surface instead of a bare blank canvas: the animated
+                // LxChatBrandMark breathes above a short invitation.
+                item(key = "lxchat:chat-empty-state") {
+                    LxChatEmptyState(
+                        modifier = Modifier.fillParentMaxSize(),
+                        title = stringResource(R.string.chat_empty_title),
+                        description = stringResource(R.string.chat_empty_desc),
+                    )
                 }
             }
             items(turns, key = { turn -> stableVisualKey(turn.key) }) { turn ->

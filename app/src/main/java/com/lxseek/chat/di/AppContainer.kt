@@ -157,6 +157,17 @@ class AppContainer(private val appContext: Context) {
     }
 
     /** Closes the IM loop: polls inbound messages, triggers the agent, writes replies back. */
+    val proactiveMessagingService: com.lxseek.chat.im.ProactiveMessagingService by lazy {
+        com.lxseek.chat.im.ProactiveMessagingService(
+            bridge = imBridgeService,
+            store = imGatewayStore,
+            conversationRepository = conversationRepository,
+            taskEngine = taskExecutionEngine,
+            scope = appScope,
+        )
+    }
+
+    /** Closes the IM loop: polls inbound messages, triggers the agent, writes replies back. */
     val imPollingReceiver: com.lxseek.chat.im.ImPollingReceiver by lazy {
         com.lxseek.chat.im.ImPollingReceiver(
             bridge = imBridgeService,
@@ -164,6 +175,10 @@ class AppContainer(private val appContext: Context) {
             conversationRepository = conversationRepository,
             store = imGatewayStore,
             scope = appScope,
+            onMessageHandled = { conversationId ->
+                // A real inbound message means the contact isn't idle; postpone a proactive greeting.
+                proactiveMessagingService.markActive(conversationId)
+            },
         )
     }
 
@@ -227,6 +242,7 @@ class AppContainer(private val appContext: Context) {
             mcpToolProvider = mcpToolProvider,
             androidControlToolProvider = androidControlToolProvider,
             imToolProvider = imToolProvider,
+            reminderToolProvider = reminderToolProvider,
             generationRegistry = conversationStateRegistry,
             pauseConversationLoop = { conversationId -> loopManager.stopLoop(conversationId) },
         )
@@ -272,6 +288,13 @@ class AppContainer(private val appContext: Context) {
         }
     }
 
+    /** Turns natural-language reminder requests into persisted background Tasks. */
+    val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider by lazy {
+        com.lxseek.chat.tool.ReminderToolProvider(taskManager) {
+            settingsManager.automationToolsEnabled.first()
+        }
+    }
+
     val automationScheduler: AutomationScheduler by lazy {
         AutomationScheduler(appContext, taskRepository, settingsRepository, appScope).also { it.start() }
     }
@@ -292,5 +315,6 @@ class AppContainer(private val appContext: Context) {
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, mcpToolProvider, androidControlToolProvider, imToolProvider,
             taskExecutionEngine,
+            reminderToolProvider,
         )
 }

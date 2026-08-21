@@ -36,6 +36,8 @@ data class ImConversation(
     val platform: String = "wechat",
     val lastMessageAtMs: Long = 0L,
     val unreadCount: Int = 0,
+    /** True when this conversation is a group chat (used to honor proactive ignore-group rails). */
+    val isGroup: Boolean = false,
 )
 
 /**
@@ -52,6 +54,17 @@ data class ImGatewayConfig(
     val pollIntervalMs: Long = 5_000L,
     /** Model used for automatic replies; blank falls back to the app default. */
     val autoReplyModel: String = "",
+    /** Proactive messages (default OFF per safety red-line). When enabled, the agent may greet
+     *  an IM contact that has been idle beyond [proactiveIdleMinutes]. */
+    val proactiveEnabled: Boolean = false,
+    /** Idle threshold in minutes before a proactive greeting is triggered. */
+    val proactiveIdleMinutes: Int = 120,
+    /** Quiet window ("HH:MM") during which proactive messages are suppressed. Empty = never quiet. */
+    val proactiveSilentStart: String = "",
+    /** Quiet window ("HH:MM") during which proactive messages are suppressed. Empty = never quiet. */
+    val proactiveSilentEnd: String = "",
+    /** Ignore proactive messages in group chats. */
+    val proactiveIgnoreGroups: Boolean = true,
 ) {
     val isConfigured: Boolean get() = enabled && baseUrl.isNotBlank()
     val name: String get() = "Gateway · $platform"

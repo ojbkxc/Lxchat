@@ -80,6 +80,7 @@ class ChatViewModel(
     private val mcpToolProvider: com.lxseek.chat.tool.McpToolProvider,
     private val androidControlToolProvider: com.lxseek.chat.tool.AndroidAppControllerToolProvider,
     private val imToolProvider: com.lxseek.chat.tool.ImToolProvider? = null,
+    private val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider? = null,
     private val taskExecutionEngine: com.lxseek.chat.automation.TaskExecutionEngine,
 ) : AndroidViewModel(application) {
 
@@ -257,6 +258,7 @@ class ChatViewModel(
             sandboxFactory = sandboxFactory,
             additionalToolProviders = listOfNotNull(
                 automationToolProvider, mcpToolProvider, androidControlToolProvider, imToolProvider,
+                reminderToolProvider,
             ),
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
