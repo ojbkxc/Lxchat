@@ -216,13 +216,20 @@ object TtsManager {
             }
             log("D", "Manual bindService(TTS_SERVICE) returned: $bindResult")
         }
+        // System-default-first, brand-agnostic engine ordering. The phone's own default TTS
+        // engine (and thus its stock voice) is always tried first, on every device. Vendor
+        // engines (Google / Xiaomi / any resolved engine) are only last-resort fallbacks and
+        // are never preferred over the system default, so behavior stays consistent no matter
+        // which brand of phone is used.
         enginesToTry = mutableListOf<String?>().apply {
-            add(null)
+            // Explicit system default engine (tts_default_synth) — the phone's own voice.
             if (!defaultEngine.isNullOrEmpty()) add(defaultEngine)
-            // Prefer Xiaomi XiaoAi TTS engine for a more natural voice when present.
-            if ("com.xiaomi.mibrain.speech" !in this) add("com.xiaomi.mibrain.speech")
+            // The 2-arg default constructor resolves the system default engine again, giving
+            // us an equivalent fallback when the provider id cannot be read from settings.
+            add(null)
             for (e in resolvedEngines) if (e !in this) add(e)
             if ("com.google.android.tts" !in this) add("com.google.android.tts")
+            if ("com.xiaomi.mibrain.speech" !in this) add("com.xiaomi.mibrain.speech")
         }
         currentEngineIndex = 0
         log("D", "enginesToTry (null=2-arg default): $enginesToTry")
