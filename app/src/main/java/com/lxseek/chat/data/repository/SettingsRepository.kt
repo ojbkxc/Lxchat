@@ -46,7 +46,8 @@ import kotlinx.coroutines.launch
  */
 class SettingsRepository(
     private val settingsManager: SettingsManager,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val imGatewayStore: com.lxseek.chat.im.ImGatewayStore,
 ) {
     /** One latch per eagerly-shared DataStore flow; populated completely during construction. */
     private val initialLoadSignals = mutableListOf<CompletableDeferred<Unit>>()
@@ -176,6 +177,8 @@ class SettingsRepository(
     val shellConfirmEnabled: StateFlow<Boolean> = hot(settingsManager.shellConfirmEnabled, true)
     val shellDevices: StateFlow<List<ShellDeviceConfig>> = hot(settingsManager.shellDevices, emptyList())
     val mcpServers: StateFlow<List<McpServerConfig>> = hot(settingsManager.mcpServers, emptyList())
+    val imGatewayConfig: StateFlow<com.lxseek.chat.im.ImGatewayConfig> =
+        hot(imGatewayStore.config, com.lxseek.chat.im.ImGatewayConfig())
     val sandboxEnabled: StateFlow<Boolean> = hot(settingsManager.sandboxEnabled, false)
     val sandboxSharedStorageEnabled: StateFlow<Boolean> =
         hot(settingsManager.sandboxSharedStorageEnabled, false)
@@ -559,6 +562,8 @@ class SettingsRepository(
             mcpServers.value.map { if (it.id == server.id) server else it },
         )
     }
+    fun saveImGatewayConfig(config: com.lxseek.chat.im.ImGatewayConfig) =
+        scope.launch { imGatewayStore.save(config) }
 
     // ── Derived lookups ─────────────────────────────────────────
     /** Resolves the currently-active cleartext API key for [provider], or `null`. */

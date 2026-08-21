@@ -98,8 +98,13 @@ class AppContainer(private val appContext: Context) {
     val taskRepository: TaskRepository by lazy {
         TaskRepository(chatDao)
     }
+    /** IM gateway bridge: watches persisted config and exposes the active [com.lxseek.chat.im.MessageChannel]. */
+    val imGatewayStore: com.lxseek.chat.im.ImGatewayStore by lazy {
+        com.lxseek.chat.im.ImGatewayStore(appContext)
+    }
+
     val settingsRepository: SettingsRepository by lazy {
-        SettingsRepository(settingsManager, appScope)
+        SettingsRepository(settingsManager, appScope, imGatewayStore)
     }
 
     /** One process-wide confirmation queue shared by Chat, Task, and Loop generation. */
