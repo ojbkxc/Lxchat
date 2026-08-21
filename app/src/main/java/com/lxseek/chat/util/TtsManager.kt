@@ -231,9 +231,16 @@ object TtsManager {
             // 3) The neutral 2-arg constructor resolves the system default engine again, giving
             //    an equivalent fallback when the provider id cannot be read from settings.
             add(null)
-            // 4) Other resolved engines (deduped).
+            // 4) System-bundled resolved engines (preinstalled by the OEM). This dynamically
+            //    catches ANY brand's own engine — even ones not listed in the explicit OEM map
+            //    above (魅族 / 中兴 / 传音 / ...) — because the OEM's engine is always a system
+            //    app. It runs after the explicit map so listed brands keep their exact engine.
+            val systemEngines = resolvedEngines
+                .filter { it !in oemEngines && isSystemApp(it, pm) && isEngineInstalled(it, pm) }
+            for (e in systemEngines) if (e !in this) add(e)
+            // 5) Other resolved engines (deduped).
             for (e in resolvedEngines) if (e !in this) add(e)
-            // 5) Last-resort curated engines (Google / Xiaomi) for devices that resolve none.
+            // 6) Last-resort curated engines (Google / Xiaomi) for devices that resolve none.
             if ("com.google.android.tts" !in this) add("com.google.android.tts")
             if ("com.xiaomi.mibrain.speech" !in this) add("com.xiaomi.mibrain.speech")
         }
@@ -271,6 +278,14 @@ object TtsManager {
 
     private fun isEngineInstalled(pkg: String, packageManager: PackageManager): Boolean = try {
         packageManager.getPackageInfo(pkg, 0).applicationInfo?.enabled == true
+    } catch (_: Throwable) {
+        false
+    }
+
+    private fun isSystemApp(pkg: String, packageManager: PackageManager): Boolean = try {
+        val flags = packageManager.getPackageInfo(pkg, 0).applicationInfo?.flags ?: 0
+        (flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0) ||
+            (flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)
     } catch (_: Throwable) {
         false
     }
