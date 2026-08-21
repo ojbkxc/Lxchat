@@ -99,11 +99,12 @@ fun SettingsModelPlazaPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         pendingProvider = null
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
+    CollapsingSettingsScaffold(
+        title = stringResource(R.string.plaza_title),
+        onBack = onBack,
+        scrollState = rememberScrollState(),
     ) {
-        item(key = "plaza_hero") {
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -111,77 +112,61 @@ fun SettingsModelPlazaPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 LxChatBrandMark(size = 56.dp)
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = stringResource(R.string.plaza_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
                     text = stringResource(R.string.plaza_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
 
-        item(key = "plaza_search") {
+            Spacer(Modifier.height(4.dp))
             OutlinedTextField(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                modifier = Modifier.fillMaxWidth(),
                 value = query,
                 onValueChange = { query = it },
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.plaza_search_hint)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             )
-        }
 
-        item(key = "plaza_section_featured") {
             SectionLabel(
                 text = stringResource(R.string.plaza_featured),
                 firstInPage = true,
             )
-        }
 
-        if (filteredFeatured.isEmpty()) {
-            item(key = "plaza_empty") {
+            if (filteredFeatured.isEmpty()) {
                 LxChatEmptyState(
-                    modifier = Modifier.padding(vertical = 24.dp),
+                    modifier = Modifier.padding(vertical = 8.dp),
                     title = stringResource(R.string.plaza_no_result_title),
                     description = stringResource(R.string.plaza_no_result_desc),
                     markSize = 56.dp,
                 )
+            } else {
+                filteredFeatured.forEach { entry ->
+                    keyStateEntry(
+                        provider = entry.provider,
+                        model = entry.model,
+                        alias = entry.alias,
+                        tagline = entry.tagline,
+                        alreadyAdded = entry.model in customModels || ModelId(entry.provider, entry.model).prefixed in customModels,
+                        isDefault = selectedModel == ModelId(entry.provider, entry.model).prefixed,
+                        keyState = resolveProviderKeyState(entry.provider),
+                        addModel = { addModel(entry.provider, entry.model, entry.alias) },
+                        onSetDefault = { settings.setSelectedModel(ModelId(entry.provider, entry.model).prefixed) },
+                        onNeedKey = { pendingProvider = entry.provider },
+                    )
+                }
             }
-        } else {
-            items(filteredFeatured, key = { it.key }) { entry ->
-                keyStateEntry(
-                    provider = entry.provider,
-                    model = entry.model,
-                    alias = entry.alias,
-                    tagline = entry.tagline,
-                    alreadyAdded = entry.model in customModels || ModelId(entry.provider, entry.model).prefixed in customModels,
-                    isDefault = selectedModel == ModelId(entry.provider, entry.model).prefixed,
-                    keyState = resolveProviderKeyState(entry.provider),
-                    addModel = { addModel(entry.provider, entry.model, entry.alias) },
-                    onSetDefault = { settings.setSelectedModel(ModelId(entry.provider, entry.model).prefixed) },
-                    onNeedKey = { pendingProvider = entry.provider },
+
+            SectionLabel(text = stringResource(R.string.plaza_discover))
+
+            discoverableProviders.forEach { provider ->
+                DiscoverProviderCard(
+                    provider = provider,
+                    count = availableModels[provider].orEmpty().size,
+                    hasFetch = availableModels[provider].orEmpty().isNotEmpty(),
                 )
             }
-        }
-
-        item(key = "plaza_section_discover") {
-            SectionLabel(
-                text = stringResource(R.string.plaza_discover),
-                firstInPage = false,
-            )
-        }
-
-        items(discoverableProviders, key = { "plaza_provider_$it" }) { provider ->
-            DiscoverProviderCard(
-                provider = provider,
-                count = availableModels[provider].orEmpty().size,
-                hasFetch = availableModels[provider].orEmpty().isNotEmpty(),
-            )
+            Spacer(Modifier.height(32.dp))
         }
     }
 
