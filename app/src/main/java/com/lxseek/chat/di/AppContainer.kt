@@ -142,6 +142,16 @@ class AppContainer(private val appContext: Context) {
         AndroidAppControllerToolProvider(application)
     }
 
+    /** IM gateway bridge: watches persisted config and exposes the active [com.lxseek.chat.im.MessageChannel]. */
+    val imBridgeService: com.lxseek.chat.im.ImBridgeService by lazy {
+        com.lxseek.chat.im.ImBridgeService(settingsRepository, appScope)
+    }
+
+    /** Lets the agent send/receive IM through the active gateway channel. */
+    val imToolProvider: com.lxseek.chat.tool.ImToolProvider by lazy {
+        com.lxseek.chat.tool.ImToolProvider { imBridgeService.currentChannel() }
+    }
+
     /** Lets native import quiesce Task/Loop generation without serializing ordinary executions. */
     val automationExecutionGate: AutomationExecutionGate by lazy { AutomationExecutionGate() }
 
@@ -196,6 +206,7 @@ class AppContainer(private val appContext: Context) {
             automationExecutionGate = automationExecutionGate,
             mcpToolProvider = mcpToolProvider,
             androidControlToolProvider = androidControlToolProvider,
+            imToolProvider = imToolProvider,
             generationRegistry = conversationStateRegistry,
             pauseConversationLoop = { conversationId -> loopManager.stopLoop(conversationId) },
         )
@@ -259,7 +270,7 @@ class AppContainer(private val appContext: Context) {
             autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-            mcpRegistry, mcpToolProvider, androidControlToolProvider,
+            mcpRegistry, mcpToolProvider, androidControlToolProvider, imToolProvider,
             taskExecutionEngine,
         )
 }

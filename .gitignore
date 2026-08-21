@@ -38,3 +38,6 @@ app/src/fdroid/jniLibs/arm64-v8a/
 # Claude Code
 /.claude/
 signing.properties
+
+# Local CI log extraction (diagnostic only)
+.ci-logs-extract/
