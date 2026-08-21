@@ -1,12 +1,16 @@
 package com.lxseek.chat.ui.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -69,6 +73,7 @@ fun SettingsModelPlazaPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     var pendingProvider by remember { mutableStateOf<String?>(null) }
     var keyName by rememberSaveable { mutableStateOf("") }
     var keySecret by rememberSaveable { mutableStateOf("") }
+    val expandedProviders = remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
 
     @Composable
     fun resolveProviderKeyState(provider: String): Triple<Boolean, Boolean, String> {
@@ -164,10 +169,22 @@ fun SettingsModelPlazaPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             )
 
             discoverableProviders.forEach { provider ->
+                val remoteModels = availableModels[provider].orEmpty()
                 DiscoverProviderCard(
                     provider = provider,
-                    count = availableModels[provider].orEmpty().size,
-                    hasFetch = availableModels[provider].orEmpty().isNotEmpty(),
+                    models = remoteModels,
+                    count = remoteModels.size,
+                    hasFetch = remoteModels.isNotEmpty(),
+                    expanded = expandedProviders[provider] == true,
+                    onToggle = { expandedProviders[provider] = expandedProviders[provider] != true },
+                    onAddModel = { model ->
+                        if (resolveProviderKeyState(provider).first) {
+                            addModel(provider, model, model.removePrefix("models/"))
+                        } else {
+                            pendingProvider = provider
+                        }
+                    },
+                    addedModels = customModels,
                 )
             }
             Spacer(Modifier.height(32.dp))
@@ -338,10 +355,20 @@ private fun keyStateEntry(
 @Composable
 private fun DiscoverProviderCard(
     provider: String,
+    models: List<String>,
     count: Int,
     hasFetch: Boolean,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onAddModel: (String) -> Unit,
+    addedModels: Set<String>,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onToggle),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -365,6 +392,68 @@ private fun DiscoverProviderCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = stringResource(R.string.plaza_show_models),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column(Modifier.fillMaxWidth()) {
+                HorizontalDivider(Modifier.fillMaxWidth())
+                if (models.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.plaza_no_models),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    )
+                } else {
+                    models.forEach { model ->
+                        val alreadyAdded = ModelId(provider, model).prefixed in addedModels
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = model,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (alreadyAdded) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = stringResource(R.string.plaza_model_added),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            } else {
+                                TextButton(onClick = { onAddModel(model) }) {
+                                    Icon(
+                                        Icons.Filled.Add,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(stringResource(R.string.plaza_model_add))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

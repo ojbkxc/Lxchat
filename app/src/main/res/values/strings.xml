@@ -794,6 +794,11 @@
     <string name="plaza_key_name">Key name</string>
     <string name="plaza_key_secret">API key</string>
     <string name="plaza_key_save">Save</string>
+    <string name="plaza_model_add">Add</string>
+    <string name="plaza_model_added">Added</string>
+    <string name="plaza_no_models">No models available for this provider</string>
+    <string name="plaza_show_models">Show models</string>
+    <string name="plaza_configured_models">Configured models: %1$d</string>
     <string name="conversation_list_header">Showing %1$d conversations (messages %2$d-%3$d).</string>
     <string name="conversation_list_more">Use a higher offset to see more conversations.</string>
     <string name="conversation_read_header">Conversation: %1$s (%2$d messages)</string>

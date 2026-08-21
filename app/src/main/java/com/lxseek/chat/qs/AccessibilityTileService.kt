@@ -6,6 +6,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import com.lxseek.chat.R
 import com.lxseek.chat.androidcontrol.AndroidUiControllerService
 
 /**

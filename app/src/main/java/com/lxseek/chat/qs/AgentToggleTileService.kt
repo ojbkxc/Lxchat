@@ -5,6 +5,7 @@ import android.os.Looper
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.lxseek.chat.LxChatApplication
+import com.lxseek.chat.R
 import com.lxseek.chat.data.SettingsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

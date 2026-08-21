@@ -779,6 +779,11 @@
     <string name="plaza_key_name">密钥名称</string>
     <string name="plaza_key_secret">API 密钥</string>
     <string name="plaza_key_save">保存</string>
+    <string name="plaza_model_add">添加</string>
+    <string name="plaza_model_added">已添加</string>
+    <string name="plaza_no_models">该服务商暂无可用模型</string>
+    <string name="plaza_show_models">查看模型</string>
+    <string name="plaza_configured_models">已配置模型：%1$d 个</string>
     <string name="conversation_list_header">显示 %1$d 条对话（第 %2$d-%3$d 条）。</string>
     <string name="conversation_list_more">使用更高的 offset 查看更多对话。</string>
     <string name="conversation_read_header">对话：%1$s（共 %2$d 条消息）</string>
