@@ -18,7 +18,8 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
 class MemoryToolProvider(
-    private val memoryManager: MemoryManager
+    private val memoryManager: MemoryManager,
+    private val scorer: MemoryScorer = MemoryScorer,
 ) : ToolProvider {
 
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> {
@@ -161,14 +162,18 @@ class MemoryToolProvider(
                         putJsonArray("files") {}
                     }.toString()
                 } else {
+                    val ranked = scorer.rankOrdered(
+                        files.map { MemoryScorer.Entry(it.name, it.description) }
+                    )
                     buildJsonObject {
                         put("type", "list_memory_files")
                         putJsonArray("files") {
-                            files.forEach { f ->
+                            ranked.forEach { f ->
                                 add(
                                     buildJsonObject {
                                         put("name", f.name)
                                         put("description", f.description)
+                                        put("priority", scorer.score(f.name, f.description, f.content))
                                     }
                                 )
                             }

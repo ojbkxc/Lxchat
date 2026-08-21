@@ -105,21 +105,24 @@ class ImPollingReceiver(
         val lxchatConvId = initial.conversationBindings[conversation.id]
             ?: bindConversation(channel, conversation)
 
-        for (message in inbox) {
-            coroutineContext.ensureActive()
-            // Reserve the message id before running so a concurrent poll cannot double-handle it.
-            // Re-polls of the same batch find the id already seen and skip it.
+        // Reserve every inbound message id up front so a concurrent poll cannot re-handle it,
+        // then merge the batch of new messages into one agent turn (fewer, more coherent replies
+        // when a contact sends several lines in quick succession).
+        val fresh = inbox.filter { message ->
             var seen = false
             store.updateState { s ->
                 seen = s.seenMessageIds.contains(message.id)
                 s.copy(seenMessageIds = (s.seenMessageIds + message.id).takeLast(MAX_SEEN))
             }
-            if (seen) continue
-            onMessageHandled?.invoke(conversation.id)
-            val reply = runOnce(lxchatConvId, message)
-            if (!reply.isNullOrBlank()) {
-                channel.sendMessage(conversation.id, reply)
-            }
+            !seen
+        }
+        if (fresh.isEmpty()) return
+        onMessageHandled?.invoke(conversation.id)
+
+        val mergedText = fresh.joinToString("\n") { it.text }
+        val reply = runOnce(lxchatConvId, mergedText)
+        if (!reply.isNullOrBlank()) {
+            channel.sendMessage(conversation.id, reply)
         }
     }
 

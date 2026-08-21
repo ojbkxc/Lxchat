@@ -994,7 +994,5 @@ class ChatViewModel(
         explicitlyRemovedAttachments = explicitlyRemovedAttachments,
     )
 
-    suspend fun loadDraft(
-        conversationId: String,
-    ): LoadedComposerDraft = composerDrafts.load(conversationId)
+    suspend fun loadDraft(conversationId: String): LoadedComposerDraft = composerDrafts.load(conversationId)
 }

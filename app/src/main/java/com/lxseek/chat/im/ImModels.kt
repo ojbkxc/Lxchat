@@ -65,6 +65,8 @@ data class ImGatewayConfig(
     val proactiveSilentEnd: String = "",
     /** Ignore proactive messages in group chats. */
     val proactiveIgnoreGroups: Boolean = true,
+    /** Humanize outbound messages with a light randomized typing-style delay (default OFF). */
+    val humanizeMessages: Boolean = false,
 ) {
     val isConfigured: Boolean get() = enabled && baseUrl.isNotBlank()
     val name: String get() = "Gateway · $platform"

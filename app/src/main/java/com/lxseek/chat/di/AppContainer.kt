@@ -82,6 +82,10 @@ class AppContainer(private val appContext: Context) {
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             imPollingReceiver.start()
         }
+        // Proactive messaging: self-healing loop, inert while disabled.
+        appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            proactiveMessagingService.start()
+        }
         // Auto-download Chinese Vosk model for ASR on first launch.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {

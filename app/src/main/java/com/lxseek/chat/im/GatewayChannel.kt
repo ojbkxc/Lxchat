@@ -3,6 +3,7 @@ package com.lxseek.chat.im
 import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -38,6 +39,9 @@ class GatewayChannel(
 
     override suspend fun sendMessage(conversationId: String, text: String): ImSendResult {
         if (!isConfigured) return ImSendResult.NotConfigured
+        // Optional humanlike pacing before relaying, gated by config (default off).
+        val pacerMs = TypingPacer.delayMsFor(text, config.humanizeMessages)
+        if (pacerMs > 0) delay(pacerMs)
         return withContext(Dispatchers.IO) {
             try {
                 val url = endpoint("/v1/im/send")
@@ -123,6 +127,7 @@ class GatewayChannel(
                         ?.toLongOrNull()) ?: 0L,
                     unreadCount = (o["unreadCount"]?.jsonPrimitive?.contentOrNull
                         ?.toIntOrNull()) ?: 0,
+                    isGroup = (o["isGroup"]?.jsonPrimitive?.contentOrNull) == "true",
                 )
             }.getOrNull()
         }
