@@ -183,15 +183,6 @@ class SettingsManager(private val context: Context) {
             emptyList()
         }
     }
-    val imGatewayConfig: Flow<com.lxseek.chat.im.ImGatewayConfig> = context.dataStore.data.map { pref ->
-        val jsonStr = com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_GATEWAY_CONFIG_JSON] ?: "{}")
-        try {
-            json.decodeFromString<com.lxseek.chat.im.ImGatewayConfig>(jsonStr)
-        } catch (e: Exception) {
-            DebugLog.e("SettingsManager", "Failed to decode IM gateway config", e)
-            com.lxseek.chat.im.ImGatewayConfig()
-        }
-    }
     val sandboxEnabled: Flow<Boolean> = context.dataStore.data.map { it[SANDBOX_ENABLED] ?: false }
     val sandboxSharedStorageEnabled: Flow<Boolean> =
         context.dataStore.data.map { it[SANDBOX_SHARED_STORAGE_ENABLED] ?: false }
@@ -773,13 +764,6 @@ class SettingsManager(private val context: Context) {
         context.dataStore.edit {
             it[MCP_SERVERS_JSON] =
                 com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(servers))
-        }
-    }
-
-    suspend fun saveImGatewayConfig(config: com.lxseek.chat.im.ImGatewayConfig) {
-        context.dataStore.edit {
-            it[IM_GATEWAY_CONFIG_JSON] =
-                com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(config))
         }
     }
 

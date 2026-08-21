@@ -86,7 +86,6 @@ internal val PROXY_BYPASS = stringPreferencesKey("proxy_bypass")
 internal val SHELL_CONFIRM_ENABLED = booleanPreferencesKey("shell_confirm_enabled")
 internal val SHELL_DEVICES_JSON = stringPreferencesKey("shell_devices_json")
 internal val MCP_SERVERS_JSON = stringPreferencesKey("mcp_servers_json")
-internal val IM_GATEWAY_CONFIG_JSON = stringPreferencesKey("im_gateway_config_json")
 internal val SANDBOX_ENABLED = booleanPreferencesKey("sandbox_enabled")
 internal val SANDBOX_SHARED_STORAGE_ENABLED =
     booleanPreferencesKey("sandbox_shared_storage_enabled")

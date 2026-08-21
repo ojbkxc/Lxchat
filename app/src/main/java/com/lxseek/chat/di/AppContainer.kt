@@ -143,8 +143,12 @@ class AppContainer(private val appContext: Context) {
     }
 
     /** IM gateway bridge: watches persisted config and exposes the active [com.lxseek.chat.im.MessageChannel]. */
+    val imGatewayStore: com.lxseek.chat.im.ImGatewayStore by lazy {
+        com.lxseek.chat.im.ImGatewayStore(appContext)
+    }
+
     val imBridgeService: com.lxseek.chat.im.ImBridgeService by lazy {
-        com.lxseek.chat.im.ImBridgeService(settingsRepository, appScope)
+        com.lxseek.chat.im.ImBridgeService(imGatewayStore.config, appScope)
     }
 
     /** Lets the agent send/receive IM through the active gateway channel. */

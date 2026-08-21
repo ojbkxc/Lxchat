@@ -176,8 +176,6 @@ class SettingsRepository(
     val shellConfirmEnabled: StateFlow<Boolean> = hot(settingsManager.shellConfirmEnabled, true)
     val shellDevices: StateFlow<List<ShellDeviceConfig>> = hot(settingsManager.shellDevices, emptyList())
     val mcpServers: StateFlow<List<McpServerConfig>> = hot(settingsManager.mcpServers, emptyList())
-    val imGatewayConfig: StateFlow<com.lxseek.chat.im.ImGatewayConfig> =
-        hot(settingsManager.imGatewayConfig, com.lxseek.chat.im.ImGatewayConfig())
     val sandboxEnabled: StateFlow<Boolean> = hot(settingsManager.sandboxEnabled, false)
     val sandboxSharedStorageEnabled: StateFlow<Boolean> =
         hot(settingsManager.sandboxSharedStorageEnabled, false)
@@ -561,8 +559,6 @@ class SettingsRepository(
             mcpServers.value.map { if (it.id == server.id) server else it },
         )
     }
-    fun saveImGatewayConfig(config: com.lxseek.chat.im.ImGatewayConfig) =
-        scope.launch { settingsManager.saveImGatewayConfig(config) }
 
     // ── Derived lookups ─────────────────────────────────────────
     /** Resolves the currently-active cleartext API key for [provider], or `null`. */
