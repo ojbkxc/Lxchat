@@ -297,9 +297,10 @@ private fun keyStateEntry(
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AssistChip(
-                    onClick = { },
+                SuggestionChip(
+                    onClick = {},
                     label = { Text(tagline) },
+                    enabled = false,
                 )
                 Spacer(Modifier.weight(1f))
                 if (alreadyAdded) {

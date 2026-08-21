@@ -18,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +37,7 @@ import com.lxseek.chat.R
 import com.lxseek.chat.data.local.DailyUsageRow
 import com.lxseek.chat.data.local.ModelUsageRow
 import com.lxseek.chat.data.local.UsageStatistics
+import com.lxseek.chat.ui.components.LxChatEmptyState
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -56,11 +58,15 @@ fun SettingsStatisticsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val dao = remember(app) { app.container.chatDao }
     var snapshot by remember { mutableStateOf<UsageStatsSnapshot?>(null) }
     var loading by remember { mutableStateOf(true) }
+    var failed by remember { mutableStateOf(false) }
     var refreshTick by remember { mutableStateOf(0) }
     val unknownError = stringResource(R.string.unknown_error)
+    val errorTitle = stringResource(R.string.stats_error_title)
+    val errorDesc = stringResource(R.string.stats_error_desc)
 
     LaunchedEffect(refreshTick) {
         loading = true
+        failed = false
         withContext(Dispatchers.IO) {
             runCatching {
                 UsageStatsSnapshot(
@@ -70,7 +76,10 @@ fun SettingsStatisticsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 )
             }
         }.onSuccess { snapshot = it }
-            .onFailure { error -> viewModel.emitSnackbar(error.localizedMessage ?: unknownError) }
+            .onFailure { error ->
+                failed = true
+                viewModel.emitSnackbar(error.localizedMessage ?: unknownError)
+            }
         loading = false
     }
 
@@ -85,7 +94,20 @@ fun SettingsStatisticsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     ) {
         when (val s = snapshot) {
             null -> {
-                if (loading) {
+                if (failed) {
+                    LxChatEmptyState(
+                        title = errorTitle,
+                        description = errorDesc,
+                        markSize = 52.dp,
+                        action = {
+                            TextButton(onClick = { refreshTick++ }) {
+                                Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.height(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.stats_retry))
+                            }
+                        },
+                    )
+                } else if (loading) {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
                         contentAlignment = Alignment.Center,

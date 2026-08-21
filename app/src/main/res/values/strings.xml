@@ -1070,6 +1070,12 @@
     <string name="automation_notification_channel_desc">Ongoing notification shown while LxChat automations run</string>
     <string name="automation_ai_tools">Access tasks &amp; loops</string>
     <string name="automation_ai_tools_desc">Let the model create and manage tasks, or start and stop session loops. Off by default.</string>
+    <string name="qs_agent_tile_label">LxChat Agent</string>
+    <string name="qs_agent_on_desc">Agent automation tools are on</string>
+    <string name="qs_agent_off_desc">Agent automation tools are off</string>
+    <string name="qs_accessibility_tile_label">LxChat App Control</string>
+    <string name="qs_accessibility_on_desc">App control accessibility is on</string>
+    <string name="qs_accessibility_off_desc">App control accessibility is off — tap to enable</string>
     <string name="automation_scheduling">Scheduling</string>
     <string name="automation_exact_execution">Exact execution</string>
     <string name="automation_exact_execution_on_desc">Use exact alarms for tasks and loops; Android may still impose system limits.</string>

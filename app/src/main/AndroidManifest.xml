@@ -117,6 +117,30 @@
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
 
+        <!-- Quick Settings tile: one-tap toggle of the Agent's automation toolset. -->
+        <service
+            android:name=".qs.AgentToggleTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_agent"
+            android:label="@string/qs_agent_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Quick Settings tile: status + deep-link for the app-control accessibility bridge. -->
+        <service
+            android:name=".qs.AccessibilityTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_accessibility"
+            android:label="@string/qs_accessibility_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Fires a scheduled task; internal only. -->
         <receiver
             android:name=".automation.AutomationAlarmReceiver"

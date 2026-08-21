@@ -24,4 +24,7 @@
     <string name="stats_messages_count">%1$d 条消息</string>
     <string name="stats_no_activity">该时段暂无活动</string>
     <string name="stats_messages_per_day">每日消息数</string>
+    <string name="stats_error_title">统计数据加载失败</string>
+    <string name="stats_error_desc">读取用量记录时出错，点击重试可再次尝试。</string>
+    <string name="stats_retry">重试</string>
 </resources>

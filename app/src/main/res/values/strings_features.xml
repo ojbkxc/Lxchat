@@ -24,4 +24,7 @@
     <string name="stats_messages_count">%1$d messages</string>
     <string name="stats_no_activity">No activity in this period</string>
     <string name="stats_messages_per_day">Messages per day</string>
+    <string name="stats_error_title">Couldn\'t load statistics</string>
+    <string name="stats_error_desc">Something went wrong while reading your usage history. Tap retry to try again.</string>
+    <string name="stats_retry">Retry</string>
 </resources>

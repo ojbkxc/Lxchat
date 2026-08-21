@@ -172,6 +172,12 @@
     <string name="im_gateway_show_token">显示令牌</string>
     <string name="automation_ai_tools">访问任务与循环</string>
     <string name="automation_ai_tools_desc">允许模型创建和管理任务，或启动、停止会话循环。默认关闭。</string>
+    <string name="qs_agent_tile_label">LxChat 智能体</string>
+    <string name="qs_agent_on_desc">智能体自动化工具已开启</string>
+    <string name="qs_agent_off_desc">智能体自动化工具已关闭</string>
+    <string name="qs_accessibility_tile_label">LxChat App 控制</string>
+    <string name="qs_accessibility_on_desc">App 控制无障碍已开启</string>
+    <string name="qs_accessibility_off_desc">App 控制无障碍已关闭 - 点击开启</string>
     <string name="automation_scheduling">调度</string>
     <string name="automation_exact_execution">精确执行</string>
     <string name="automation_exact_execution_on_desc">为任务和循环使用精确闹钟；Android 仍可能施加系统限制。</string>
