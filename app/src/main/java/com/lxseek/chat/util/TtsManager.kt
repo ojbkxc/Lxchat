@@ -216,24 +216,63 @@ object TtsManager {
             }
             log("D", "Manual bindService(TTS_SERVICE) returned: $bindResult")
         }
-        // System-default-first, brand-agnostic engine ordering. The phone's own default TTS
-        // engine (and thus its stock voice) is always tried first, on every device. Vendor
-        // engines (Google / Xiaomi / any resolved engine) are only last-resort fallbacks and
-        // are never preferred over the system default, so behavior stays consistent no matter
-        // which brand of phone is used.
+        // Brand-aware, "phone's-own-first" engine ordering. "System TTS" here means the TTS engine
+        // the phone's manufacturer bundles: Xiaomi -> 小米引擎, OPPO -> OPPO 引擎, Samsung -> Samsung
+        // TTS, etc. This is preferred over whatever engine the user currently has selected as the
+        // system default (e.g. they may have switched to Google for English). Unknown brand mappings
+        // are skipped silently, so this can never make things worse — the system default is next.
+        val oemEngines = resolveOemTtsEngines(Build.MANUFACTURER, pm)
         enginesToTry = mutableListOf<String?>().apply {
-            // Explicit system default engine (tts_default_synth) — the phone's own voice.
-            if (!defaultEngine.isNullOrEmpty()) add(defaultEngine)
-            // The 2-arg default constructor resolves the system default engine again, giving
-            // us an equivalent fallback when the provider id cannot be read from settings.
+            // 1) The device's own bundled OEM engine(s) — the deterministic stock voice per brand.
+            for (e in oemEngines) if (e !in this) add(e)
+            // 2) The directly-read system default engine (tts_default_synth) — identical to the
+            //    OEM engine on a stock phone, kept first-class so all brands are covered.
+            if (!defaultEngine.isNullOrEmpty() && defaultEngine !in this) add(defaultEngine)
+            // 3) The neutral 2-arg constructor resolves the system default engine again, giving
+            //    an equivalent fallback when the provider id cannot be read from settings.
             add(null)
+            // 4) Other resolved engines (deduped).
             for (e in resolvedEngines) if (e !in this) add(e)
+            // 5) Last-resort curated engines (Google / Xiaomi) for devices that resolve none.
             if ("com.google.android.tts" !in this) add("com.google.android.tts")
             if ("com.xiaomi.mibrain.speech" !in this) add("com.xiaomi.mibrain.speech")
         }
         currentEngineIndex = 0
-        log("D", "enginesToTry (null=2-arg default): $enginesToTry")
+        log("D", "OEM engines: $oemEngines; default=$defaultEngine; enginesToTry (null=2-arg): $enginesToTry")
         tryNextEngine(appCtx)
+    }
+
+    // OEM -> bundled TTS engine package(s). Only entries that resolve to a real, installed
+    // engine are ever tried; any unmatched hint is skipped silently and never hurts behaviour.
+    // (Vendor package ids can vary across ROMs, so a wrong hint simply falls through.)
+    private val OEM_TTS_ENGINES = mapOf(
+        "xiaomi" to listOf("com.xiaomi.mibrain.speech"),
+        "redmi" to listOf("com.xiaomi.mibrain.speech"),
+        "poco" to listOf("com.xiaomi.mibrain.speech"),
+        "samsung" to listOf("com.samsung.SMT"),
+        "huawei" to listOf("com.huawei.tts"),
+        "honor" to listOf("com.hihonor.speechkit"),
+        "oppo" to listOf("com.oppo.smart.tts"),
+        "realme" to listOf("com.realme.tts"),
+        "oneplus" to listOf("com.oneplus.tts"),
+        "vivo" to listOf("com.vivo.vivoai.tts"),
+        "iqoo" to listOf("com.vivo.vivoai.tts"),
+        "google" to listOf("com.google.android.tts"),
+    )
+
+    private fun resolveOemTtsEngines(manufacturer: String?, packageManager: PackageManager): List<String> {
+        val brand = manufacturer?.lowercase() ?: return emptyList()
+        val mapped = OEM_TTS_ENGINES.entries
+            .firstOrNull { (key, _) -> brand.contains(key) }
+            ?.value
+            ?: emptyList()
+        return mapped.filter { isEngineInstalled(it, packageManager) }
+    }
+
+    private fun isEngineInstalled(pkg: String, packageManager: PackageManager): Boolean = try {
+        packageManager.getPackageInfo(pkg, 0).applicationInfo?.enabled == true
+    } catch (_: Throwable) {
+        false
     }
 
     private fun tryNextEngine(ctx: Context) {
