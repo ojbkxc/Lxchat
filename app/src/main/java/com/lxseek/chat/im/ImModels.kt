@@ -50,7 +50,35 @@ data class ImGatewayConfig(
     val baseUrl: String = "",
     val token: String = "",
     val pollIntervalMs: Long = 5_000L,
+    /** Model used for automatic replies; blank falls back to the app default. */
+    val autoReplyModel: String = "",
 ) {
     val isConfigured: Boolean get() = enabled && baseUrl.isNotBlank()
     val name: String get() = "Gateway · $platform"
+}
+
+/**
+ * Runtime state that lets the background receiver resume exactly where it left off across restarts.
+ *
+ * - [conversationBindings]: IM conversation id -> Lxchat conversation id. One Lxchat session
+ *   (and its generation history) is bound to each remote IM thread, mirroring the per-channel
+ *   session binding in `conversation-state-store`.
+ * - [seenMessageIds]: IM message ids already handed to the agent, used as a de-duplication set so
+ *   a re-poll never replays a handled message. Only the last [MAX_SEEN] ids are kept.
+ */
+@Serializable
+data class ImRuntimeState(
+    val conversationBindings: Map<String, String> = emptyMap(),
+    val seenMessageIds: List<String> = emptyList(),
+    val platform: String = "wechat",
+) {
+    fun retainLatest(gateway: ImGatewayConfig): ImRuntimeState {
+        val pruned = seenMessageIds.takeLast(MAX_SEEN)
+        return if (pruned.size == seenMessageIds.size && platform == gateway.platform) this
+        else copy(seenMessageIds = pruned, platform = gateway.platform)
+    }
+
+    private companion object {
+        const val MAX_SEEN = 2_000
+    }
 }

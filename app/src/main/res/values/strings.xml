@@ -1208,6 +1208,8 @@
     <string name="im_gateway_base_url">Gateway base URL</string>
     <string name="im_gateway_token">Auth token (optional)</string>
     <string name="im_gateway_poll_interval">Poll interval (ms)</string>
+    <string name="im_gateway_auto_reply_model">Auto-reply model</string>
+    <string name="im_gateway_auto_reply_model_hint">Provider/Model, blank uses default</string>
     <string name="im_gateway_save">Save gateway</string>
     <string name="im_gateway_saved">Gateway saved</string>
     <string name="im_gateway_validation">Base URL is required when the gateway is enabled</string>

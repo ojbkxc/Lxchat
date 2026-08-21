@@ -78,6 +78,10 @@ class AppContainer(private val appContext: Context) {
             conversationRepository.ensureRunRecovery()
             automationScheduler.start()
         }
+        // IM automatic reply loop: a self-healing receiver that polls once IM is enabled.
+        appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            imPollingReceiver.start()
+        }
         // Auto-download Chinese Vosk model for ASR on first launch.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
@@ -150,6 +154,17 @@ class AppContainer(private val appContext: Context) {
 
     val imBridgeService: com.lxseek.chat.im.ImBridgeService by lazy {
         com.lxseek.chat.im.ImBridgeService(imGatewayStore.config, appScope)
+    }
+
+    /** Closes the IM loop: polls inbound messages, triggers the agent, writes replies back. */
+    val imPollingReceiver: com.lxseek.chat.im.ImPollingReceiver by lazy {
+        com.lxseek.chat.im.ImPollingReceiver(
+            bridge = imBridgeService,
+            taskEngine = taskExecutionEngine,
+            conversationRepository = conversationRepository,
+            store = imGatewayStore,
+            scope = appScope,
+        )
     }
 
     /** Lets the agent send/receive IM through the active gateway channel. */

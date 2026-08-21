@@ -16,6 +16,9 @@ internal val Context.imGatewayDataStore by preferencesDataStore(name = "im_gatew
 
 private val IM_GATEWAY_CONFIG_JSON = stringPreferencesKey("im_gateway_config_json")
 
+/** Persisted runtime state (conversation bindings + seen-message set), encrypted like config. */
+private val IM_GATEWAY_STATE_JSON = stringPreferencesKey("im_gateway_state_json")
+
 class ImGatewayStore(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -31,6 +34,17 @@ class ImGatewayStore(private val context: Context) {
         }
     }
 
+    /** The latest persisted IM runtime state. */
+    val runtimeState: Flow<ImRuntimeState> = context.imGatewayDataStore.data.map { pref ->
+        val jsonStr = com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_GATEWAY_STATE_JSON] ?: "{}")
+        try {
+            json.decodeFromString<ImRuntimeState>(jsonStr)
+        } catch (e: Exception) {
+            DebugLog.e("ImGatewayStore", "Failed to decode IM runtime state", e)
+            ImRuntimeState()
+        }
+    }
+
     /** Persist a new IM gateway configuration (encrypted, like MCP servers). */
     suspend fun save(config: ImGatewayConfig) {
         context.imGatewayDataStore.edit {
@@ -38,4 +52,21 @@ class ImGatewayStore(private val context: Context) {
                 com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(config))
         }
     }
+
+    /** Atomic, read-modify-write of the runtime state. */
+    suspend fun updateState(transform: (ImRuntimeState) -> ImRuntimeState) {
+        context.imGatewayDataStore.edit { pref ->
+            val current = runCatching {
+                json.decodeFromString<ImRuntimeState>(
+                    com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_GATEWAY_STATE_JSON] ?: "{}"),
+                )
+            }.getOrDefault(ImRuntimeState())
+            val next = transform(current)
+            pref[IM_GATEWAY_STATE_JSON] =
+                com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(next))
+        }
+    }
+
+    /** Clear all bindings and seen-set (e.g. when the gateway is removed or switched). */
+    suspend fun clearRuntimeState() = updateState { ImRuntimeState() }
 }

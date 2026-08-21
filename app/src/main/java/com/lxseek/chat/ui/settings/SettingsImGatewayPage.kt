@@ -51,6 +51,7 @@ private data class ImGatewayFormState(
     val baseUrl: String,
     val token: String,
     val pollIntervalMs: String,
+    val autoReplyModel: String,
 ) {
     companion object {
         fun from(config: ImGatewayConfig): ImGatewayFormState = ImGatewayFormState(
@@ -59,6 +60,7 @@ private data class ImGatewayFormState(
             baseUrl = config.baseUrl,
             token = config.token,
             pollIntervalMs = config.pollIntervalMs.toString(),
+            autoReplyModel = config.autoReplyModel,
         )
     }
 
@@ -68,6 +70,7 @@ private data class ImGatewayFormState(
         baseUrl = baseUrl.trim(),
         token = token,
         pollIntervalMs = pollIntervalMs.trim().toLongOrNull()?.takeIf { it > 0 } ?: 5_000L,
+        autoReplyModel = autoReplyModel.trim(),
     )
 }
 
@@ -211,6 +214,16 @@ fun SettingsImGatewayPage(
                     },
                     label = { Text(stringResource(R.string.im_gateway_poll_interval)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                )
+            },
+            {
+                OutlinedTextField(
+                    value = form.autoReplyModel,
+                    onValueChange = { form = form.copy(autoReplyModel = it) },
+                    label = { Text(stringResource(R.string.im_gateway_auto_reply_model)) },
+                    placeholder = { Text(stringResource(R.string.im_gateway_auto_reply_model_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 )

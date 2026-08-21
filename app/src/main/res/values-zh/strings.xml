@@ -146,6 +146,8 @@
     <string name="im_gateway_base_url">网关地址</string>
     <string name="im_gateway_token">认证令牌（可选）</string>
     <string name="im_gateway_poll_interval">轮询间隔（毫秒）</string>
+    <string name="im_gateway_auto_reply_model">自动回复模型</string>
+    <string name="im_gateway_auto_reply_model_hint">Provider/模型，留空使用默认</string>
     <string name="im_gateway_save">保存网关</string>
     <string name="im_gateway_saved">网关已保存</string>
     <string name="im_gateway_validation">启用网关时需要填写网关地址</string>
