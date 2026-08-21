@@ -51,7 +51,8 @@ object ToolCallPairFixer {
                 }
                 "assistant" -> {
                     flushPendingIfValid()
-                    if (msg.toolCalls != null && msg.toolCalls.isNotEmpty()) {
+                    val toolCalls = msg.toolCalls
+                    if (toolCalls != null && toolCalls.isNotEmpty()) {
                         pendingAssistant = msg
                     } else {
                         fixed.add(msg)

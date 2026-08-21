@@ -512,7 +512,7 @@ private fun GlobalSearchDialog(
         if (query.isBlank()) flowOf(emptyList<GlobalSearchResult>())
         else viewModel.searchMessagesGlobally(query.trim())
     }
-    val results by resultsFlow.collectAsState()
+    val results by resultsFlow.collectAsState(initial = emptyList())
     val noResultsText = stringResource(R.string.search_no_results)
 
     Dialog(onDismissRequest = onDismiss) {

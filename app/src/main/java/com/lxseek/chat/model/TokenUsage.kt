@@ -49,7 +49,7 @@ data class TokenUsage(
 
     /** Fraction of the reported total budget already consumed, clamped to [0, 1]. */
     fun usageRatio(): Float = if (totalTokenCount > 0) {
-        ((inputTokenCount ?: 0) + (outputTokenCount ?: 0)).toFloat() / totalTokenCount
+        (((inputTokenCount ?: 0) + (outputTokenCount ?: 0)).toFloat() / totalTokenCount)
             .coerceIn(0f, 1f)
     } else {
         0f
