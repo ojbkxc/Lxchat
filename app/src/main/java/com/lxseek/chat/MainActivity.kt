@@ -52,11 +52,9 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import com.lxseek.chat.ui.settings.RatingForm
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.service.LxChatForegroundService
@@ -155,22 +153,6 @@ class MainActivity : ComponentActivity() {
         }
 
         val settingsManager = SettingsManager(applicationContext)
-
-        // Create the process-scoped ViewModel OUTSIDE composition. Any failure in the DI chain
-        // (Room build/migration, repository init, eager StateFlow collection) is caught here and
-        // surfaced as a friendly error screen instead of an unguarded crash inside setContent.
-        val container = (application as LxChatApplication).container
-        var chatViewModel: ChatViewModel? = null
-        var startupError: Throwable? = null
-        try {
-            val factory = container.chatViewModelFactory()
-            chatViewModel = ViewModelProvider(this, factory)[ChatViewModel::class.java]
-        } catch (e: Throwable) {
-            com.lxseek.chat.util.DebugLog.e("MainActivity", "ChatViewModel creation failed", e)
-            CrashReporter.note("MainActivity.ChatViewModel creation failed: ${e.javaClass.simpleName}")
-            startupError = e
-        }
-
         lifecycleScope.launch {
             val storedVersion = withContext(Dispatchers.IO) {
                 ChatDatabase.getStoredVersion(this@MainActivity)
@@ -196,9 +178,6 @@ class MainActivity : ComponentActivity() {
                 window.isNavigationBarContrastEnforced = false
             }
             setContent {
-            if (startupError != null) {
-                StartupErrorScreen(error = startupError!!, onRetry = { recreate() })
-            } else {
             val themeMode by settingsManager.themeMode.collectAsState(initial = "FOLLOW_DEVICE")
             val colorSchemeName by settingsManager.colorScheme.collectAsState(initial = "DEFAULT")
             val schemeStyleName by settingsManager.schemeStyle.collectAsState(initial = "TONAL_SPOT")
@@ -277,10 +256,11 @@ class MainActivity : ComponentActivity() {
                         showOnboarding = !settingsManager.onboardingCompleted.first()
                     }
 
-                    // ViewModel was created in onCreate under a catch-all guard. This subtree is
-                    // only reachable when creation succeeded, so the reference is guaranteed
-                    // non-null here.
-                    val viewModel: ChatViewModel = requireNotNull(chatViewModel)
+                    // Create ViewModel via the process-scoped DI container (owned by LxChatApplication),
+                    // so the same shared singletons back both the UI and background task execution.
+                    val container = (application as LxChatApplication).container
+                    val factory = remember { container.chatViewModelFactory() }
+                    val viewModel: ChatViewModel = viewModel(factory = factory)
 
                     when (showOnboarding) {
                         null -> { /* loading — splash screen covers this */ }
@@ -308,7 +288,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-            }
             }
             }
             }
@@ -1026,66 +1005,4 @@ private fun snackbarTimeoutMillis(
         containsText = true,
         containsControls = visuals.actionLabel != null
     ) ?: durationMillis
-}
-
-/**
- * Last-resort startup failure screen. Replaces an unguarded crash: if ViewModel/DI
- * construction throws in onCreate, the app shows this page (with the exact error) instead
- * of silently dying, so the user can retry or report the actual cause.
- */
-@Composable
-private fun StartupErrorScreen(error: Throwable, onRetry: () -> Unit) {
-    val activity = LocalActivity.current
-    val detail = remember(error) {
-        buildString {
-            appendLine("${error.javaClass.simpleName}: ${error.message ?: "unknown error"}")
-            appendLine()
-            val sw = java.io.StringWriter()
-            error.printStackTrace(java.io.PrintWriter(sw))
-            append(sw.toString().lineSequence().take(24).joinToString("\n"))
-        }
-    }
-    MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Spacer(Modifier.height(48.dp))
-                Text(
-                    text = "启动失败",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "应用在启动时遇到了问题。你可以点击「重试」再次启动，或将下方的错误信息反馈给开发者。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(16.dp))
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = detail,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(12.dp),
-                    )
-                }
-                Spacer(Modifier.height(24.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(onClick = onRetry) { Text("重试") }
-                    OutlinedButton(onClick = { activity?.finish() }) { Text("退出") }
-                }
-                Spacer(Modifier.height(48.dp))
-            }
-        }
-    }
 }

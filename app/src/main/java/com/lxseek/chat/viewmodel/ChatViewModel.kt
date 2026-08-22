@@ -397,19 +397,11 @@ class ChatViewModel(
     // ── Auto Backup ───────────────────────────────────────────
 
     val conversations: StateFlow<List<ChatConversation>> = convRepo.getAllConversations()
-        .catch { e ->
-            DebugLog.e("ChatViewModel", "Failed to load conversations", e)
-            emit(emptyList())
-        }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val currentConversationId: StateFlow<String?> get() = selectionController.currentConversationId
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val currentConversation: StateFlow<ChatConversation?> = currentConversationId
         .flatMapLatest { id -> if (id == null) flowOf(null) else convRepo.observeConversation(id) }
-        .catch { e ->
-            DebugLog.e("ChatViewModel", "Failed to observe current conversation", e)
-            emit(null)
-        }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private val unreadGenerationAcknowledger = UnreadGenerationAcknowledger(
         currentConversation = currentConversation,
@@ -604,9 +596,6 @@ class ChatViewModel(
         conversationExecutionCoordinator.activeAutomationConversationIds,
     ) { foreground, automation ->
         foreground + automation
-    }.catch { e ->
-        DebugLog.e("ChatViewModel", "Failed to compute generating conversations", e)
-        emit(emptySet())
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     private val generationStopAdapter by lazy {
@@ -663,10 +652,6 @@ class ChatViewModel(
         .flatMapLatest { conversationId ->
             if (conversationId == null) flowOf("")
             else generationRegistry.getOrCreate(conversationId).compactPreview
-        }
-        .catch { e ->
-            DebugLog.e("ChatViewModel", "Failed to observe compact preview", e)
-            emit("")
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
     val pendingConversationSettings: StateFlow<ConversationSettings?> = _pendingConversationSettings.asStateFlow()
