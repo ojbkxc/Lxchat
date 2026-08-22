@@ -17,6 +17,11 @@ import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import com.lxseek.chat.MainActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlin.math.hypot
 
 /**
@@ -96,7 +101,34 @@ class PetFloatingView @JvmOverloads constructor(
     /** Active edge-snap animator; cancelled if a new drag begins. */
     private var snapAnimator: ValueAnimator? = null
 
+    /** Latest emotion driving the face; updated by the [PetEmotionController] observer. */
+    @Volatile
+    private var currentEmotion: PetEmotion = PetEmotion.IDLE
+    /** Collects [PetEmotionController.emotion] while attached so the bubble reacts to the agent. */
+    private var emotionScope: CoroutineScope? = null
+
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        emotionScope = scope
+        scope.launch {
+            PetEmotionController.emotion.collect { emotion ->
+                if (emotion != currentEmotion) {
+                    currentEmotion = emotion
+                    invalidate()
+                }
+            }
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        emotionScope?.cancel()
+        emotionScope = null
+        cancelSnapAnimation()
+    }
 
     /** Binds the [WindowManager.LayoutParams] that [PetOverlayWindowService] moves on drags. */
     fun bindWindowParams(params: WindowManager.LayoutParams) {
@@ -174,31 +206,41 @@ class PetFloatingView @JvmOverloads constructor(
         // 3. White border on top of the body.
         canvas.drawCircle(cx, cy, radius, borderPaint)
 
-        // 4. Big, round, glossy eyes — whites + pupils + specular highlights.
+        // 4. Face — eyes and mouth vary with the current emotion.
         val eyeY = cy - radius * EYE_VERTICAL_RATIO
         val eyeGap = radius * EYE_GAP_RATIO
         val eyeRadius = radius * EYE_RADIUS_RATIO
         val pupilRadius = eyeRadius * PUPIL_SCALE
         val highlightRadius = eyeRadius * HIGHLIGHT_SCALE
         val highlightOffset = eyeRadius * HIGHLIGHT_OFFSET_SCALE
-        // Left eye.
-        canvas.drawCircle(cx - eyeGap, eyeY, eyeRadius, eyeWhitePaint)
-        canvas.drawCircle(cx - eyeGap, eyeY + eyeRadius * PUPIL_DROP_SCALE, pupilRadius, pupilPaint)
-        canvas.drawCircle(
-            cx - eyeGap - highlightOffset,
-            eyeY - highlightOffset,
-            highlightRadius,
-            eyeHighlightPaint,
-        )
-        // Right eye.
-        canvas.drawCircle(cx + eyeGap, eyeY, eyeRadius, eyeWhitePaint)
-        canvas.drawCircle(cx + eyeGap, eyeY + eyeRadius * PUPIL_DROP_SCALE, pupilRadius, pupilPaint)
-        canvas.drawCircle(
-            cx + eyeGap - highlightOffset,
-            eyeY - highlightOffset,
-            highlightRadius,
-            eyeHighlightPaint,
-        )
+
+        when (currentEmotion) {
+            // Worried / thinking: pupils shift up, mouth becomes a small "o".
+            PetEmotion.THINKING -> {
+                drawEyes(canvas, cx - eyeGap, cx + eyeGap, eyeY, eyeRadius, pupilRadius, highlightRadius, highlightOffset, pupilDrop = -0.28f)
+                drawOpenMouth(canvas, cx, cy, radius, small = true)
+            }
+            // Delighted: eyes drawn as happy arcs (^ ^), wide open smile.
+            PetEmotion.HAPPY -> {
+                drawHappyEyes(canvas, cx - eyeGap, cx + eyeGap, eyeY, eyeRadius)
+                drawWideSmile(canvas, cx, cy, radius)
+            }
+            // Upset: eyes shift down with a frown.
+            PetEmotion.SAD -> {
+                drawEyes(canvas, cx - eyeGap, cx + eyeGap, eyeY, eyeRadius, pupilRadius, highlightRadius, highlightOffset, pupilDrop = 0.35f)
+                drawFrown(canvas, cx, cy, radius)
+            }
+            // Error: eyes become flat dashes, mouth is a straight flat line.
+            PetEmotion.ERROR -> {
+                drawFlatEyes(canvas, cx - eyeGap, cx + eyeGap, eyeY, eyeRadius)
+                drawFlatMouth(canvas, cx, cy, radius)
+            }
+            // Default / idle: the friendly smile.
+            PetEmotion.IDLE -> {
+                drawEyes(canvas, cx - eyeGap, cx + eyeGap, eyeY, eyeRadius, pupilRadius, highlightRadius, highlightOffset, pupilDrop = PUPIL_DROP_SCALE)
+                drawSmile(canvas, cx, cy, radius)
+            }
+        }
 
         // 5. Pink blush on both cheeks.
         val blushY = cy + radius * BLUSH_VERTICAL_RATIO
@@ -206,8 +248,62 @@ class PetFloatingView @JvmOverloads constructor(
         val blushRadius = radius * BLUSH_RADIUS_RATIO
         canvas.drawCircle(cx - blushGap, blushY, blushRadius, blushPaint)
         canvas.drawCircle(cx + blushGap, blushY, blushRadius, blushPaint)
+    }
 
-        // 6. Friendly smile — a rounded, natural arc.
+    /** Standard round eyes with a pupil at [pupilDrop] (fraction of eye radius, +down / -up). */
+    private fun drawEyes(
+        canvas: Canvas,
+        leftX: Float,
+        rightX: Float,
+        eyeY: Float,
+        eyeRadius: Float,
+        pupilRadius: Float,
+        highlightRadius: Float,
+        highlightOffset: Float,
+        pupilDrop: Float,
+    ) {
+        canvas.drawCircle(leftX, eyeY, eyeRadius, eyeWhitePaint)
+        canvas.drawCircle(leftX, eyeY + eyeRadius * pupilDrop, pupilRadius, pupilPaint)
+        canvas.drawCircle(leftX - highlightOffset, eyeY - highlightOffset, highlightRadius, eyeHighlightPaint)
+        canvas.drawCircle(rightX, eyeY, eyeRadius, eyeWhitePaint)
+        canvas.drawCircle(rightX, eyeY + eyeRadius * pupilDrop, pupilRadius, pupilPaint)
+        canvas.drawCircle(rightX - highlightOffset, eyeY - highlightOffset, highlightRadius, eyeHighlightPaint)
+    }
+
+    /** Happy "^^" eyes: two white circles with a thin upward arc instead of a pupil. */
+    private fun drawHappyEyes(canvas: Canvas, leftX: Float, rightX: Float, eyeY: Float, eyeRadius: Float) {
+        canvas.drawCircle(leftX, eyeY, eyeRadius, eyeWhitePaint)
+        canvas.drawArc(
+            leftX - eyeRadius * 0.7f, eyeY - eyeRadius * 0.7f,
+            leftX + eyeRadius * 0.7f, eyeY + eyeRadius * 0.7f,
+            200f, 140f, false, pupilPaint,
+        )
+        canvas.drawCircle(rightX, eyeY, eyeRadius, eyeWhitePaint)
+        canvas.drawArc(
+            rightX - eyeRadius * 0.7f, eyeY - eyeRadius * 0.7f,
+            rightX + eyeRadius * 0.7f, eyeY + eyeRadius * 0.7f,
+            200f, 140f, false, pupilPaint,
+        )
+    }
+
+    /** Error eyes: flat horizontal strokes instead of round pupils. */
+    private fun drawFlatEyes(canvas: Canvas, leftX: Float, rightX: Float, eyeY: Float, eyeRadius: Float) {
+        val stroke = pupilPaint.strokeWidth
+        pupilPaint.strokeWidth = dp(1.6f)
+        pupilPaint.strokeCap = Paint.Cap.ROUND
+        canvas.drawCircle(leftX, eyeY, eyeRadius, eyeWhitePaint)
+        canvas.drawLine(
+            leftX - eyeRadius * 0.55f, eyeY, leftX + eyeRadius * 0.55f, eyeY, pupilPaint,
+        )
+        canvas.drawCircle(rightX, eyeY, eyeRadius, eyeWhitePaint)
+        canvas.drawLine(
+            rightX - eyeRadius * 0.55f, eyeY, rightX + eyeRadius * 0.55f, eyeY, pupilPaint,
+        )
+        pupilPaint.strokeWidth = stroke
+    }
+
+    /** The default friendly smile arc. */
+    private fun drawSmile(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
         canvas.drawArc(
             cx - radius * SMILE_WIDTH_RATIO,
             cy + radius * SMILE_TOP_RATIO,
@@ -218,6 +314,55 @@ class PetFloatingView @JvmOverloads constructor(
             false,
             smilePaint,
         )
+    }
+
+    /** A wide, open happy smile. */
+    private fun drawWideSmile(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+        canvas.drawArc(
+            cx - radius * SMILE_WIDTH_RATIO * 1.2f,
+            cy + radius * SMILE_TOP_RATIO,
+            cx + radius * SMILE_WIDTH_RATIO * 1.2f,
+            cy + radius * SMILE_BOTTOM_RATIO * 1.25f,
+            10f,
+            160f,
+            false,
+            smilePaint,
+        )
+    }
+
+    /** A small "o" mouth (thinking / unsure). */
+    private fun drawOpenMouth(canvas: Canvas, cx: Float, cy: Float, radius: Float, small: Boolean) {
+        val r = if (small) radius * 0.12f else radius * 0.2f
+        canvas.drawCircle(cx, cy + radius * 0.28f, r, smilePaint)
+    }
+
+    /** A sad frown: an arc curving downward. */
+    private fun drawFrown(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+        canvas.drawArc(
+            cx - radius * SMILE_WIDTH_RATIO,
+            cy + radius * 0.05f,
+            cx + radius * SMILE_WIDTH_RATIO,
+            cy + radius * 0.6f,
+            SMILE_START_ANGLE + 180f,
+            SMILE_SWEEP_ANGLE,
+            false,
+            smilePaint,
+        )
+    }
+
+    /** A flat mouth line (error / neutral-displeased). */
+    private fun drawFlatMouth(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+        val stroke = smilePaint.strokeWidth
+        smilePaint.strokeWidth = dp(3f)
+        smilePaint.strokeCap = Paint.Cap.ROUND
+        canvas.drawLine(
+            cx - radius * SMILE_WIDTH_RATIO,
+            cy + radius * 0.32f,
+            cx + radius * SMILE_WIDTH_RATIO,
+            cy + radius * 0.32f,
+            smilePaint,
+        )
+        smilePaint.strokeWidth = stroke
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -356,11 +501,6 @@ class PetFloatingView @JvmOverloads constructor(
         } catch (_: Exception) {
             // Swallow resolution/background-start edge cases; the overlay persists harmlessly.
         }
-    }
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        cancelSnapAnimation()
     }
 
     private companion object {

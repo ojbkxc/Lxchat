@@ -35,6 +35,8 @@ class ProactiveMessagingService(
     private val conversationRepository: ConversationRepository,
     private val taskEngine: TaskExecutionEngine,
     private val scope: CoroutineScope,
+    /** Splits long proactive greetings into several short messages before writing them back. */
+    private val segmentSender: MultiSegmentMessageSender = MultiSegmentMessageSender(),
     private val clock: () -> LocalTime = { LocalTime.now() },
 ) {
     private var job: Job? = null
@@ -116,7 +118,9 @@ class ProactiveMessagingService(
             is TaskExecutionEngine.Result.Success -> {
                 val reply = result.text.trim()
                 if (reply.isNotEmpty()) {
-                    bridge.currentChannel()?.sendMessage(conversation.id, reply)
+                    val channel = bridge.currentChannel() ?: return
+                    // Long greetings are split into several short messages for readability.
+                    segmentSender.send(channel, conversation.id, reply)
                 }
             }
             is TaskExecutionEngine.Result.Busy ->

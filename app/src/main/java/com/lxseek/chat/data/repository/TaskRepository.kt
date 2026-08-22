@@ -3,6 +3,8 @@ package com.lxseek.chat.data.repository
 import com.lxseek.chat.data.local.ChatDao
 import com.lxseek.chat.data.local.LoopEntity
 import com.lxseek.chat.data.local.TaskEntity
+import com.lxseek.chat.data.local.WorkflowEntity
+import com.lxseek.chat.data.local.WorkflowStepEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -78,4 +80,32 @@ class TaskRepository(
     suspend fun deleteLoop(conversationId: String) = chatDao.deleteLoop(conversationId)
 
     suspend fun deleteAllLoops() = chatDao.deleteAllLoops()
+
+    // ── Workflows ────────────────────────────────────────────
+
+    fun getAllWorkflows(): Flow<List<WorkflowEntity>> = chatDao.getAllWorkflows()
+
+    suspend fun getAllWorkflowsList(): List<WorkflowEntity> = chatDao.getAllWorkflowsList()
+
+    suspend fun getWorkflow(id: String): WorkflowEntity? = chatDao.getWorkflow(id)
+
+    suspend fun upsertWorkflow(workflow: WorkflowEntity) = chatDao.upsertWorkflow(workflow)
+
+    suspend fun deleteWorkflow(id: String) = chatDao.deleteWorkflow(id)
+
+    suspend fun getWorkflowSteps(workflowId: String): List<WorkflowStepEntity> =
+        chatDao.getWorkflowSteps(workflowId)
+
+    fun observeWorkflowSteps(workflowId: String): Flow<List<WorkflowStepEntity>> =
+        chatDao.observeWorkflowSteps(workflowId)
+
+    suspend fun upsertWorkflowSteps(steps: List<WorkflowStepEntity>) =
+        chatDao.upsertWorkflowSteps(steps)
+
+    suspend fun deleteWorkflowSteps(workflowId: String) =
+        chatDao.deleteWorkflowSteps(workflowId)
+
+    suspend fun deleteWorkflowStep(stepId: String) = chatDao.deleteWorkflowStep(stepId)
+
+    suspend fun deleteAllWorkflows() = chatDao.deleteAllWorkflows()
 }

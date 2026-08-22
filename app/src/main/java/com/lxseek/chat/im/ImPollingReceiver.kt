@@ -30,6 +30,8 @@ class ImPollingReceiver(
     private val conversationRepository: ConversationRepository,
     private val store: ImGatewayStore,
     private val scope: CoroutineScope,
+    /** Splits long auto-replies into several short messages before writing them back. */
+    private val segmentSender: MultiSegmentMessageSender = MultiSegmentMessageSender(),
     /** Optional callback fired after an inbound message is successfully replied to, e.g. to mark
      *  the conversation as active so proactive messaging doesn't greet a contact that just spoke. */
     private val onMessageHandled: ((conversationId: String) -> Unit)? = null,
@@ -124,7 +126,8 @@ class ImPollingReceiver(
         val merged = fresh.first().copy(text = fresh.joinToString("\n") { it.text })
         val reply = runOnce(lxchatConvId, merged)
         if (!reply.isNullOrBlank()) {
-            channel.sendMessage(conversation.id, reply)
+            // Long replies are split into several short messages for readability.
+            segmentSender.send(channel, conversation.id, reply)
         }
     }
 

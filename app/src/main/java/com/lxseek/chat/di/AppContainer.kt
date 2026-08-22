@@ -17,6 +17,7 @@ import com.lxseek.chat.automation.ConversationExecutionCoordinator
 import com.lxseek.chat.automation.LoopManager
 import com.lxseek.chat.automation.TaskExecutionEngine
 import com.lxseek.chat.automation.TaskManager
+import com.lxseek.chat.automation.WorkflowManager
 import com.lxseek.chat.tool.AutomationToolProvider
 import com.lxseek.chat.tool.AndroidAppControllerToolProvider
 import com.lxseek.chat.tool.McpToolProvider
@@ -28,6 +29,13 @@ import com.lxseek.chat.viewmodel.ChatViewModelFactory
 import com.lxseek.chat.viewmodel.ConversationStateRegistry
 import com.lxseek.chat.viewmodel.ProviderRegistry
 import com.lxseek.chat.viewmodel.ShellConfirmationController
+import com.lxseek.chat.viewmodel.WorkflowViewModel
+import com.lxseek.chat.api.router.ApiKeyRotator
+import com.lxseek.chat.api.router.ApiKeySource
+import com.lxseek.chat.api.router.FallbackChain
+import com.lxseek.chat.api.router.RouterConfig
+import com.lxseek.chat.api.router.SmartModelRouter
+import com.lxseek.chat.api.router.SmartModelRouterFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -125,6 +133,7 @@ class AppContainer(private val appContext: Context) {
             try {
                 // .first() waits for DataStore's first emission, so a cold start never races the
                 // persisted preference.
+                com.lxseek.chat.pet.PetEmotionController.enabled = settingsManager.petEmotionEnabled.first()
                 if (settingsManager.petOverlayEnabled.first()) {
                     com.lxseek.chat.pet.PetOverlayWindowService.start(appContext)
                 }
@@ -266,6 +275,43 @@ class AppContainer(private val appContext: Context) {
     // Drives a full generation with no ViewModel/UI, reusing the shared generation
     // singletons above. Background Task/Loop runners call its runOnce(...).
 
+    /**
+     * 智能模型路由器工厂（进程级单例）。
+     *
+     * 将原始 Provider 包装为 [SmartModelRouter]，启用：
+     * - API Key 轮换：从 Settings 读取每个 Provider 的多 Key 列表，round-robin 轮换
+     * - Fallback Chain：当前为空链（无 UI 配置入口）；后续可从 Settings 读取备用模型配置
+     * - 速率限制/并发限制/白名单：当前为宽松配置；后续可从 Settings 读取
+     *
+     * 工厂返回的包装器与原始 Provider 实现 [com.lxseek.chat.api.LlmProvider] 同一接口，
+     * 调用链其余部分（ProviderPassEffectExecutor / ProviderPassRunner）无需任何修改。
+     */
+    private val apiKeyRotator: ApiKeyRotator by lazy { ApiKeyRotator() }
+
+    private val apiKeySource: ApiKeySource by lazy {
+        ApiKeySource { providerName ->
+            // 从 Settings 读取该 Provider 的全部 API Key（已按 provider 字段过滤）
+            settingsRepository.apiKeys.value.filter { it.provider == providerName }
+        }
+    }
+
+    val smartRouterFactory: SmartModelRouterFactory by lazy {
+        SmartModelRouterFactory { delegate, providerName, modelId ->
+            // 当前默认配置：启用 Key 轮换，Fallback 暂空，白名单宽松
+            val routerConfig = RouterConfig(
+                enableFallback = false,       // 暂无备用模型配置入口
+                enableKeyRotation = true,     // 启用多 Key 轮换
+            )
+            SmartModelRouter(
+                delegate = delegate,
+                routerConfig = routerConfig,
+                fallbackChain = FallbackChain.EMPTY,
+                apiKeyRotator = apiKeyRotator,
+                apiKeySource = apiKeySource,
+            )
+        }
+    }
+
     val taskExecutionEngine: TaskExecutionEngine by lazy {
         TaskExecutionEngine(
             application = application,
@@ -286,6 +332,7 @@ class AppContainer(private val appContext: Context) {
             reminderToolProvider = reminderToolProvider,
             generationRegistry = conversationStateRegistry,
             pauseConversationLoop = { conversationId -> loopManager.stopLoop(conversationId) },
+            smartRouterFactory = smartRouterFactory,
         )
     }
 
@@ -319,6 +366,15 @@ class AppContainer(private val appContext: Context) {
             cancelAlarm = { conversationId -> automationScheduler.cancelLoop(conversationId) },
             executionCoordinator = conversationExecutionCoordinator,
             executionGate = automationExecutionGate,
+        )
+    }
+
+    val workflowManager: WorkflowManager by lazy {
+        WorkflowManager(
+            taskRepository = taskRepository,
+            conversationRepository = conversationRepository,
+            engine = taskExecutionEngine,
+            scope = appScope,
         )
     }
 
@@ -361,6 +417,10 @@ class AppContainer(private val appContext: Context) {
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, mcpToolProvider, androidControlToolProvider, imToolProvider,
-            reminderToolProvider, taskExecutionEngine,
+            reminderToolProvider, taskExecutionEngine, smartRouterFactory,
         )
+
+    /** Factory for the workflow editor's dedicated view-model (kept out of ChatViewModel). */
+    fun workflowViewModelFactory(): androidx.lifecycle.ViewModelProvider.Factory =
+        WorkflowViewModel.Factory(workflowManager)
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.api.LlmProvider
 import com.lxseek.chat.api.StreamEvent
+import com.lxseek.chat.api.router.SmartModelRouterFactory
 import com.lxseek.chat.data.MemoryManager
 
 import com.lxseek.chat.data.local.MessageEntity
@@ -49,6 +50,12 @@ class GenerationManager(
     private val context: android.content.Context,
     private val sandboxFactory: com.lxseek.chat.sandbox.SandboxManagerFactory? = null,
     additionalToolProviders: List<ToolProvider> = emptyList(),
+    /**
+     * 智能模型路由器工厂。非 null 时，每次生成请求的原始 Provider 会被包装为
+     * [com.lxseek.chat.api.router.SmartModelRouter]，应用 Fallback Chain、
+     * API Key 轮换、速率限制、白名单等策略。null 表示不启用智能路由（向后兼容）。
+     */
+    private val smartRouterFactory: SmartModelRouterFactory? = null,
 ) {
     var onMessagePersisted: ((messageId: String, text: String) -> Unit)? = null
 
@@ -189,8 +196,15 @@ class GenerationManager(
         }
 
         try {
-            val provider = requireRegisteredProvider(providers, config.providerName)
+            val rawProvider = requireRegisteredProvider(providers, config.providerName)
+            // 智能路由包装：当工厂非 null 时，用 SmartModelRouter 包装原始 Provider，
+            // 应用 Fallback Chain / Key 轮换 / 速率限制 / 白名单等策略。
+            // 工厂返回 null 表示不包装（保持向后兼容）。
+            val provider = smartRouterFactory?.create(rawProvider, config.providerName, config.modelId)
+                ?: rawProvider
             onLoadingChange(true)
+            // Pet face: thinking while the model works.
+            com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.THINKING)
             // Slot ownership (generating flag / active set) is claimed synchronously by the
             // controller before this coroutine runs — GenerationManager no longer touches it.
             com.lxseek.chat.util.CrashReporter.note("generate provider=${config.providerName} regen=$isRegenerate")
@@ -661,6 +675,10 @@ class GenerationManager(
                     MessageStatus.SUCCESS
                 } else MessageStatus.ERROR
             }
+            // Pet face: celebrate a finished answer.
+            if (currentStatus == MessageStatus.SUCCESS) {
+                com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.HAPPY)
+            }
             if (generationJob?.isCancelled == true && currentStatus != MessageStatus.ERROR) {
                 currentStatus = MessageStatus.STOPPED
             }
@@ -679,6 +697,10 @@ class GenerationManager(
             currentStatus = if (isCancelled) MessageStatus.STOPPED else MessageStatus.ERROR
             if (!isCancelled) {
                 totalText = "Error: ${e.localizedMessage ?: "An unexpected error occurred."}"
+            }
+            // Pet face: react to a failed generation.
+            if (currentStatus == MessageStatus.ERROR) {
+                com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.SAD)
             }
         } finally {
             // Fence the asynchronous checkpoint lane before any terminal transaction. Without

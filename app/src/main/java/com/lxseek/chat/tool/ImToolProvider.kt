@@ -8,11 +8,13 @@ import com.lxseek.chat.im.ImConversation
 import com.lxseek.chat.im.ImMessage
 import com.lxseek.chat.im.ImSendResult
 import com.lxseek.chat.im.MessageChannel
+import com.lxseek.chat.im.MultiSegmentMessageSender
 import com.lxseek.chat.viewmodel.GenerationContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -34,7 +36,7 @@ class ImToolProvider(
 
     override fun riskLevel(name: String): RiskLevel = when (name) {
         "im_status", "im_conversations", "im_receive" -> RiskLevel.ReadOnly
-        "im_send" -> RiskLevel.Moderate
+        "im_send", "im_send_multi" -> RiskLevel.Moderate
         else -> RiskLevel.ReadOnly
     }
 
@@ -95,6 +97,36 @@ class ImToolProvider(
                 ),
             ),
         ),
+        ToolDefinition(
+            function = ToolFunction(
+                name = "im_send_multi",
+                description = "Send a long reply as several shorter IM messages, split on " +
+                    "sentence/line boundaries with a small delay between segments. Prefer this " +
+                    "over im_send when the text is long, to keep messages readable and avoid " +
+                    "gateway limits.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "conversationId" to ToolProperty(
+                            type = "string",
+                            description = "Conversation id to send the messages to.",
+                        ),
+                        "text" to ToolProperty(
+                            type = "string",
+                            description = "The full reply text; it is split automatically into segments.",
+                        ),
+                        "maxSegmentLength" to ToolProperty(
+                            type = "integer",
+                            description = "Optional max characters per segment (default 1800).",
+                        ),
+                        "delayMs" to ToolProperty(
+                            type = "integer",
+                            description = "Optional delay between segments in ms (default 800).",
+                        ),
+                    ),
+                    required = listOf("conversationId", "text"),
+                ),
+            ),
+        ),
     )
 
     override suspend fun execute(name: String, arguments: String, ctx: GenerationContext): String {
@@ -104,6 +136,7 @@ class ImToolProvider(
             "im_conversations" -> conversationsResult(channel)
             "im_receive" -> receiveResult(channel, arguments)
             "im_send" -> sendResult(channel, arguments)
+            "im_send_multi" -> sendMultiResult(channel, arguments)
             else -> errorJson("Unknown IM tool: $name")
         }
     }
@@ -201,6 +234,38 @@ class ImToolProvider(
         }
     }
 
+    private suspend fun sendMultiResult(channel: MessageChannel?, args: String): String {
+        if (channel == null || !channel.isConfigured) return notConfiguredJson(channel)
+        val conversationId = argString(args, "conversationId")
+        val text = argString(args, "text")
+        if (conversationId.isBlank()) return errorJson("Missing required argument: conversationId")
+        if (text.isBlank()) return errorJson("Missing required argument: text")
+        val maxSegmentLength = argInt(args, "maxSegmentLength") ?: MultiSegmentMessageSender.DEFAULT_MAX_SEGMENT_LENGTH
+        val delayMs = argLong(args, "delayMs") ?: MultiSegmentMessageSender.DEFAULT_DELAY_MS
+        val sender = MultiSegmentMessageSender(
+            maxSegmentLength = maxSegmentLength,
+            defaultDelayMs = delayMs,
+        )
+        val results = try {
+            sender.send(channel, conversationId, text, delayMs)
+        } catch (e: Exception) {
+            return buildJsonObject {
+                put("ok", false)
+                put("error", "send_multi threw unexpectedly")
+            }.toString()
+        }
+        val sent = results.filterIsInstance<ImSendResult.Success>()
+        return buildJsonObject {
+            put("ok", sent.size == results.size)
+            put("segmentCount", results.size)
+            putJsonArray("messageIds") {
+                sent.forEach { add(it.messageId) }
+            }
+            val firstFailure = results.filterIsInstance<ImSendResult.Failure>().firstOrNull()
+            if (firstFailure != null) put("error", firstFailure.reason)
+        }.toString()
+    }
+
     // ── Helpers ──────────────────────────────────────────────
 
     private fun argString(args: String, key: String): String {
@@ -208,6 +273,20 @@ class ImToolProvider(
         return runCatching {
             json.parseToJsonElement(args).jsonObject[key]?.jsonPrimitive?.contentOrNull.orEmpty()
         }.getOrDefault("")
+    }
+
+    private fun argInt(args: String, key: String): Int? {
+        if (args.isBlank()) return null
+        return runCatching {
+            json.parseToJsonElement(args).jsonObject[key]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+        }.getOrNull()
+    }
+
+    private fun argLong(args: String, key: String): Long? {
+        if (args.isBlank()) return null
+        return runCatching {
+            json.parseToJsonElement(args).jsonObject[key]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
+        }.getOrNull()
     }
 
     private fun notConfiguredJson(channel: MessageChannel?): String = buildJsonObject {
@@ -231,6 +310,7 @@ class ImToolProvider(
             "im_conversations",
             "im_receive",
             "im_send",
+            "im_send_multi",
         )
     }
 }

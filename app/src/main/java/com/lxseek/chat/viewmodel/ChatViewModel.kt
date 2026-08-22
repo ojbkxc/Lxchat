@@ -1,4 +1,4 @@
-package com.lxseek.chat.viewmodel
+﻿package com.lxseek.chat.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -82,6 +82,7 @@ class ChatViewModel(
     private val imToolProvider: com.lxseek.chat.tool.ImToolProvider? = null,
     private val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider? = null,
     private val taskExecutionEngine: com.lxseek.chat.automation.TaskExecutionEngine,
+    private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : AndroidViewModel(application) {
 
     val settings: SettingsRepository = settingsRepository
@@ -259,7 +260,7 @@ class ChatViewModel(
             additionalToolProviders = listOfNotNull(
                 automationToolProvider, mcpToolProvider, androidControlToolProvider, imToolProvider,
                 reminderToolProvider,
-            ),
+            ), smartRouterFactory = smartRouterFactory,
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
             gm.onMessagePersisted = { messageId, text -> ragManager.indexMessageForRag(messageId, text) }

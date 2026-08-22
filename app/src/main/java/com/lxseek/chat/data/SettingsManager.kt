@@ -162,6 +162,7 @@ class SettingsManager(private val context: Context) {
     val automationToolsEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTOMATION_TOOLS_ENABLED] ?: false }
     val petOverlayEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_OVERLAY_ENABLED] ?: false }
     val petOverlayImagePath: Flow<String> = context.dataStore.data.map { it[PET_OVERLAY_IMAGE_PATH] ?: "" }
+    val petEmotionEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_EMOTION_ENABLED] ?: true }
     val exactExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[EXACT_EXECUTION_ENABLED] ?: false }
     val proxyEnabled: Flow<Boolean> = context.dataStore.data.map { it[PROXY_ENABLED] ?: false }
     val proxyType: Flow<String> = context.dataStore.data.map { it[PROXY_TYPE] ?: "http" }
@@ -742,6 +743,7 @@ class SettingsManager(private val context: Context) {
     }
     suspend fun savePetOverlayEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_OVERLAY_ENABLED] = enabled } }
     suspend fun savePetOverlayImagePath(path: String) { context.dataStore.edit { it[PET_OVERLAY_IMAGE_PATH] = path } }
+    suspend fun savePetEmotionEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_EMOTION_ENABLED] = enabled } }
     suspend fun saveExactExecutionEnabled(enabled: Boolean) {
         context.dataStore.edit { it[EXACT_EXECUTION_ENABLED] = enabled }
     }

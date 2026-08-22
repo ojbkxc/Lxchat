@@ -94,6 +94,65 @@ data class TaskEntity(
     val lastRunAt: Long? = null
 )
 
+/**
+ * A saved workflow: an ordered list of steps (prompt generation + optional delays) that runs
+ * top-to-bottom. Distinct from a [TaskEntity], which is a single generation; a workflow chains
+ * several generations with waits in between.
+ */
+@Entity(tableName = "workflows")
+data class WorkflowEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val enabled: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+)
+
+/** One step inside a [WorkflowEntity]. [WorkflowStepConfig] holds the typed payload. */
+@Entity(
+    tableName = "workflow_steps",
+    indices = [Index(value = ["workflowId", "position"])],
+    foreignKeys = [
+        ForeignKey(
+            entity = WorkflowEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["workflowId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
+data class WorkflowStepEntity(
+    @PrimaryKey val id: String,
+    val workflowId: String,
+    /** 0-based order inside the owning workflow. */
+    val position: Int,
+    /** "task" | "delay" — see [WorkflowStepType]. */
+    val type: String,
+    /** Human-readable label shown in the editor. */
+    val title: String,
+    /** [WorkflowStepConfig] serialized as JSON. */
+    val configJson: String,
+)
+
+object WorkflowStepType {
+    const val TASK = "task"
+    const val DELAY = "delay"
+}
+
+/** Typed configuration for a [WorkflowStepEntity]. */
+sealed interface WorkflowStepConfig {
+    /** Runs one headless generation (prompt + optional model), persisted as a fresh conversation. */
+    data class Task(
+        val prompt: String,
+        val modelId: String? = null,
+    ) : WorkflowStepConfig
+
+    /** Waits [delayMs] before moving to the next step. */
+    data class Delay(
+        val delayMs: Long,
+    ) : WorkflowStepConfig
+}
+
 /** A loop attached to a single conversation: periodically re-injects a user turn in-context. */
 @Entity(
     tableName = "loops",
