@@ -168,6 +168,7 @@ class SettingsRepository(
     val automationToolsEnabled: StateFlow<Boolean> = hot(settingsManager.automationToolsEnabled, false)
     val petOverlayEnabled: StateFlow<Boolean> = hot(settingsManager.petOverlayEnabled, false)
     val petOverlayImagePath: StateFlow<String> = hot(settingsManager.petOverlayImagePath, "")
+    val petEmotionEnabled: StateFlow<Boolean> = hot(settingsManager.petEmotionEnabled, true)
     val exactExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.exactExecutionEnabled, false)
     val proxyEnabled: StateFlow<Boolean> = hot(settingsManager.proxyEnabled, false)
     val proxyType: StateFlow<String> = hot(settingsManager.proxyType, "http")

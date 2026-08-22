@@ -744,9 +744,7 @@ class SettingsManager(private val context: Context) {
     suspend fun savePetOverlayEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_OVERLAY_ENABLED] = enabled } }
     suspend fun savePetOverlayImagePath(path: String) { context.dataStore.edit { it[PET_OVERLAY_IMAGE_PATH] = path } }
     suspend fun savePetEmotionEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_EMOTION_ENABLED] = enabled } }
-    suspend fun saveExactExecutionEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[EXACT_EXECUTION_ENABLED] = enabled }
-    }
+    suspend fun saveExactExecutionEnabled(enabled: Boolean) { context.dataStore.edit { it[EXACT_EXECUTION_ENABLED] = enabled } }
     suspend fun saveProxyEnabled(enabled: Boolean) { context.dataStore.edit { it[PROXY_ENABLED] = enabled } }
     suspend fun saveProxyType(type: String) { context.dataStore.edit { it[PROXY_TYPE] = type } }
     suspend fun saveProxyHost(host: String) { context.dataStore.edit { it[PROXY_HOST] = host } }
