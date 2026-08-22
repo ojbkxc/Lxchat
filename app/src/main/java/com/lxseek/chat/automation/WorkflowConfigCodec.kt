@@ -2,6 +2,7 @@ package com.lxseek.chat.automation
 
 import com.lxseek.chat.data.local.WorkflowStepConfig
 import com.lxseek.chat.data.local.WorkflowStepType
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
