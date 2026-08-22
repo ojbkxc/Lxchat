@@ -258,6 +258,7 @@ private val settingsGroups = listOf(
             iconRes = R.drawable.ic_mcp,
         ),
         SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
+        SettingsCategory("workflow", R.string.settings_workflow, R.string.settings_workflow_desc, Icons.Default.AccountTree),
         SettingsCategory("device_control", R.string.settings_device_control, R.string.settings_device_control_desc, Icons.Default.Android),
         SettingsCategory("runtime_status", R.string.settings_runtime_status, R.string.settings_runtime_status_desc, Icons.Default.Speed),
         SettingsCategory("pet_overlay", R.string.settings_pet_overlay, R.string.settings_pet_overlay_desc, Icons.Default.Android),
@@ -322,7 +323,12 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "imagegen" -> SettingsImageGenPage(viewModel, onBack = { selectedCategory = null })
                 "shell" -> SettingsShellPage(viewModel, onBack = { selectedCategory = null })
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
-                "automation" -> SettingsAutomationPage(viewModel, onBack = { selectedCategory = null })
+                "automation" -> SettingsAutomationPage(
+                    viewModel,
+                    onBack = { selectedCategory = null },
+                    onOpenWorkflow = { selectedCategory = "workflow" },
+                )
+                "workflow" -> SettingsWorkflowPage(viewModel, onBack = { selectedCategory = null })
                 "device_control" -> SettingsDeviceControlPage(viewModel, onBack = { selectedCategory = null })
                 "pet_overlay" -> SettingsPetOverlayPage(viewModel, onBack = { selectedCategory = null })
                 "runtime_status" -> SettingsRuntimeStatusPage(viewModel, onBack = { selectedCategory = null })

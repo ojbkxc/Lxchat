@@ -126,4 +126,38 @@ interface ChatAutomationDao {
 
     @Query("SELECT * FROM loops")
     suspend fun getAllLoopsList(): List<LoopEntity>
+
+    // ── Workflows ────────────────────────────────────────────
+    @Query("SELECT * FROM workflows ORDER BY createdAt DESC")
+    fun getAllWorkflows(): Flow<List<WorkflowEntity>>
+
+    @Query("SELECT * FROM workflows ORDER BY createdAt DESC")
+    suspend fun getAllWorkflowsList(): List<WorkflowEntity>
+
+    @Query("SELECT * FROM workflows WHERE id = :id")
+    suspend fun getWorkflow(id: String): WorkflowEntity?
+
+    @Upsert
+    suspend fun upsertWorkflow(workflow: WorkflowEntity)
+
+    @Query("DELETE FROM workflows WHERE id = :id")
+    suspend fun deleteWorkflow(id: String)
+
+    @Query("SELECT * FROM workflow_steps WHERE workflowId = :workflowId ORDER BY position ASC")
+    suspend fun getWorkflowSteps(workflowId: String): List<WorkflowStepEntity>
+
+    @Query("SELECT * FROM workflow_steps WHERE workflowId = :workflowId ORDER BY position ASC")
+    fun observeWorkflowSteps(workflowId: String): Flow<List<WorkflowStepEntity>>
+
+    @Upsert
+    suspend fun upsertWorkflowSteps(steps: List<WorkflowStepEntity>)
+
+    @Query("DELETE FROM workflow_steps WHERE workflowId = :workflowId")
+    suspend fun deleteWorkflowSteps(workflowId: String)
+
+    @Query("DELETE FROM workflow_steps WHERE id = :stepId")
+    suspend fun deleteWorkflowStep(stepId: String)
+
+    @Query("DELETE FROM workflows")
+    suspend fun deleteAllWorkflows()
 }

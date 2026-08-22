@@ -9,6 +9,7 @@ import androidx.core.net.toUri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
@@ -33,7 +34,11 @@ import com.lxseek.chat.R
 import com.lxseek.chat.viewmodel.ChatViewModel
 
 @Composable
-fun SettingsAutomationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
+fun SettingsAutomationPage(
+    viewModel: ChatViewModel,
+    onBack: () -> Unit,
+    onOpenWorkflow: () -> Unit = {},
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val toolsEnabled by viewModel.settings.automationToolsEnabled.collectAsState()
@@ -147,6 +152,20 @@ fun SettingsAutomationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         modifier = Modifier.clickable {
                             setExactEnabled(!(exactEnabled && exactPermissionGranted))
                         },
+                    )
+                }),
+            )
+
+            SettingsGroup(
+                title = stringResource(R.string.settings_workflow),
+                items = listOf({
+                    SettingsItem(
+                        headlineContent = { Text(stringResource(R.string.settings_workflow)) },
+                        supportingContent = { Text(stringResource(R.string.settings_workflow_desc)) },
+                        leadingContent = {
+                            Icon(Icons.Default.AccountTree, null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        modifier = Modifier.clickable(onClick = onOpenWorkflow),
                     )
                 }),
             )

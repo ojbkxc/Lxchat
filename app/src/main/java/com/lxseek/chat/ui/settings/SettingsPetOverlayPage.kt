@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VerifiedUser
@@ -71,6 +72,7 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val enabled by viewModel.settings.petOverlayEnabled.collectAsState()
     val imagePath by viewModel.settings.petOverlayImagePath.collectAsState()
+    val emotionEnabled by viewModel.settings.petEmotionEnabled.collectAsState()
     var overlayGranted by remember { mutableStateOf(PetOverlayController.canDrawOverlay(context)) }
 
     // Re-read the system permission when the user returns from the overlay-permission screen.
@@ -94,6 +96,16 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 }
             }
             PetOverlayController.setEnabled(context, target)
+        }
+    }
+
+    fun setEmotionEnabled(target: Boolean) {
+        viewModel.viewModelScope.launch {
+            viewModel.settings.savePetEmotionEnabled(target)
+            com.lxseek.chat.pet.PetEmotionController.enabled = target
+            if (!target) {
+                com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.IDLE)
+            }
         }
     }
 
@@ -156,6 +168,26 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         },
                         modifier = Modifier.clickable {
                             setEnabled(!(enabled && overlayGranted))
+                        },
+                    )
+                    SettingsItem(
+                        headlineContent = { Text(stringResource(R.string.pet_emotion_enabled)) },
+                        supportingContent = { Text(stringResource(R.string.pet_emotion_enabled_desc)) },
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.Favorite,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = emotionEnabled,
+                                onCheckedChange = ::setEmotionEnabled,
+                            )
+                        },
+                        modifier = Modifier.clickable {
+                            setEmotionEnabled(!emotionEnabled)
                         },
                     )
                 }),

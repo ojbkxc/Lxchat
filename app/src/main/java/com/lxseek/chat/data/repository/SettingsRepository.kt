@@ -620,6 +620,7 @@ class SettingsRepository(
     suspend fun saveAutoBackupEnabled(enabled: Boolean) = settingsManager.saveAutoBackupEnabled(enabled)
     suspend fun savePetOverlayEnabled(enabled: Boolean) = settingsManager.savePetOverlayEnabled(enabled)
     suspend fun savePetOverlayImagePath(path: String) = settingsManager.savePetOverlayImagePath(path)
+    suspend fun savePetEmotionEnabled(enabled: Boolean) = settingsManager.savePetEmotionEnabled(enabled)
     suspend fun saveAutoBackupPeriodHours(hours: Int) = settingsManager.saveAutoBackupPeriodHours(hours)
     suspend fun saveAutoBackupCategories(categories: String) = settingsManager.saveAutoBackupCategories(categories)
     suspend fun saveAutoBackupDirectory(path: String) = settingsManager.saveAutoBackupDirectory(path)

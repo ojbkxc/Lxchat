@@ -17,6 +17,7 @@ import com.lxseek.chat.automation.ConversationExecutionCoordinator
 import com.lxseek.chat.automation.LoopManager
 import com.lxseek.chat.automation.TaskExecutionEngine
 import com.lxseek.chat.automation.TaskManager
+import com.lxseek.chat.automation.WorkflowManager
 import com.lxseek.chat.tool.AutomationToolProvider
 import com.lxseek.chat.tool.AndroidAppControllerToolProvider
 import com.lxseek.chat.tool.McpToolProvider
@@ -28,6 +29,7 @@ import com.lxseek.chat.viewmodel.ChatViewModelFactory
 import com.lxseek.chat.viewmodel.ConversationStateRegistry
 import com.lxseek.chat.viewmodel.ProviderRegistry
 import com.lxseek.chat.viewmodel.ShellConfirmationController
+import com.lxseek.chat.viewmodel.WorkflowViewModel
 import com.lxseek.chat.api.router.ApiKeyRotator
 import com.lxseek.chat.api.router.ApiKeySource
 import com.lxseek.chat.api.router.FallbackChain
@@ -131,6 +133,7 @@ class AppContainer(private val appContext: Context) {
             try {
                 // .first() waits for DataStore's first emission, so a cold start never races the
                 // persisted preference.
+                com.lxseek.chat.pet.PetEmotionController.enabled = settingsManager.petEmotionEnabled.first()
                 if (settingsManager.petOverlayEnabled.first()) {
                     com.lxseek.chat.pet.PetOverlayWindowService.start(appContext)
                 }
@@ -366,6 +369,15 @@ class AppContainer(private val appContext: Context) {
         )
     }
 
+    val workflowManager: WorkflowManager by lazy {
+        WorkflowManager(
+            taskRepository = taskRepository,
+            conversationRepository = conversationRepository,
+            engine = taskExecutionEngine,
+            scope = appScope,
+        )
+    }
+
     /** Foreground-only provider: headless automation cannot recursively create automation. */
     val automationToolProvider: AutomationToolProvider by lazy {
         AutomationToolProvider(taskManager, loopManager) {
@@ -407,4 +419,8 @@ class AppContainer(private val appContext: Context) {
             mcpRegistry, mcpToolProvider, androidControlToolProvider, imToolProvider,
             reminderToolProvider, taskExecutionEngine, smartRouterFactory,
         )
+
+    /** Factory for the workflow editor's dedicated view-model (kept out of ChatViewModel). */
+    fun workflowViewModelFactory(): androidx.lifecycle.ViewModelProvider.Factory =
+        WorkflowViewModel.Factory(workflowManager)
 }

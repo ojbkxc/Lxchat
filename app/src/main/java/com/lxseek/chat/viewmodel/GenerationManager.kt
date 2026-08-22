@@ -203,6 +203,8 @@ class GenerationManager(
             val provider = smartRouterFactory?.create(rawProvider, config.providerName, config.modelId)
                 ?: rawProvider
             onLoadingChange(true)
+            // Pet face: thinking while the model works.
+            com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.THINKING)
             // Slot ownership (generating flag / active set) is claimed synchronously by the
             // controller before this coroutine runs — GenerationManager no longer touches it.
             com.lxseek.chat.util.CrashReporter.note("generate provider=${config.providerName} regen=$isRegenerate")
@@ -673,6 +675,10 @@ class GenerationManager(
                     MessageStatus.SUCCESS
                 } else MessageStatus.ERROR
             }
+            // Pet face: celebrate a finished answer.
+            if (currentStatus == MessageStatus.SUCCESS) {
+                com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.HAPPY)
+            }
             if (generationJob?.isCancelled == true && currentStatus != MessageStatus.ERROR) {
                 currentStatus = MessageStatus.STOPPED
             }
@@ -691,6 +697,10 @@ class GenerationManager(
             currentStatus = if (isCancelled) MessageStatus.STOPPED else MessageStatus.ERROR
             if (!isCancelled) {
                 totalText = "Error: ${e.localizedMessage ?: "An unexpected error occurred."}"
+            }
+            // Pet face: react to a failed generation.
+            if (currentStatus == MessageStatus.ERROR) {
+                com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.SAD)
             }
         } finally {
             // Fence the asynchronous checkpoint lane before any terminal transaction. Without
