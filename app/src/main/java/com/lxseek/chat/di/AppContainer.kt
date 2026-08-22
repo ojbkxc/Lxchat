@@ -331,7 +331,7 @@ class AppContainer(private val appContext: Context) {
 
     /** Turns natural-language reminder requests into persisted background Tasks. */
     val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider by lazy {
-        com.lxseek.chat.tool.ReminderToolProvider(taskManager) {
+        com.lxseek.chat.tool.ReminderToolProvider(taskManagerProvider = { taskManager }) {
             settingsManager.automationToolsEnabled.first()
         }
     }

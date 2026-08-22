@@ -30,7 +30,9 @@ import kotlinx.serialization.json.put
  * executed through the existing [TaskManager] so the reminder runs headlessly like any other Task.
  */
 class ReminderToolProvider(
-    private val taskManager: TaskManager,
+    // Resolved lazily so AppContainer can avoid a lazy-init cycle:
+    // taskExecutionEngine -> reminderToolProvider -> taskManager -> taskExecutionEngine.
+    private val taskManagerProvider: () -> TaskManager,
     private val isCurrentlyEnabled: suspend () -> Boolean = { true },
 ) : ToolProvider {
 
@@ -104,7 +106,7 @@ class ReminderToolProvider(
         val minute = hm.groupValues[2].toInt()
         if (hour !in 0..23 || minute !in 0..59) return error("recurring time out of range: $time")
         val cron = "$minute $hour * * *"
-        val task = taskManager.createTask(
+        val task = taskManagerProvider().createTask(
             name = "Reminder · ${message.take(24)}",
             prompt = "Reminder: $message. Deliver this reminder clearly to the user.",
             cronExpr = cron,
@@ -138,7 +140,7 @@ class ReminderToolProvider(
         if (runAt <= System.currentTimeMillis()) {
             return error("one-off target time is already past: $time")
         }
-        val task = taskManager.createTask(
+        val task = taskManagerProvider().createTask(
             name = "Reminder · ${message.take(24)}",
             prompt = "Reminder: $message. Deliver this reminder clearly to the user.",
             cronExpr = "",
