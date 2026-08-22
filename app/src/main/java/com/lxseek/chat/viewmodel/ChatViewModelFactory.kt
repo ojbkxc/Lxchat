@@ -49,6 +49,7 @@ class ChatViewModelFactory(
     private val imToolProvider: com.lxseek.chat.tool.ImToolProvider? = null,
     private val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider? = null,
     private val taskExecutionEngine: TaskExecutionEngine,
+    private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
@@ -59,6 +60,7 @@ class ChatViewModelFactory(
                 taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
                 mcpRegistry, mcpToolProvider, androidControlToolProvider, imToolProvider, reminderToolProvider, taskExecutionEngine,
+                smartRouterFactory,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

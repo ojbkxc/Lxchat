@@ -20,14 +20,21 @@ class StreamingVAD(
     companion object {
         private const val TAG = "StreamingVAD"
         private const val SILENCE_THRESHOLD = 0.05f
-        private const val SILENCE_DURATION_MS = 1600L
-        private const val MIN_TRIGGER_CHUNKS = 3
+        // Lowered from 1600ms to 600ms so the detector cuts off promptly after the
+        // user stops speaking — the previous 1.6 s wait felt sluggish ("收音不够果断").
+        private const val SILENCE_DURATION_MS = 600L
+        // Reduced from 3 to 2 so speech onset triggers faster, making the live
+        // voiceprint feel more responsive.
+        private const val MIN_TRIGGER_CHUNKS = 2
         private const val CALIBRATION_MS = 500L
         private const val THRESHOLD_RATIO = 0.3f
         private const val THRESHOLD_BASE_ADD = 0.02f
         private const val NOISE_FLOOR_MULTIPLIER = 3.0f
         private const val ROLLING_WINDOW_SIZE = 30
-        private const val HYSTERESIS_RATIO = 0.6f
+        // Lowered from 0.6 to 0.5 so brief pauses during speech are less likely to
+        // be swallowed by hysteresis — the silence floor drops sooner, which pairs
+        // with the shorter SILENCE_DURATION_MS for snappier utterance segmentation.
+        private const val HYSTERESIS_RATIO = 0.5f
         private const val MIN_SEGMENT_MS = 150L
     }
 

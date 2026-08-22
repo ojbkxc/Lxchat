@@ -74,6 +74,8 @@ class TaskExecutionEngine(
     private val generationRegistry: ConversationStateRegistry,
     private val automationExecutionGate: AutomationExecutionGate = AutomationExecutionGate(),
     private val pauseConversationLoop: suspend (String) -> Unit = {},
+    /** 智能模型路由器工厂，注入到 GenerationManager 启用 Fallback/Key 轮换/速率限制等。 */
+    private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) {
     sealed interface Result {
         data class Success(val modelMessageId: String, val text: String) : Result
@@ -197,6 +199,7 @@ class TaskExecutionEngine(
         additionalToolProviders = listOfNotNull(
             mcpToolProvider, androidControlToolProvider, imToolProvider, reminderToolProvider,
         ),
+        smartRouterFactory = smartRouterFactory,
     ).also {
         // Foreground Task/Loop executions share the exact same prompt and session trust state as
         // Chat. ShellConfirmationController itself fails fast when no Activity is visible.

@@ -181,6 +181,101 @@ fun prepareMessages(messages: List<ChatMessage>, contextTokenBudget: Int): List<
 }
 
 /**
+ * 带防护链的消息准备结果。
+ *
+ * @param messages 规范化后的消息列表（供 Provider 使用）。
+ * @param guardEvents 防护链触发的事件列表（可用于日志/UI 展示）。
+ * @param guardDecision 第3层 token 预算决策。
+ */
+data class PreparedMessagesWithGuard(
+    val messages: List<ChatMessage>,
+    val guardEvents: List<com.lxseek.chat.api.context.GuardEvent>,
+    val guardDecision: com.lxseek.chat.api.context.GuardDecision?,
+)
+
+/**
+ * 应用 Context 4层防护链后规范化消息（同步，前3层）。
+ *
+ * 在 [prepareMessages] 之前应用 [com.lxseek.chat.api.context.ContextGuardChain] 的前3层防护：
+ * 1. 历史轮数限制  2. 工具结果裁剪  3. Token 预算检查
+ *
+ * 第4层（自动摘要）需要异步调用 LLM，使用 [prepareMessagesWithGuardAsync]。
+ *
+ * @param messages 原始消息列表。
+ * @param contextTokenBudget 上下文 token 预算。
+ * @param guardConfig 防护配置；默认 [com.lxseek.chat.api.context.ContextGuardConfig.Off] 保持向后兼容。
+ * @return 规范化后的消息 + 防护事件。
+ */
+fun prepareMessagesWithGuard(
+    messages: List<ChatMessage>,
+    contextTokenBudget: Int,
+    guardConfig: com.lxseek.chat.api.context.ContextGuardConfig = com.lxseek.chat.api.context.ContextGuardConfig.Off,
+): PreparedMessagesWithGuard {
+    if (guardConfig.disabled) {
+        return PreparedMessagesWithGuard(
+            messages = prepareMessages(messages, contextTokenBudget),
+            guardEvents = emptyList(),
+            guardDecision = null,
+        )
+    }
+
+    // 应用前3层防护
+    val guardResult = com.lxseek.chat.api.context.ContextGuardChain.apply(messages, guardConfig)
+
+    // 对防护后的消息做规范化
+    val prepared = prepareMessages(guardResult.messages, contextTokenBudget)
+
+    return PreparedMessagesWithGuard(
+        messages = prepared,
+        guardEvents = guardResult.events,
+        guardDecision = guardResult.decision,
+    )
+}
+
+/**
+ * 应用 Context 4层防护链后规范化消息（异步，全部4层）。
+ *
+ * 在 [prepareMessages] 之前应用 [com.lxseek.chat.api.context.ContextGuardChain] 的全部4层防护：
+ * 1. 历史轮数限制  2. 工具结果裁剪  3. Token 预算检查  4. 自动摘要
+ *
+ * @param messages 原始消息列表。
+ * @param contextTokenBudget 上下文 token 预算。
+ * @param guardConfig 防护配置。
+ * @param summaryGenerator 摘要生成器（第4层使用）；为 null 时跳过第4层。
+ * @return 规范化后的消息 + 防护事件。
+ */
+suspend fun prepareMessagesWithGuardAsync(
+    messages: List<ChatMessage>,
+    contextTokenBudget: Int,
+    guardConfig: com.lxseek.chat.api.context.ContextGuardConfig = com.lxseek.chat.api.context.ContextGuardConfig.Off,
+    summaryGenerator: com.lxseek.chat.api.context.SummaryGenerator? = null,
+): PreparedMessagesWithGuard {
+    if (guardConfig.disabled) {
+        return PreparedMessagesWithGuard(
+            messages = prepareMessages(messages, contextTokenBudget),
+            guardEvents = emptyList(),
+            guardDecision = null,
+        )
+    }
+
+    // 应用全部4层防护
+    val guardResult = com.lxseek.chat.api.context.ContextGuardChain.applyAsync(
+        messages = messages,
+        config = guardConfig,
+        summaryGenerator = summaryGenerator,
+    )
+
+    // 对防护后的消息做规范化
+    val prepared = prepareMessages(guardResult.messages, contextTokenBudget)
+
+    return PreparedMessagesWithGuard(
+        messages = prepared,
+        guardEvents = guardResult.events,
+        guardDecision = guardResult.decision,
+    )
+}
+
+/**
  * Converts durable terminal generation rows into model-visible status events without presenting
  * client/provider failures as genuine assistant output.
  *
