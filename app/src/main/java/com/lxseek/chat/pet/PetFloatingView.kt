@@ -1,16 +1,21 @@
 package com.lxseek.chat.pet
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.os.Build
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import com.lxseek.chat.MainActivity
 import kotlin.math.hypot
 
@@ -26,6 +31,13 @@ import kotlin.math.hypot
  * self-contained, modern chat-style bubble with a radial gradient body, soft drop shadow, white
  * border, big glossy eyes with highlights, blush, and a friendly smile. The radial gradient is
  * built once in [onSizeChanged] to avoid per-frame allocation.
+ *
+ * The view also supports a user-supplied [Bitmap] (typically a transparent PNG) via
+ * [setCustomBitmap]; when present it is drawn instead of the default Canvas bubble. The whole
+ * view is rendered at 70% opacity (30% transparency) via [Canvas.saveLayerAlpha]. Touch events
+ * that land on fully transparent pixels of the custom bitmap are passed through to the app below
+ * so the pet does not block interaction with the underlying window. After a drag the bubble
+ * animates to the nearest horizontal screen edge ("edge snapping").
  */
 class PetFloatingView @JvmOverloads constructor(
     context: Context,
@@ -35,6 +47,15 @@ class PetFloatingView @JvmOverloads constructor(
 
     /** Set once by the owning service before the view is shown. Never mutated afterwards. */
     private var windowParams: WindowManager.LayoutParams? = null
+
+    /** User-supplied bitmap; when non-null it replaces the default Canvas bubble. */
+    @Volatile
+    private var customBitmap: Bitmap? = null
+
+    /** Reusable paint for drawing the custom bitmap (alpha is applied via saveLayerAlpha). */
+    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    /** Destination rect for the custom bitmap, recomputed in onSizeChanged. */
+    private val bitmapDstRect = Rect()
 
     // Bubble body — shader is assigned in onSizeChanged once the size is known.
     private val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -72,11 +93,26 @@ class PetFloatingView @JvmOverloads constructor(
     private var downWindowY = 0
     private var wasDragging = false
 
+    /** Active edge-snap animator; cancelled if a new drag begins. */
+    private var snapAnimator: ValueAnimator? = null
+
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
 
     /** Binds the [WindowManager.LayoutParams] that [PetOverlayWindowService] moves on drags. */
     fun bindWindowParams(params: WindowManager.LayoutParams) {
         windowParams = params
+    }
+
+    /**
+     * Sets the user-supplied bitmap. Pass `null` to clear and fall back to the default Canvas
+     * bubble. The bitmap is drawn at 70% opacity alongside the rest of the view. A defensive copy
+     * is not taken — callers should hand over a bitmap they do not mutate.
+     */
+    fun setCustomBitmap(bitmap: Bitmap?) {
+        customBitmap = bitmap
+        // Force a re-layout so bitmapDstRect is recomputed for the new aspect ratio.
+        requestLayout()
+        invalidate()
     }
 
     /**
@@ -96,9 +132,33 @@ class PetFloatingView @JvmOverloads constructor(
             floatArrayOf(0f, 0.55f, 1f),
             Shader.TileMode.CLAMP,
         )
+        bitmapDstRect.set(0, 0, w, h)
     }
 
     override fun onDraw(canvas: Canvas) {
+        // Apply 30% transparency (70% opacity) to everything drawn in this frame. saveLayerAlpha
+        // is the simplest way to uniformly dim both the default Canvas bubble and any custom
+        // bitmap without touching every Paint. The layer is bounded to this view's rect.
+        val savedLayer = canvas.saveLayerAlpha(0f, 0f, width.toFloat(), height.toFloat(), OVERLAY_ALPHA)
+        try {
+            val bitmap = customBitmap
+            if (bitmap != null && !bitmap.isRecycled) {
+                drawCustomBitmap(canvas, bitmap)
+            } else {
+                drawDefaultBubble(canvas)
+            }
+        } finally {
+            canvas.restoreToCount(savedLayer)
+        }
+    }
+
+    /** Draws the user-supplied bitmap filling the view bounds. */
+    private fun drawCustomBitmap(canvas: Canvas, bitmap: Bitmap) {
+        canvas.drawBitmap(bitmap, null, bitmapDstRect, bitmapPaint)
+    }
+
+    /** Draws the default Canvas bubble — gradient body, face, blush, smile. */
+    private fun drawDefaultBubble(canvas: Canvas) {
         val w = width.toFloat()
         val h = height.toFloat()
         val cx = w / 2f
@@ -168,8 +228,15 @@ class PetFloatingView @JvmOverloads constructor(
         if (params == null) {
             return performClickFallback(event)
         }
+        // Transparent-pixel pass-through: if the touch lands on a fully transparent pixel of the
+        // custom bitmap, decline the event so it falls through to the app underneath. We only
+        // check on ACTION_DOWN because once we accept the stream we must keep consuming it.
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && isTransparentAt(event.x, event.y)) {
+            return false
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                cancelSnapAnimation()
                 parent?.requestDisallowInterceptTouchEvent(true)
                 downRawX = event.rawX
                 downRawY = event.rawY
@@ -188,13 +255,7 @@ class PetFloatingView @JvmOverloads constructor(
                 if (wasDragging) {
                     params.x = downWindowX + dx
                     params.y = downWindowY + dy
-                    try {
-                        context.getSystemService(Context.WINDOW_SERVICE)?.let { wm ->
-                            (wm as WindowManager).updateViewLayout(this, params)
-                        }
-                    } catch (_: IllegalArgumentException) {
-                        // View already detached; ignore mid-drag teardown.
-                    }
+                    updateWindowLayout(params)
                 }
                 return true
             }
@@ -204,10 +265,80 @@ class PetFloatingView @JvmOverloads constructor(
                     launchApp()
                     return true
                 }
+                // Drag finished — animate to the nearest horizontal edge.
+                snapToNearestEdge(params)
                 return true
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    /**
+     * Returns `true` if the custom bitmap has a fully-transparent pixel at the given view-local
+     * coordinates. Always returns `false` when no custom bitmap is set (the default bubble is a
+     * solid circle and should never pass touches through).
+     */
+    private fun isTransparentAt(x: Float, y: Float): Boolean {
+        val bitmap = customBitmap ?: return false
+        if (bitmap.isRecycled) return false
+        val bw = bitmap.width
+        val bh = bitmap.height
+        if (bw <= 0 || bh <= 0) return false
+        // Map view-local coords to bitmap coords. The bitmap is drawn filling bitmapDstRect.
+        val rect = bitmapDstRect
+        if (rect.width() <= 0 || rect.height() <= 0) return false
+        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return false
+        val bx = ((x - rect.left) / rect.width() * bw).toInt().coerceIn(0, bw - 1)
+        val by = ((y - rect.top) / rect.height() * bh).toInt().coerceIn(0, bh - 1)
+        return bitmap.getPixel(bx, by).ushr(24) == 0
+    }
+
+    /** Re-applies the current layout params via the WindowManager, swallowing detach races. */
+    private fun updateWindowLayout(params: WindowManager.LayoutParams) {
+        try {
+            context.getSystemService(Context.WINDOW_SERVICE)?.let { wm ->
+                (wm as WindowManager).updateViewLayout(this, params)
+            }
+        } catch (_: IllegalArgumentException) {
+            // View already detached; ignore mid-drag teardown.
+        }
+    }
+
+    /**
+     * Animates [params.x] to the nearest horizontal screen edge (0 for left,
+     * screenWidth - viewWidth for right) using a short decelerate tween. Updates the window
+     * layout on every frame so the bubble visibly slides.
+     */
+    private fun snapToNearestEdge(params: WindowManager.LayoutParams) {
+        val viewWidth = if (width > 0) width else params.width
+        val screenWidth = resources.displayMetrics.widthPixels
+        val leftTarget = 0
+        val rightTarget = (screenWidth - viewWidth).coerceAtLeast(0)
+        // Choose the closer edge.
+        val target = if (params.x <= (leftTarget + rightTarget) / 2) leftTarget else rightTarget
+        if (target == params.x) return
+        cancelSnapAnimation()
+        val animator = ValueAnimator.ofInt(params.x, target).apply {
+            duration = SNAP_DURATION_MS
+            interpolator = DecelerateInterpolator(SNAP_INTERPOLATOR_FACTOR)
+            addUpdateListener { a ->
+                val value = a.animatedValue as Int
+                params.x = value
+                // The view may have been detached while animating; guard against that.
+                if (isAttachedToWindow) {
+                    updateWindowLayout(params)
+                } else {
+                    cancel()
+                }
+            }
+        }
+        snapAnimator = animator
+        animator.start()
+    }
+
+    private fun cancelSnapAnimation() {
+        snapAnimator?.cancel()
+        snapAnimator = null
     }
 
     private fun performClickFallback(event: MotionEvent): Boolean {
@@ -225,6 +356,11 @@ class PetFloatingView @JvmOverloads constructor(
         } catch (_: Exception) {
             // Swallow resolution/background-start edge cases; the overlay persists harmlessly.
         }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        cancelSnapAnimation()
     }
 
     private companion object {
@@ -270,5 +406,12 @@ class PetFloatingView @JvmOverloads constructor(
         const val SMILE_SWEEP_ANGLE = 140f
 
         const val DRAG_THRESHOLD_DP = 14f
+
+        // 30% transparency → 70% opacity. 255 * 0.7 ≈ 178.
+        const val OVERLAY_ALPHA = 178
+
+        // Edge-snap animation tuning.
+        const val SNAP_DURATION_MS = 300L
+        const val SNAP_INTERPOLATOR_FACTOR = 1.5f
     }
 }

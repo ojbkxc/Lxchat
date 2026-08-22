@@ -209,6 +209,10 @@
     <string name="pet_overlay_permission_granted">已授予悬浮窗权限</string>
     <string name="pet_overlay_permission_desc">悬浮球由系统绘制在其他应用之上，这是桌面宠物能够显示的必需权限。</string>
     <string name="pet_overlay_grant_permission">去授权悬浮窗权限</string>
+    <string name="pet_overlay_custom_image">自定义图片</string>
+    <string name="pet_overlay_select_image">选择图片</string>
+    <string name="pet_overlay_clear_image">清除图片</string>
+    <string name="pet_overlay_image_desc">选择一张图片作为桌面宠物图标，支持透明 PNG。</string>
     <string name="settings_group_permissions">权限</string>
     <string name="automation_scheduling">调度</string>
     <string name="automation_exact_execution">精确执行</string>

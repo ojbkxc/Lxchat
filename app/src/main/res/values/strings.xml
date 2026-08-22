@@ -1097,6 +1097,10 @@
     <string name="pet_overlay_permission_granted">Overlay permission granted</string>
     <string name="pet_overlay_permission_desc">The bubble is drawn above other apps by the system; this is required for the desktop pet to appear.</string>
     <string name="pet_overlay_grant_permission">Grant overlay permission</string>
+    <string name="pet_overlay_custom_image">Custom image</string>
+    <string name="pet_overlay_select_image">Select image</string>
+    <string name="pet_overlay_clear_image">Clear image</string>
+    <string name="pet_overlay_image_desc">Choose an image as the pet icon. Transparent PNG is supported.</string>
     <string name="settings_group_permissions">Permissions</string>
     <string name="automation_scheduling">Scheduling</string>
     <string name="automation_exact_execution">Exact execution</string>

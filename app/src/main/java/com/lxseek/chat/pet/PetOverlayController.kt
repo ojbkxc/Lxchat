@@ -39,6 +39,15 @@ object PetOverlayController {
     suspend fun isEnabled(context: Context): Boolean =
         settings(context).petOverlayEnabled.first()
 
+    /** Returns the persisted custom-image absolute path, or "" if none. */
+    suspend fun getImagePath(context: Context): String =
+        settings(context).petOverlayImagePath.first()
+
+    /** Reloads the custom image into a running overlay; no-op if the service is not running. */
+    fun refreshImage(context: Context) {
+        PetOverlayWindowService.refreshImage(context)
+    }
+
     /**
      * Persists [enabled] and starts/stops the pet service.
      *

@@ -8,18 +8,25 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.view.Gravity
-import android.view.View
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.lxseek.chat.MainActivity
 import com.lxseek.chat.R
 import com.lxseek.chat.util.DebugLog
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Foreground service that hosts the draggable pet bubble as a [WindowManager]
@@ -32,11 +39,17 @@ import com.lxseek.chat.util.DebugLog
  * The bubble already has a foreground-service notification (the system requirement), and tapping
  * it launches [MainActivity]. Toggle / permission-granting is handled by [PetOverlayController]
  * and surfaced through the Quick Settings tile and the Settings page.
+ *
+ * In addition to the default Canvas bubble, the service can render a user-supplied image
+ * (transparent PNG) stored on disk. The path is read from [SettingsManager.petOverlayImagePath]
+ * on start and whenever [refreshImage] is invoked. The bitmap is downscaled to the bubble size to
+ * bound memory use.
  */
 class PetOverlayWindowService : Service() {
 
     private var floatingView: PetFloatingView? = null
     private var windowManager: WindowManager? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
         super.onCreate()
@@ -62,6 +75,9 @@ class PetOverlayWindowService : Service() {
         if (floatingView == null) {
             addFloatingView()
         }
+        // Always (re)load the custom image so a path change while the service is running is picked
+        // up on the next start command (e.g. after PetOverlayController.refreshImage).
+        loadCustomImageAsync()
         return START_STICKY
     }
 
@@ -94,6 +110,21 @@ class PetOverlayWindowService : Service() {
         }
     }
 
+    /**
+     * Asynchronously loads the user-configured custom image (if any) and pushes it into the
+     * floating view. Falls back to the default Canvas bubble when the path is empty, the file is
+     * missing, or decoding fails. Runs on the main scope because [PetFloatingView.setCustomBitmap]
+     * touches the view.
+     */
+    private fun loadCustomImageAsync() {
+        val view = floatingView ?: return
+        scope.launch {
+            val path = PetOverlayController.getImagePath(this@PetOverlayWindowService)
+            val bitmap = if (path.isNotBlank()) decodeScaledBitmap(path, view.width, view.height) else null
+            view.setCustomBitmap(bitmap)
+        }
+    }
+
     private fun topMarginPx(): Int {
         val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
         val statusBar = if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else (24 * resources.displayMetrics.density).toInt()
@@ -102,6 +133,7 @@ class PetOverlayWindowService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        scope.cancel()
         val view = floatingView
         if (view != null) {
             try {
@@ -182,6 +214,18 @@ class PetOverlayWindowService : Service() {
             }
         }
 
+        /**
+         * Reloads the custom image into a running overlay. If the service is not running this is a
+         * no-op (the next [start] will pick the path up). Safe to call from any thread.
+         */
+        fun refreshImage(context: Context) {
+            val app = context.applicationContext
+            // Re-deliver a start command so onStartCommand runs loadCustomImageAsync again.
+            kotlin.runCatching {
+                app.startService(Intent(app, PetOverlayWindowService::class.java))
+            }
+        }
+
         fun createChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val manager = context.getSystemService(NotificationManager::class.java)
@@ -195,6 +239,41 @@ class PetOverlayWindowService : Service() {
                 setSound(null, null)
             }
             manager.createNotificationChannel(channel)
+        }
+
+        /**
+         * Decodes [path] into a [Bitmap] sized to fit within [targetW] x [targetH] while
+         * preserving aspect ratio. Returns `null` if the file does not exist or decoding fails.
+         * Downscales using inSampleSize to avoid loading huge images into memory.
+         */
+        internal fun decodeScaledBitmap(path: String, targetW: Int, targetH: Int): Bitmap? {
+            val file = File(path)
+            if (!file.exists() || !file.isFile) return null
+            return try {
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(path, bounds)
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+                val targetWidth = if (targetW > 0) targetW else bounds.outWidth
+                val targetHeight = if (targetH > 0) targetH else bounds.outHeight
+                val sample = computeInSampleSize(bounds.outWidth, bounds.outHeight, targetWidth, targetHeight)
+                val opts = BitmapFactory.Options().apply {
+                    inSampleSize = sample
+                    inPreferredConfig = Bitmap.Config.ARGB_8888 // keep alpha channel for transparency
+                }
+                BitmapFactory.decodeFile(path, opts)
+            } catch (e: Exception) {
+                DebugLog.e(TAG, "Failed to decode pet overlay image: $path", e)
+                null
+            }
+        }
+
+        private fun computeInSampleSize(srcW: Int, srcH: Int, dstW: Int, dstH: Int): Int {
+            if (srcW <= dstW && srcH <= dstH) return 1
+            var sample = 1
+            while (srcW / (sample * 2) >= dstW && srcH / (sample * 2) >= dstH) {
+                sample *= 2
+            }
+            return sample
         }
     }
 }
