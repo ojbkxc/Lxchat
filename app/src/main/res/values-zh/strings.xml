@@ -155,7 +155,7 @@
     <string name="device_control_unknown">未知</string>
     <string name="device_control_open_settings">打开无障碍设置</string>
     <string name="device_control_refresh">刷新</string>
-    <string name="im_gateway_howto">消息通过远程网关适配器（OneBot / wechaty 风格）经 REST/SSE 转发。设备上不会保持常驻的即时消息连接，因此耗电和后台占用都很低。</string>
+    <string name="im_gateway_howto">将微信机器人（或其他即时消息）桥接到智能体的远程网关适配器。\n\n配置步骤：\n1. 在微信机器人侧部署 OneBot v11/v12 或 wechaty 网关服务（如 NapCat、go-cqhttp、NoneBot 或 wechaty-puppet-wechat）。\n2. 将其 REST/SSE API 暴露在可访问的 host:port 上。\n3. 在「网关地址」填写网关 REST API 地址（如 http://192.168.1.10:3000）。\n4. 如网关需要认证，在「认证令牌」填写令牌。\n\n应用通过 REST/SSE 轮询网关——设备上不保持常驻 IM 连接，耗电和后台占用都很低。</string>
     <string name="im_gateway_configured">已配置并启用</string>
     <string name="im_gateway_not_configured">未配置</string>
     <string name="im_gateway_enabled">启用网关</string>
@@ -166,6 +166,11 @@
     <string name="im_gateway_poll_interval">轮询间隔（毫秒）</string>
     <string name="im_gateway_auto_reply_model">自动回复模型</string>
     <string name="im_gateway_auto_reply_model_hint">Provider/模型，留空使用默认</string>
+    <string name="im_gateway_auto_reply_model_select">选择自动回复模型</string>
+    <string name="im_gateway_auto_reply_model_default">应用默认</string>
+    <string name="im_gateway_auto_reply_model_search_hint">搜索模型</string>
+    <string name="im_gateway_auto_reply_model_no_models">暂无可用模型。请先在「设置 → 模型」中添加或启用模型。</string>
+    <string name="im_gateway_auto_reply_model_current_default">默认</string>
     <string name="im_gateway_save">保存网关</string>
     <string name="im_gateway_saved">网关已保存</string>
     <string name="settings_group_proactive">主动行为</string>

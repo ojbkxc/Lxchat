@@ -9,6 +9,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Key
@@ -280,16 +281,25 @@ private fun keyStateEntry(
     onSetDefault: () -> Unit,
     onNeedKey: () -> Unit,
 ) {
-    val icon = providerIcon(provider)
+    val iconRes = providerIcon(provider)
     ElevatedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = rememberIconPainter(icon),
-                    contentDescription = provider,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp),
-                )
+                if (iconRes != 0) {
+                    Icon(
+                        painter = rememberIconPainter(iconRes),
+                        contentDescription = provider,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Cloud,
+                        contentDescription = provider,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -373,12 +383,22 @@ private fun DiscoverProviderCard(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                painter = rememberIconPainter(providerIcon(provider)),
-                contentDescription = provider,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp),
-            )
+            val iconRes = providerIcon(provider)
+            if (iconRes != 0) {
+                Icon(
+                    painter = rememberIconPainter(iconRes),
+                    contentDescription = provider,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Cloud,
+                    contentDescription = provider,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
