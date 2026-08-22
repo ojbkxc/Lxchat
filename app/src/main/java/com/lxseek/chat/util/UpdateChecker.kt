@@ -26,17 +26,21 @@ object UpdateChecker {
     private data class GitHubRelease(
         val tag_name: String,
         val html_url: String,
-        val body: String? = null
+        val body: String? = null,
+        val prerelease: Boolean = false
     )
 
     /**
-     * Check GitHub for a newer release. Returns [UpdateInfo] if an update is available,
+     * Check GitHub for a newer stable release. Returns [UpdateInfo] if an update is available,
      * or null if the current version is up-to-date or the check fails.
+     *
+     * Queries the releases list and filters out prerelease versions to only consider
+     * stable releases for update checks.
      */
     suspend fun check(currentVersion: String): UpdateInfo? = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
-                .url("https://api.github.com/repos/ojbkxc/lxchat/releases/latest")
+                .url("https://api.github.com/repos/ojbkxc/lxchat/releases?per_page=10")
                 .header("Accept", "application/vnd.github+json")
                 .build()
 
@@ -49,14 +53,18 @@ object UpdateChecker {
             val body = response.body.string()
             response.close()
 
-            val release = json.decodeFromString<GitHubRelease>(body)
-            val latestVersion = release.tag_name.removePrefix("v")
+            // 解析 releases 列表并过滤掉 prerelease，取第一个稳定版
+            val releases = json.decodeFromString<List<GitHubRelease>>(body)
+            val stableRelease = releases.firstOrNull { !it.prerelease }
+                ?: return@withContext null
+
+            val latestVersion = stableRelease.tag_name.removePrefix("v")
 
             if (compareVersions(latestVersion, currentVersion) > 0) {
                 UpdateInfo(
                     version = latestVersion,
-                    url = release.html_url,
-                    body = release.body.orEmpty()
+                    url = stableRelease.html_url,
+                    body = stableRelease.body.orEmpty()
                 )
             } else {
                 null
