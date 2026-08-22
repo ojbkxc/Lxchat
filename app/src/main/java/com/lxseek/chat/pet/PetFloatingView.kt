@@ -10,7 +10,7 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RadialGradient
 import android.graphics.Shader
-import android.os.Build
+
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View

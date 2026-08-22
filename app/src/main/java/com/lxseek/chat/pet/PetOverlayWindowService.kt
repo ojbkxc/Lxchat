@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -118,9 +119,14 @@ class PetOverlayWindowService : Service() {
      */
     private fun loadCustomImageAsync() {
         val view = floatingView ?: return
+        val targetW = view.width
+        val targetH = view.height
         scope.launch {
             val path = PetOverlayController.getImagePath(this@PetOverlayWindowService)
-            val bitmap = if (path.isNotBlank()) decodeScaledBitmap(path, view.width, view.height) else null
+            // Decoding is disk/IO-bound — push it off the main thread.
+            val bitmap = if (path.isNotBlank()) {
+                withContext(Dispatchers.IO) { decodeScaledBitmap(path, targetW, targetH) }
+            } else null
             view.setCustomBitmap(bitmap)
         }
     }

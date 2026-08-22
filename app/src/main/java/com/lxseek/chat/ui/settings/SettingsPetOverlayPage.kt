@@ -3,6 +3,7 @@ package com.lxseek.chat.ui.settings
 import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +30,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -290,7 +293,7 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
 private fun ImagePreview(path: String, modifier: Modifier = Modifier) {
     var bitmap by remember(path) { mutableStateOf<android.graphics.Bitmap?>(null) }
     var failed by remember(path) { mutableStateOf(false) }
-    androidx.compose.runtime.LaunchedEffect(path) {
+    LaunchedEffect(path) {
         bitmap = null
         failed = false
         if (path.isBlank()) return@LaunchedEffect
@@ -306,8 +309,8 @@ private fun ImagePreview(path: String, modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
-            androidx.compose.foundation.Image(
-                bitmap = androidx.compose.ui.graphics.asImageBitmap(bitmap!!),
+            Image(
+                bitmap = bitmap!!.asImageBitmap(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth(),
             )
