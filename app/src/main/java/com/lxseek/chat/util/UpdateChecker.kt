@@ -15,6 +15,8 @@ data class UpdateInfo(
 )
 
 object UpdateChecker {
+    private const val CUSTOM_BASE_URL = "https://downloads.lxseek.com/apk"
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
@@ -30,14 +32,53 @@ object UpdateChecker {
         val prerelease: Boolean = false
     )
 
+    @Serializable
+    private data class CustomLatestInfo(
+        val version: String,
+        val apk: String,
+        val body: String? = null
+    )
+
     /**
-     * Check GitHub for a newer stable release. Returns [UpdateInfo] if an update is available,
+     * Check for a newer release. Returns [UpdateInfo] if an update is available,
      * or null if the current version is up-to-date or the check fails.
      *
-     * Queries the releases list and filters out prerelease versions to only consider
-     * stable releases for update checks.
+     * Detection order:
+     * 1. Custom download site (https://downloads.lxseek.com/apk/latest.json) — preferred.
+     * 2. GitHub releases — fallback when the custom site is unreachable or fails.
+     *    Prerelease versions are filtered out so only stable releases are considered.
      */
     suspend fun check(currentVersion: String): UpdateInfo? = withContext(Dispatchers.IO) {
+        // 1. 优先检测自定义下载站
+        try {
+            val customRequest = Request.Builder()
+                .url("$CUSTOM_BASE_URL/latest.json")
+                .header("Accept", "application/json")
+                .build()
+
+            val customResponse = client.newCall(customRequest).execute()
+            if (customResponse.isSuccessful) {
+                val customBody = customResponse.body.string()
+                customResponse.close()
+
+                val info = json.decodeFromString<CustomLatestInfo>(customBody)
+                if (compareVersions(info.version, currentVersion) > 0) {
+                    return@withContext UpdateInfo(
+                        version = info.version,
+                        url = "$CUSTOM_BASE_URL/${info.apk}",
+                        body = info.body.orEmpty()
+                    )
+                } else {
+                    // 自定义下载站检测成功，但版本不比当前新，无需更新
+                    return@withContext null
+                }
+            }
+            customResponse.close()
+        } catch (_: Exception) {
+            // 自定义下载站检测失败，回退到 GitHub releases
+        }
+
+        // 2. 回退到 GitHub releases 检测（过滤掉 prerelease）
         try {
             val request = Request.Builder()
                 .url("https://api.github.com/repos/ojbkxc/lxchat/releases?per_page=10")
@@ -53,7 +94,6 @@ object UpdateChecker {
             val body = response.body.string()
             response.close()
 
-            // 解析 releases 列表并过滤掉 prerelease，取第一个稳定版
             val releases = json.decodeFromString<List<GitHubRelease>>(body)
             val stableRelease = releases.firstOrNull { !it.prerelease }
                 ?: return@withContext null

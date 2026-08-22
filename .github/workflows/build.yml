@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   get-version:
+    if: github.ref_name != 'v2.0.0'
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.v.outputs.tag }}
@@ -138,3 +139,36 @@ jobs:
             --notes-file /tmp/release_notes.md \
             --target ${{ github.sha }} \
             $(find dist -type f)
+
+      - name: Generate latest.json
+        run: |
+          cat > dist/latest.json <<'JSONEOF'
+          {
+            "version": "${VERSION}",
+            "apk": "LxChat-v${VERSION}-android-arm64-v8a.apk",
+            "body": "LxChat v${VERSION}"
+          }
+          JSONEOF
+          cat dist/latest.json
+
+      - name: Upload to Cloudflare R2
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # Upload APK to R2
+          APK_KEY=$(echo "apk/LxChat-v${VERSION}-android-arm64-v8a.apk" | sed 's/\//%2F/g')
+          curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/downloads/objects/${APK_KEY}" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary @dist/LxChat-v${VERSION}-android-arm64-v8a.apk
+          
+          # Upload latest.json to R2
+          curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/downloads/objects/apk%2Flatest.json" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary @dist/latest.json
+          
+          echo "Uploaded APK and latest.json to Cloudflare R2"
