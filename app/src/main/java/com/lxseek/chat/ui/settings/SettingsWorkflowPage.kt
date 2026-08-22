@@ -140,9 +140,7 @@ private fun WorkflowListContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        return
-    }
-
+    } else {
     SettingsGroupColumn(modifier = Modifier.fillMaxWidth()) {
         workflows.forEach { workflow ->
             val steps by vm.observeWorkflowSteps(workflow.id).collectAsState(initial = emptyList())
@@ -199,6 +197,7 @@ private fun WorkflowListContent(
                 modifier = Modifier.clickable { onEdit(workflow.id) },
             )
         }
+    }
     }
 
     val deleting = deleteTarget
@@ -270,7 +269,7 @@ private fun WorkflowEditorContent(
         loaded = true
     }
 
-    if (!loaded) return
+    if (!loaded) { } else {
 
     fun save() {
         val trimmed = name.trim()
@@ -414,6 +413,7 @@ private fun WorkflowEditorContent(
             },
             onDismiss = { editingIndex = null },
         )
+    }
     }
 }
 

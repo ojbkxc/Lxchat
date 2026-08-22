@@ -127,8 +127,7 @@ private fun StatisticsContent(s: UsageStatsSnapshot) {
     val overall = s.overall
     if (overall.conversationCount <= 0 && overall.messageCount <= 0) {
         EmptyUsageState()
-        return
-    }
+    } else {
 
     SettingsGroupColumn {
         SettingsGroup(
@@ -215,6 +214,7 @@ private fun StatisticsContent(s: UsageStatsSnapshot) {
                 },
             ),
         )
+    }
     }
 }
 
