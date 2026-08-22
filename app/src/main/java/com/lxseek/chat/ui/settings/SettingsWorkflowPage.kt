@@ -140,7 +140,7 @@ private fun WorkflowListContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        return@Column
+        return
     }
 
     SettingsGroupColumn(modifier = Modifier.fillMaxWidth()) {
