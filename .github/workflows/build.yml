@@ -157,7 +157,7 @@ jobs:
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           # Upload APK to R2
-          APK_KEY=$(echo "apk/LxChat-v${VERSION}-android-arm64-v8a.apk" | sed 's/\//%2F/g')
+          APK_KEY=$(echo "Lxchat/LxChat-v${VERSION}-android-arm64-v8a.apk" | sed 's/\//%2F/g')
           curl -s -X PUT \
             "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/downloads/objects/${APK_KEY}" \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
@@ -166,7 +166,7 @@ jobs:
           
           # Upload latest.json to R2
           curl -s -X PUT \
-            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/downloads/objects/apk%2Flatest.json" \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/downloads/objects/Lxchat%2Flatest.json" \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json" \
             --data-binary @dist/latest.json

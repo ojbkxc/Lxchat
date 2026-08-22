@@ -15,7 +15,7 @@ data class UpdateInfo(
 )
 
 object UpdateChecker {
-    private const val CUSTOM_BASE_URL = "https://downloads.lxseek.com/apk"
+    private const val CUSTOM_BASE_URL = "https://downloads.lxseek.com/Lxchat"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -44,7 +44,7 @@ object UpdateChecker {
      * or null if the current version is up-to-date or the check fails.
      *
      * Detection order:
-     * 1. Custom download site (https://downloads.lxseek.com/apk/latest.json) — preferred.
+     * 1. Custom download site (https://downloads.lxseek.com/Lxchat/latest.json) — preferred.
      * 2. GitHub releases — fallback when the custom site is unreachable or fails.
      *    Prerelease versions are filtered out so only stable releases are considered.
      */
