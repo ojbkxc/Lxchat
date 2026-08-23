@@ -164,7 +164,7 @@ class WecomBotApi(
             val errmsg = root["errmsg"]?.str() ?: "unknown"
             throw WecomApiException("企业微信发送失败: $errmsg (errcode=$errcode)", errcode)
         }
-        root["msgid"]?.str() ?: "wecom-sent-${System.currentTimeMillis()}"
+        return root["msgid"]?.str() ?: "wecom-sent-${System.currentTimeMillis()}"
     }
 
     // ── WebSocket 长连接 ──────────────────────────────────────────────

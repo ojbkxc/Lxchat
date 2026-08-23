@@ -187,14 +187,14 @@ class WecomChannel(
             onOpen = { DebugLog.d("WecomChannel", "WebSocket connected") },
             onClose = { code, reason ->
                 DebugLog.d("WecomChannel", "WebSocket closed: $code $reason")
-                webSocketRef.compareAndSet(ws, null)
+                webSocketRef.set(null)
                 // 正常关闭（1000）返回 null，异常关闭返回异常以触发重连
                 if (code == NORMAL_CLOSURE_CODE) closed.complete(null)
                 else closed.complete(WecomApiException("WebSocket closed: $code $reason"))
             },
             onError = { t ->
                 DebugLog.e("WecomChannel", "WebSocket error", t)
-                webSocketRef.compareAndSet(ws, null)
+                webSocketRef.set(null)
                 closed.complete(t)
             },
         )
@@ -205,7 +205,7 @@ class WecomChannel(
             closed.await()
         } catch (e: Exception) {
             // await 被取消（scope 取消）——主动关闭 socket
-            if (webSocketRef.compareAndSet(ws, null)) {
+            if (webSocketRef.set(null)) {
                 runCatching { ws.close(NORMAL_CLOSURE_CODE, "scope cancelled") }
             }
             throw e

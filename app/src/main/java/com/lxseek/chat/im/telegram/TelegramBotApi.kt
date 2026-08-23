@@ -52,7 +52,7 @@ class TelegramBotApi(
         call("getUpdates", buildJsonObject {
             put("timeout", timeout)
             put("limit", 100)
-            putJsonArray("allowed_updates") { add("message") }
+            putJsonArray("allowed_updates") { add(JsonPrimitive("message")) }
             if (offset != null) put("offset", offset)
         }) as JsonArray
 

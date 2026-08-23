@@ -11,7 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.receiveCatching
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -491,7 +491,7 @@ class QqBotWebSocketClient(
                 putJsonObject("d") {
                     put("token", connectToken)
                     put("intents", intents)
-                    putJsonArray("shard") { add(0); add(1) }
+                    putJsonArray("shard") { add(JsonPrimitive(0)); add(JsonPrimitive(1)) }
                 }
             }.toString()
             ws.send(payload)

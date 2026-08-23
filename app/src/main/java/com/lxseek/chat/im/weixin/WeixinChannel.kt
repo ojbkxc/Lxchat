@@ -71,7 +71,7 @@ class WeixinChannel(
 
     private suspend fun pollUpdates() {
         try {
-            val updates = api.getUpdates(baseUrl, config.token, state.getUpdatesBuf)
+            val updates = api.getUpdates(baseUrl, config.token, state.getUpdatesBuf())
             state.applyUpdates(updates)
         } catch (e: WeixinApiError) {
             DebugLog.e("WeixinChannel", "pollUpdates failed: ${e.code}", e)
@@ -84,15 +84,15 @@ class WeixinChannel(
 
     private class ChannelState {
         @Volatile
-        private var getUpdatesBuf: String = ""
+        private var _getUpdatesBuf: String = ""
 
         private val conversations = ConcurrentHashMap<String, ImConversation>()
         private val messages = ConcurrentHashMap<String, CopyOnWriteArrayList<ImMessage>>()
 
-        fun getUpdatesBuf(): String = getUpdatesBuf
+        fun getUpdatesBuf(): String = _getUpdatesBuf
 
         fun applyUpdates(updates: WeixinIlinkApi.Updates) {
-            getUpdatesBuf = updates.getUpdatesBuf
+            _getUpdatesBuf = updates.getUpdatesBuf
             for (msg in updates.msgs) {
                 val text = WeixinIlinkApi.extractWeixinText(msg) ?: continue
                 val msgId = WeixinIlinkApi.weixinMessageId(msg) ?: continue

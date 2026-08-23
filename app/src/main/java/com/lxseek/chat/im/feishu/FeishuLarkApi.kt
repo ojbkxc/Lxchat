@@ -291,7 +291,7 @@ class FeishuLarkApi(
             val body = buildJsonObject {
                 put("app_id", appId)
                 put("schema", "2.0")
-                putJsonArray("event_types") { eventTypes.forEach { add(it) } }
+                putJsonArray("event_types") { eventTypes.forEach { add(JsonPrimitive(it)) } }
             }.toString()
             val resp = postJson(
                 "$base/open-apis/event/v1/establish",

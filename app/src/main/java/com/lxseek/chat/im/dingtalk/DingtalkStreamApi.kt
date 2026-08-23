@@ -199,7 +199,7 @@ class DingtalkStreamApi(
         return withContext(Dispatchers.IO) {
             val body = buildJsonObject {
                 put("robotCode", clientId)
-                putJsonArray("userIds") { add(userId) }
+                putJsonArray("userIds") { add(JsonPrimitive(userId)) }
                 put("msgKey", "sampleText")
                 put("msgParam", buildJsonObject { put("content", text) }.toString())
             }.toString()

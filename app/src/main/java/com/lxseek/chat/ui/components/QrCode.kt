@@ -53,9 +53,10 @@ fun QrCode(
         val offModule = Color.White
         Canvas(modifier = modifier.size(size)) {
             val n = matrix.size
-            val cell = size.minDimension / n
+            val minDim = minOf(size.width, size.height)
+            val cell = minDim / n
             val total = cell * n
-            val inset = (size.minDimension - total) / 2f
+            val inset = (minDim - total) / 2f
             // White background plate (scanners expect dark-on-light).
             drawRect(
                 color = offModule,

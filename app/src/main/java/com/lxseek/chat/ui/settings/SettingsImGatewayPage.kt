@@ -224,7 +224,7 @@ private fun maskSecret(value: String): String {
 private fun buildBotConfig(platform: ImPlatform, values: Map<String, String>): ImGatewayConfig? {
     val fields = platform.credentialFields()
     // Validate required fields.
-    if (fields.any { it.required && values[it.key].isBlank() }) return null
+    if (fields.any { it.required && values[it.key].isNullOrBlank() }) return null
 
     val channelId = "${platform.id}:${UUID.randomUUID()}"
 

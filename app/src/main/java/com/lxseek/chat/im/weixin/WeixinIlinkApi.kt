@@ -4,6 +4,7 @@ import com.lxseek.chat.api.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resumeWithException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -106,7 +107,7 @@ class WeixinIlinkApi(
             .distinct()
             .takeLast(10)
         val body = buildJsonObject {
-            putJsonArray("local_token_list") { tokens.forEach { add(it) } }
+            putJsonArray("local_token_list") { tokens.forEach { add(JsonPrimitive(it)) } }
         }.toString()
         val response = requestJson(
             method = "POST",
