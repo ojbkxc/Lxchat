@@ -7,7 +7,7 @@ import com.lxseek.chat.im.qq.QqChannel
 import com.lxseek.chat.im.slack.SlackChannel
 import com.lxseek.chat.im.telegram.TelegramChannel
 import com.lxseek.chat.im.wecom.WecomChannel
-import com.lxseek.chat.im.wechat.WeixinChannel
+import com.lxseek.chat.im.weixin.WeixinChannel
 import com.lxseek.chat.im.whatsapp.WhatsappChannel
 
 /**

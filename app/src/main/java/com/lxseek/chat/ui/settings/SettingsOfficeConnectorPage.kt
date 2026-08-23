@@ -57,12 +57,13 @@ import com.lxseek.chat.im.office.OfficeApprovalReply
 import com.lxseek.chat.im.office.OfficeApprovalRequest
 import com.lxseek.chat.im.office.OfficeConnectionState
 import com.lxseek.chat.im.office.OfficeConnectionStatus
+import com.lxseek.chat.im.office.OfficeConnectorApi
 import com.lxseek.chat.im.office.OfficeConnectorService
 import com.lxseek.chat.im.office.OfficeConnectorSettings
 import com.lxseek.chat.im.office.OfficeConnectorStore
 import com.lxseek.chat.im.office.OfficeHarnessSession
 import com.lxseek.chat.im.office.OfficeHarnessUpdate
-import com.lxseek.chat.im.office.OfficeProtocol
+
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
@@ -139,7 +140,7 @@ fun SettingsOfficeConnectorPage(
         ?: OfficeConnectionStatus()
 
     val hookUrls = remember(baseUrl) {
-        if (baseUrl.isNotBlank()) OfficeProtocol.hookUrls(baseUrl) else emptyMap()
+        if (baseUrl.isNotBlank()) OfficeConnectorApi.hookUrls(baseUrl) else emptyMap()
     }
 
     CollapsingSettingsScaffold(
