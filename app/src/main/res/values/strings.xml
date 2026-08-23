@@ -1376,6 +1376,14 @@
     <string name="im_channel_validation_required">请填写必填字段</string>
     <string name="im_channel_cancel">取消</string>
     <string name="im_channel_bot_default_name">机器人</string>
+    <!-- 微信 iLink 扫码绑定流程文案 -->
+    <string name="im_channel_wechat_qr_loading">正在申请二维码…</string>
+    <string name="im_channel_wechat_qr_waiting">等待扫码…</string>
+    <string name="im_channel_wechat_qr_scanned">已扫码，请在手机上确认</string>
+    <string name="im_channel_wechat_qr_confirming">确认中…</string>
+    <string name="im_channel_wechat_qr_verify">需要验证码，请在微信中输入</string>
+    <string name="im_channel_wechat_qr_failed">扫码绑定失败</string>
+    <string name="im_channel_wechat_qr_retry">重试</string>
     <!-- Platform display names (Chinese) -->
     <string name="im_platform_wechat">微信</string>
     <string name="im_platform_telegram">Telegram</string>

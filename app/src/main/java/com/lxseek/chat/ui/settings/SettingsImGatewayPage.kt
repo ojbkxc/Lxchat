@@ -21,6 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +31,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -39,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,7 +55,9 @@ import com.lxseek.chat.im.ImGatewayConfig
 import com.lxseek.chat.im.ImGatewayStore
 import com.lxseek.chat.im.ImMultiGatewayConfig
 import com.lxseek.chat.im.ImPlatform
+import com.lxseek.chat.im.weixin.WeixinBindingFlow
 import com.lxseek.chat.viewmodel.ChatViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -145,10 +151,8 @@ private data class CredField(
 
 /** Credential fields shown in the bind form for [platform]. */
 private fun ImPlatform.credentialFields(): List<CredField> = when (this) {
-    ImPlatform.WECHAT -> listOf(
-        CredField("base_url", R.string.im_channel_field_base_url, FieldKind.URL, "http(s)://host:port"),
-        CredField("token", R.string.im_channel_field_token, FieldKind.SECRET, required = false),
-    )
+    // 微信走 iLink 扫码绑定（WeixinBindingFlow），无需手动配置 base_url/token。
+    ImPlatform.WECHAT -> emptyList()
     ImPlatform.WECOM -> listOf(
         CredField("corp_id", R.string.im_channel_field_corp_id, FieldKind.TEXT),
         CredField("corp_secret", R.string.im_channel_field_corp_secret, FieldKind.SECRET),
@@ -614,6 +618,12 @@ private fun BindFormSection(
     onConfirm: (ImGatewayConfig) -> Unit,
     onCancel: () -> Unit,
 ) {
+    // 微信走 iLink 扫码绑定流程（WeixinBindingFlow），不使用表单字段。
+    if (platform == ImPlatform.WECHAT) {
+        WeixinQrBindSection(onConfirm = onConfirm, onCancel = onCancel)
+        return
+    }
+
     val context = LocalContext.current
     val method = platform.bindMethod()
     val fields = platform.credentialFields()
@@ -730,6 +740,169 @@ private fun BindFormSection(
                     }
                 },
             ) { Text(stringResource(R.string.im_channel_bind)) }
+        }
+    }
+}
+
+// ── 微信 iLink 扫码绑定 ────────────────────────────────────────────────────
+
+/**
+ * 微信 iLink 扫码绑定 UI：进入即启动 [WeixinBindingFlow.bind]，显示二维码图片 →
+ * 轮询扫码状态 → 成功后构建 [ImGatewayConfig] 并回调 [onConfirm]。
+ *
+ * 状态流转：
+ *  - 申请二维码中（loading） → CircularProgressIndicator
+ *  - 二维码就绪（qrcodeUrl） → AsyncImage 显示二维码 + 状态文本
+ *  - 绑定成功               → 直接通过 [onConfirm] 回调并关闭
+ *  - 绑定失败（errorMsg）    → 显示错误信息 + "重试"按钮
+ *
+ * 协程在 [DisposableEffect] 中取消，避免离开 Composable 后继续轮询。
+ */
+@Composable
+private fun WeixinQrBindSection(
+    onConfirm: (ImGatewayConfig) -> Unit,
+    onCancel: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var bindJob by remember { mutableStateOf<Job?>(null) }
+    var qrcodeUrl by remember { mutableStateOf<String?>(null) }
+    var statusText by remember { mutableStateOf<String?>(null) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+
+    // 在 Composable 顶层读取字符串资源（stringResource 是 @Composable，不能在协程回调中调用）。
+    val strWaiting = stringResource(R.string.im_channel_wechat_qr_waiting)
+    val strScanned = stringResource(R.string.im_channel_wechat_qr_scanned)
+    val strConfirming = stringResource(R.string.im_channel_wechat_qr_confirming)
+    val strVerify = stringResource(R.string.im_channel_wechat_qr_verify)
+    val strFailed = stringResource(R.string.im_channel_wechat_qr_failed)
+
+    fun startBind() {
+        // 取消上一次绑定（如有），重置状态。
+        bindJob?.cancel()
+        qrcodeUrl = null
+        statusText = null
+        errorMsg = null
+        loading = true
+        val flow = WeixinBindingFlow()
+        bindJob = scope.launch {
+            flow.bind { event ->
+                when (event) {
+                    is WeixinBindingFlow.Event.QrcodeReady -> {
+                        loading = false
+                        qrcodeUrl = event.qrcodeUrl
+                        statusText = strWaiting
+                    }
+                    is WeixinBindingFlow.Event.StatusChanged -> {
+                        statusText = when (event.status) {
+                            "wait" -> strWaiting
+                            "scaned" -> strScanned
+                            "confirmed" -> strConfirming
+                            "need_verifycode" -> strVerify
+                            else -> event.status
+                        }
+                    }
+                    is WeixinBindingFlow.Event.Success -> {
+                        loading = false
+                        val config = ImGatewayConfig(
+                            enabled = true,
+                            platform = ImPlatform.WECHAT.id,
+                            baseUrl = event.baseUrl,
+                            token = event.token,
+                            channelId = "wechat:${UUID.randomUUID()}",
+                            pollIntervalMs = 5_000L,
+                        )
+                        onConfirm(config)
+                    }
+                    is WeixinBindingFlow.Event.Failure -> {
+                        loading = false
+                        qrcodeUrl = null
+                        errorMsg = event.error.message ?: strFailed
+                    }
+                }
+            }
+        }
+    }
+
+    // 进入即自动开始绑定。
+    LaunchedEffect(Unit) { startBind() }
+
+    // 离开时取消协程，避免离开 Composable 后继续轮询。
+    DisposableEffect(Unit) {
+        onDispose { bindJob?.cancel() }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        when {
+            loading -> {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.im_channel_wechat_qr_loading),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            qrcodeUrl != null -> {
+                coil.compose.AsyncImage(
+                    model = qrcodeUrl,
+                    contentDescription = stringResource(R.string.im_channel_bind_qr),
+                    modifier = Modifier
+                        .size(220.dp)
+                        .padding(4.dp),
+                    contentScale = ContentScale.Fit,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                if (statusText != null) {
+                    Text(
+                        text = statusText!!,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+            errorMsg != null -> {
+                Text(
+                    text = "❌",
+                    style = MaterialTheme.typography.displaySmall,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.im_channel_wechat_qr_failed),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = errorMsg!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 操作按钮：取消 + 失败时的重试。
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = {
+                bindJob?.cancel()
+                onCancel()
+            }) { Text(stringResource(R.string.im_channel_cancel)) }
+            if (errorMsg != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = { startBind() }) {
+                    Text(stringResource(R.string.im_channel_wechat_qr_retry))
+                }
+            }
         }
     }
 }

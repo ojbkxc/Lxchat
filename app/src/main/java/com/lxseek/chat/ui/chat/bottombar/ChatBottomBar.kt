@@ -444,7 +444,9 @@ fun ChatBottomBar(
                             }
                         },
                         label = { Text(currentModelLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        modifier = Modifier.menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
+                        modifier = Modifier
+                            .widthIn(max = 180.dp)
+                            .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
                     )
                     ExposedDropdownMenu(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
