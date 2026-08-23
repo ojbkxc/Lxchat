@@ -62,7 +62,7 @@ import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.viewmodel.ChatViewModel
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
-import coil.compose.SubcomposeAsyncImageContent
+import androidx.compose.foundation.Image
 import coil.request.ImageRequest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -905,7 +905,7 @@ private fun WeixinQrBindSection(
                         CircularProgressIndicator()
                     }
                 } else {
-                    SubcomposeAsyncImageContent(
+                    Image(
                         painter = qrPainter,
                         contentDescription = stringResource(R.string.im_channel_bind_qr),
                         modifier = Modifier
