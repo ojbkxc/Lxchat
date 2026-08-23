@@ -142,7 +142,7 @@ jobs:
 
       - name: Generate latest.json
         run: |
-          cat > dist/latest.json <<'JSONEOF'
+          cat > dist/latest.json <<JSONEOF
           {
             "version": "${VERSION}",
             "apk": "LxChat-v${VERSION}-android-arm64-v8a.apk",
