@@ -1,6 +1,7 @@
 package com.lxseek.chat.im.weixin
 
 import com.lxseek.chat.api.HttpClient
+import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -102,6 +103,7 @@ class WeixinIlinkApi(
         localTokens: List<String> = emptyList(),
         botType: String = DEFAULT_BOT_TYPE,
     ): BeginLoginResult = withContext(Dispatchers.IO) {
+        DebugLog.d("WeixinIlinkApi", "beginLogin: 请求 get_bot_qrcode, botType=$botType")
         val tokens = localTokens
             .mapNotNull { it.trim().takeIf { s -> s.isNotEmpty() } }
             .distinct()
@@ -122,7 +124,12 @@ class WeixinIlinkApi(
             ?: throw WeixinApiError("invalid-qr", "微信服务没有返回二维码令牌。")
         val imgContent = response["qrcode_img_content"].str()
             ?: throw WeixinApiError("invalid-qr", "微信服务没有返回扫码地址。")
-        BeginLoginResult(qrcode = qrcode, qrcodeUrl = normalizeWeixinQrUrl(imgContent))
+        val qrcodeUrl = normalizeWeixinQrUrl(imgContent)
+        DebugLog.d(
+            "WeixinIlinkApi",
+            "beginLogin: 响应 qrcode=${qrcode.take(10)}... imgContent=${imgContent.take(50)}... url=$qrcodeUrl",
+        )
+        BeginLoginResult(qrcode = qrcode, qrcodeUrl = qrcodeUrl)
     }
 
     /** 轮询扫码状态（长轮询 35s）。 */
@@ -321,8 +328,10 @@ class WeixinIlinkApi(
             throw WeixinApiError("untrusted-endpoint", "拒绝访问不受信任的微信服务地址。")
         }
         val headers = if (authenticated) authenticatedHeaders(token) else commonHeaders()
+        DebugLog.d("WeixinIlinkApi", "requestJson: $method $url (authenticated=$authenticated)")
         try {
             val raw = executeCall(method, url, headers, body, timeoutMs)
+            DebugLog.d("WeixinIlinkApi", "requestJson: 响应 code=${raw.code} len=${raw.body.length}")
             if (raw.code !in 200..299) {
                 throw WeixinApiError(
                     code = "http-error",
@@ -335,10 +344,13 @@ class WeixinIlinkApi(
         } catch (e: WeixinApiError) {
             throw e
         } catch (e: InterruptedIOException) {
+            DebugLog.e("WeixinIlinkApi", "requestJson: 超时 $method $url", e)
             throw WeixinApiError("timeout", "微信服务请求超时。", e)
         } catch (e: IOException) {
+            DebugLog.e("WeixinIlinkApi", "requestJson: 网络错误 $method $url", e)
             throw WeixinApiError("network-error", "暂时无法访问微信服务。", e)
         } catch (e: Exception) {
+            DebugLog.e("WeixinIlinkApi", "requestJson: 异常 $method $url", e)
             throw WeixinApiError("network-error", "暂时无法访问微信服务。", e)
         }
     }

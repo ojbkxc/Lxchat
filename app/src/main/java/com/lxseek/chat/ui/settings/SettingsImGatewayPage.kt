@@ -2,6 +2,7 @@ package com.lxseek.chat.ui.settings
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Visibility
@@ -56,7 +58,12 @@ import com.lxseek.chat.im.ImGatewayStore
 import com.lxseek.chat.im.ImMultiGatewayConfig
 import com.lxseek.chat.im.ImPlatform
 import com.lxseek.chat.im.weixin.WeixinBindingFlow
+import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.viewmodel.ChatViewModel
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
+import coil.compose.SubcomposeAsyncImageContent
+import coil.request.ImageRequest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -778,6 +785,7 @@ private fun WeixinQrBindSection(
     val strFailed = stringResource(R.string.im_channel_wechat_qr_failed)
 
     fun startBind() {
+        DebugLog.d("WeixinQrBind", "startBind: 开始扫码绑定流程")
         // 取消上一次绑定（如有），重置状态。
         bindJob?.cancel()
         qrcodeUrl = null
@@ -789,11 +797,13 @@ private fun WeixinQrBindSection(
             flow.bind { event ->
                 when (event) {
                     is WeixinBindingFlow.Event.QrcodeReady -> {
+                        DebugLog.d("WeixinQrBind", "收到二维码 URL: ${event.qrcodeUrl}")
                         loading = false
                         qrcodeUrl = event.qrcodeUrl
                         statusText = strWaiting
                     }
                     is WeixinBindingFlow.Event.StatusChanged -> {
+                        DebugLog.d("WeixinQrBind", "扫码状态变化: ${event.status}")
                         statusText = when (event.status) {
                             "wait" -> strWaiting
                             "scaned" -> strScanned
@@ -803,6 +813,7 @@ private fun WeixinQrBindSection(
                         }
                     }
                     is WeixinBindingFlow.Event.Success -> {
+                        DebugLog.d("WeixinQrBind", "扫码绑定成功: baseUrl=${event.baseUrl}")
                         loading = false
                         val config = ImGatewayConfig(
                             enabled = true,
@@ -815,6 +826,7 @@ private fun WeixinQrBindSection(
                         onConfirm(config)
                     }
                     is WeixinBindingFlow.Event.Failure -> {
+                        DebugLog.e("WeixinQrBind", "扫码绑定失败: ${event.error.code} - ${event.error.message}")
                         loading = false
                         qrcodeUrl = null
                         errorMsg = event.error.message ?: strFailed
@@ -832,6 +844,21 @@ private fun WeixinQrBindSection(
         onDispose { bindJob?.cancel() }
     }
 
+    val context = LocalContext.current
+    // 二维码图片请求：crossfade + 共享，避免每次重组都新建 ImageRequest。
+    val qrImageRequest = remember(qrcodeUrl) {
+        if (qrcodeUrl == null) null
+        else ImageRequest.Builder(context)
+            .data(qrcodeUrl)
+            .crossfade(true)
+            .build()
+    }
+    // 用 painter 显式跟踪加载状态，避免在 SubcomposeAsyncImage 的 error slot 中写入 state 引发重组循环。
+    val qrPainter = rememberAsyncImagePainter(model = qrImageRequest)
+    val qrLoadFailed = qrPainter.state is AsyncImagePainter.State.Error
+    // 只要图片还没成功加载（Empty / Loading），都显示进度指示，避免初始空内容闪烁。
+    val qrImageReady = qrPainter.state is AsyncImagePainter.State.Success
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -846,16 +873,54 @@ private fun WeixinQrBindSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            qrcodeUrl != null -> {
-                coil.compose.AsyncImage(
-                    model = qrcodeUrl,
-                    contentDescription = stringResource(R.string.im_channel_bind_qr),
-                    modifier = Modifier
-                        .size(220.dp)
-                        .padding(4.dp),
-                    contentScale = ContentScale.Fit,
-                )
+            qrcodeUrl != null && qrImageRequest != null -> {
+                if (qrLoadFailed) {
+                    // 二维码 URL 已就绪但图片下载失败：显示错误占位 + 重新加载入口。
+                    // 重新触发 startBind 走完整流程，因为 ImageRequest 缓存可能持有失败状态，
+                    // 最稳妥的方式是重新申请二维码。
+                    Column(
+                        modifier = Modifier.size(220.dp).padding(4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BrokenImage,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(48.dp),
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "二维码加载失败",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                } else if (!qrImageReady) {
+                    // 二维码 URL 已就绪，图片正在下载（或尚未开始）：显示进度指示，避免空白。
+                    Box(
+                        modifier = Modifier.size(220.dp).padding(4.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    SubcomposeAsyncImageContent(
+                        painter = qrPainter,
+                        contentDescription = stringResource(R.string.im_channel_bind_qr),
+                        modifier = Modifier
+                            .size(220.dp)
+                            .padding(4.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
+                if (qrLoadFailed) {
+                    Button(onClick = { startBind() }) {
+                        Text(stringResource(R.string.im_channel_wechat_qr_retry))
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
                 if (statusText != null) {
                     Text(
                         text = statusText!!,

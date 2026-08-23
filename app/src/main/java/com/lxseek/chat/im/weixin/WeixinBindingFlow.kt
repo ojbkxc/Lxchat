@@ -1,5 +1,6 @@
 package com.lxseek.chat.im.weixin
 
+import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
@@ -91,7 +92,12 @@ class WeixinBindingFlow(
      * 返回 [BindingResult]（成功）或 null（失败，失败已通过 [Event.Failure] 通知）。
      */
     suspend fun bind(onEvent: (Event) -> Unit): BindingResult? = try {
+        DebugLog.d("WeixinBindingFlow", "开始扫码绑定，调用 beginLogin...")
         val begin = api.beginLogin()
+        DebugLog.d(
+            "WeixinBindingFlow",
+            "beginLogin 成功: qrcode=${begin.qrcode.take(10)}... url=${begin.qrcodeUrl}",
+        )
         onEvent(Event.QrcodeReady(begin.qrcodeUrl))
         val confirmed = pollUntilConfirmed(begin.qrcode) { status ->
             onEvent(Event.StatusChanged(status))
@@ -101,12 +107,15 @@ class WeixinBindingFlow(
         val baseUrl = confirmed.baseUrl?.takeIf { it.isNotBlank() }
             ?.let { WeixinIlinkApi.normalizeWeixinApiBaseUrl(it) }
             ?: WeixinIlinkApi.WEIXIN_QR_BASE_URL
+        DebugLog.d("WeixinBindingFlow", "扫码确认成功: token=${token.take(10)}... baseUrl=$baseUrl")
         onEvent(Event.Success(token, baseUrl))
         BindingResult(token, baseUrl)
     } catch (e: WeixinApiError) {
+        DebugLog.e("WeixinBindingFlow", "扫码绑定失败(WeixinApiError): ${e.code} - ${e.message}", e)
         onEvent(Event.Failure(e))
         null
     } catch (e: Exception) {
+        DebugLog.e("WeixinBindingFlow", "扫码绑定失败(Exception): ${e.message}", e)
         onEvent(Event.Failure(WeixinApiError("bind-failed", e.message ?: "扫码绑定失败。", e)))
         null
     }
