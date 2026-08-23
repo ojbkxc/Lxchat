@@ -16,7 +16,7 @@ enum class ImMessageDirection {
  * ([id]) used in configs and tool payloads, plus whether the platform delivers messages
  * via a long-lived push connection ([push]) or must be polled.
  *
- * Nine platforms are enumerated; concrete channel implementations are plugged in by
+ * Ten platforms are enumerated; concrete channel implementations are plugged in by
  * [ImChannelFactory]. Polling platforms reuse the legacy [GatewayChannel] HTTP bridge
  * until a native SDK channel is provided; push platforms return null from the factory
  * until their long-connection channel is implemented by a downstream task.
@@ -37,6 +37,7 @@ enum class ImPlatform(
     QQ("qq", "QQ", true),
     DISCORD("discord", "Discord", true),
     SLACK("slack", "Slack", true),
+    WHATSAPP("whatsapp", "WhatsApp", false),
     SMS("sms", "SMS", false);
 
     companion object {
@@ -63,6 +64,8 @@ data class ImMessage(
     val text: String,
     val sender: String = "",
     val timestampMs: Long = 0L,
+    /** 图片URL列表（JPEG/PNG/WebP/GIF），单张上限5MB，总计上限20MB */
+    val images: List<String> = emptyList(),
 )
 
 /**
@@ -117,6 +120,8 @@ data class ImGatewayConfig(
     val channelId: String = "",
     /** Remote bot/account id on platforms that support multiple bots per credential. */
     val botId: String = "",
+    /** Agent Preset ID，空白跟随默认 */
+    val agentPreset: String = "",
 ) {
     /** Effective local channel id, falling back to [platform] for legacy single-bot configs. */
     val effectiveChannelId: String get() = channelId.ifBlank { platform }

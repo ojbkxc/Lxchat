@@ -42,6 +42,28 @@ interface MessageChannel {
      * messages arrive via [PushMessageChannel.startListening]).
      */
     suspend fun fetchMessages(conversationId: String, afterId: String? = null): List<ImMessage>
+
+    /**
+     * 该渠道是否支持编辑已发送的消息（流式回复需要）。
+     *
+     * 默认 false；支持编辑的平台（如 Telegram、Discord、Slack）在子类中覆盖为 true。
+     * [MultiSegmentMessageSender.sendStreaming] 据此决定走真正的流式编辑路径还是退化为
+     * 一次性发送。
+     */
+    val supportsEdit: Boolean get() = false
+
+    /**
+     * 编辑已发送的消息（用于流式回复）。返回是否成功。不支持编辑的平台返回 false。
+     *
+     * 实现应当：
+     *  - 在 [conversationId] 内找到 [messageId] 对应的消息，将其文本替换为 [newText]；
+     *  - 网关不可达 / 消息不存在 / 权限不足等失败情况返回 false，不抛异常；
+     *  - 调用方据此决定是否退化为发送新消息（见 [MultiSegmentMessageSender.sendStreaming]）。
+     *
+     * 默认实现返回 false，与 [supportsEdit] 的默认值一致，所以未覆盖此方法的渠道
+     * 不会被流式路径调用。
+     */
+    suspend fun editMessage(conversationId: String, messageId: String, newText: String): Boolean = false
 }
 
 /**

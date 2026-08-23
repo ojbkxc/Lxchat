@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -24,6 +25,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,7 +55,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.lxseek.chat.LxChatApplication
 import com.lxseek.chat.R
+import com.lxseek.chat.data.SystemPromptEntry
+import com.lxseek.chat.im.ConnectionTestResult
+import com.lxseek.chat.im.ImBridgeService
 import com.lxseek.chat.im.ImGatewayConfig
 import com.lxseek.chat.im.ImGatewayStore
 import com.lxseek.chat.im.ImMultiGatewayConfig
@@ -86,6 +93,7 @@ private fun ImPlatform.emoji(): String = when (this) {
     ImPlatform.QQ -> "🐧"
     ImPlatform.DISCORD -> "🎮"
     ImPlatform.SLACK -> "💼"
+    ImPlatform.WHATSAPP -> "🟢"
     ImPlatform.SMS -> "📱"
 }
 
@@ -99,6 +107,7 @@ private fun ImPlatform.nameRes(): Int = when (this) {
     ImPlatform.QQ -> R.string.im_platform_qq
     ImPlatform.DISCORD -> R.string.im_platform_discord
     ImPlatform.SLACK -> R.string.im_platform_slack
+    ImPlatform.WHATSAPP -> R.string.im_platform_whatsapp
     ImPlatform.SMS -> R.string.im_platform_sms
 }
 
@@ -112,6 +121,7 @@ private fun ImPlatform.hintRes(): Int = when (this) {
     ImPlatform.QQ -> R.string.im_hint_qq
     ImPlatform.DISCORD -> R.string.im_hint_discord
     ImPlatform.SLACK -> R.string.im_hint_slack
+    ImPlatform.WHATSAPP -> R.string.im_hint_whatsapp
     ImPlatform.SMS -> R.string.im_hint_sms
 }
 
@@ -125,6 +135,7 @@ private fun ImPlatform.descRes(): Int = when (this) {
     ImPlatform.QQ -> R.string.im_desc_qq
     ImPlatform.DISCORD -> R.string.im_desc_discord
     ImPlatform.SLACK -> R.string.im_desc_slack
+    ImPlatform.WHATSAPP -> R.string.im_desc_whatsapp
     ImPlatform.SMS -> R.string.im_desc_sms
 }
 
@@ -134,7 +145,7 @@ private enum class BindMethod { QR, TOKEN, SMS }
 private fun ImPlatform.bindMethod(): BindMethod = when (this) {
     ImPlatform.WECHAT, ImPlatform.WECOM, ImPlatform.QQ -> BindMethod.QR
     ImPlatform.TELEGRAM, ImPlatform.DISCORD, ImPlatform.SLACK,
-    ImPlatform.DINGTALK, ImPlatform.LARK -> BindMethod.TOKEN
+    ImPlatform.DINGTALK, ImPlatform.LARK, ImPlatform.WHATSAPP -> BindMethod.TOKEN
     ImPlatform.SMS -> BindMethod.SMS
 }
 
@@ -192,6 +203,11 @@ private fun ImPlatform.credentialFields(): List<CredField> = when (this) {
         CredField("token", R.string.im_channel_field_token, FieldKind.SECRET, required = false),
         CredField("poll_interval", R.string.im_channel_field_poll_interval, FieldKind.NUMBER, placeholder = "5000"),
     )
+    ImPlatform.WHATSAPP -> listOf(
+        CredField("phone_number_id", R.string.im_channel_field_phone_number_id, FieldKind.TEXT, placeholder = "123456789012345"),
+        CredField("access_token", R.string.im_channel_field_access_token, FieldKind.SECRET),
+        CredField("verify_token", R.string.im_channel_field_verify_token, FieldKind.TEXT, required = false),
+    )
 }
 
 // ── Credential encode / decode (stored in ImGatewayConfig.token as JSON) ────
@@ -231,13 +247,20 @@ private fun maskSecret(value: String): String {
 /**
  * Build an [ImGatewayConfig] from the [values] entered for [platform], or null when required
  * fields are missing. A fresh [channelId] is generated so each bind creates a distinct bot.
+ *
+ * @param agentPreset 选中的 Agent Preset ID；空串表示跟随默认。
  */
-private fun buildBotConfig(platform: ImPlatform, values: Map<String, String>): ImGatewayConfig? {
+private fun buildBotConfig(
+    platform: ImPlatform,
+    values: Map<String, String>,
+    agentPreset: String = "",
+): ImGatewayConfig? {
     val fields = platform.credentialFields()
     // Validate required fields.
     if (fields.any { it.required && values[it.key].isNullOrBlank() }) return null
 
     val channelId = "${platform.id}:${UUID.randomUUID()}"
+    val preset = agentPreset.trim()
 
     return when (platform) {
         ImPlatform.WECHAT -> ImGatewayConfig(
@@ -247,6 +270,7 @@ private fun buildBotConfig(platform: ImPlatform, values: Map<String, String>): I
             token = values["token"].orEmpty(), // wechat auth token stays as a bare string (legacy compat)
             channelId = channelId,
             pollIntervalMs = 5_000L,
+            agentPreset = preset,
         )
         ImPlatform.SMS -> ImGatewayConfig(
             enabled = true,
@@ -255,6 +279,7 @@ private fun buildBotConfig(platform: ImPlatform, values: Map<String, String>): I
             token = values["token"].orEmpty(),
             channelId = channelId,
             pollIntervalMs = values["poll_interval"]?.trim()?.toLongOrNull()?.takeIf { it > 0 } ?: 5_000L,
+            agentPreset = preset,
         )
         // Each platform maps its credential fields to the flat config.token / config.baseUrl /
         // config.botId columns that its Channel implementation expects (NOT JSON-encoded).
@@ -262,37 +287,51 @@ private fun buildBotConfig(platform: ImPlatform, values: Map<String, String>): I
             enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
             baseUrl = "",
             token = values["bot_token"].orEmpty(),
+            agentPreset = preset,
         )
         ImPlatform.DISCORD -> ImGatewayConfig(
             enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
             baseUrl = "",
             token = values["bot_token"].orEmpty(),
+            agentPreset = preset,
         )
         ImPlatform.SLACK -> ImGatewayConfig(
             enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
             baseUrl = values["app_token"].orEmpty(),   // app token (xapp-)
             token = values["bot_token"].orEmpty(),      // bot token (xoxb-)
+            agentPreset = preset,
         )
         ImPlatform.DINGTALK -> ImGatewayConfig(
             enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
             baseUrl = values["client_secret"].orEmpty(),
             token = values["client_id"].orEmpty(),
+            agentPreset = preset,
         )
         ImPlatform.LARK -> ImGatewayConfig(
             enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
             baseUrl = values["app_secret"].orEmpty(),
             token = values["app_id"].orEmpty(),
+            agentPreset = preset,
         )
         ImPlatform.WECOM -> ImGatewayConfig(
             enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
             baseUrl = values["corp_secret"].orEmpty(),
             token = values["corp_id"].orEmpty(),
             botId = values["agent_id"].orEmpty(),
+            agentPreset = preset,
         )
         ImPlatform.QQ -> ImGatewayConfig(
             enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
             baseUrl = values["app_secret"].orEmpty(),
             token = values["app_id"].orEmpty(),
+            agentPreset = preset,
+        )
+        ImPlatform.WHATSAPP -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["verify_token"].orEmpty(),   // verify token (webhook)
+            token = values["access_token"].orEmpty(),       // access token
+            botId = values["phone_number_id"].orEmpty(),    // phone number id
+            agentPreset = preset,
         )
     }
 }
@@ -318,6 +357,7 @@ private fun botSummary(bot: ImGatewayConfig, platform: ImPlatform): Pair<String,
             bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
         ImPlatform.DINGTALK -> bot.token.takeIf { it.isNotBlank() }.orEmpty()  // client_id
         ImPlatform.LARK -> bot.token.takeIf { it.isNotBlank() }.orEmpty()      // app_id
+        ImPlatform.WHATSAPP -> bot.botId.takeIf { it.isNotBlank() }.orEmpty()  // phone_number_id
     }
     return title to subtitle
 }
@@ -344,6 +384,13 @@ fun SettingsImGatewayPage(
     val multiConfig by store.multiConfig.collectAsState(initial = ImMultiGatewayConfig())
     val legacyConfig by viewModel.settings.imGatewayConfig.collectAsState()
     val scope = rememberCoroutineScope()
+
+    // T31: ImBridgeService 用于连接测试；从 AppContainer 取单例。
+    val bridgeService = remember(context) {
+        (context.applicationContext as LxChatApplication).container.imBridgeService
+    }
+    // T31: Agent Preset 候选列表（来自全局 System Prompts）。
+    val systemPrompts by viewModel.settings.systemPrompts.collectAsState()
 
     // Legacy fallback bot: shown only when the multi-config is empty and the legacy single
     // config is enabled/configured, so existing users see their prior gateway and can migrate.
@@ -384,6 +431,8 @@ fun SettingsImGatewayPage(
                 platform = platform,
                 bots = effectiveBots,
                 isLegacyShowing = isLegacyForThis && bots.isEmpty(),
+                agentPresets = systemPrompts,
+                bridgeService = bridgeService,
                 onAddBot = { config ->
                     scope.launch {
                         store.upsertBot(config)
@@ -435,6 +484,8 @@ private fun PlatformChannelCard(
     platform: ImPlatform,
     bots: List<ImGatewayConfig>,
     isLegacyShowing: Boolean,
+    agentPresets: List<SystemPromptEntry>,
+    bridgeService: ImBridgeService,
     onAddBot: (ImGatewayConfig) -> Unit,
     onRemoveBot: (ImGatewayConfig) -> Unit,
     onMigrateLegacy: () -> Unit,
@@ -501,6 +552,7 @@ private fun PlatformChannelCard(
                         bot = bot,
                         platform = platform,
                         isLegacy = isLegacyShowing && idx == 0,
+                        bridgeService = bridgeService,
                         onRemove = { onRemoveBot(bot) },
                         onMigrate = if (isLegacyShowing && idx == 0) onMigrateLegacy else null,
                     )
@@ -514,6 +566,7 @@ private fun PlatformChannelCard(
                 Spacer(modifier = Modifier.height(10.dp))
                 BindFormSection(
                     platform = platform,
+                    agentPresets = agentPresets,
                     onConfirm = { config ->
                         onAddBot(config)
                         expanded = false
@@ -567,52 +620,96 @@ private fun BotSummaryRow(
     bot: ImGatewayConfig,
     platform: ImPlatform,
     isLegacy: Boolean,
+    bridgeService: ImBridgeService,
     onRemove: () -> Unit,
     onMigrate: (() -> Unit)?,
 ) {
     val (title, subtitle) = botSummary(bot, platform)
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Default.CheckCircle,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title.ifBlank { stringResource(R.string.im_channel_bot_default_name) },
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+    val scope = rememberCoroutineScope()
+    val strTesting = stringResource(R.string.im_channel_test_running)
+    val strSuccess = stringResource(R.string.im_channel_test_success)
+    val strFailed = stringResource(R.string.im_channel_test_failed)
+    val strTestBtn = stringResource(R.string.im_channel_test_connection)
+    val strPresetLabel = stringResource(R.string.im_channel_agent_preset)
+    val strPresetFollow = stringResource(R.string.im_channel_agent_preset_follow_default)
+    var testing by remember { mutableStateOf(false) }
+    var testResult by remember { mutableStateOf<ConnectionTestResult?>(null) }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle, contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp),
             )
-            if (subtitle.isNotBlank()) {
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = subtitle,
+                    text = title.ifBlank { stringResource(R.string.im_channel_bot_default_name) },
+                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
+                )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = "$strPresetLabel: ${bot.agentPreset.ifBlank { strPresetFollow }}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (isLegacy) {
+                    Text(
+                        text = stringResource(R.string.im_channel_legacy_tag),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold,
+                    )
+                }
             }
-            if (isLegacy) {
-                Text(
-                    text = stringResource(R.string.im_channel_legacy_tag),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    fontWeight = FontWeight.Bold,
+            TextButton(
+                enabled = !testing,
+                onClick = {
+                    if (testing) return@TextButton
+                    testing = true; testResult = null
+                    DebugLog.d("ImGatewayUI", "testConnection clicked: ${bot.effectiveChannelId}")
+                    scope.launch {
+                        val result = bridgeService.testConnection(bot)
+                        testResult = result; testing = false
+                        DebugLog.d("ImGatewayUI", "testConnection done: $result")
+                    }
+                },
+            ) {
+                if (testing) {
+                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(strTesting)
+                } else Text(strTestBtn)
+            }
+            if (onMigrate != null) {
+                TextButton(onClick = onMigrate) { Text(stringResource(R.string.im_channel_migrate)) }
+            }
+            IconButton(onClick = onRemove) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.im_channel_remove),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        if (onMigrate != null) {
-            TextButton(onClick = onMigrate) { Text(stringResource(R.string.im_channel_migrate)) }
-        }
-        IconButton(onClick = onRemove) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = stringResource(R.string.im_channel_remove),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        testResult?.let { result ->
+            Spacer(modifier = Modifier.height(2.dp))
+            when (result) {
+                is ConnectionTestResult.Success -> Text(
+                    text = "$strSuccess\n${result.message}", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.fillMaxWidth().padding(start = 30.dp),
+                )
+                is ConnectionTestResult.Failure -> Text(
+                    text = "$strFailed\n${result.reason}", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth().padding(start = 30.dp),
+                )
+            }
         }
     }
 }
@@ -622,6 +719,7 @@ private fun BotSummaryRow(
 @Composable
 private fun BindFormSection(
     platform: ImPlatform,
+    agentPresets: List<SystemPromptEntry>,
     onConfirm: (ImGatewayConfig) -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -639,6 +737,13 @@ private fun BindFormSection(
     val values = remember { mutableStateMapOf<String, String>().apply { fields.forEach { put(it.key, "") } } }
     val showSecret = remember { mutableStateMapOf<String, Boolean>().apply { fields.forEach { put(it.key, false) } } }
     var validationError by remember { mutableStateOf(false) }
+
+    // T31: Agent Preset 选择状态。空串 = 跟随默认。
+    var selectedPreset by remember { mutableStateOf("") }
+    var presetMenuExpanded by remember { mutableStateOf(false) }
+    val strPresetLabel = stringResource(R.string.im_channel_agent_preset)
+    val strPresetHint = stringResource(R.string.im_channel_agent_preset_hint)
+    val strPresetFollow = stringResource(R.string.im_channel_agent_preset_follow_default)
 
     Column(modifier = Modifier.fillMaxWidth()) {
         if (method == BindMethod.QR) {
@@ -720,6 +825,33 @@ private fun BindFormSection(
             )
         }
 
+        // T31: Agent Preset 选择器（Dropdown）。
+        // 候选项 = "跟随默认" + 全局 System Prompts；选中后写入 selectedPreset（空串=跟随默认）。
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            OutlinedTextField(
+                value = if (selectedPreset.isBlank()) strPresetFollow
+                        else agentPresets.firstOrNull { it.id == selectedPreset }?.title ?: selectedPreset,
+                onValueChange = { /* 只读，由下方 Dropdown 选择 */ },
+                readOnly = true,
+                label = { Text(strPresetLabel) },
+                supportingText = { Text(strPresetHint) },
+                singleLine = true,
+                trailingIcon = {
+                    IconButton(onClick = { presetMenuExpanded = true }) {
+                        Icon(imageVector = Icons.Default.ExpandMore, contentDescription = null)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            DropdownMenu(expanded = presetMenuExpanded, onDismissRequest = { presetMenuExpanded = false }) {
+                DropdownMenuItem(text = { Text(strPresetFollow) }, onClick = { selectedPreset = ""; presetMenuExpanded = false })
+                agentPresets.forEach { entry ->
+                    DropdownMenuItem(text = { Text(entry.title) }, onClick = { selectedPreset = entry.id; presetMenuExpanded = false })
+                }
+            }
+        }
+
         if (validationError) {
             Text(
                 text = stringResource(R.string.im_channel_validation_required),
@@ -730,21 +862,13 @@ private fun BindFormSection(
         }
 
         Spacer(modifier = Modifier.height(10.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onCancel) { Text(stringResource(R.string.im_channel_cancel)) }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
-                    val config = buildBotConfig(platform, values.toMap())
-                    if (config == null) {
-                        validationError = true
-                    } else {
-                        onConfirm(config)
-                    }
+                    val config = buildBotConfig(platform, values.toMap(), selectedPreset)
+                    if (config == null) validationError = true else onConfirm(config)
                 },
             ) { Text(stringResource(R.string.im_channel_bind)) }
         }
@@ -756,13 +880,6 @@ private fun BindFormSection(
 /**
  * 微信 iLink 扫码绑定 UI：进入即启动 [WeixinBindingFlow.bind]，显示二维码图片 →
  * 轮询扫码状态 → 成功后构建 [ImGatewayConfig] 并回调 [onConfirm]。
- *
- * 状态流转：
- *  - 申请二维码中（loading） → CircularProgressIndicator
- *  - 二维码就绪（qrcodeUrl） → AsyncImage 显示二维码 + 状态文本
- *  - 绑定成功               → 直接通过 [onConfirm] 回调并关闭
- *  - 绑定失败（errorMsg）    → 显示错误信息 + "重试"按钮
- *
  * 协程在 [DisposableEffect] 中取消，避免离开 Composable 后继续轮询。
  */
 @Composable
@@ -776,8 +893,6 @@ private fun WeixinQrBindSection(
     var statusText by remember { mutableStateOf<String?>(null) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
-
-    // 在 Composable 顶层读取字符串资源（stringResource 是 @Composable，不能在协程回调中调用）。
     val strWaiting = stringResource(R.string.im_channel_wechat_qr_waiting)
     val strScanned = stringResource(R.string.im_channel_wechat_qr_scanned)
     val strConfirming = stringResource(R.string.im_channel_wechat_qr_confirming)
@@ -786,187 +901,97 @@ private fun WeixinQrBindSection(
 
     fun startBind() {
         DebugLog.d("WeixinQrBind", "startBind: 开始扫码绑定流程")
-        // 取消上一次绑定（如有），重置状态。
-        bindJob?.cancel()
-        qrcodeUrl = null
-        statusText = null
-        errorMsg = null
-        loading = true
+        bindJob?.cancel(); qrcodeUrl = null; statusText = null; errorMsg = null; loading = true
         val flow = WeixinBindingFlow()
         bindJob = scope.launch {
             flow.bind { event ->
                 when (event) {
                     is WeixinBindingFlow.Event.QrcodeReady -> {
                         DebugLog.d("WeixinQrBind", "收到二维码 URL: ${event.qrcodeUrl}")
-                        loading = false
-                        qrcodeUrl = event.qrcodeUrl
-                        statusText = strWaiting
+                        loading = false; qrcodeUrl = event.qrcodeUrl; statusText = strWaiting
                     }
                     is WeixinBindingFlow.Event.StatusChanged -> {
                         DebugLog.d("WeixinQrBind", "扫码状态变化: ${event.status}")
                         statusText = when (event.status) {
-                            "wait" -> strWaiting
-                            "scaned" -> strScanned
-                            "confirmed" -> strConfirming
-                            "need_verifycode" -> strVerify
-                            else -> event.status
+                            "wait" -> strWaiting; "scaned" -> strScanned; "confirmed" -> strConfirming
+                            "need_verifycode" -> strVerify; else -> event.status
                         }
                     }
                     is WeixinBindingFlow.Event.Success -> {
                         DebugLog.d("WeixinQrBind", "扫码绑定成功: baseUrl=${event.baseUrl}")
                         loading = false
-                        val config = ImGatewayConfig(
-                            enabled = true,
-                            platform = ImPlatform.WECHAT.id,
-                            baseUrl = event.baseUrl,
-                            token = event.token,
-                            channelId = "wechat:${UUID.randomUUID()}",
-                            pollIntervalMs = 5_000L,
-                        )
-                        onConfirm(config)
+                        onConfirm(ImGatewayConfig(
+                            enabled = true, platform = ImPlatform.WECHAT.id, baseUrl = event.baseUrl,
+                            token = event.token, channelId = "wechat:${UUID.randomUUID()}", pollIntervalMs = 5_000L,
+                        ))
                     }
                     is WeixinBindingFlow.Event.Failure -> {
                         DebugLog.e("WeixinQrBind", "扫码绑定失败: ${event.error.code} - ${event.error.message}")
-                        loading = false
-                        qrcodeUrl = null
-                        errorMsg = event.error.message ?: strFailed
+                        loading = false; qrcodeUrl = null; errorMsg = event.error.message ?: strFailed
                     }
                 }
             }
         }
     }
 
-    // 进入即自动开始绑定。
     LaunchedEffect(Unit) { startBind() }
-
-    // 离开时取消协程，避免离开 Composable 后继续轮询。
-    DisposableEffect(Unit) {
-        onDispose { bindJob?.cancel() }
-    }
+    DisposableEffect(Unit) { onDispose { bindJob?.cancel() } }
 
     val context = LocalContext.current
-    // 二维码图片请求：crossfade + 共享，避免每次重组都新建 ImageRequest。
     val qrImageRequest = remember(qrcodeUrl) {
         if (qrcodeUrl == null) null
-        else ImageRequest.Builder(context)
-            .data(qrcodeUrl)
-            .crossfade(true)
-            .build()
+        else ImageRequest.Builder(context).data(qrcodeUrl).crossfade(true).build()
     }
-    // 用 painter 显式跟踪加载状态，避免在 SubcomposeAsyncImage 的 error slot 中写入 state 引发重组循环。
     val qrPainter = rememberAsyncImagePainter(model = qrImageRequest)
     val qrLoadFailed = qrPainter.state is AsyncImagePainter.State.Error
-    // 只要图片还没成功加载（Empty / Loading），都显示进度指示，避免初始空内容闪烁。
     val qrImageReady = qrPainter.state is AsyncImagePainter.State.Success
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         when {
             loading -> {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.im_channel_wechat_qr_loading),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             qrcodeUrl != null && qrImageRequest != null -> {
                 if (qrLoadFailed) {
-                    // 二维码 URL 已就绪但图片下载失败：显示错误占位 + 重新加载入口。
-                    // 重新触发 startBind 走完整流程，因为 ImageRequest 缓存可能持有失败状态，
-                    // 最稳妥的方式是重新申请二维码。
-                    Column(
-                        modifier = Modifier.size(220.dp).padding(4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.BrokenImage,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(48.dp),
-                        )
+                    Column(modifier = Modifier.size(220.dp).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Icon(imageVector = Icons.Default.BrokenImage, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "二维码加载失败",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
+                        Text(text = "二维码加载失败", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     }
                 } else if (!qrImageReady) {
-                    // 二维码 URL 已就绪，图片正在下载（或尚未开始）：显示进度指示，避免空白。
-                    Box(
-                        modifier = Modifier.size(220.dp).padding(4.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    Box(modifier = Modifier.size(220.dp).padding(4.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 } else {
-                    Image(
-                        painter = qrPainter,
-                        contentDescription = stringResource(R.string.im_channel_bind_qr),
-                        modifier = Modifier
-                            .size(220.dp)
-                            .padding(4.dp),
-                        contentScale = ContentScale.Fit,
-                    )
+                    Image(painter = qrPainter, contentDescription = stringResource(R.string.im_channel_bind_qr), modifier = Modifier.size(220.dp).padding(4.dp), contentScale = ContentScale.Fit)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 if (qrLoadFailed) {
-                    Button(onClick = { startBind() }) {
-                        Text(stringResource(R.string.im_channel_wechat_qr_retry))
-                    }
+                    Button(onClick = { startBind() }) { Text(stringResource(R.string.im_channel_wechat_qr_retry)) }
                     Spacer(modifier = Modifier.height(4.dp))
                 }
                 if (statusText != null) {
-                    Text(
-                        text = statusText!!,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
+                    Text(text = statusText!!, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 }
             }
             errorMsg != null -> {
-                Text(
-                    text = "❌",
-                    style = MaterialTheme.typography.displaySmall,
-                )
+                Text(text = "❌", style = MaterialTheme.typography.displaySmall)
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.im_channel_wechat_qr_failed),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.error,
-                )
+                Text(text = stringResource(R.string.im_channel_wechat_qr_failed), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = errorMsg!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Text(text = errorMsg!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
-
-        // 操作按钮：取消 + 失败时的重试。
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = {
-                bindJob?.cancel()
-                onCancel()
-            }) { Text(stringResource(R.string.im_channel_cancel)) }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { bindJob?.cancel(); onCancel() }) { Text(stringResource(R.string.im_channel_cancel)) }
             if (errorMsg != null) {
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = { startBind() }) {
-                    Text(stringResource(R.string.im_channel_wechat_qr_retry))
-                }
+                Button(onClick = { startBind() }) { Text(stringResource(R.string.im_channel_wechat_qr_retry)) }
             }
         }
     }

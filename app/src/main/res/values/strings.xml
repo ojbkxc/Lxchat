@@ -1395,6 +1395,7 @@
     <string name="im_platform_qq">QQ</string>
     <string name="im_platform_discord">Discord</string>
     <string name="im_platform_slack">Slack</string>
+    <string name="im_platform_whatsapp">WhatsApp</string>
     <string name="im_platform_sms">短信网关</string>
     <!-- Platform bind hints (short) -->
     <string name="im_hint_wechat">iLink 扫码绑定</string>
@@ -1405,6 +1406,7 @@
     <string name="im_hint_qq">扫码绑定</string>
     <string name="im_hint_discord">Bot Token 绑定</string>
     <string name="im_hint_slack">Bot Token + App Token</string>
+    <string name="im_hint_whatsapp">Phone Number ID + Access Token</string>
     <string name="im_hint_sms">网关地址 + Token</string>
     <!-- Platform descriptions (long) -->
     <string name="im_desc_wechat">通过 iLink 扫描二维码绑定微信账号，App 直连微信服务器。</string>
@@ -1415,6 +1417,7 @@
     <string name="im_desc_qq">QQ 互联应用，扫码绑定或填写 App ID + App Secret。</string>
     <string name="im_desc_discord">Discord Bot，从 Developer Portal 获取 Bot Token。</string>
     <string name="im_desc_slack">Slack Bot，Bot Token 以 xoxb- 开头，App Token 以 xapp- 开头。</string>
+    <string name="im_desc_whatsapp">WhatsApp Business Cloud API，填写 Phone Number ID 与 Access Token。手机端仅支持发送。</string>
     <string name="im_desc_sms">SMS 网关，填写 REST API 地址与 Auth Token。</string>
     <!-- Credential field labels -->
     <string name="im_channel_field_base_url">服务地址</string>
@@ -1428,5 +1431,16 @@
     <string name="im_channel_field_corp_id">Corp ID</string>
     <string name="im_channel_field_corp_secret">Corp Secret</string>
     <string name="im_channel_field_agent_id">Agent ID</string>
+    <string name="im_channel_field_phone_number_id">Phone Number ID</string>
+    <string name="im_channel_field_access_token">Access Token</string>
+    <string name="im_channel_field_verify_token">Verify Token</string>
     <string name="im_channel_field_poll_interval">轮询间隔 (ms)</string>
+    <!-- Agent Preset 选择 + 连接测试 (T31) -->
+    <string name="im_channel_agent_preset">Agent Preset</string>
+    <string name="im_channel_agent_preset_hint">选择该机器人使用的 AI 预设（留空跟随默认）</string>
+    <string name="im_channel_agent_preset_follow_default">跟随默认</string>
+    <string name="im_channel_test_connection">测试连接</string>
+    <string name="im_channel_test_running">正在测试…</string>
+    <string name="im_channel_test_success">✅ 连接测试成功</string>
+    <string name="im_channel_test_failed">❌ 连接测试失败</string>
 </resources>

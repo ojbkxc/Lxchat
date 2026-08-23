@@ -30,6 +30,11 @@ import kotlin.coroutines.coroutineContext
  * persisted in [ImGatewayStore] (multi-channel map) so the process resumes exactly where it
  * left off after a restart. Legacy single-config state is read as a fallback so pre-multi-bot
  * setups keep their seen-set without migration.
+ *
+ * When a [ImCommandProcessor] is supplied, inbound messages starting with `/` are intercepted
+ * as bot commands (e.g. `/help`, `/new`, `/models`) and handled without triggering AI replies.
+ * The `/steer` command is the exception: its instruction text is forwarded as a normal user
+ * message to the current Lxchat conversation so the agent incorporates it mid-turn.
  */
 class ImPollingReceiver(
     private val bridge: ImBridgeService,
@@ -42,6 +47,9 @@ class ImPollingReceiver(
     /** Optional callback fired after an inbound message is successfully replied to, e.g. to mark
      *  the conversation as active so proactive messaging doesn't greet a contact that just spoke. */
     private val onMessageHandled: ((conversationId: String) -> Unit)? = null,
+    /** 机器人命令处理器。非 null 时，以 `/` 开头的消息会交给它处理而不触发 AI 回复
+     *  （`/steer` 例外，它会将补充指令作为用户消息发送）。 */
+    private val commandProcessor: ImCommandProcessor? = null,
 ) {
     /** The single poll-loop job (covers all polling channels). */
     @Volatile
@@ -223,7 +231,39 @@ class ImPollingReceiver(
 
         // Merge the batch of new messages into one synthetic inbound message so the private
         // runOnce overload (which expects an ImMessage for id/timestamp tracking) can be reused.
-        val merged = fresh.first().copy(text = fresh.joinToString("\n") { it.text })
+        // 每条消息的图片 URL 以 Markdown 链接形式附加到文本前，让支持视觉的模型识别图片，
+        // 不支持视觉的模型也能读到 URL 知道有图（见 buildPromptText）。
+        val merged = fresh.first().copy(text = fresh.joinToString("\n") { buildPromptText(it) })
+
+        // ── 命令处理 ──────────────────────────────────────────
+        // 以 '/' 开头的消息交给 ImCommandProcessor 处理；非命令走正常 AI 回复流程。
+        // /steer 是例外：它返回补充指令文本，需要作为用户消息发送给当前会话。
+        if (commandProcessor != null) {
+            val cmdResult = try {
+                commandProcessor.process(merged.text, channelKey, conversation.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                DebugLog.e("ImPolling", "command processing failed", e)
+                null
+            }
+            if (cmdResult != null) {
+                if (cmdResult.isSteer && !cmdResult.steerText.isNullOrBlank()) {
+                    // /steer：将补充指令作为用户消息走正常 AI 回复流程。
+                    val steerMessage = merged.copy(text = cmdResult.steerText)
+                    val reply = runOnce(channelKey, lxchatConvId, steerMessage)
+                    if (!reply.isNullOrBlank()) {
+                        segmentSender.send(channel, conversation.id, reply)
+                    }
+                } else if (cmdResult.replyText.isNotBlank()) {
+                    // 普通命令：直接回复命令结果，不触发 AI。
+                    segmentSender.send(channel, conversation.id, cmdResult.replyText)
+                }
+                return
+            }
+        }
+
+        // ── 普通 AI 回复流程 ──────────────────────────────────
         val reply = runOnce(channelKey, lxchatConvId, merged)
         if (!reply.isNullOrBlank()) {
             // Long replies are split into several short messages for readability.
@@ -271,6 +311,35 @@ class ImPollingReceiver(
         }
     }
 
+    /**
+     * 把 [message] 的图片 URL 和文本拼装成发给 AI 的提示文本。
+     *
+     * 图片以 Markdown 链接形式 `[图片N](url)` 列在文本前，便于支持视觉的模型识别；
+     * 不支持视觉的模型也会把 URL 当作普通文本读到，至少能告知用户图片存在。
+     * 没有图片时直接返回原始文本，零开销。空 URL 会被跳过。
+     *
+     * 格式示例（两张图 + 文本"看下这张"）：
+     * ```
+     * [图片1](https://.../a.jpg) [图片2](https://.../b.png) 看下这张
+     * ```
+     * 仅有图片无文本时，附加默认提示 [DEFAULT_IMAGE_PROMPT] 引导模型分析图片。
+     */
+    private fun buildPromptText(message: ImMessage): String {
+        if (message.images.isEmpty()) return message.text
+        val imageMarkdown = buildString {
+            message.images.forEachIndexed { index, url ->
+                if (url.isBlank()) return@forEachIndexed
+                if (isNotEmpty()) append(' ')
+                append("[图片").append(index + 1).append("](").append(url).append(')')
+            }
+        }
+        if (imageMarkdown.isEmpty()) return message.text
+        return when {
+            message.text.isBlank() -> "$imageMarkdown $DEFAULT_IMAGE_PROMPT"
+            else -> "$imageMarkdown ${message.text}"
+        }
+    }
+
     // ── State / config resolution (multi-channel with legacy fallback) ──
 
     /**
@@ -307,5 +376,11 @@ class ImPollingReceiver(
 
     private companion object {
         const val MAX_SEEN = 2_000
+
+        /**
+         * 仅含图片、无文本时附加的默认提示，引导模型分析图片。
+         * 与 dsh-im `image-prompt.mjs` 的 `DEFAULT_IMAGE_PROMPT` 保持一致。
+         */
+        const val DEFAULT_IMAGE_PROMPT = "请分析这张图片。"
     }
 }

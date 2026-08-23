@@ -7,7 +7,8 @@ import com.lxseek.chat.im.qq.QqChannel
 import com.lxseek.chat.im.slack.SlackChannel
 import com.lxseek.chat.im.telegram.TelegramChannel
 import com.lxseek.chat.im.wecom.WecomChannel
-import com.lxseek.chat.im.weixin.WeixinChannel
+import com.lxseek.chat.im.wechat.WeixinChannel
+import com.lxseek.chat.im.whatsapp.WhatsappChannel
 
 /**
  * Builds a [MessageChannel] from an [ImGatewayConfig] according to its [ImGatewayConfig.platform].
@@ -27,6 +28,7 @@ import com.lxseek.chat.im.weixin.WeixinChannel
  *  - **qq** → [QqChannel] (WebSocket long-connection).
  *  - **discord** → [DiscordChannel] (Gateway v10 WebSocket).
  *  - **slack** → [SlackChannel] (Socket Mode WebSocket).
+ *  - **whatsapp** → [WhatsappChannel] (Meta Cloud API, send-only on mobile).
  *  - **sms** → [GatewayChannel] HTTP fallback.
  *  - unknown platform → [GatewayChannel] HTTP fallback so existing custom gateways still work.
  */
@@ -58,6 +60,9 @@ object ImChannelFactory {
             ImPlatform.QQ -> QqChannel(config)
             ImPlatform.DISCORD -> DiscordChannel(config)
             ImPlatform.SLACK -> SlackChannel(config)
+
+            // WhatsApp: Meta Cloud API channel (send-only on mobile; webhook-only inbound).
+            ImPlatform.WHATSAPP -> WhatsappChannel(config)
 
             // SMS: HTTP gateway fallback (no native channel).
             ImPlatform.SMS -> if (config.isConfigured) GatewayChannel(config) else null
