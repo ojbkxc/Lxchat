@@ -1,46 +1,41 @@
 package com.lxseek.chat.ui.settings
 
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,519 +48,688 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.im.ImGatewayConfig
-import com.lxseek.chat.model.ModelId
-import com.lxseek.chat.model.apiModelName
+import com.lxseek.chat.im.ImGatewayStore
+import com.lxseek.chat.im.ImMultiGatewayConfig
+import com.lxseek.chat.im.ImPlatform
 import com.lxseek.chat.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.util.UUID
 
-/** Local, unsaved form state mirroring an [ImGatewayConfig]. */
-private data class ImGatewayFormState(
-    val enabled: Boolean,
-    val platform: String,
-    val baseUrl: String,
-    val token: String,
-    val pollIntervalMs: String,
-    val autoReplyModel: String,
-    val proactiveEnabled: Boolean,
-    val proactiveIdleMinutes: String,
-    val proactiveSilentStart: String,
-    val proactiveSilentEnd: String,
-    val proactiveIgnoreGroups: Boolean,
-    val humanizeMessages: Boolean,
-) {
-    companion object {
-        fun from(config: ImGatewayConfig): ImGatewayFormState = ImGatewayFormState(
-            enabled = config.enabled,
-            platform = config.platform,
-            baseUrl = config.baseUrl,
-            token = config.token,
-            pollIntervalMs = config.pollIntervalMs.toString(),
-            autoReplyModel = config.autoReplyModel,
-            proactiveEnabled = config.proactiveEnabled,
-            proactiveIdleMinutes = config.proactiveIdleMinutes.toString(),
-            proactiveSilentStart = config.proactiveSilentStart,
-            proactiveSilentEnd = config.proactiveSilentEnd,
-            proactiveIgnoreGroups = config.proactiveIgnoreGroups,
-            humanizeMessages = config.humanizeMessages,
-        )
-    }
+// ── Platform display metadata ──────────────────────────────────────────────
 
-    fun toConfig(): ImGatewayConfig = ImGatewayConfig(
-        enabled = enabled,
-        platform = platform.trim().ifBlank { "wechat" },
-        baseUrl = baseUrl.trim(),
-        token = token,
-        pollIntervalMs = pollIntervalMs.trim().toLongOrNull()?.takeIf { it > 0 } ?: 5_000L,
-        autoReplyModel = autoReplyModel.trim(),
-        proactiveEnabled = proactiveEnabled,
-        proactiveIdleMinutes = proactiveIdleMinutes.trim().toIntOrNull()?.coerceAtLeast(1) ?: 120,
-        proactiveSilentStart = proactiveSilentStart.trim(),
-        proactiveSilentEnd = proactiveSilentEnd.trim(),
-        proactiveIgnoreGroups = proactiveIgnoreGroups,
-        humanizeMessages = humanizeMessages,
-    )
+/** Emoji glyph used as a lightweight platform icon (per project icon-style preference). */
+private fun ImPlatform.emoji(): String = when (this) {
+    ImPlatform.WECHAT -> "💬"
+    ImPlatform.TELEGRAM -> "✈️"
+    ImPlatform.LARK -> "🐦"
+    ImPlatform.DINGTALK -> "📌"
+    ImPlatform.WECOM -> "🏢"
+    ImPlatform.QQ -> "🐧"
+    ImPlatform.DISCORD -> "🎮"
+    ImPlatform.SLACK -> "💼"
+    ImPlatform.SMS -> "📱"
+}
+
+/** Localized display name resource for a platform. */
+private fun ImPlatform.nameRes(): Int = when (this) {
+    ImPlatform.WECHAT -> R.string.im_platform_wechat
+    ImPlatform.TELEGRAM -> R.string.im_platform_telegram
+    ImPlatform.LARK -> R.string.im_platform_lark
+    ImPlatform.DINGTALK -> R.string.im_platform_dingtalk
+    ImPlatform.WECOM -> R.string.im_platform_wecom
+    ImPlatform.QQ -> R.string.im_platform_qq
+    ImPlatform.DISCORD -> R.string.im_platform_discord
+    ImPlatform.SLACK -> R.string.im_platform_slack
+    ImPlatform.SMS -> R.string.im_platform_sms
+}
+
+/** Short bind-method hint shown under the platform name. */
+private fun ImPlatform.hintRes(): Int = when (this) {
+    ImPlatform.WECHAT -> R.string.im_hint_wechat
+    ImPlatform.TELEGRAM -> R.string.im_hint_telegram
+    ImPlatform.LARK -> R.string.im_hint_lark
+    ImPlatform.DINGTALK -> R.string.im_hint_dingtalk
+    ImPlatform.WECOM -> R.string.im_hint_wecom
+    ImPlatform.QQ -> R.string.im_hint_qq
+    ImPlatform.DISCORD -> R.string.im_hint_discord
+    ImPlatform.SLACK -> R.string.im_hint_slack
+    ImPlatform.SMS -> R.string.im_hint_sms
+}
+
+/** Longer description shown in the card body. */
+private fun ImPlatform.descRes(): Int = when (this) {
+    ImPlatform.WECHAT -> R.string.im_desc_wechat
+    ImPlatform.TELEGRAM -> R.string.im_desc_telegram
+    ImPlatform.LARK -> R.string.im_desc_lark
+    ImPlatform.DINGTALK -> R.string.im_desc_dingtalk
+    ImPlatform.WECOM -> R.string.im_desc_wecom
+    ImPlatform.QQ -> R.string.im_desc_qq
+    ImPlatform.DISCORD -> R.string.im_desc_discord
+    ImPlatform.SLACK -> R.string.im_desc_slack
+    ImPlatform.SMS -> R.string.im_desc_sms
+}
+
+/** Bind method drives which form section the platform card shows. */
+private enum class BindMethod { QR, TOKEN, SMS }
+
+private fun ImPlatform.bindMethod(): BindMethod = when (this) {
+    ImPlatform.WECHAT, ImPlatform.WECOM, ImPlatform.QQ -> BindMethod.QR
+    ImPlatform.TELEGRAM, ImPlatform.DISCORD, ImPlatform.SLACK,
+    ImPlatform.DINGTALK, ImPlatform.LARK -> BindMethod.TOKEN
+    ImPlatform.SMS -> BindMethod.SMS
 }
 
 /**
- * IM gateway configuration page. Reads the persisted [ImGatewayConfig] through
- * [ChatViewModel.settings][ChatViewModel.settings] and persists edits back through the repository,
- * which the [com.lxseek.chat.im.ImBridgeService] observes to (re)build the active channel.
+ * Platforms whose native long-connection channel is not yet plugged into [ImChannelFactory]
+ * All push channels are now implemented in ImChannelFactory, so this set is empty.
+ */
+private val PUSH_PENDING_PLATFORMS: Set<ImPlatform> = emptySet()
+
+// ── Credential field schema per platform ───────────────────────────────────
+
+private enum class FieldKind { TEXT, SECRET, URL, NUMBER }
+
+private data class CredField(
+    val key: String,
+    val labelRes: Int,
+    val kind: FieldKind,
+    val placeholder: String? = null,
+    val required: Boolean = true,
+)
+
+/** Credential fields shown in the bind form for [platform]. */
+private fun ImPlatform.credentialFields(): List<CredField> = when (this) {
+    ImPlatform.WECHAT -> listOf(
+        CredField("base_url", R.string.im_channel_field_base_url, FieldKind.URL, "http(s)://host:port"),
+        CredField("token", R.string.im_channel_field_token, FieldKind.SECRET, required = false),
+    )
+    ImPlatform.WECOM -> listOf(
+        CredField("corp_id", R.string.im_channel_field_corp_id, FieldKind.TEXT),
+        CredField("corp_secret", R.string.im_channel_field_corp_secret, FieldKind.SECRET),
+        CredField("agent_id", R.string.im_channel_field_agent_id, FieldKind.TEXT, required = false),
+    )
+    ImPlatform.QQ -> listOf(
+        CredField("app_id", R.string.im_channel_field_app_id, FieldKind.TEXT),
+        CredField("app_secret", R.string.im_channel_field_app_secret, FieldKind.SECRET),
+    )
+    ImPlatform.TELEGRAM -> listOf(
+        CredField("bot_token", R.string.im_channel_field_bot_token, FieldKind.SECRET, placeholder = "123456:ABC-DEF..."),
+    )
+    ImPlatform.DISCORD -> listOf(
+        CredField("bot_token", R.string.im_channel_field_bot_token, FieldKind.SECRET),
+    )
+    ImPlatform.SLACK -> listOf(
+        CredField("bot_token", R.string.im_channel_field_bot_token, FieldKind.SECRET, placeholder = "xoxb-..."),
+        CredField("app_token", R.string.im_channel_field_app_token, FieldKind.SECRET, placeholder = "xapp-..."),
+    )
+    ImPlatform.DINGTALK -> listOf(
+        CredField("client_id", R.string.im_channel_field_client_id, FieldKind.TEXT),
+        CredField("client_secret", R.string.im_channel_field_client_secret, FieldKind.SECRET),
+    )
+    ImPlatform.LARK -> listOf(
+        CredField("app_id", R.string.im_channel_field_app_id, FieldKind.TEXT),
+        CredField("app_secret", R.string.im_channel_field_app_secret, FieldKind.SECRET),
+    )
+    ImPlatform.SMS -> listOf(
+        CredField("base_url", R.string.im_channel_field_base_url, FieldKind.URL, "http(s)://host:port"),
+        CredField("token", R.string.im_channel_field_token, FieldKind.SECRET, required = false),
+        CredField("poll_interval", R.string.im_channel_field_poll_interval, FieldKind.NUMBER, placeholder = "5000"),
+    )
+}
+
+// ── Credential encode / decode (stored in ImGatewayConfig.token as JSON) ────
+
+private val credJson = Json { ignoreUnknownKeys = true }
+
+/** Encode a credential map as a JSON object string for storage in [ImGatewayConfig.token]. */
+private fun encodeCredentials(map: Map<String, String>): String {
+    val nonBlank = map.filterValues { it.isNotBlank() }
+    if (nonBlank.isEmpty()) return ""
+    return buildJsonObject {
+        nonBlank.forEach { (k, v) -> put(k, JsonPrimitive(v)) }
+    }.toString()
+}
+
+/**
+ * Decode a credential map from [raw]. Returns empty when [raw] is blank or not a JSON object
+ * (e.g. legacy wechat/sms configs that stored a bare auth token directly in `token`).
+ */
+private fun decodeCredentials(raw: String): Map<String, String> {
+    val trimmed = raw.trimStart()
+    if (trimmed.isEmpty() || !trimmed.startsWith("{")) return emptyMap()
+    return runCatching {
+        credJson.parseToJsonElement(raw).jsonObject.entries
+            .associate { (k, v) -> k to v.jsonPrimitive.content }
+    }.getOrDefault(emptyMap())
+}
+
+/** Mask a secret for display: keep first 4 and last 4 chars, hide the middle. */
+private fun maskSecret(value: String): String {
+    if (value.length <= 8) return "••••"
+    return value.take(4) + "••••" + value.takeLast(4)
+}
+
+// ── Build / summarize an ImGatewayConfig from form values ───────────────────
+
+/**
+ * Build an [ImGatewayConfig] from the [values] entered for [platform], or null when required
+ * fields are missing. A fresh [channelId] is generated so each bind creates a distinct bot.
+ */
+private fun buildBotConfig(platform: ImPlatform, values: Map<String, String>): ImGatewayConfig? {
+    val fields = platform.credentialFields()
+    // Validate required fields.
+    if (fields.any { it.required && values[it.key].isBlank() }) return null
+
+    val channelId = "${platform.id}:${UUID.randomUUID()}"
+
+    return when (platform) {
+        ImPlatform.WECHAT -> ImGatewayConfig(
+            enabled = true,
+            platform = platform.id,
+            baseUrl = values["base_url"].orEmpty().trim(),
+            token = values["token"].orEmpty(), // wechat auth token stays as a bare string (legacy compat)
+            channelId = channelId,
+            pollIntervalMs = 5_000L,
+        )
+        ImPlatform.SMS -> ImGatewayConfig(
+            enabled = true,
+            platform = platform.id,
+            baseUrl = values["base_url"].orEmpty().trim(),
+            token = values["token"].orEmpty(),
+            channelId = channelId,
+            pollIntervalMs = values["poll_interval"]?.trim()?.toLongOrNull()?.takeIf { it > 0 } ?: 5_000L,
+        )
+        // Each platform maps its credential fields to the flat config.token / config.baseUrl /
+        // config.botId columns that its Channel implementation expects (NOT JSON-encoded).
+        ImPlatform.TELEGRAM -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = "",
+            token = values["bot_token"].orEmpty(),
+        )
+        ImPlatform.DISCORD -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = "",
+            token = values["bot_token"].orEmpty(),
+        )
+        ImPlatform.SLACK -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["app_token"].orEmpty(),   // app token (xapp-)
+            token = values["bot_token"].orEmpty(),      // bot token (xoxb-)
+        )
+        ImPlatform.DINGTALK -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["client_secret"].orEmpty(),
+            token = values["client_id"].orEmpty(),
+        )
+        ImPlatform.LARK -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["app_secret"].orEmpty(),
+            token = values["app_id"].orEmpty(),
+        )
+        ImPlatform.WECOM -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["corp_secret"].orEmpty(),
+            token = values["corp_id"].orEmpty(),
+            botId = values["agent_id"].orEmpty(),
+        )
+        ImPlatform.QQ -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["app_secret"].orEmpty(),
+            token = values["app_id"].orEmpty(),
+        )
+    }
+}
+
+/** A short, human-readable summary (title + subtitle) of a bound bot for list display. */
+private fun botSummary(bot: ImGatewayConfig, platform: ImPlatform): Pair<String, String> {
+    val title = bot.botId.ifBlank { bot.effectiveChannelId }
+    val subtitle = when (platform) {
+        ImPlatform.WECHAT, ImPlatform.SMS -> {
+            listOfNotNull(
+                bot.baseUrl.takeIf { it.isNotBlank() },
+                bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) },
+            ).joinToString(" · ")
+        }
+        ImPlatform.WECOM -> listOfNotNull(
+            bot.token.takeIf { it.isNotBlank() },       // corp_id
+            bot.botId.takeIf { it.isNotBlank() },        // agent_id
+        ).joinToString(" · ")
+        ImPlatform.QQ -> bot.token.takeIf { it.isNotBlank() }.orEmpty()  // app_id
+        ImPlatform.TELEGRAM, ImPlatform.DISCORD ->
+            bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
+        ImPlatform.SLACK ->
+            bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
+        ImPlatform.DINGTALK -> bot.token.takeIf { it.isNotBlank() }.orEmpty()  // client_id
+        ImPlatform.LARK -> bot.token.takeIf { it.isNotBlank() }.orEmpty()      // app_id
+    }
+    return title to subtitle
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────
+
+/**
+ * IM multi-channel management page. Lists every [ImPlatform] as a card showing bind status,
+ * bound bots (with multi-bot support), and a bind entry point (QR placeholder or token form).
+ *
+ * Reads/writes the multi-channel config via [ImGatewayStore] (constructed from the local
+ * context, which reuses the same encrypted DataStore as the rest of the app). The legacy
+ * single-config [ChatViewModel.settings.imGatewayConfig] is still read for backward
+ * compatibility: when no multi-config exists yet, a configured legacy bot is shown under
+ * its platform with an "旧版" tag and a one-tap migrate action.
  */
 @Composable
 fun SettingsImGatewayPage(
     viewModel: ChatViewModel,
     onBack: () -> Unit,
 ) {
-    val config by viewModel.settings.imGatewayConfig.collectAsState()
     val context = LocalContext.current
+    val store = remember { ImGatewayStore(context) }
+    val multiConfig by store.multiConfig.collectAsState(initial = ImMultiGatewayConfig())
+    val legacyConfig by viewModel.settings.imGatewayConfig.collectAsState()
+    val scope = rememberCoroutineScope()
 
-    // Models available for the auto-reply picker. We union synced provider models with custom
-    // models so the user can pick anything they have configured elsewhere in the app.
-    val availableModels by viewModel.settings.availableModels.collectAsState()
-    val customModels by viewModel.settings.customModels.collectAsState()
-    val modelAliases by viewModel.settings.modelAliases.collectAsState()
-    val enabledModels by viewModel.settings.enabledModels.collectAsState()
-
-    var form by remember { mutableStateOf(ImGatewayFormState.from(config)) }
-    var initialized by remember { mutableStateOf(false) }
-    var showToken by remember { mutableStateOf(false) }
-    var showModelPicker by remember { mutableStateOf(false) }
-
-    // Candidate list for the picker: enabled models first, then any other known models, deduped.
-    val pickerModels = remember(availableModels, customModels, enabledModels) {
-        val synced = availableModels.values.flatten()
-        val all = (enabledModels.asSequence() + synced.asSequence() + customModels.asSequence())
-            .distinct()
-            .sorted()
-            .toList()
-        all
+    // Legacy fallback bot: shown only when the multi-config is empty and the legacy single
+    // config is enabled/configured, so existing users see their prior gateway and can migrate.
+    val legacyBot = remember(legacyConfig, multiConfig) {
+        val multiEmpty = multiConfig.all.isEmpty()
+        if (multiEmpty && (legacyConfig.isConfigured || legacyConfig.enabled)) legacyConfig else null
     }
+    val legacyPlatform = legacyBot?.let { ImPlatform.of(it.platform) }
 
-    // Apply the persisted config once it has loaded (the StateFlow may start with the default
-    // before DataStore emits). Never overwrite an already-populated form after the user edits.
-    LaunchedEffect(config) {
-        if (!initialized && config != ImGatewayConfig()) {
-            form = ImGatewayFormState.from(config)
-            initialized = true
-        }
-    }
-
-    fun save() {
-        if (form.enabled && form.baseUrl.isBlank()) {
-            Toast.makeText(context, context.getString(R.string.im_gateway_validation), Toast.LENGTH_SHORT).show()
-            return
-        }
-        viewModel.settings.saveImGatewayConfig(form.toConfig())
-        Toast.makeText(context, context.getString(R.string.im_gateway_saved), Toast.LENGTH_SHORT).show()
-    }
+    var pendingRemove by remember { mutableStateOf<Pair<ImPlatform, ImGatewayConfig>?>(null) }
 
     CollapsingSettingsScaffold(
-        title = stringResource(R.string.settings_im_gateway),
+        title = stringResource(R.string.im_channels_title),
         onBack = onBack,
         scrollState = rememberScrollState(),
     ) {
-        // Status summary
-        val configured = config.isConfigured
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = if (configured) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = stringResource(
-                    if (configured) R.string.im_gateway_configured else R.string.im_gateway_not_configured,
-                ),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = if (configured) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Spacer(modifier = Modifier.height(8.dp))
+
         Text(
-            text = stringResource(R.string.im_gateway_howto),
+            text = stringResource(R.string.im_channels_subtitle),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        )
+        Text(
+            text = stringResource(R.string.im_channels_howto),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
         )
 
-        SettingsGroup(title = stringResource(R.string.settings_group_im), items = listOf(
-            {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.im_gateway_enabled),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = stringResource(R.string.im_gateway_enabled_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = form.enabled,
-                        onCheckedChange = { form = form.copy(enabled = it) },
-                    )
-                }
-            },
-            {
-                OutlinedTextField(
-                    value = form.platform,
-                    onValueChange = { form = form.copy(platform = it) },
-                    label = { Text(stringResource(R.string.im_gateway_platform)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                )
-            },
-        ))
+        ImPlatform.entries.forEach { platform ->
+            val bots = multiConfig.botsFor(platform.id)
+            val isLegacyForThis = legacyBot != null && legacyPlatform == platform
+            val effectiveBots = if (bots.isEmpty() && isLegacyForThis) listOf(legacyBot!!) else bots
 
-        SettingsGroup(title = stringResource(R.string.settings_group_connection), items = listOf(
-            {
-                OutlinedTextField(
-                    value = form.baseUrl,
-                    onValueChange = { form = form.copy(baseUrl = it) },
-                    label = { Text(stringResource(R.string.im_gateway_base_url)) },
-                    placeholder = { Text("http(s)://host:port") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                )
-            },
-            {
-                OutlinedTextField(
-                    value = form.token,
-                    onValueChange = { form = form.copy(token = it) },
-                    label = { Text(stringResource(R.string.im_gateway_token)) },
-                    singleLine = true,
-                    visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { showToken = !showToken }) {
-                            Icon(
-                                imageVector = if (showToken) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = stringResource(R.string.im_gateway_show_token),
-                            )
+            PlatformChannelCard(
+                platform = platform,
+                bots = effectiveBots,
+                isLegacyShowing = isLegacyForThis && bots.isEmpty(),
+                onAddBot = { config ->
+                    scope.launch {
+                        store.upsertBot(config)
+                        Toast.makeText(context, context.getString(R.string.im_channel_bound_success), Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onRemoveBot = { config -> pendingRemove = platform to config },
+                onMigrateLegacy = {
+                    legacyBot?.let { bot ->
+                        scope.launch {
+                            store.upsertBot(bot)
+                            // Clear the legacy single config so it no longer shadows the multi-config.
+                            viewModel.settings.saveImGatewayConfig(ImGatewayConfig())
+                            Toast.makeText(context, context.getString(R.string.im_channel_migrated), Toast.LENGTH_SHORT).show()
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                )
-            },
-            {
-                OutlinedTextField(
-                    value = form.pollIntervalMs,
-                    onValueChange = { input ->
-                        if (input.all(Char::isDigit) || input.isEmpty()) form = form.copy(pollIntervalMs = input)
-                    },
-                    label = { Text(stringResource(R.string.im_gateway_poll_interval)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                )
-            },
-            {
-                // Auto-reply model picker: a clickable row that opens a searchable dialog instead
-                // of a free-form text field, so users select a real configured model.
-                val currentModel = form.autoReplyModel
-                val parsed = currentModel.takeIf { it.isNotBlank() && it.contains(":") }
-                    ?.let { ModelId.parse(it) }
-                val displayName = parsed?.let { modelAliases[currentModel] ?: it.apiModelName }
-                    ?: stringResource(R.string.im_gateway_auto_reply_model_current_default)
-                val providerName = parsed?.providerName
-                Surface(
-                    onClick = { showModelPicker = true },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.im_gateway_auto_reply_model),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            if (providerName != null) {
-                                Text(
-                                    text = "$displayName · $providerName",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            } else {
-                                Text(
-                                    text = displayName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
-                }
-            },
-        ))
-
-        SettingsGroup(title = stringResource(R.string.settings_group_proactive), items = listOf(
-            {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.im_gateway_proactive_enabled),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = stringResource(R.string.im_gateway_proactive_enabled_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = form.proactiveEnabled,
-                        onCheckedChange = { form = form.copy(proactiveEnabled = it) },
-                    )
-                }
-            },
-            {
-                OutlinedTextField(
-                    value = form.proactiveIdleMinutes,
-                    onValueChange = { input ->
-                        if (input.all(Char::isDigit) || input.isEmpty()) form = form.copy(proactiveIdleMinutes = input)
-                    },
-                    label = { Text(stringResource(R.string.im_gateway_proactive_idle_minutes)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                )
-            },
-            {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = form.proactiveSilentStart,
-                        onValueChange = { form = form.copy(proactiveSilentStart = it) },
-                        label = { Text(stringResource(R.string.im_gateway_proactive_silent_start)) },
-                        placeholder = { Text("HH:MM") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                    )
-                    OutlinedTextField(
-                        value = form.proactiveSilentEnd,
-                        onValueChange = { form = form.copy(proactiveSilentEnd = it) },
-                        label = { Text(stringResource(R.string.im_gateway_proactive_silent_end)) },
-                        placeholder = { Text("HH:MM") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            },
-            {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.im_gateway_proactive_ignore_groups),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = stringResource(R.string.im_gateway_proactive_ignore_groups_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = form.proactiveIgnoreGroups,
-                        onCheckedChange = { form = form.copy(proactiveIgnoreGroups = it) },
-                    )
-                }
-            },
-            {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.im_gateway_humanize),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = stringResource(R.string.im_gateway_humanize_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = form.humanizeMessages,
-                        onCheckedChange = { form = form.copy(humanizeMessages = it) },
-                    )
-                }
-            },
-        ))
-
-        Divider(modifier = Modifier.padding(vertical = 4.dp))
-
-        Button(
-            onClick = ::save,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(imageVector = Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(stringResource(R.string.im_gateway_save))
+                },
+            )
+            Spacer(modifier = Modifier.height(12.dp))
         }
-        Spacer(modifier = Modifier.height(8.dp))
     }
 
-    if (showModelPicker) {
-        ImGatewayModelPickerDialog(
-            models = pickerModels,
-            modelAliases = modelAliases,
-            selected = form.autoReplyModel,
-            onSelect = { form = form.copy(autoReplyModel = it.orEmpty()) },
-            onDismiss = { showModelPicker = false },
+    pendingRemove?.let { (platform, bot) ->
+        AlertDialog(
+            onDismissRequest = { pendingRemove = null },
+            title = { Text(stringResource(R.string.im_channel_remove_title), fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.im_channel_remove_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        store.removeBot(platform.id, bot.effectiveChannelId)
+                        Toast.makeText(context, context.getString(R.string.im_channel_removed), Toast.LENGTH_SHORT).show()
+                    }
+                    pendingRemove = null
+                }) { Text(stringResource(R.string.im_channel_remove)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemove = null }) { Text(stringResource(R.string.im_channel_cancel)) }
+            },
         )
     }
 }
 
-/**
- * Searchable model picker for the IM gateway auto-reply model field. Mirrors the
- * [com.lxseek.chat.ui.tasks.TaskEditorSupportingComponents.ModelPickerDialog] UX but adds a
- * real-time search box so users can filter long model lists. A "default" option (mapped to the
- * empty string) is always offered at the top.
- */
-@Composable
-private fun ImGatewayModelPickerDialog(
-    models: List<String>,
-    modelAliases: Map<String, String>,
-    selected: String,
-    onSelect: (String?) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var query by remember { mutableStateOf("") }
-    // Filter against alias, bare model id, and provider name so users can search any of them.
-    val filtered = remember(models, modelAliases, query) {
-        if (query.isBlank()) {
-            models
-        } else {
-            val q = query.trim().lowercase()
-            models.filter { model ->
-                val parsed = ModelId.parse(model)
-                val alias = modelAliases[model]?.lowercase().orEmpty()
-                val bare = parsed.apiModelName.lowercase()
-                val provider = parsed.providerName.lowercase()
-                val full = model.lowercase()
-                alias.contains(q) || bare.contains(q) || provider.contains(q) || full.contains(q)
-            }
-        }
-    }
 
-    AlertDialog(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.im_gateway_auto_reply_model_select), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = { Text(stringResource(R.string.im_gateway_auto_reply_model_search_hint)) },
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+// ── Platform card ──────────────────────────────────────────────────────────
+
+@Composable
+private fun PlatformChannelCard(
+    platform: ImPlatform,
+    bots: List<ImGatewayConfig>,
+    isLegacyShowing: Boolean,
+    onAddBot: (ImGatewayConfig) -> Unit,
+    onRemoveBot: (ImGatewayConfig) -> Unit,
+    onMigrateLegacy: () -> Unit,
+) {
+    val bound = bots.isNotEmpty()
+    var expanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            // Header row: emoji + name + hint + status badge.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = platform.emoji(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.size(36.dp),
                 )
-                if (models.isEmpty()) {
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.im_gateway_auto_reply_model_no_models),
+                        text = stringResource(platform.nameRes()),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(platform.hintRes()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 8.dp),
                     )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
-                    ) {
-                        item {
-                            ModelPickerRow(
-                                label = stringResource(R.string.im_gateway_auto_reply_model_default),
-                                sub = null,
-                                selected = selected.isBlank(),
-                                onClick = { onSelect(null); onDismiss() },
-                            )
-                        }
-                        if (filtered.isEmpty()) {
-                            item {
-                                Text(
-                                    text = stringResource(R.string.im_gateway_auto_reply_model_no_models),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                )
-                            }
-                        } else {
-                            items(filtered, key = { it }) { model ->
-                                val parsed = ModelId.parse(model)
-                                ModelPickerRow(
-                                    label = modelAliases[model] ?: parsed.apiModelName,
-                                    sub = parsed.providerName,
-                                    selected = selected == model,
-                                    onClick = { onSelect(model); onDismiss() },
-                                )
-                            }
-                        }
+                }
+                BindStatusBadge(bound = bound, count = bots.size)
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = stringResource(platform.descRes()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            if (platform in PUSH_PENDING_PLATFORMS) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.im_channel_push_pending),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+
+            // Bound bots list.
+            if (bots.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                bots.forEachIndexed { idx, bot ->
+                    if (idx > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    BotSummaryRow(
+                        bot = bot,
+                        platform = platform,
+                        isLegacy = isLegacyShowing && idx == 0,
+                        onRemove = { onRemoveBot(bot) },
+                        onMigrate = if (isLegacyShowing && idx == 0) onMigrateLegacy else null,
+                    )
+                }
+            }
+
+            // Inline bind form.
+            if (expanded) {
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(10.dp))
+                BindFormSection(
+                    platform = platform,
+                    onConfirm = { config ->
+                        onAddBot(config)
+                        expanded = false
+                    },
+                    onCancel = { expanded = false },
+                )
+            }
+
+            // Toggle button.
+            if (!expanded) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onClick = { expanded = true }) {
+                        Text(
+                            text = stringResource(
+                                if (bound) R.string.im_channel_add_bot else R.string.im_channel_bind,
+                            ),
+                        )
                     }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.provider_close)) } },
-    )
+        }
+    }
 }
 
-/** Single row inside [ImGatewayModelPickerDialog]: radio + label + optional provider subtitle. */
+/** Green/gray status badge reflecting bind state (high-contrast per design preference). */
 @Composable
-private fun ModelPickerRow(label: String, sub: String?, selected: Boolean, onClick: () -> Unit) {
+private fun BindStatusBadge(bound: Boolean, count: Int) {
+    val color = if (bound) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+    Surface(
+        color = color.copy(alpha = 0.12f),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    ) {
+        Text(
+            text = if (bound) stringResource(R.string.im_channel_bound, count) else stringResource(R.string.im_channel_unbound),
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+    }
+}
+
+// ── Bot summary row ────────────────────────────────────────────────────────
+
+@Composable
+private fun BotSummaryRow(
+    bot: ImGatewayConfig,
+    platform: ImPlatform,
+    isLegacy: Boolean,
+    onRemove: () -> Unit,
+    onMigrate: (() -> Unit)?,
+) {
+    val (title, subtitle) = botSummary(bot, platform)
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = onClick)
-        Spacer(modifier = Modifier.width(12.dp))
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface,
+                text = title.ifBlank { stringResource(R.string.im_channel_bot_default_name) },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
             )
-            if (sub != null) {
+            if (subtitle.isNotBlank()) {
                 Text(
-                    text = sub,
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (isLegacy) {
+                Text(
+                    text = stringResource(R.string.im_channel_legacy_tag),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        if (onMigrate != null) {
+            TextButton(onClick = onMigrate) { Text(stringResource(R.string.im_channel_migrate)) }
+        }
+        IconButton(onClick = onRemove) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = stringResource(R.string.im_channel_remove),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+// ── Bind form ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun BindFormSection(
+    platform: ImPlatform,
+    onConfirm: (ImGatewayConfig) -> Unit,
+    onCancel: () -> Unit,
+) {
+    val context = LocalContext.current
+    val method = platform.bindMethod()
+    val fields = platform.credentialFields()
+
+    // Per-field mutable state keyed by field key.
+    val values = remember { mutableStateMapOf<String, String>().apply { fields.forEach { put(it.key, "") } } }
+    val showSecret = remember { mutableStateMapOf<String, Boolean>().apply { fields.forEach { put(it.key, false) } } }
+    var validationError by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (method == BindMethod.QR) {
+            // QR scan placeholder area.
+            Surface(
+                onClick = {
+                    Toast.makeText(context, context.getString(R.string.im_channel_bind_qr_placeholder), Toast.LENGTH_LONG).show()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(text = "📷", style = MaterialTheme.typography.displaySmall)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.im_channel_bind_qr),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(R.string.im_channel_bind_qr_placeholder),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.im_channel_manual_config),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+
+        // Credential fields.
+        fields.forEach { field ->
+            val value = values[field.key].orEmpty()
+            val isSecret = field.kind == FieldKind.SECRET
+            val placeholderText = field.placeholder
+            OutlinedTextField(
+                value = value,
+                onValueChange = {
+                    values[field.key] = it
+                    validationError = false
+                },
+                label = { Text(stringResource(field.labelRes)) },
+                placeholder = if (placeholderText != null) { { Text(placeholderText) } } else null,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = when (field.kind) {
+                        FieldKind.NUMBER -> KeyboardType.Number
+                        FieldKind.URL -> KeyboardType.Uri
+                        else -> KeyboardType.Text
+                    },
+                ),
+                visualTransformation = if (isSecret && showSecret[field.key] != true) {
+                    PasswordVisualTransformation()
+                } else {
+                    VisualTransformation.None
+                },
+                trailingIcon = if (isSecret) {
+                    {
+                        IconButton(onClick = { showSecret[field.key] = !(showSecret[field.key] ?: false) }) {
+                            Icon(
+                                imageVector = if (showSecret[field.key] == true) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null,
+                            )
+                        }
+                    }
+                } else null,
+                isError = validationError && field.required && value.isBlank(),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            )
+        }
+
+        if (validationError) {
+            Text(
+                text = stringResource(R.string.im_channel_validation_required),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.im_channel_cancel)) }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    val config = buildBotConfig(platform, values.toMap())
+                    if (config == null) {
+                        validationError = true
+                    } else {
+                        onConfirm(config)
+                    }
+                },
+            ) { Text(stringResource(R.string.im_channel_bind)) }
         }
     }
 }

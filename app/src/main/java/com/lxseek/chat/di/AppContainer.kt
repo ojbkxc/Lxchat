@@ -203,7 +203,11 @@ class AppContainer(private val appContext: Context) {
     }
 
     val imBridgeService: com.lxseek.chat.im.ImBridgeService by lazy {
-        com.lxseek.chat.im.ImBridgeService(imGatewayStore.config, appScope)
+        com.lxseek.chat.im.ImBridgeService(
+            multiConfig = imGatewayStore.multiConfig,
+            legacyConfig = imGatewayStore.config,
+            scope = appScope,
+        )
     }
 
     /** Closes the IM loop: polls inbound messages, triggers the agent, writes replies back. */

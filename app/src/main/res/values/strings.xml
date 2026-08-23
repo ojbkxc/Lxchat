@@ -1288,8 +1288,8 @@
     <string name="runtime_model_title">Generation model</string>
     <string name="runtime_model_unset">No model selected</string>
     <string name="runtime_model_counts">%1$d enabled · %2$d custom</string>
-    <string name="settings_im_gateway">IM Gateway</string>
-    <string name="settings_im_gateway_desc">Bridge WeChat and other IMs into the agent</string>
+    <string name="settings_im_gateway">IM 渠道</string>
+    <string name="settings_im_gateway_desc">绑定各 IM 渠道，AI 自动回复</string>
     <string name="settings_group_im">IM</string>
     <string name="settings_group_connection">Connection</string>
     <string name="device_control_howto">The agent plans from the on-screen element tree and can open apps, read the UI and tap or type. Opening apps works without the bridge; click, tap and input need the accessibility bridge enabled below.</string>
@@ -1352,4 +1352,71 @@
     <string name="tool_started_loop">Loop started</string>
     <string name="tool_stopping_loop">Stopping loop…</string>
     <string name="tool_stopped_loop">Loop stopped</string>
+
+    <!-- ── IM multi-channel management UI (SettingsImGatewayPage) ─────────────────────── -->
+    <string name="im_channels_title">IM 渠道管理</string>
+    <string name="im_channels_subtitle">统一管理各 IM 渠道的绑定与机器人，每渠道支持多机器人。</string>
+    <string name="im_channels_howto">每个渠道显示当前绑定状态。已绑定渠道可添加多个机器人，未绑定渠道点击「绑定」按提示填写凭证。旧版单网关配置会以「旧版」标签显示，可一键迁移到多渠道。</string>
+    <string name="im_channel_bound">已绑定 %1$d</string>
+    <string name="im_channel_unbound">未绑定</string>
+    <string name="im_channel_bind">绑定</string>
+    <string name="im_channel_add_bot">添加机器人</string>
+    <string name="im_channel_remove">移除</string>
+    <string name="im_channel_remove_title">移除机器人</string>
+    <string name="im_channel_remove_confirm">确认移除该机器人？相关会话状态将被清除。</string>
+    <string name="im_channel_bind_qr">扫描二维码绑定</string>
+    <string name="im_channel_bind_qr_placeholder">扫码功能即将上线，请暂用下方手动配置</string>
+    <string name="im_channel_manual_config">手动配置</string>
+    <string name="im_channel_push_pending">长连接通道开发中，配置将在通道实现后自动生效</string>
+    <string name="im_channel_legacy_tag">旧版</string>
+    <string name="im_channel_migrate">迁移</string>
+    <string name="im_channel_bound_success">机器人已绑定</string>
+    <string name="im_channel_removed">机器人已移除</string>
+    <string name="im_channel_migrated">已迁移到多渠道管理</string>
+    <string name="im_channel_validation_required">请填写必填字段</string>
+    <string name="im_channel_cancel">取消</string>
+    <string name="im_channel_bot_default_name">机器人</string>
+    <!-- Platform display names (Chinese) -->
+    <string name="im_platform_wechat">微信</string>
+    <string name="im_platform_telegram">Telegram</string>
+    <string name="im_platform_lark">飞书</string>
+    <string name="im_platform_dingtalk">钉钉</string>
+    <string name="im_platform_wecom">企业微信</string>
+    <string name="im_platform_qq">QQ</string>
+    <string name="im_platform_discord">Discord</string>
+    <string name="im_platform_slack">Slack</string>
+    <string name="im_platform_sms">短信网关</string>
+    <!-- Platform bind hints (short) -->
+    <string name="im_hint_wechat">iLink 扫码绑定</string>
+    <string name="im_hint_telegram">Bot Token 绑定</string>
+    <string name="im_hint_lark">App ID + Secret</string>
+    <string name="im_hint_dingtalk">Client ID + Secret</string>
+    <string name="im_hint_wecom">扫码绑定</string>
+    <string name="im_hint_qq">扫码绑定</string>
+    <string name="im_hint_discord">Bot Token 绑定</string>
+    <string name="im_hint_slack">Bot Token + App Token</string>
+    <string name="im_hint_sms">网关地址 + Token</string>
+    <!-- Platform descriptions (long) -->
+    <string name="im_desc_wechat">通过 iLink 扫描二维码绑定微信账号，App 直连微信服务器。</string>
+    <string name="im_desc_telegram">Telegram Bot，从 @BotFather 获取 Bot Token。</string>
+    <string name="im_desc_lark">飞书应用，从开放平台获取 App ID 与 App Secret。</string>
+    <string name="im_desc_dingtalk">钉钉应用，从开放平台获取 Client ID 与 Client Secret。</string>
+    <string name="im_desc_wecom">企业微信应用，扫码绑定或填写 Corp ID + Secret + Agent ID。</string>
+    <string name="im_desc_qq">QQ 互联应用，扫码绑定或填写 App ID + App Secret。</string>
+    <string name="im_desc_discord">Discord Bot，从 Developer Portal 获取 Bot Token。</string>
+    <string name="im_desc_slack">Slack Bot，Bot Token 以 xoxb- 开头，App Token 以 xapp- 开头。</string>
+    <string name="im_desc_sms">SMS 网关，填写 REST API 地址与 Auth Token。</string>
+    <!-- Credential field labels -->
+    <string name="im_channel_field_base_url">服务地址</string>
+    <string name="im_channel_field_token">Auth Token</string>
+    <string name="im_channel_field_bot_token">Bot Token</string>
+    <string name="im_channel_field_app_token">App Token</string>
+    <string name="im_channel_field_client_id">Client ID</string>
+    <string name="im_channel_field_client_secret">Client Secret</string>
+    <string name="im_channel_field_app_id">App ID</string>
+    <string name="im_channel_field_app_secret">App Secret</string>
+    <string name="im_channel_field_corp_id">Corp ID</string>
+    <string name="im_channel_field_corp_secret">Corp Secret</string>
+    <string name="im_channel_field_agent_id">Agent ID</string>
+    <string name="im_channel_field_poll_interval">轮询间隔 (ms)</string>
 </resources>
