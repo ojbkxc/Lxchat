@@ -205,7 +205,7 @@ class WecomChannel(
             closed.await()
         } catch (e: Exception) {
             // await 被取消（scope 取消）——主动关闭 socket
-            if (webSocketRef.set(null)) {
+            if (webSocketRef.compareAndSet(ws, null)) {
                 runCatching { ws.close(NORMAL_CLOSURE_CODE, "scope cancelled") }
             }
             throw e

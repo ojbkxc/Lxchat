@@ -53,7 +53,7 @@ fun QrCode(
         val offModule = Color.White
         Canvas(modifier = modifier.size(size)) {
             val n = matrix.size
-            val minDim = minOf(size.width, size.height)
+            val minDim = minOf(this.size.width, this.size.height)
             val cell = minDim / n
             val total = cell * n
             val inset = (minDim - total) / 2f
