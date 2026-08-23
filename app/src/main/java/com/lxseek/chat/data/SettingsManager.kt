@@ -65,8 +65,8 @@ class SettingsManager(private val context: Context) {
     val codeExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[CODE_EXECUTION_ENABLED] ?: false }
     val googleSearchEnabled: Flow<Boolean> = context.dataStore.data.map { it[GOOGLE_SEARCH_ENABLED] ?: false }
     val thinkingEnabled: Flow<Boolean> = context.dataStore.data.map { it[THINKING_ENABLED] ?: true }
-    val ttsEnabled: Flow<Boolean> = context.dataStore.data.map { it[TTS_ENABLED] ?: false }
-    val ttsAutoPlay: Flow<Boolean> = context.dataStore.data.map { it[TTS_AUTOPLAY] ?: false }
+    val ttsEnabled: Flow<Boolean> = context.dataStore.data.map { it[TTS_ENABLED] ?: true }
+    val ttsAutoPlay: Flow<Boolean> = context.dataStore.data.map { it[TTS_AUTOPLAY] ?: true }
     val ttsLanguage: Flow<String> = context.dataStore.data.map { it[TTS_LANGUAGE] ?: "system" }
     // Provider-backed TTS model ("Provider:modelId") and optional voice. Empty = system engine.
     val ttsProviderModel: Flow<String?> = context.dataStore.data.map {
@@ -162,6 +162,7 @@ class SettingsManager(private val context: Context) {
     val automationToolsEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTOMATION_TOOLS_ENABLED] ?: false }
     val petOverlayEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_OVERLAY_ENABLED] ?: false }
     val petOverlayImagePath: Flow<String> = context.dataStore.data.map { it[PET_OVERLAY_IMAGE_PATH] ?: "" }
+    val petOverlaySizeScale: Flow<Float> = context.dataStore.data.map { it[PET_OVERLAY_SIZE_SCALE] ?: 1.0f }
     val petEmotionEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_EMOTION_ENABLED] ?: true }
     val exactExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[EXACT_EXECUTION_ENABLED] ?: false }
     val proxyEnabled: Flow<Boolean> = context.dataStore.data.map { it[PROXY_ENABLED] ?: false }
@@ -743,6 +744,7 @@ class SettingsManager(private val context: Context) {
     }
     suspend fun savePetOverlayEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_OVERLAY_ENABLED] = enabled } }
     suspend fun savePetOverlayImagePath(path: String) { context.dataStore.edit { it[PET_OVERLAY_IMAGE_PATH] = path } }
+    suspend fun savePetOverlaySizeScale(scale: Float) { context.dataStore.edit { it[PET_OVERLAY_SIZE_SCALE] = scale.coerceIn(0.5f, 1.0f) } }
     suspend fun savePetEmotionEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_EMOTION_ENABLED] = enabled } }
     suspend fun saveExactExecutionEnabled(enabled: Boolean) { context.dataStore.edit { it[EXACT_EXECUTION_ENABLED] = enabled } }
     suspend fun saveProxyEnabled(enabled: Boolean) { context.dataStore.edit { it[PROXY_ENABLED] = enabled } }
@@ -960,6 +962,7 @@ class SettingsManager(private val context: Context) {
             prefs.remove(AUTOMATION_TOOLS_ENABLED)
             prefs.remove(PET_OVERLAY_ENABLED)
             prefs.remove(PET_OVERLAY_IMAGE_PATH)
+            prefs.remove(PET_OVERLAY_SIZE_SCALE)
             prefs.remove(EXACT_EXECUTION_ENABLED)
             prefs.remove(PROXY_ENABLED)
             prefs.remove(PROXY_TYPE)

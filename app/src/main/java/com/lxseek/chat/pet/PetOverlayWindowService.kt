@@ -74,18 +74,32 @@ class PetOverlayWindowService : Service() {
             return START_NOT_STICKY
         }
         if (floatingView == null) {
-            addFloatingView()
+            // Read the persisted size scale (0.5~1.0) asynchronously, then build the window on the
+            // main thread. scope uses Dispatchers.Main, so addFloatingView is safe to call here.
+            scope.launch {
+                val sizeScale = runCatching {
+                    PetOverlayController.getSizeScale(this@PetOverlayWindowService)
+                }.getOrDefault(1.0f)
+                addFloatingView(sizeScale)
+                loadCustomImageAsync()
+            }
+        } else {
+            // Always (re)load the custom image so a path change while the service is running is picked
+            // up on the next start command (e.g. after PetOverlayController.refreshImage).
+            loadCustomImageAsync()
         }
-        // Always (re)load the custom image so a path change while the service is running is picked
-        // up on the next start command (e.g. after PetOverlayController.refreshImage).
-        loadCustomImageAsync()
         return START_STICKY
     }
 
-    private fun addFloatingView() {
+    private fun addFloatingView(sizeScale: Float) {
+        // Guard against a duplicate add if multiple onStartCommand launches race before the first
+        // one sets floatingView (scope is single-threaded Main, but two launches can queue up).
+        if (floatingView != null) return
         val wm = windowManager ?: return
         val density = resources.displayMetrics.density
-        val sizePx = (SIZE_DP * density).toInt()
+        // SIZE_DP is the maximum (100%); scale it down per the user preference (0.5~1.0).
+        val effectiveSizeDp = SIZE_DP * sizeScale.coerceIn(0.5f, 1.0f)
+        val sizePx = (effectiveSizeDp * density).toInt()
         val params = WindowManager.LayoutParams(
             sizePx,
             sizePx,

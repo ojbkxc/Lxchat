@@ -43,9 +43,25 @@ object PetOverlayController {
     suspend fun getImagePath(context: Context): String =
         settings(context).petOverlayImagePath.first()
 
+    /** Returns the persisted size scale (0.5~1.0); defaults to 1.0 (largest). */
+    suspend fun getSizeScale(context: Context): Float =
+        settings(context).petOverlaySizeScale.first()
+
     /** Reloads the custom image into a running overlay; no-op if the service is not running. */
     fun refreshImage(context: Context) {
         PetOverlayWindowService.refreshImage(context)
+    }
+
+    /**
+     * Restarts the pet overlay service so it re-reads the size scale and rebuilds the window with
+     * the new dimensions. No-op when the overlay is disabled or the permission is missing, so
+     * dragging the size slider while the pet is off simply primes the value for the next enable.
+     */
+    suspend fun refreshSize(context: Context) {
+        val app = context.applicationContext
+        if (!isEnabled(app)) return
+        PetOverlayWindowService.stop(app)
+        PetOverlayWindowService.start(app)
     }
 
     /**

@@ -21,12 +21,14 @@ import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -73,6 +75,10 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val enabled by viewModel.settings.petOverlayEnabled.collectAsState()
     val imagePath by viewModel.settings.petOverlayImagePath.collectAsState()
     val emotionEnabled by viewModel.settings.petEmotionEnabled.collectAsState()
+    val sizeScale by viewModel.settings.petOverlaySizeScale.collectAsState()
+    var sliderValue by remember { mutableStateOf(sizeScale) }
+    // Keep the local slider in sync when the persisted value changes externally (reset/import).
+    LaunchedEffect(sizeScale) { sliderValue = sizeScale }
     var overlayGranted by remember { mutableStateOf(PetOverlayController.canDrawOverlay(context)) }
 
     // Re-read the system permission when the user returns from the overlay-permission screen.
@@ -189,6 +195,44 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         modifier = Modifier.clickable {
                             setEmotionEnabled(!emotionEnabled)
                         },
+                    )
+                    SettingsItem(
+                        headlineContent = { Text(stringResource(R.string.pet_overlay_size)) },
+                        supportingContent = {
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.pet_overlay_size_desc),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Slider(
+                                        value = sliderValue,
+                                        onValueChange = { sliderValue = it },
+                                        onValueChangeFinished = {
+                                            viewModel.viewModelScope.launch {
+                                                viewModel.settings.savePetOverlaySizeScale(sliderValue)
+                                                PetOverlayController.refreshSize(context)
+                                            }
+                                        },
+                                        valueRange = 0.5f..1.0f,
+                                        steps = 9,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("${(sliderValue * 100).toInt()}%")
+                                }
+                            }
+                        },
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.FormatSize,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        trailingContent = {},
                     )
                 }),
             )
