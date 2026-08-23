@@ -3,4 +3,5 @@
 # MainActivity.kt grew to 1008 lines after adding defensive try-catch guards around
 # attachBaseContext/onCreate initialization to prevent silent startup crashes.
 app/src/main/java/com/lxseek/chat/MainActivity.kt=1008
-app/src/main/java/com/lxseek/chat/data/SettingsManager.kt=1001
+app/src/main/java/com/lxseek/chat/data/SettingsManager.kt=1004
+app/src/main/java/com/lxseek/chat/ui/chat/bottombar/ChatBottomBar.kt=1001
