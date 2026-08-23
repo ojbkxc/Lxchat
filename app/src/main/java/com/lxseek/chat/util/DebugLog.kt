@@ -26,6 +26,10 @@ object DebugLog {
     fun w(tag: String, msg: String, tr: Throwable) {
         if (active) android.util.Log.w(tag, "$msg ${safeThrowableSummary(tr)}")
     }
+    fun i(tag: String, msg: String) { if (active) android.util.Log.i(tag, msg) }
+    fun i(tag: String, msg: String, tr: Throwable) {
+        if (active) android.util.Log.i(tag, "$msg ${safeThrowableSummary(tr)}")
+    }
 
     /**
      * Throwable messages and cause chains frequently contain request URLs, response excerpts,
