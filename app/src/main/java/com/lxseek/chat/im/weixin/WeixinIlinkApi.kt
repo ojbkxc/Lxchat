@@ -156,8 +156,8 @@ class WeixinIlinkApi(
             ?: throw WeixinApiError("invalid-login-status", "微信服务返回了无法识别的扫码状态。")
         LoginStatus(
             status = status,
-            token = response["token"].str(),
-            baseUrl = response["base_url"].str(),
+            token = response["bot_token"].str(),
+            baseUrl = response["baseurl"].str(),
             raw = response,
         )
     }
