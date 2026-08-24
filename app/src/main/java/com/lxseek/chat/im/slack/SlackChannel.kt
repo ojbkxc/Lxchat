@@ -14,9 +14,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.WebSocket
@@ -40,9 +42,17 @@ import kotlin.coroutines.coroutineContext
  *
  * **Event filtering** — only `message` (DM, `channel_type == "im"`) and `app_mention` (group
  * @-mention) events are handled, matching the manifest's `event_subscriptions`. Messages
- * with a `subtype` (edits, deletes, bot joins...) and messages from bots (including our own
- * bot) are skipped to avoid loops. Only text is extracted; file/voice/block messages are
- * future work.
+ * with a `subtype` other than `file_share` (edits, deletes, bot joins...) and messages from
+ * bots (including our own bot) are skipped to avoid loops. `file_share` messages are decoded
+ * to the shared file's private URL when no text is present.
+ *
+ * **Conversation keying** — DMs are keyed by `channel`; group mentions are keyed by
+ * `channel:threadTs` so messages in different threads of the same channel don't collide.
+ * Replies to group threads carry `thread_ts` so they land in the original thread.
+ *
+ * **De-duplication** — inbound messages are keyed by Slack's `event_id` (payload-level),
+ * not `event.ts`, so retries/edits don't re-trigger the agent. Bot @-mentions are stripped
+ * from the text before forwarding. Long replies (>38000 chars) are split into chunks.
  *
  * **Configuration** ([ImGatewayConfig]):
  *  - `token`   → Bot Token (`xoxb-...`), used for `chat.postMessage` and `auth.test`.
@@ -89,8 +99,16 @@ class SlackChannel(
         if (text.isBlank()) return ImSendResult.Failure("Slack message text is required")
         return withContext(Dispatchers.IO) {
             try {
-                val ts = api.postMessage(channel = conversationId, text = text)
-                ImSendResult.Success(ts)
+                // Parse conversationId: group threads use "channel:threadTs" (so replies
+                // land in the original thread); DMs use plain "channel" (threadTs = null).
+                val (channel, threadTs) = parseConversationId(conversationId)
+                // Split long messages (Slack text limit is 40000 chars; use 38000 for safety).
+                val chunks = splitLongMessage(text, SLACK_MESSAGE_LIMIT)
+                var lastTs = ""
+                for (chunk in chunks) {
+                    lastTs = api.postMessage(channel = channel, text = chunk, threadTs = threadTs)
+                }
+                ImSendResult.Success(lastTs)
             } catch (e: SlackApiException) {
                 DebugLog.e("SlackChannel", "sendMessage failed: ${e.message}")
                 ImSendResult.Failure(e.message ?: "slack send failed")
@@ -99,6 +117,40 @@ class SlackChannel(
                 ImSendResult.Failure(e.message ?: "slack send failed")
             }
         }
+    }
+
+    /**
+     * Split [conversationId] into (channelId, threadTs). Group threads encode the thread
+     * root timestamp as "channel:threadTs"; DMs use a plain "channel" with no colon, in
+     * which case threadTs is null and replies are sent to the channel top-level.
+     */
+    private fun parseConversationId(conversationId: String): Pair<String, String?> {
+        val idx = conversationId.indexOf(':')
+        if (idx < 0) return conversationId to null
+        val channel = conversationId.substring(0, idx)
+        val threadTs = conversationId.substring(idx + 1)
+        return channel to threadTs
+    }
+
+    /**
+     * Split a long message into chunks of at most [limit] chars, preferring newline then
+     * space breaks so chunks are not cut mid-sentence. Mirrors `splitMessageText` in
+     * `dsh-im/src/channels/shared/editable-message-stream.mjs`.
+     */
+    private fun splitLongMessage(text: String, limit: Int): List<String> {
+        val trimmed = text.trim()
+        if (trimmed.length <= limit) return listOf(trimmed)
+        val result = ArrayList<String>()
+        var remaining = trimmed
+        while (remaining.length > limit) {
+            var cut = remaining.lastIndexOf('\n', limit)
+            if (cut < limit / 2) cut = remaining.lastIndexOf(' ', limit)
+            if (cut < limit / 2) cut = limit
+            result.add(remaining.substring(0, cut).trim())
+            remaining = remaining.substring(cut).trimStart()
+        }
+        if (remaining.isNotEmpty()) result.add(remaining)
+        return result
     }
 
     /** Push channel — conversations are synthesized from inbound messages, not polled. */
@@ -189,8 +241,15 @@ class SlackChannel(
         // Only handle the two subscribed event types (see manifest: message.im + app_mention).
         if (eventType != "message" && eventType != "app_mention") return
 
-        // Skip subtyped messages (bot_message, message_changed, message_deleted, joins...).
-        if (event["subtype"]?.jsonPrimitive?.contentOrNull != null) return
+        // event_id lives at the payload level and is the de-duplication key (NOT event.ts,
+        // which can repeat across retries/edits). Mirrors `normalizeSlackEvent` in dsh-im.
+        val eventId = payload["event_id"]?.jsonPrimitive?.contentOrNull ?: return
+
+        // Skip subtyped messages except file_share (bot_message, message_changed,
+        // message_deleted, joins...). file_share is allowed through so we can extract the
+        // shared file URL or fallback text.
+        val subtype = event["subtype"]?.jsonPrimitive?.contentOrNull
+        if (subtype != null && subtype != "file_share") return
 
         // Skip bot-authored messages (avoids reply loops). bot_id covers most bots; the
         // botUserId check covers our own replies when Slack doesn't set bot_id.
@@ -199,26 +258,80 @@ class SlackChannel(
         val myUserId = botUserId
         if (myUserId != null && user == myUserId) return
 
-        val text = event["text"]?.jsonPrimitive?.contentOrNull ?: return
         val channel = event["channel"]?.jsonPrimitive?.contentOrNull ?: return
         val ts = event["ts"]?.jsonPrimitive?.contentOrNull ?: return
 
         // For `message` events, only respond in DMs (channel_type == "im"). `app_mention`
         // is always a group mention and always passes.
-        if (eventType == "message") {
+        val isDirect = eventType == "message"
+        if (isDirect) {
             val channelType = event["channel_type"]?.jsonPrimitive?.contentOrNull
             if (channelType != "im") return
         }
 
+        // threadTs: the thread root timestamp for threaded replies. Falls back to the
+        // message's own ts when not in a thread (replying starts a new thread on the message).
+        val threadTs = event["thread_ts"]?.jsonPrimitive?.contentOrNull ?: ts
+
+        // Group conversations are keyed by "channel:threadTs" so messages in different
+        // threads of the same channel don't collide. DMs stay keyed by channel alone.
+        // Mirrors dsh-im: `direct ? channel : `${channel}:${threadTs}``.
+        val conversationId = if (isDirect) channel else "$channel:$threadTs"
+
+        // Strip the bot @-mention prefix and decode Slack HTML entities. app_mention events
+        // include `<@{botId}>` at the start; removing it gives the user's actual prompt.
+        val rawText = event["text"]?.jsonPrimitive?.contentOrNull ?: ""
+        val stripped = stripBotMention(rawText, myUserId)
+
+        // file_share subtype: when the text is empty (or only contained the mention), fall
+        // back to the shared file's private URL so the agent has something to work with.
+        val effectiveText = if (stripped.isBlank() && subtype == "file_share") {
+            extractFileShareText(event)
+        } else {
+            stripped
+        }
+        if (effectiveText.isBlank()) return
+
         val message = ImMessage(
-            id = ts,
-            conversationId = channel,
+            id = eventId,
+            conversationId = conversationId,
             direction = ImMessageDirection.INCOMING,
-            text = text,
+            text = effectiveText,
             sender = user,
             timestampMs = parseTsToMillis(ts),
         )
         runCatching { onMessage(message) }
+    }
+
+    /**
+     * Decode Slack's HTML entities (`&amp;` `&lt;` `&gt;`) and strip `<@{botUserId}>`
+     * mentions so the agent receives the user's literal text. Mirrors `stripBotMention`
+     * in `dsh-im/src/channels/slack/slack-runtime.mjs`.
+     */
+    private fun stripBotMention(value: String, botUserId: String?): String {
+        val decoded = value
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+        val withoutMention = if (botUserId != null) {
+            decoded.replace(Regex("<@$botUserId>", RegexOption.IGNORE_CASE), "")
+        } else {
+            decoded
+        }
+        return withoutMention.trim()
+    }
+
+    /**
+     * For `file_share` messages whose text is empty, use the private URL of the first
+     * attached file (preferring `url_private_download` when present, falling back to
+     * `url_private`). Returns empty string when no file/URL is available.
+     */
+    private fun extractFileShareText(event: JsonObject): String {
+        val files = runCatching { event["files"]?.jsonArray }.getOrNull() ?: return ""
+        val firstFile = files.firstOrNull()?.asObject() ?: return ""
+        return firstFile["url_private_download"]?.jsonPrimitive?.contentOrNull
+            ?: firstFile["url_private"]?.jsonPrimitive?.contentOrNull
+            ?: ""
     }
 
     /** Slack `ts` format is `<seconds>.<microseconds>`; we keep second-precision millis. */
@@ -237,5 +350,12 @@ class SlackChannel(
         private const val CHANNEL_ID = "slack"
         private const val INITIAL_RECONNECT_DELAY_MS = 1_000L
         private const val MAX_RECONNECT_DELAY_MS = 30_000L
+
+        /**
+         * Slack `chat.postMessage` rejects text longer than 40000 chars. We split at 38000
+         * to leave headroom for any mention/entity expansion Slack does server-side. Mirrors
+         * `SLACK_MESSAGE_LIMIT` in `dsh-im/src/channels/slack/slack-runtime.mjs`.
+         */
+        private const val SLACK_MESSAGE_LIMIT = 38_000
     }
 }
