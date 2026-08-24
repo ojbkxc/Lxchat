@@ -96,10 +96,25 @@ class DiscordChannel(
 
     override suspend fun startListening(onMessage: (ImMessage) -> Unit, scope: CoroutineScope) {
         if (!isConfigured) return
+        val api = rest ?: return
         val token = DiscordRestApi.normalizeToken(config.token)
+        // Fetch the recommended Gateway URL dynamically via GET /gateway/bot — mirrors
+        // `dsh-im/discord-runtime.mjs` which calls `api.getGatewayBot()` instead of hard-coding
+        // `wss://gateway.discord.gg`. Falls back to the default URL on failure so a transient
+        // REST hiccup never blocks the bot from coming online.
+        val gatewayBaseUrl = try {
+            api.getGatewayBot()["url"]?.jsonPrimitive?.contentOrNull
+        } catch (e: Exception) {
+            DebugLog.w("DiscordChannel", "getGatewayBot failed, falling back to default URL: ${e.message}")
+            null
+        }
         val client = DiscordGatewayClient(
             token = token,
-            gatewayUrl = DiscordGatewayClient.DEFAULT_GATEWAY_URL,
+            gatewayUrl = if (!gatewayBaseUrl.isNullOrBlank()) {
+                DiscordGatewayClient.normalizeGatewayUrl(gatewayBaseUrl)
+            } else {
+                DiscordGatewayClient.DEFAULT_GATEWAY_URL
+            },
             onMessage = { event ->
                 onMessage(
                     ImMessage(

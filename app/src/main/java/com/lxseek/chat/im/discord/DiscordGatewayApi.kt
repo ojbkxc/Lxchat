@@ -83,25 +83,49 @@ class DiscordRestApi(
     })
 
     private suspend fun request(path: String, method: String, body: JsonObject?): JsonObject =
-        withContext(Dispatchers.IO) {
-            val url = "$base/$path"
-            val response = when (method) {
-                "GET" -> HttpClient.getTextResponse(url, authHeaders)
-                "POST" -> HttpClient.postTextResponse(url, body?.toString() ?: "{}", authHeaders)
-                else -> throw IllegalArgumentException("Unsupported method: $method")
-            }
-            if (!response.isSuccessful) {
-                val apiMsg = runCatching {
-                    json.parseToJsonElement(response.body).jsonObject["message"]?.jsonPrimitive?.contentOrNull
-                }.getOrNull()
-                throw DiscordApiException(
-                    apiMsg ?: "Discord $method failed (HTTP ${response.code})",
-                    response.code,
-                )
-            }
-            runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
-                ?: throw DiscordApiException("Discord $method returned invalid JSON", response.code)
+        requestWithRetry(path, method, body, retry = true)
+
+    /**
+     * Inner request loop that honours Discord's 429 rate-limit response. On HTTP 429 the body
+     * carries a `retry_after` field (seconds, floating-point); we sleep that long (clamped to
+     * 50ms–10s, mirroring `dsh-im/discord-api.mjs`) and retry exactly once. Subsequent 429s
+     * surface as a [DiscordApiException] so the caller can decide what to do.
+     */
+    private suspend fun requestWithRetry(
+        path: String,
+        method: String,
+        body: JsonObject?,
+        retry: Boolean,
+    ): JsonObject = withContext(Dispatchers.IO) {
+        val url = "$base/$path"
+        val response = when (method) {
+            "GET" -> HttpClient.getTextResponse(url, authHeaders)
+            "POST" -> HttpClient.postTextResponse(url, body?.toString() ?: "{}", authHeaders)
+            else -> throw IllegalArgumentException("Unsupported method: $method")
         }
+        // 429 Too Many Requests: read `retry_after` (seconds) and back off before one retry.
+        if (response.code == 429 && retry) {
+            val retryAfterSeconds = runCatching {
+                json.parseToJsonElement(response.body).jsonObject["retry_after"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()
+            }.getOrNull()
+            val retryAfterMs = (retryAfterSeconds?.let { it * 1000.0 }?.toLong() ?: 1000L)
+                .coerceIn(50L, 10_000L)
+            DebugLog.w("DiscordApi", "429 rate-limited, retrying after ${retryAfterMs}ms")
+            delay(retryAfterMs)
+            return@withContext requestWithRetry(path, method, body, retry = false)
+        }
+        if (!response.isSuccessful) {
+            val apiMsg = runCatching {
+                json.parseToJsonElement(response.body).jsonObject["message"]?.jsonPrimitive?.contentOrNull
+            }.getOrNull()
+            throw DiscordApiException(
+                apiMsg ?: "Discord $method failed (HTTP ${response.code})",
+                response.code,
+            )
+        }
+        runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
+            ?: throw DiscordApiException("Discord $method returned invalid JSON", response.code)
+    }
 
     companion object {
         const val DEFAULT_BASE_URL = "https://discord.com/api/v10/"
@@ -153,7 +177,9 @@ data class DiscordMessageEvent(
  */
 class DiscordGatewayClient(
     val token: String,
-    private val gatewayUrl: String = DEFAULT_GATEWAY_URL,
+    /** Initial Gateway URL. Updated by [updateGatewayUrl] when the REST `/gateway/bot` endpoint
+     *  returns a fresh URL, and superseded by [resumeUrl] on reconnects after a READY. */
+    @Volatile private var gatewayUrl: String = DEFAULT_GATEWAY_URL,
     private val intents: Int = DEFAULT_INTENTS,
     private val onMessage: (DiscordMessageEvent) -> Unit,
 ) {
@@ -163,6 +189,7 @@ class DiscordGatewayClient(
     @Volatile private var stopped = false
     @Volatile private var lastSeq: Long? = null
     @Volatile private var sessionId: String? = null
+    @Volatile private var resumeUrl: String? = null
     @Volatile private var botUserId: String? = null
     @Volatile private var botName: String? = null
     @Volatile private var heartbeatIntervalMs: Long = 0L
@@ -171,6 +198,15 @@ class DiscordGatewayClient(
 
     /** Bot display name discovered at READY; null until then. Read by [DiscordChannel.displayName]. */
     val botDisplayName: String? get() = botName
+
+    /**
+     * Replace the Gateway URL discovered via `GET /gateway/bot`. Applied on the next connect or
+     * reconnect. Mirrors `dsh-im/discord-runtime.mjs` which fetches the URL dynamically instead
+     * of hard-coding `wss://gateway.discord.gg`.
+     */
+    fun updateGatewayUrl(url: String) {
+        if (url.isNotBlank()) gatewayUrl = normalizeGatewayUrl(url)
+    }
 
     /** Close the socket and signal [connect] to return. Safe to call when not connected. */
     fun stop() {
@@ -182,12 +218,16 @@ class DiscordGatewayClient(
     /**
      * Run the connect → handshake → receive loop, reconnecting with exponential backoff until
      * [stop] is called or [scope] is cancelled. Suspends for the lifetime of the connection.
+     *
+     * Reconnects use RESUME (session_id + last seq) when a previous session exists, and prefer
+     * the `resume_gateway_url` returned in READY — matching `dsh-im/discord-runtime.mjs`.
      */
     suspend fun connect(scope: CoroutineScope) {
         var backoff = INITIAL_BACKOFF_MS
         while (scope.isActive && !stopped) {
+            val resume = sessionId != null
             val connected = try {
-                runConnection(scope)
+                runConnection(scope, resume)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -204,8 +244,12 @@ class DiscordGatewayClient(
         }
     }
 
-    /** One full connect → handshake → receive-until-close cycle. Returns true if READY was reached. */
-    private suspend fun runConnection(scope: CoroutineScope): Boolean {
+    /**
+     * One full connect → handshake → receive-until-close cycle. Returns true if READY was reached.
+     * [resume] selects the resume_gateway_url (when available) over the primary gateway URL,
+     * mirroring `dsh-im`'s `#openSocket(resume)` logic.
+     */
+    private suspend fun runConnection(scope: CoroutineScope, resume: Boolean): Boolean {
         // Per-cycle inbound queue. Closing it (in onClosed/onFailure) unblocks receiveCatching so
         // the receive loop exits promptly without a separate select on a "closed" deferred.
         val incoming = Channel<String>(Channel.UNLIMITED)
@@ -230,7 +274,10 @@ class DiscordGatewayClient(
             }
         }
 
-        val request = Request.Builder().url(gatewayUrl).build()
+        // Pick the URL for this attempt: on a resume, prefer the resume_gateway_url that Discord
+        // handed back in READY; otherwise use the primary gateway URL (refreshed via /gateway/bot).
+        val effectiveUrl = if (resume) (resumeUrl ?: gatewayUrl) else gatewayUrl
+        val request = Request.Builder().url(effectiveUrl).build()
         HttpClient.client.newWebSocket(request, listener)
 
         try {
@@ -279,6 +326,7 @@ class DiscordGatewayClient(
                 val resumable = root["d"]?.jsonPrimitive?.booleanOrNull == true
                 if (!resumable) {
                     sessionId = null
+                    resumeUrl = null
                     lastSeq = null
                 }
                 DebugLog.w(TAG, "invalid session (resumable=$resumable)")
@@ -294,11 +342,16 @@ class DiscordGatewayClient(
             "READY" -> {
                 ready = true
                 sessionId = data?.get("session_id")?.jsonPrimitive?.contentOrNull
+                // Discord hands back a dedicated resume URL; we use it on reconnects (RESUME).
+                val resumeGatewayUrl = data?.get("resume_gateway_url")?.jsonPrimitive?.contentOrNull
+                if (!resumeGatewayUrl.isNullOrBlank()) {
+                    resumeUrl = normalizeGatewayUrl(resumeGatewayUrl)
+                }
                 val user = data?.get("user")?.jsonObject
                 botUserId = user?.get("id")?.jsonPrimitive?.contentOrNull
                 botName = user?.get("global_name")?.jsonPrimitive?.contentOrNull
                     ?: user?.get("username")?.jsonPrimitive?.contentOrNull
-                DebugLog.w(TAG, "READY: bot id=$botUserId name=$botName session=$sessionId")
+                DebugLog.w(TAG, "READY: bot id=$botUserId name=$botName session=$sessionId resumeUrl=$resumeUrl")
             }
             "RESUMED" -> {
                 ready = true
@@ -313,12 +366,20 @@ class DiscordGatewayClient(
         if (data == null) return
         val messageId = data["id"]?.jsonPrimitive?.contentOrNull ?: return
         val channelId = data["channel_id"]?.jsonPrimitive?.contentOrNull ?: return
-        val content = data["content"]?.jsonPrimitive?.contentOrNull ?: ""
-        if (content.isEmpty()) return  // non-text (embed/attachment/sticker-only), skip
         val author = data["author"]?.jsonObject ?: return
         val authorId = author["id"]?.jsonPrimitive?.contentOrNull ?: return
         // Drop our own outbound messages so the bot never echoes itself into a reply loop.
         if (authorId == botUserId) return
+        // Strip the bot mention prefix (`<@{id}>` or `<@!{id}>`) from the text — mirrors
+        // `dsh-im/discord-runtime.mjs`'s `stripBotMention`. Without this the reply would echo
+        // the `@bot` ping back to the model.
+        val rawContent = data["content"]?.jsonPrimitive?.contentOrNull ?: ""
+        val content = stripBotMention(rawContent, botUserId)
+        // When the message has no text but carries attachments, surface the attachment URL as
+        // the content so the model can reason about it (dsh-im extracts image sources; Lxchat's
+        // ImMessage only carries text, so we fall back to the first attachment URL).
+        val effectiveContent = if (content.isNotEmpty()) content else firstAttachmentUrl(data)
+        if (effectiveContent.isEmpty()) return  // truly empty: no text and no attachments
         val authorName = author["global_name"]?.jsonPrimitive?.contentOrNull
             ?: author["username"]?.jsonPrimitive?.contentOrNull
             ?: ""
@@ -329,7 +390,7 @@ class DiscordGatewayClient(
                 DiscordMessageEvent(
                     channelId = channelId,
                     messageId = messageId,
-                    content = content,
+                    content = effectiveContent,
                     authorId = authorId,
                     authorName = authorName,
                     timestampMs = timestampMs,
@@ -339,6 +400,22 @@ class DiscordGatewayClient(
         } catch (e: Exception) {
             DebugLog.e(TAG, "onMessage callback threw: ${e.message}", e)
         }
+    }
+
+    /** Remove `<@{botId}>` / `<@!{botId}>` mentions anywhere in the text, then trim. */
+    private fun stripBotMention(text: String, botId: String?): String {
+        if (text.isEmpty() || botId.isNullOrBlank()) return text.trim()
+        val regex = Regex("<@!?$botId>")
+        return text.replace(regex, "").trim()
+    }
+
+    /** Return the first attachment's `url` (or `filename` as a fallback) from a MESSAGE_CREATE. */
+    private fun firstAttachmentUrl(data: JsonObject): String {
+        val attachments = data["attachments"] as? kotlinx.serialization.json.JsonArray ?: return ""
+        val first = attachments.firstOrNull()?.jsonObject ?: return ""
+        return first["url"]?.jsonPrimitive?.contentOrNull
+            ?: first["filename"]?.jsonPrimitive?.contentOrNull
+            ?: ""
     }
 
     // ── Heartbeat & identify ─────────────────────────────────────────────────
@@ -430,18 +507,44 @@ class DiscordGatewayClient(
         private const val OP_HELLO = 10
         private const val OP_HEARTBEAT_ACK = 11
 
-        // Intents: GUILD_MESSAGES (1<<9) | DIRECT_MESSAGES (1<<12) | MESSAGE_CONTENT (1<<15).
+        // Intents aligned with dsh-im (`discord-runtime.mjs`):
+        //   GUILDS (1<<0) | GUILD_MESSAGES (1<<9) | DIRECT_MESSAGES (1<<12)
+        // plus MESSAGE_CONTENT (1<<15) so Lxchat can read message text in guild channels.
         // MESSAGE_CONTENT is a privileged intent — must be enabled in the Developer Portal,
         // otherwise message content arrives empty and is skipped by [handleMessageCreate].
+        const val INTENT_GUILDS = 1 shl 0
         const val INTENT_GUILD_MESSAGES = 1 shl 9
         const val INTENT_DIRECT_MESSAGES = 1 shl 12
         const val INTENT_MESSAGE_CONTENT = 1 shl 15
         const val DEFAULT_INTENTS =
-            INTENT_GUILD_MESSAGES or INTENT_DIRECT_MESSAGES or INTENT_MESSAGE_CONTENT
+            INTENT_GUILDS or INTENT_GUILD_MESSAGES or INTENT_DIRECT_MESSAGES or INTENT_MESSAGE_CONTENT
 
         private const val DISCORD_EPOCH_MS = 1_420_070_400_000L
         private const val INITIAL_BACKOFF_MS = 1_000L
         private const val MAX_BACKOFF_MS = 30_000L
         private const val STEP_MS = 200L
+
+        /**
+         * Normalize a Gateway URL returned by `/gateway/bot` or `resume_gateway_url`: ensure it
+         * carries `v=10` and `encoding=json`. Mirrors `dsh-im/discord-runtime.mjs`'s `socketUrl`.
+         * If the URL already has query params they are preserved; only v/encoding are set/overridden.
+         */
+        internal fun normalizeGatewayUrl(raw: String): String {
+            val base = raw.trim()
+            if (base.isEmpty()) return DEFAULT_GATEWAY_URL
+            // Split off any existing query/fragment so we can rebuild params deterministically.
+            val questionIdx = base.indexOfAny(charArrayOf('?', '#'))
+            val host = if (questionIdx >= 0) base.substring(0, questionIdx) else base
+            val existingParams = if (questionIdx >= 0 && base[questionIdx] == '?') {
+                base.substring(questionIdx + 1)
+                    .split('&')
+                    .filter { it.isNotEmpty() && !it.startsWith("v=") && !it.startsWith("encoding=") }
+            } else emptyList()
+            val params = mutableListOf<String>()
+            params.addAll(existingParams)
+            params.add("v=10")
+            params.add("encoding=json")
+            return "$host?${params.joinToString("&")}"
+        }
     }
 }
