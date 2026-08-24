@@ -38,6 +38,10 @@ class WeixinChannel(
 
     private val state = ChannelState()
 
+    /** Ensures notifyStart is called once before the first getUpdates poll. */
+    @Volatile
+    private var notified = false
+
     override suspend fun sendMessage(conversationId: String, text: String): ImSendResult {
         if (!isConfigured) return ImSendResult.NotConfigured
         val recipient = conversationId.trim()
@@ -71,7 +75,26 @@ class WeixinChannel(
 
     private suspend fun pollUpdates() {
         try {
+            // dsh-im calls notifyStart before the monitor loop; without this the WeChat server
+            // does not push messages to getupdates, so every poll returns an empty list.
+            if (!notified) {
+                DebugLog.d("WeixinChannel", "pollUpdates: calling notifyStart")
+                api.notifyStart(baseUrl, config.token)
+                notified = true
+                DebugLog.d("WeixinChannel", "pollUpdates: notifyStart succeeded")
+            }
             val updates = api.getUpdates(baseUrl, config.token, state.getUpdatesBuf())
+            DebugLog.d("WeixinChannel", "pollUpdates: received ${updates.msgs.size} msgs, ret=${updates.ret}, bufLen=${updates.getUpdatesBuf.length}")
+            // Check for server-side rejection (dsh-im checks ret and errcode).
+            val errcode = updates.raw["errcode"]?.let { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }
+            if ((updates.ret != 0) || (errcode != null && errcode != 0)) {
+                val code = errcode ?: updates.ret
+                DebugLog.e("WeixinChannel", "pollUpdates rejected: ret=${updates.ret} errcode=$errcode")
+                if (code == -14) {
+                    DebugLog.e("WeixinChannel", "stale token — re-scan required")
+                }
+                return
+            }
             state.applyUpdates(updates)
         } catch (e: WeixinApiError) {
             DebugLog.e("WeixinChannel", "pollUpdates failed: ${e.code}", e)
@@ -93,11 +116,19 @@ class WeixinChannel(
 
         fun applyUpdates(updates: WeixinIlinkApi.Updates) {
             _getUpdatesBuf = updates.getUpdatesBuf
+            DebugLog.d("WeixinChannel", "applyUpdates: processing ${updates.msgs.size} msgs")
             for (msg in updates.msgs) {
-                val text = WeixinIlinkApi.extractWeixinText(msg) ?: continue
-                val msgId = WeixinIlinkApi.weixinMessageId(msg) ?: continue
-                val fromUserId = msg["from_user_id"]?.strSafe() ?: continue
-                if (fromUserId.isEmpty()) continue
+                // dsh-im skips message_type === 2 (outgoing messages sent by the bot itself).
+                val msgType = msg["message_type"]?.let { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }
+                if (msgType == 2) { DebugLog.d("WeixinChannel", "applyUpdates: skipped - outgoing msg (type=2)"); continue }
+                val text = WeixinIlinkApi.extractWeixinText(msg)
+                val msgId = WeixinIlinkApi.weixinMessageId(msg)
+                val fromUserId = msg["from_user_id"]?.strSafe()
+                DebugLog.d("WeixinChannel", "applyUpdates: msg text=${text?.take(50)} id=$msgId from=$fromUserId keys=${msg.keys}")
+                if (text == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - text is null"); continue }
+                if (msgId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - msgId is null"); continue }
+                if (fromUserId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is null"); continue }
+                if (fromUserId.isEmpty()) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is empty"); continue }
                 val timestampMs = normalizeTimestamp(msg["create_time"]?.longSafe())
                 val imMsg = ImMessage(
                     id = msgId,

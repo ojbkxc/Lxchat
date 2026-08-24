@@ -81,12 +81,14 @@ class ImPollingReceiver(
      * handled by [startPushListeners] and deliberately skipped here.
      */
     private suspend fun pollLoop() {
+        DebugLog.d("ImPolling", "pollLoop started")
         while (true) {
             coroutineContext.ensureActive()
             val pollingChannels = bridge.channels().entries
                 .filter { it.value.isConfigured && it.value !is PushMessageChannel }
             val interval = currentPollInterval()
             if (pollingChannels.isEmpty()) {
+                DebugLog.d("ImPolling", "pollLoop: no polling channels, waiting ${interval}ms")
                 delay(interval)
                 continue
             }
@@ -107,6 +109,7 @@ class ImPollingReceiver(
             DebugLog.e("ImPolling", "listConversations failed for $channelKey", e)
             emptyList()
         }
+        DebugLog.d("ImPolling", "pollChannel $channelKey: ${conversations.size} conversations")
         for (conversation in conversations) {
             coroutineContext.ensureActive()
             pollConversation(channelKey, channel, conversation)
@@ -127,6 +130,7 @@ class ImPollingReceiver(
             emptyList()
         }
         val inbox = messages.filter { it.direction == ImMessageDirection.INCOMING }
+        DebugLog.d("ImPolling", "pollConversation ${conversation.id}: ${inbox.size} inbox msgs")
         if (inbox.isEmpty()) return
         feedInboundBatch(channelKey, channel, conversation, inbox)
     }
@@ -227,6 +231,7 @@ class ImPollingReceiver(
             !seen
         }
         if (fresh.isEmpty()) return
+        DebugLog.d("ImPolling", "feedInboundBatch: ${fresh.size} fresh msgs for conv=${conversation.id}, lxchatConv=$lxchatConvId")
         onMessageHandled?.invoke(conversation.id)
 
         // Merge the batch of new messages into one synthetic inbound message so the private

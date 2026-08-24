@@ -481,8 +481,13 @@ class WeixinIlinkApi(
 
         /** 获取消息 ID（优先 message_id，fallback client_id）。 */
         fun weixinMessageId(message: JsonObject): String? {
-            val messageId = message["message_id"].str()
-            if (messageId != null) return messageId
+            // dsh-im uses String(message.message_id) which converts any type; we must handle
+            // both string and numeric message_id values.
+            val messageIdEl = message["message_id"]
+            if (messageIdEl != null) {
+                val asStr = (messageIdEl as? JsonPrimitive)?.contentOrNull
+                if (asStr != null && asStr.isNotEmpty()) return asStr
+            }
             return message["client_id"].str()?.trim()?.takeIf { it.isNotEmpty() }
         }
 
