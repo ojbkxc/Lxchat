@@ -99,11 +99,13 @@ data class OfficeJobExecutorStatus(
  *
  * 核心保证：
  * - **终态只写入一次**：用 [AtomicBoolean] 保护 [OfficeConnectorApi.completeJob] 调用。
- * - **状态安全回传**：增量文字、工具名通过 [OfficeConnectorApi.postStatus] 回传，
+ * - **状态安全回传**：增量文字、工具名通过 [OfficeConnectorApi.postProgress] 回传，
  *   失败时静默忽略（不中断执行）。
- * - **审批等待**：工具审批 / 补充问题通过 [OfficeConnectorApi.postStatus] 发送到 Office
- *   人工面板，然后等待 SSE `approval.reply` 事件回传。
- * - **租约续租**：每 30 秒续租一次，续租失败则取消任务。
+ * - **审批等待**：工具审批 / 补充问题通过 [OfficeConnectorApi.requestApproval] 发送到 Office
+ *   人工面板（独立端点），然后等待 SSE `approval.reply` 事件回传；续租时额外轮询
+ *   `GET /jobs/:id` 的 `approval` 字段作为兜底。
+ * - **租约续租**：每 30 秒续租一次，续租后轮询审批状态，续租失败则取消任务。
+ * - **失败上报**：使用独立端点 [OfficeConnectorApi.failJob]，不复用 [OfficeConnectorApi.completeJob]。
  *
  * 与 dsh-im `office-job-executor.mjs` 的 `OfficeJobExecutor` 类对齐。
  *
@@ -224,19 +226,25 @@ class OfficeJobExecutor(
         }
     }
 
-    /** 执行单个任务的完整流程：领取 → 续租 → 创建 Session → 执行 → 终态写入。 */
+    /** 执行单个任务的完整流程：查询 → 领取 → 续租 → 创建 Session → 执行 → 终态写入。 */
     private suspend fun executeJob(jobId: String) {
         val completedFlag = AtomicBoolean(false)
         var renewJob: Job? = null
         var session: OfficeHarnessSession? = null
         var leaseToken: String? = null
         try {
-            // 1. 领取任务
-            val claimResp = api.claimJob(jobId)
-            leaseToken = claimResp["leaseToken"]?.let { (it as? JsonPrimitive)?.contentOrNull }
-                ?: throw OfficeTransportException("Office returned an invalid Job lease")
-            val job = claimResp["job"]?.jsonObject
+            // 1. 两步 get+accept 流程：先 GET 查询任务详情，再 POST accept 确认领取
+            val fetched = api.getJob(jobId)
+            val job = fetched["job"]?.jsonObject
                 ?: throw OfficeTransportException("Office returned no job payload")
+            val fetchedId = job["id"]?.let { (it as? JsonPrimitive)?.contentOrNull }
+            if (fetchedId != jobId) {
+                throw OfficeTransportException("Office returned an invalid Job payload (id mismatch)")
+            }
+            val accepted = api.acceptJob(jobId)
+            leaseToken = accepted["leaseToken"]?.let { (it as? JsonPrimitive)?.contentOrNull }
+                ?: throw OfficeTransportException("Office returned an invalid Job lease")
+
             val workspaceAlias = job["workspaceAlias"]
                 ?.let { (it as? JsonPrimitive)?.contentOrNull } ?: ""
             val instructionPreset = job["instructionPreset"]
@@ -258,28 +266,37 @@ class OfficeJobExecutor(
                     "office-job-alias-invalid",
                 )
 
-            // 3. 启动续租循环
+            // 3. 启动续租循环（续租后轮询审批状态）
+            val currentLeaseToken = leaseToken
             renewJob = scope.launch {
                 while (isActive) {
                     delay(OfficeProtocol.RENEW_INTERVAL_MS)
                     try {
-                        api.renewJob(jobId, leaseToken)
+                        api.renewJob(jobId, currentLeaseToken)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
                         DebugLog.w("OfficeJob", "renew failed for $jobId: ${e.message}")
                         return@launch
                     }
+                    // 续租后轮询审批状态（与 dsh-im office-job-executor.mjs #renew 对齐）
+                    try {
+                        pollApprovalStatus(jobId)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        DebugLog.w("OfficeJob", "approval poll failed for $jobId: ${e.message}")
+                    }
                 }
             }
 
             // 4. 创建独立 Harness Session
             session = createHarness(workspace)
-            postStatusSafe(jobId, leaseToken, "status",
+            postProgressSafe(jobId, currentLeaseToken, "status",
                 "已领取 Job，准备 Workspace alias：$workspaceAlias")
 
             val sessionId = session.createSession()
-            postStatusSafe(jobId, leaseToken, "status", "Harness Session 已创建。")
+            postProgressSafe(jobId, currentLeaseToken, "status", "Harness Session 已创建。")
 
             // 5. 执行
             val prompt = renderPrompt(instruction, markdown, preset)
@@ -291,26 +308,27 @@ class OfficeJobExecutor(
                         else -> update.text.take(4000)
                     }
                     if (msg.isNotBlank()) {
-                        postStatusSafe(jobId, leaseToken,
+                        postProgressSafe(jobId, currentLeaseToken,
                             if (update.type == "tool") "tool" else update.type.ifEmpty { "text" },
                             msg)
                     }
                 },
                 onApproval = { request ->
-                    // 发送审批请求到 Office 人工面板
+                    // 通过独立审批端点发送请求到 Office 人工面板
                     try {
-                        api.postStatus(jobId, leaseToken, buildJsonObject {
-                            put("kind", "approval")
-                            put("approvalId", request.id)
+                        api.requestApproval(jobId, currentLeaseToken, buildJsonObject {
+                            put("id", request.id)
+                            put("kind", request.kind)
                             put("title", request.title)
                             put("prompt", request.prompt)
+                            if (request.toolName.isNotBlank()) put("toolName", request.toolName)
                         })
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
                         DebugLog.w("OfficeJob", "approval request failed: ${e.message}")
                     }
-                    // 等待 SSE approval.reply 回传
+                    // 等待 SSE approval.reply 回传（续租轮询也会兜底 resolve）
                     val deferred = CompletableDeferred<OfficeApprovalReply>()
                     val key = "$jobId:${request.id}"
                     pendingApprovals[key] = deferred
@@ -320,9 +338,9 @@ class OfficeJobExecutor(
                 },
             )
 
-            // 6. 终态写入（只一次）
+            // 6. 终态写入（只一次，使用 result 端点）
             if (completedFlag.compareAndSet(false, true)) {
-                api.completeJob(jobId, leaseToken, buildJsonObject {
+                api.completeJob(jobId, currentLeaseToken, buildJsonObject {
                     put("resultMarkdown", answer)
                     put("sessionId", sessionId)
                 })
@@ -333,10 +351,10 @@ class OfficeJobExecutor(
             throw e
         } catch (e: Exception) {
             DebugLog.w("OfficeJob", "Job $jobId execution failed: ${e.message}")
-            // 终态只写入一次：失败也占用终态
+            // 失败上报：使用独立 fail 端点，不复用 complete
             if (completedFlag.compareAndSet(false, true) && leaseToken != null) {
                 try {
-                    api.completeJob(jobId, leaseToken!!, buildJsonObject {
+                    api.failJob(jobId, leaseToken!!, buildJsonObject {
                         put("error", safeFailure(e))
                     })
                 } catch (ce: CancellationException) {
@@ -371,22 +389,39 @@ class OfficeJobExecutor(
         }
     }
 
-    /** 安全回传状态：失败时静默忽略，不中断执行。 */
-    private suspend fun postStatusSafe(
+    /**
+     * 续租时轮询审批状态。查询 `GET /jobs/:id` 的 `job.approval` 字段，
+     * 如果审批已决断（approved/rejected），resolve 等待中的 approval deferred。
+     * 与 dsh-im `office-job-executor.mjs` 的 `#renew` 审批轮询逻辑对齐。
+     */
+    private suspend fun pollApprovalStatus(jobId: String) {
+        val snapshot = api.getJob(jobId)
+        val approval = snapshot["job"]?.jsonObject?.get("approval")?.jsonObject ?: return
+        val approvalId = approval["id"]?.let { (it as? JsonPrimitive)?.contentOrNull } ?: return
+        val status = approval["status"]?.let { (it as? JsonPrimitive)?.contentOrNull } ?: return
+        if (status != "approved" && status != "rejected") return
+        val key = "$jobId:$approvalId"
+        val pending = pendingApprovals[key] ?: return
+        val answer = approval["answer"]?.let { (it as? JsonPrimitive)?.contentOrNull } ?: ""
+        pending.complete(OfficeApprovalReply(status, answer))
+    }
+
+    /** 安全回传进度：失败时静默忽略，不中断执行。 */
+    private suspend fun postProgressSafe(
         jobId: String,
         leaseToken: String,
         kind: String,
         message: String,
     ) {
         try {
-            api.postStatus(jobId, leaseToken, buildJsonObject {
+            api.postProgress(jobId, leaseToken, buildJsonObject {
                 put("kind", kind)
                 put("message", message.take(4000))
             })
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            DebugLog.d("OfficeJob", "status post failed: ${e.message}")
+            DebugLog.d("OfficeJob", "progress post failed: ${e.message}")
         }
     }
 

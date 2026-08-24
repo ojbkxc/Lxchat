@@ -24,6 +24,8 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -282,12 +284,22 @@ class OfficeConnectorService(
         }
     }
 
-    /** 构建能力声明 JSON（发送给 Office 作为 Heartbeat payload）。 */
+    /**
+     * 构建能力声明 JSON（发送给 Office 作为 Heartbeat payload）。
+     *
+     * `workspaces` 和 `instructionPresets` 使用 JSON 数组格式（与 dsh-im
+     * `office-runtime.mjs` 的 `capabilities()` 对齐，返回 `Object.keys(...)` 数组），
+     * 而非逗号分隔字符串。
+     */
     private fun buildCapabilities(): JsonObject = buildJsonObject {
         put("protocolVersion", OfficeProtocol.PROTOCOL_VERSION)
         put("deviceId", api.deviceId)
         put("maxConcurrency", settings.maxConcurrency)
-        put("workspaces", settings.workspaces.keys.joinToString(","))
-        put("instructionPresets", settings.instructionPresets.keys.joinToString(","))
+        put("workspaces", buildJsonArray {
+            settings.workspaces.keys.forEach { add(it) }
+        })
+        put("instructionPresets", buildJsonArray {
+            settings.instructionPresets.keys.forEach { add(it) }
+        })
     }
 }

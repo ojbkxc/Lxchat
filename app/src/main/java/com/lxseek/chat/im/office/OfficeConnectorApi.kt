@@ -27,19 +27,25 @@ object OfficeProtocol {
     /** 协议版本号，Heartbeat 响应必须携带此值。 */
     const val PROTOCOL_VERSION = "office-harness.v1"
 
-    // ── 固定 Hook 路径（任务规范路径，单数 `job`） ─────────────────────────
+    // ── 固定 Hook 路径（任务规范路径，复数 `jobs`，与 dsh-im protocol.mjs 对齐） ───
     /** Heartbeat：鉴权 + 能力握手。 */
     const val PATH_HEARTBEAT = "/api/harness/connector/heartbeat"
     /** SSE 下行流：Office → 本机事件流。 */
     const val PATH_STREAM = "/api/harness/connector/stream"
-    /** 任务领取（90 秒租约）。 */
-    const val PATH_JOB_CLAIM = "/api/harness/connector/job/%s/claim"
-    /** 租约续租（每 30 秒）。 */
-    const val PATH_JOB_RENEW = "/api/harness/connector/job/%s/renew"
-    /** 状态回传（增量文字 / 工具名 / 审批请求）。 */
-    const val PATH_JOB_STATUS = "/api/harness/connector/job/%s/status"
-    /** 终态写入（只允许一次）。 */
-    const val PATH_JOB_COMPLETE = "/api/harness/connector/job/%s/complete"
+    /** 查询单个任务详情（GET）。 */
+    const val PATH_JOB = "/api/harness/connector/jobs/%s"
+    /** 任务领取（POST，90 秒租约）。 */
+    const val PATH_JOB_ACCEPT = "/api/harness/connector/jobs/%s/accept"
+    /** 租约续租（POST，每 30 秒）。 */
+    const val PATH_JOB_RENEW = "/api/harness/connector/jobs/%s/renew"
+    /** 进度回传（POST，增量文字 / 工具名 / 状态）。 */
+    const val PATH_JOB_PROGRESS = "/api/harness/connector/jobs/%s/progress"
+    /** 审批请求（POST，独立端点，不复用 progress）。 */
+    const val PATH_JOB_APPROVAL = "/api/harness/connector/jobs/%s/approval"
+    /** 终态写入（POST，只允许一次）。 */
+    const val PATH_JOB_RESULT = "/api/harness/connector/jobs/%s/result"
+    /** 失败上报（POST，独立端点，不复用 result）。 */
+    const val PATH_JOB_FAIL = "/api/harness/connector/jobs/%s/fail"
 
     /** 租约时长（秒）。 */
     const val LEASE_SECONDS = 90
@@ -168,8 +174,9 @@ class OfficeSseStream(
 /**
  * AI Office Connector 协议客户端（传输层）。
  *
- * 封装 Heartbeat、SSE 下行流、任务领取、租约续租、状态回传、终态写入六个固定 Hook。
- * 复用 Lxchat 已有的 [HttpClient]（共享 OkHttp 连接池、代理、超时）和 [DebugLog]。
+ * 封装 Heartbeat、SSE 下行流、任务查询、任务领取、租约续租、进度回传、审批请求、
+ * 终态写入、失败上报九个固定 Hook。复用 Lxchat 已有的 [HttpClient]（共享 OkHttp 连接池、
+ * 代理、超时）和 [DebugLog]。
  *
  * 鉴权通过 `Authorization: Bearer <deviceToken>` + `x-harness-device-id` 头完成；
  * 租约操作额外携带 `x-harness-lease-token` 头。Device Token 只在本类内部使用，
@@ -233,6 +240,31 @@ class OfficeConnectorApi(
         }
         if (!response.isSuccessful) {
             throw transportError("POST $path", response.code)
+        }
+        parseJsonObject(response.body)
+    }
+
+    /** GET JSON 并解析响应为 JsonObject。 */
+    private suspend fun getJson(
+        path: String,
+        leaseToken: String? = null,
+    ): JsonObject = withContext(Dispatchers.IO) {
+        val url = base + path
+        val headers = authHeaders(
+            buildMap {
+                put("accept", "application/json")
+                if (leaseToken != null) put("x-harness-lease-token", leaseToken)
+            }
+        )
+        val response = try {
+            HttpClient.getTextResponse(url, headers)
+        } catch (e: Exception) {
+            throw OfficeTransportException(
+                "AI Office GET $path could not be completed: ${e.message}",
+            )
+        }
+        if (!response.isSuccessful) {
+            throw transportError("GET $path", response.code)
         }
         parseJsonObject(response.body)
     }
@@ -315,15 +347,25 @@ class OfficeConnectorApi(
     }
 
     /**
-     * 任务领取：`POST /api/harness/connector/job/:id/claim`。
+     * 查询任务详情：`GET /api/harness/connector/jobs/:id`。
      *
-     * 领取任务并获得 90 秒租约。返回包含 `leaseToken` 和 `job` 的响应对象。
+     * 返回包含 `job` 字段的响应对象。用于领取前的两步流程第一步，
+     * 以及续租时轮询审批状态。
      */
-    suspend fun claimJob(jobId: String): JsonObject =
-        postJson(OfficeProtocol.PATH_JOB_CLAIM.format(jobId), buildJsonObject {})
+    suspend fun getJob(jobId: String): JsonObject =
+        getJson(OfficeProtocol.PATH_JOB.format(jobId))
 
     /**
-     * 租约续租：`POST /api/harness/connector/job/:id/renew`。
+     * 任务领取：`POST /api/harness/connector/jobs/:id/accept`。
+     *
+     * 确认领取任务并获得 90 秒租约。返回包含 `leaseToken` 的响应对象。
+     * 必须先调用 [getJob] 查询任务详情（两步 get+accept 流程）。
+     */
+    suspend fun acceptJob(jobId: String): JsonObject =
+        postJson(OfficeProtocol.PATH_JOB_ACCEPT.format(jobId), buildJsonObject {})
+
+    /**
+     * 租约续租：`POST /api/harness/connector/jobs/:id/renew`。
      *
      * 每 30 秒调用一次以保持租约。需携带 [leaseToken]。
      */
@@ -331,21 +373,38 @@ class OfficeConnectorApi(
         postJson(OfficeProtocol.PATH_JOB_RENEW.format(jobId), buildJsonObject {}, leaseToken)
 
     /**
-     * 状态回传：`POST /api/harness/connector/job/:id/status`。
+     * 进度回传：`POST /api/harness/connector/jobs/:id/progress`。
      *
-     * 增量回传执行状态（文字增量、工具名、审批请求）。需携带 [leaseToken]。
+     * 增量回传执行状态（文字增量、工具名、状态消息）。需携带 [leaseToken]。
      */
-    suspend fun postStatus(jobId: String, leaseToken: String, body: JsonObject): JsonObject =
-        postJson(OfficeProtocol.PATH_JOB_STATUS.format(jobId), body, leaseToken)
+    suspend fun postProgress(jobId: String, leaseToken: String, body: JsonObject): JsonObject =
+        postJson(OfficeProtocol.PATH_JOB_PROGRESS.format(jobId), body, leaseToken)
 
     /**
-     * 终态写入：`POST /api/harness/connector/job/:id/complete`。
+     * 审批请求：`POST /api/harness/connector/jobs/:id/approval`。
+     *
+     * 独立端点，不复用 [postProgress]。向 Office 人工面板请求审批（工具批准 / 补充问题）。
+     * 需携带 [leaseToken]。
+     */
+    suspend fun requestApproval(jobId: String, leaseToken: String, body: JsonObject): JsonObject =
+        postJson(OfficeProtocol.PATH_JOB_APPROVAL.format(jobId), body, leaseToken)
+
+    /**
+     * 终态写入：`POST /api/harness/connector/jobs/:id/result`。
      *
      * 完成任务，写入最终结果。只允许调用一次；重复调用会被 Office 拒绝（409）。
      * 需携带 [leaseToken]。
      */
     suspend fun completeJob(jobId: String, leaseToken: String, body: JsonObject): JsonObject =
-        postJson(OfficeProtocol.PATH_JOB_COMPLETE.format(jobId), body, leaseToken)
+        postJson(OfficeProtocol.PATH_JOB_RESULT.format(jobId), body, leaseToken)
+
+    /**
+     * 失败上报：`POST /api/harness/connector/jobs/:id/fail`。
+     *
+     * 独立端点，不复用 [completeJob]。上报任务执行失败。需携带 [leaseToken]。
+     */
+    suspend fun failJob(jobId: String, leaseToken: String, body: JsonObject): JsonObject =
+        postJson(OfficeProtocol.PATH_JOB_FAIL.format(jobId), body, leaseToken)
 
     companion object {
         /**
@@ -358,10 +417,13 @@ class OfficeConnectorApi(
             return linkedMapOf(
                 "heartbeat" to (base + OfficeProtocol.PATH_HEARTBEAT),
                 "stream" to (base + OfficeProtocol.PATH_STREAM),
-                "job_claim" to (base + OfficeProtocol.PATH_JOB_CLAIM.format(":id")),
+                "job" to (base + OfficeProtocol.PATH_JOB.format(":id")),
+                "job_accept" to (base + OfficeProtocol.PATH_JOB_ACCEPT.format(":id")),
                 "job_renew" to (base + OfficeProtocol.PATH_JOB_RENEW.format(":id")),
-                "job_status" to (base + OfficeProtocol.PATH_JOB_STATUS.format(":id")),
-                "job_complete" to (base + OfficeProtocol.PATH_JOB_COMPLETE.format(":id")),
+                "job_progress" to (base + OfficeProtocol.PATH_JOB_PROGRESS.format(":id")),
+                "job_approval" to (base + OfficeProtocol.PATH_JOB_APPROVAL.format(":id")),
+                "job_result" to (base + OfficeProtocol.PATH_JOB_RESULT.format(":id")),
+                "job_fail" to (base + OfficeProtocol.PATH_JOB_FAIL.format(":id")),
             )
         }
 
