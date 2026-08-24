@@ -88,6 +88,8 @@ class WeixinIlinkApi(
         val msgs: List<JsonObject>,
         val getUpdatesBuf: String,
         val raw: JsonObject,
+        /** Server-suggested timeout (ms) for the next getUpdates long-poll. 0 = use default. */
+        val longpollingTimeoutMs: Long = 0L,
     )
 
     /** 图片引用（懒加载解密）。 */
@@ -198,6 +200,7 @@ class WeixinIlinkApi(
             msgs = response["msgs"].arr()?.mapNotNull { it.obj() } ?: emptyList(),
             getUpdatesBuf = response["get_updates_buf"].str() ?: getUpdatesBuf,
             raw = response,
+            longpollingTimeoutMs = response["longpolling_timeout_ms"].long() ?: 0L,
         )
     }
 

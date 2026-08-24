@@ -41,3 +41,9 @@ signing.properties
 
 # Local CI log extraction (diagnostic only)
 .ci-logs-extract/
+
+# Local build artifacts and diagnostic files
+/dist/
+build-failure.txt
+ci-log.txt
+runs.json

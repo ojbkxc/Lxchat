@@ -38,16 +38,31 @@ class WeixinChannel(
 
     private val state = ChannelState()
 
+    /**
+     * context_token store: userId → latest context_token from inbound messages.
+     * The iLink protocol requires echoing the context_token verbatim in every reply;
+     * without it the server may silently drop the reply (per weixin-bot-api.md and
+     * easy-weixin-clawbot SDK which refuses to send without it).
+     */
+    private val contextTokenStore = ConcurrentHashMap<String, String>()
+
     /** Ensures notifyStart is called once before the first getUpdates poll. */
     @Volatile
     private var notified = false
+
+    /** Dynamic long-poll timeout suggested by the server (0 = use default). */
+    @Volatile
+    private var longPollTimeoutMs: Long = 0L
 
     override suspend fun sendMessage(conversationId: String, text: String): ImSendResult {
         if (!isConfigured) return ImSendResult.NotConfigured
         val recipient = conversationId.trim()
         if (recipient.isEmpty()) return ImSendResult.Failure("conversationId is empty")
         return try {
-            api.sendText(baseUrl, config.token, recipient, text)
+            // context_token is required by the iLink protocol for conversation association.
+            val contextToken = contextTokenStore[recipient]
+            DebugLog.d("WeixinChannel", "sendMessage: recipient=$recipient hasContextToken=${contextToken != null}")
+            api.sendText(baseUrl, config.token, recipient, text, contextToken)
             // 用 client_id 风格的本地 id 作为成功回执（iLink 不回 server id）
             ImSendResult.Success("lxchat-weixin-sent-${System.currentTimeMillis()}")
         } catch (e: WeixinApiError) {
@@ -83,19 +98,24 @@ class WeixinChannel(
                 notified = true
                 DebugLog.d("WeixinChannel", "pollUpdates: notifyStart succeeded")
             }
-            val updates = api.getUpdates(baseUrl, config.token, state.getUpdatesBuf())
-            DebugLog.d("WeixinChannel", "pollUpdates: received ${updates.msgs.size} msgs, ret=${updates.ret}, bufLen=${updates.getUpdatesBuf.length}")
+            val timeoutMs = if (longPollTimeoutMs > 0) longPollTimeoutMs else WeixinIlinkApi.DEFAULT_LONG_POLL_TIMEOUT_MS
+            val updates = api.getUpdates(baseUrl, config.token, state.getUpdatesBuf(), timeoutMs)
+            DebugLog.d("WeixinChannel", "pollUpdates: received ${updates.msgs.size} msgs, ret=${updates.ret}, bufLen=${updates.getUpdatesBuf.length}, serverTimeout=${updates.longpollingTimeoutMs}")
+            // Use server-suggested long-poll timeout for the next request.
+            if (updates.longpollingTimeoutMs > 0) {
+                longPollTimeoutMs = updates.longpollingTimeoutMs
+            }
             // Check for server-side rejection (dsh-im checks ret and errcode).
             val errcode = updates.raw["errcode"]?.let { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }
             if ((updates.ret != 0) || (errcode != null && errcode != 0)) {
                 val code = errcode ?: updates.ret
-                DebugLog.e("WeixinChannel", "pollUpdates rejected: ret=${updates.ret} errcode=$errcode")
+                DebugLog.e("WeixinChannel", "pollUpdates rejected: ret=${updates.ret} errcode=$errcode errmsg=${updates.raw["errmsg"]?.strSafe()}")
                 if (code == -14) {
-                    DebugLog.e("WeixinChannel", "stale token — re-scan required")
+                    DebugLog.e("WeixinChannel", "stale token (errcode -14) — re-scan required")
                 }
                 return
             }
-            state.applyUpdates(updates)
+            state.applyUpdates(updates, contextTokenStore)
         } catch (e: WeixinApiError) {
             DebugLog.e("WeixinChannel", "pollUpdates failed: ${e.code}", e)
         } catch (e: Exception) {
@@ -114,9 +134,14 @@ class WeixinChannel(
 
         fun getUpdatesBuf(): String = _getUpdatesBuf
 
-        fun applyUpdates(updates: WeixinIlinkApi.Updates) {
-            _getUpdatesBuf = updates.getUpdatesBuf
-            DebugLog.d("WeixinChannel", "applyUpdates: processing ${updates.msgs.size} msgs")
+        fun applyUpdates(updates: WeixinIlinkApi.Updates, contextTokenStore: ConcurrentHashMap<String, String>) {
+            // Only update the cursor if the server returned a non-empty buf.
+            // An empty buf would reset the cursor and potentially miss messages.
+            // (Matches easy-weixin-clawbot monitor.ts behavior.)
+            if (updates.getUpdatesBuf.isNotEmpty()) {
+                _getUpdatesBuf = updates.getUpdatesBuf
+            }
+            DebugLog.d("WeixinChannel", "applyUpdates: processing ${updates.msgs.size} msgs, bufUpdated=${updates.getUpdatesBuf.isNotEmpty()}")
             for (msg in updates.msgs) {
                 // dsh-im skips message_type === 2 (outgoing messages sent by the bot itself).
                 val msgType = msg["message_type"]?.let { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }
@@ -124,7 +149,13 @@ class WeixinChannel(
                 val text = WeixinIlinkApi.extractWeixinText(msg)
                 val msgId = WeixinIlinkApi.weixinMessageId(msg)
                 val fromUserId = msg["from_user_id"]?.strSafe()
-                DebugLog.d("WeixinChannel", "applyUpdates: msg text=${text?.take(50)} id=$msgId from=$fromUserId keys=${msg.keys}")
+                // Extract and store context_token — required for replies (per weixin-bot-api.md).
+                val contextToken = msg["context_token"]?.strSafe()
+                if (fromUserId != null && fromUserId.isNotEmpty() && !contextToken.isNullOrEmpty()) {
+                    contextTokenStore[fromUserId] = contextToken
+                    DebugLog.d("WeixinChannel", "applyUpdates: stored context_token for user=$fromUserId")
+                }
+                DebugLog.d("WeixinChannel", "applyUpdates: msg text=${text?.take(50)} id=$msgId from=$fromUserId hasCtxToken=${!contextToken.isNullOrEmpty()} keys=${msg.keys}")
                 if (text == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - text is null"); continue }
                 if (msgId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - msgId is null"); continue }
                 if (fromUserId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is null"); continue }
