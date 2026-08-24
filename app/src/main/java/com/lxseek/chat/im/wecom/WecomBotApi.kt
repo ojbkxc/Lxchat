@@ -1,9 +1,6 @@
 package com.lxseek.chat.im.wecom
 
-import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -12,7 +9,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okhttp3.OkHttpClient
@@ -20,151 +16,48 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import java.net.URLEncoder
+import java.security.SecureRandom
 
 // ── JSON 导航辅助：用 `as?` 安全转型，单字段类型不符不会让整条消息解析失败 ──
-private fun JsonElement?.obj(): JsonObject? = this as? JsonObject
-private fun JsonElement?.str(): String? = (this as? JsonPrimitive)?.contentOrNull
-private fun JsonElement?.int(): Int? = (this as? JsonPrimitive)?.intOrNull
-private fun JsonElement?.long(): Long? = (this as? JsonPrimitive)?.longOrNull
+internal fun JsonElement?.obj(): JsonObject? = this as? JsonObject
+internal fun JsonElement?.str(): String? = (this as? JsonPrimitive)?.contentOrNull
+internal fun JsonElement?.int(): Int? = (this as? JsonPrimitive)?.intOrNull
 
-/** 企业微信 API 错误。errcode 非 0 或 HTTP 失败时抛出。 */
+/** 企业微信 AI 机器人协议错误。errcode 非 0 或协议帧非法时抛出。 */
 class WecomApiException(message: String, val errorCode: Int? = null) : Exception(message)
 
 /**
- * 企业微信机器人 API 客户端：封装 access_token 获取/缓存、消息发送 REST API、
- * 以及 WebSocket 长连接的建立。
+ * 企业微信 AI 机器人 WebSocket 协议客户端。
  *
- * 纯 HTTP/WebSocket over [HttpClient] 的共享 OkHttp 实例，无额外 SDK 依赖。
+ * 协议来自 `@wecom/aibot-node-sdk@1.0.7` 源码分析（dsh-im 的 wecom-runtime.mjs 用法），
+ * 与"经典企业微信 REST API"（cgi-bin/gettoken + cgi-bin/message/send）完全不同：
  *
- * 协议参考：
- *  - access_token: https://developer.work.weixin.qq.com/document/path/91039
- *  - 消息发送:     https://developer.work.weixin.qq.com/document/path/90236
- *  - WebSocket 长连接: 基于 dsh-im 的 @wecom/aibot-node-sdk 协议推断
- *    （dsh-im/src/channels/wecom/wecom-runtime.mjs 的 WSClient 用法）
+ * - **端点**：`wss://openws.work.weixin.qq.com`（不是 qyapi.weixin.qq.com）
+ * - **认证**：连接建立后发送 `aibot_subscribe` 帧（不是 URL 查询参数，也不是 access_token）
+ * - **心跳**：定时发送 `{cmd: "ping", headers: {req_id}}`
+ * - **被动回复**：`aibot_respond_msg`（透传收到的 req_id，stream 分片）
+ * - **主动发送**：`aibot_send_msg`（用 chatid + markdown）
+ * - **入站推送**：`aibot_msg_callback`（消息）/ `aibot_event_callback`（事件）
  *
- * 配置映射（复用 [com.lxseek.chat.im.ImGatewayConfig] 字段）：
- *  - [corpId]  ← config.token   （企业 CorpID / AI 机器人 Bot ID）
- *  - [secret]  ← config.baseUrl （应用 Secret / Bot Secret）
- *  - [agentId] ← config.botId   （应用 AgentID，可选，默认 1000002）
+ * 配置映射（与 dsh-im 的 `config.remoteBotId` + `secret` 对齐）：
+ *  - [botId]  ← config.token   （AI 机器人 Bot ID，即 dsh-im 的 remoteBotId）
+ *  - [secret] ← config.baseUrl  （AI 机器人 Secret）
+ *
+ * 不需要 corpId / agentId / access_token——AI 机器人协议用 botId+secret 直接认证。
  */
 class WecomBotApi(
-    /** 企业 CorpID（或 AI 机器人 Bot ID）。 */
-    val corpId: String,
-    /** 应用 Secret（或 AI 机器人 Secret）。 */
+    /** AI 机器人 Bot ID（dsh-im 的 remoteBotId）。 */
+    val botId: String,
+    /** AI 机器人 Secret。 */
     val secret: String,
-    /** 应用 AgentID；为空时用 [DEFAULT_AGENT_ID]。 */
-    val agentId: String = "",
-    /** REST API 基地址，可覆盖用于测试或自建网关。 */
-    private val apiBase: String = DEFAULT_API_BASE,
     /** WebSocket 端点，可覆盖用于测试。 */
     private val wsEndpoint: String = DEFAULT_WS_ENDPOINT,
-    private val client: OkHttpClient = HttpClient.client,
+    private val client: OkHttpClient = com.lxseek.chat.api.HttpClient.client,
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
     init {
-        require(corpId.isNotBlank()) { "corpId (Bot ID) is required" }
+        require(botId.isNotBlank()) { "botId is required" }
         require(secret.isNotBlank()) { "secret is required" }
-    }
-
-    // ── access_token 缓存 ──────────────────────────────────────────────
-    // 企业微信 access_token 有效期 7200 秒；提前 [TOKEN_REFRESH_MARGIN_S] 秒刷新，
-    // 避免在边界上用到过期 token。两个字段一起读，@Volatile 保证可见性。
-    @Volatile private var cachedToken: String? = null
-    @Volatile private var tokenExpiresAtMs: Long = 0L
-
-    /**
-     * 获取有效的 access_token，带本地缓存。并发调用可能触发多次刷新，但结果一致，
-     * 企业微信不会因此限流（gettoken 的 QPS 限制远高于此）。
-     */
-    suspend fun getAccessToken(): String {
-        val now = System.currentTimeMillis()
-        val cached = cachedToken
-        if (cached != null && now < tokenExpiresAtMs) return cached
-        return refreshAccessToken()
-    }
-
-    private suspend fun refreshAccessToken(): String = withContext(Dispatchers.IO) {
-        val url = "$apiBase/cgi-bin/gettoken?corpid=${urlEncode(corpId)}&corpsecret=${urlEncode(secret)}"
-        DebugLog.d("WecomBotApi", "refreshing access_token")
-        val response = HttpClient.getTextResponse(url)
-        if (!response.isSuccessful) {
-            throw WecomApiException("获取 access_token 失败 (HTTP ${response.code})")
-        }
-        val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
-            ?: throw WecomApiException("access_token 响应非合法 JSON")
-        val errcode = root["errcode"]?.int() ?: 0
-        if (errcode != 0) {
-            val errmsg = root["errmsg"]?.str() ?: "unknown"
-            throw WecomApiException("企业微信返回错误: $errmsg (errcode=$errcode)", errcode)
-        }
-        val token = root["access_token"]?.str()
-            ?: throw WecomApiException("access_token 响应缺少 access_token 字段")
-        val expiresIn = root["expires_in"]?.long() ?: 7200L
-        cachedToken = token
-        // 提前 5 分钟刷新，避免边界过期
-        tokenExpiresAtMs = System.currentTimeMillis() + (expiresIn - TOKEN_REFRESH_MARGIN_S) * 1000L
-        token
-    }
-
-    // ── 消息发送 REST API ──────────────────────────────────────────────
-
-    /**
-     * 发送文本消息给指定用户（[toUser]）。返回企业微信分配的 msgid。
-     *
-     * POST `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=ACCESS_TOKEN`
-     * body: `{"touser":"UserID","msgtype":"text","agentid":1000002,"text":{"content":"..."}}`
-     *
-     * access_token 自动获取并缓存；过期时自动刷新重试一次。
-     */
-    suspend fun sendMessage(toUser: String, text: String): String = withContext(Dispatchers.IO) {
-        val recipient = toUser.trim().takeIf { it.isNotEmpty() }
-            ?: throw IllegalArgumentException("toUser is required")
-        val content = text.trim().takeIf { it.isNotEmpty() }
-            ?: throw IllegalArgumentException("text is required")
-        val agentIdInt = agentId.trim().ifBlank { DEFAULT_AGENT_ID }.toIntOrNull()
-            ?: DEFAULT_AGENT_ID.toInt()
-
-        // 确保 access_token 已获取（首次调用或缓存过期时触发刷新）
-        getAccessToken()
-        try {
-            callMessageSend(recipient, content, agentIdInt)
-        } catch (e: WecomApiException) {
-            // errcode 42001 = access_token 过期，强制刷新后重试一次
-            if (e.errorCode == ERR_ACCESS_TOKEN_EXPIRED) {
-                DebugLog.w("WecomBotApi", "access_token expired, refreshing and retrying")
-                cachedToken = null
-                getAccessToken()
-                callMessageSend(recipient, content, agentIdInt)
-            } else throw e
-        }
-    }
-
-    private fun callMessageSend(toUser: String, text: String, agentIdInt: Int): String {
-        val token = cachedToken
-            ?: throw WecomApiException("access_token not available; call getAccessToken() first")
-        val url = "$apiBase/cgi-bin/message/send?access_token=${urlEncode(token)}"
-        val body = buildJsonObject {
-            put("touser", toUser)
-            put("msgtype", "text")
-            put("agentid", agentIdInt)
-            putJsonObject("text") { put("content", text) }
-            // 启用重复检查避免快速重发同一内容
-            put("enable_duplicate_check", 1)
-            put("duplicate_check_interval", 1800)
-        }.toString()
-        val response = HttpClient.postTextResponse(url, body, emptyMap())
-        if (!response.isSuccessful) {
-            throw WecomApiException("发送消息失败 (HTTP ${response.code})")
-        }
-        val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
-            ?: throw WecomApiException("message/send 响应非合法 JSON")
-        val errcode = root["errcode"]?.int() ?: 0
-        if (errcode != 0) {
-            val errmsg = root["errmsg"]?.str() ?: "unknown"
-            throw WecomApiException("企业微信发送失败: $errmsg (errcode=$errcode)", errcode)
-        }
-        return root["msgid"]?.str() ?: "wecom-sent-${System.currentTimeMillis()}"
     }
 
     // ── WebSocket 长连接 ──────────────────────────────────────────────
@@ -172,18 +65,19 @@ class WecomBotApi(
     /**
      * 打开企业微信 AI 机器人 WebSocket 长连接，返回 [WebSocket] 句柄。
      *
-     * 基于 dsh-im 的 @wecom/aibot-node-sdk 协议：用 botId + secret 认证，
-     * 服务器通过 WebSocket 推送消息帧。消息帧格式（dsh-im wecom-bridge.mjs）：
-     * ```
-     * { "body": { "msgid", "from": { "userid" }, "chattype": "single"|"group",
-     *            "chatid", "msgtype": "text", "text": { "content" } } }
-     * ```
+     * **认证流程**（与 dsh-im 的 WSClient 一致）：
+     *  1. 连接 `wss://openws.work.weixin.qq.com`（不带查询参数）
+     *  2. onOpen 后立即发送 `aibot_subscribe` 帧：
+     *     ```
+     *     { "cmd": "aibot_subscribe",
+     *       "headers": { "req_id": "aibot_subscribe_{ts}_{rand}" },
+     *       "body": { "bot_id": "...", "secret": "..." } }
+     *     ```
+     *  3. 服务器回 `{ "headers": { "req_id": "..." }, "errcode": 0, "errmsg": "ok" }`
+     *     （req_id 以 "aibot_subscribe" 开头），认证完成。
      *
-     * 认证信息通过 URL 查询参数传递（`bot_id` + `secret`），这是 SDK 内部协议的
-     * 常见方式。如实际协议要求连接后发送认证消息，可在 [onOpen] 回调中发送。
-     *
-     * [onMessage] 在收到文本帧时调用（原始 JSON 字符串）；
-     * [onOpen] 在连接建立时调用；[onClose] 在连接关闭时调用；[onError] 在异常时调用。
+     * [onMessage] 在收到文本帧时调用（原始 JSON 字符串），由上层解析 cmd/headers/body。
+     * [onOpen] 在连接建立（认证帧发送前）调用；[onClose] / [onError] 同 OkHttp 语义。
      *
      * 调用 [WebSocket.close] 主动断开。非同步——回调在 OkHttp 的线程池上执行。
      */
@@ -193,12 +87,20 @@ class WecomBotApi(
         onClose: (Int, String) -> Unit = { _, _ -> },
         onError: (Throwable) -> Unit = {},
     ): WebSocket {
-        // 认证信息通过 URL 参数传递（基于 dsh-im WSClient { botId, secret } 推断）
-        val url = "$wsEndpoint?bot_id=${urlEncode(corpId)}&secret=${urlEncode(secret)}"
-        val request = Request.Builder().url(url).build()
+        // 不带 bot_id/secret 查询参数——认证通过连接后的 aibot_subscribe 帧
+        val request = Request.Builder().url(wsEndpoint).build()
         return client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                DebugLog.d("WecomBotApi", "WebSocket onOpen")
+                DebugLog.d("WecomBotApi", "WebSocket onOpen, sending aibot_subscribe")
+                // 连接建立后立即发送认证帧
+                val sent = runCatching { webSocket.send(buildAuthFrame()) }
+                    .onFailure { DebugLog.e("WecomBotApi", "send aibot_subscribe failed", it) }
+                    .getOrDefault(false)
+                if (!sent) {
+                    DebugLog.e("WecomBotApi", "aibot_subscribe send returned false, closing")
+                    webSocket.close(1001, "auth frame send failed")
+                    return
+                }
                 onOpen()
             }
 
@@ -223,28 +125,163 @@ class WecomBotApi(
         })
     }
 
-    companion object {
-        /** 企业微信 REST API 基地址。 */
-        const val DEFAULT_API_BASE = "https://qyapi.weixin.qq.com"
+    // ── 协议帧构造 ──────────────────────────────────────────────────
 
+    /** 构造认证帧（aibot_subscribe）。 */
+    private fun buildAuthFrame(): String = buildJsonObject {
+        put("cmd", "aibot_subscribe")
+        putJsonObject("headers") { put("req_id", generateReqId("aibot_subscribe")) }
+        putJsonObject("body") {
+            put("bot_id", botId)
+            put("secret", secret)
+        }
+    }.toString()
+
+    /**
+     * 构造心跳帧（ping）。返回 JSON 字符串，调用方负责 `ws.send(...)`。
+     * 服务器回执：`{headers: {req_id}, errcode: 0, errmsg: "ok"}`（req_id 以 "ping" 开头）。
+     */
+    fun buildPingFrame(): String = buildJsonObject {
+        put("cmd", "ping")
+        putJsonObject("headers") { put("req_id", generateReqId("ping")) }
+    }.toString()
+
+    /**
+     * 主动发送消息（aibot_send_msg）。
+     *
+     * 用于不依赖入站帧的场景（如主动问候、连接测试）。回复收到的消息应改用
+     * [buildRespondMsgFrame] 透传 req_id。
+     *
+     * @param chatId 单聊填 userid，群聊填 chatid（与 dsh-im wecom-bridge.mjs 一致）
+     * @param text   markdown 文本
+     * @return JSON 字符串，调用方负责 `ws.send(...)`
+     */
+    fun buildSendMsgFrame(chatId: String, text: String): String = buildJsonObject {
+        put("cmd", "aibot_send_msg")
+        putJsonObject("headers") { put("req_id", generateReqId("aibot_send_msg")) }
+        putJsonObject("body") {
+            put("chatid", chatId)
+            put("msgtype", "markdown")
+            putJsonObject("markdown") { put("content", text) }
+        }
+    }.toString()
+
+    /**
+     * 被动回复消息（aibot_respond_msg）——透传收到的 req_id。
+     *
+     * 与 dsh-im 的 `client.replyStream(frame, streamId, content, finish)` 对齐：
+     * 用同一 streamId 分片发送，最后一帧 `finish=true`。回执无 cmd，req_id 匹配发送的 req_id。
+     *
+     * @param reqId    透传收到的 req_id（不是新生成的）
+     * @param streamId 流式分片 ID（同一回复的所有分片共享）
+     * @param content  markdown 内容分片
+     * @param finish   是否为最后一帧
+     * @return JSON 字符串，调用方负责 `ws.send(...)`
+     */
+    fun buildRespondMsgFrame(reqId: String, streamId: String, content: String, finish: Boolean): String =
+        buildJsonObject {
+            put("cmd", "aibot_respond_msg")
+            putJsonObject("headers") { put("req_id", reqId) }
+            putJsonObject("body") {
+                put("msgtype", "stream")
+                putJsonObject("stream") {
+                    put("id", streamId)
+                    put("finish", finish)
+                    put("content", content)
+                }
+            }
+        }.toString()
+
+    // ── 协议帧解析 ──────────────────────────────────────────────────
+
+    /**
+     * 解析协议帧的 [WecomFrame] 视图。识别：
+     *  - 认证响应：无 cmd，`headers.req_id` 以 "aibot_subscribe" 开头
+     *  - 心跳响应：无 cmd，`headers.req_id` 以 "ping" 开头
+     *  - 消息回调：`cmd = "aibot_msg_callback"`
+     *  - 事件回调：`cmd = "aibot_event_callback"`
+     *  - 回执（发送/回复）：无 cmd，`headers.req_id` 匹配之前发出的 req_id
+     *
+     * @return 解析失败的帧返回 null（调用方应忽略而非崩溃）。
+     */
+    fun parseFrame(raw: String): WecomFrame? {
+        val root = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return null
+        val cmd = root["cmd"]?.str()
+        val headers = root["headers"]?.obj()
+        val reqId = headers?.get("req_id")?.str()
+        val errcode = root["errcode"]?.int()
+        val errmsg = root["errmsg"]?.str()
+        val body = root["body"]?.obj()
+
+        return when {
+            // 消息回调（企微→开发者）
+            cmd == "aibot_msg_callback" -> WecomFrame.MessageCallback(
+                reqId = reqId ?: return null,
+                body = body ?: return null,
+            )
+            // 事件回调（企微→开发者）
+            cmd == "aibot_event_callback" -> WecomFrame.EventCallback(
+                reqId = reqId ?: return null,
+                body = body ?: return null,
+            )
+            // 认证响应
+            reqId != null && reqId.startsWith("aibot_subscribe") -> WecomFrame.AuthResponse(
+                reqId = reqId,
+                errcode = errcode ?: 0,
+                errmsg = errmsg,
+            )
+            // 心跳响应
+            reqId != null && reqId.startsWith("ping") -> WecomFrame.PingResponse(
+                reqId = reqId,
+                errcode = errcode ?: 0,
+                errmsg = errmsg,
+            )
+            // 通用回执（aibot_send_msg / aibot_respond_msg 的 ack）
+            reqId != null -> WecomFrame.Ack(
+                reqId = reqId,
+                errcode = errcode ?: 0,
+                errmsg = errmsg,
+            )
+            else -> null
+        }
+    }
+
+    /** 协议帧的解构视图，按 cmd / req_id 前缀分类。 */
+    sealed class WecomFrame {
+        /** 认证响应（req_id 以 "aibot_subscribe" 开头）。errcode=0 表示认证成功。 */
+        data class AuthResponse(val reqId: String, val errcode: Int, val errmsg: String?) : WecomFrame()
+
+        /** 心跳响应（req_id 以 "ping" 开头）。 */
+        data class PingResponse(val reqId: String, val errcode: Int, val errmsg: String?) : WecomFrame()
+
+        /** 通用回执（aibot_send_msg / aibot_respond_msg 的 ack）。 */
+        data class Ack(val reqId: String, val errcode: Int, val errmsg: String?) : WecomFrame()
+
+        /** 消息回调（cmd = "aibot_msg_callback"）。 */
+        data class MessageCallback(val reqId: String, val body: JsonObject) : WecomFrame()
+
+        /** 事件回调（cmd = "aibot_event_callback"）。 */
+        data class EventCallback(val reqId: String, val body: JsonObject) : WecomFrame()
+    }
+
+    companion object {
         /**
          * 企业微信 AI 机器人 WebSocket 端点。
          *
-         * 基于 dsh-im @wecom/aibot-node-sdk 的 WSClient 用法推断——SDK 内部协议
-         * 未公开文档，此 URL 为合理默认值。如需调整，构造时传入 [wsEndpoint]。
+         * 来自 `@wecom/aibot-node-sdk@1.0.7` 源码（dsh-im wecom-runtime.mjs 的 WSClient 用此端点）。
          */
-        const val DEFAULT_WS_ENDPOINT = "wss://qyapi.weixin.qq.com/cgi-bin/aibot/wsconnect"
+        const val DEFAULT_WS_ENDPOINT = "wss://openws.work.weixin.qq.com"
 
-        /** 默认应用 AgentID（企业微信管理后台分配）。 */
-        const val DEFAULT_AGENT_ID = "1000002"
+        private val RNG = SecureRandom()
 
-        // access_token 提前刷新余量（秒）
-        private const val TOKEN_REFRESH_MARGIN_S = 300L
-
-        // 企业微信 errcode: access_token 过期
-        private const val ERR_ACCESS_TOKEN_EXPIRED = 42001
-
-        internal fun urlEncode(value: String): String =
-            URLEncoder.encode(value, "UTF-8")
+        /**
+         * 生成 req_id：`{prefix}_{timestamp}_{random8hex}`，与 @wecom/aibot-node-sdk 的
+         * `generateReqId` 格式一致。
+         */
+        internal fun generateReqId(prefix: String): String {
+            val ts = System.currentTimeMillis()
+            val rand = RNG.nextInt(0x10000000).toString(16).padStart(7, '0')
+            return "${prefix}_${ts}_${rand}"
+        }
     }
 }
