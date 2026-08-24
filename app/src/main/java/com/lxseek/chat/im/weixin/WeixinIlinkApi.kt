@@ -328,10 +328,10 @@ class WeixinIlinkApi(
             throw WeixinApiError("untrusted-endpoint", "拒绝访问不受信任的微信服务地址。")
         }
         val headers = if (authenticated) authenticatedHeaders(token) else commonHeaders()
-        DebugLog.d("WeixinIlinkApi", "requestJson: $method $url (authenticated=$authenticated)")
+        DebugLog.d("WeixinIlinkApi", "requestJson: $method $url (authenticated=$authenticated) body=${body?.take(300)}")
         try {
             val raw = executeCall(method, url, headers, body, timeoutMs)
-            DebugLog.d("WeixinIlinkApi", "requestJson: 响应 code=${raw.code} len=${raw.body.length}")
+            DebugLog.d("WeixinIlinkApi", "requestJson: 响应 code=${raw.code} len=${raw.body.length} body=${raw.body.take(500)}")
             if (raw.code !in 200..299) {
                 throw WeixinApiError(
                     code = "http-error",
