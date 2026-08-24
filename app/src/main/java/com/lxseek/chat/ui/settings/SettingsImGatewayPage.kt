@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
+
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
@@ -47,7 +47,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
+
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -67,10 +67,7 @@ import com.lxseek.chat.im.ImPlatform
 import com.lxseek.chat.im.weixin.WeixinBindingFlow
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.viewmodel.ChatViewModel
-import coil.compose.AsyncImagePainter
-import coil.compose.rememberAsyncImagePainter
-import androidx.compose.foundation.Image
-import coil.request.ImageRequest
+import com.lxseek.chat.ui.components.QrCode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -937,15 +934,6 @@ private fun WeixinQrBindSection(
     LaunchedEffect(Unit) { startBind() }
     DisposableEffect(Unit) { onDispose { bindJob?.cancel() } }
 
-    val context = LocalContext.current
-    val qrImageRequest = remember(qrcodeUrl) {
-        if (qrcodeUrl == null) null
-        else ImageRequest.Builder(context).data(qrcodeUrl).crossfade(true).build()
-    }
-    val qrPainter = rememberAsyncImagePainter(model = qrImageRequest)
-    val qrLoadFailed = qrPainter.state is AsyncImagePainter.State.Error
-    val qrImageReady = qrPainter.state is AsyncImagePainter.State.Success
-
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         when {
             loading -> {
@@ -956,23 +944,13 @@ private fun WeixinQrBindSection(
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            qrcodeUrl != null && qrImageRequest != null -> {
-                if (qrLoadFailed) {
-                    Column(modifier = Modifier.size(220.dp).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Icon(imageVector = Icons.Default.BrokenImage, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = "二维码加载失败", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    }
-                } else if (!qrImageReady) {
-                    Box(modifier = Modifier.size(220.dp).padding(4.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                } else {
-                    Image(painter = qrPainter, contentDescription = stringResource(R.string.im_channel_bind_qr), modifier = Modifier.size(220.dp).padding(4.dp), contentScale = ContentScale.Fit)
-                }
+            qrcodeUrl != null -> {
+                QrCode(
+                    content = qrcodeUrl!!,
+                    modifier = Modifier.padding(4.dp),
+                    size = 220.dp,
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                if (qrLoadFailed) {
-                    Button(onClick = { startBind() }) { Text(stringResource(R.string.im_channel_wechat_qr_retry)) }
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
                 if (statusText != null) {
                     Text(text = statusText!!, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 }

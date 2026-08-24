@@ -23,12 +23,12 @@ import kotlin.math.abs
 /**
  * QR code Composable for device pairing. Encodes [content] into a QR matrix
  * using a minimal built-in encoder (byte mode, L error-correction, versions
- * 1-4 → up to ~62 bytes), then renders it via Compose [Canvas] — no third-party
+ * 1-9 → up to ~230 bytes), then renders it via Compose [Canvas] — no third-party
  * barcode dependency required.
  *
  * - Generation is cached with `remember(content)` so recomposition with
  *   unchanged content does not re-encode.
- * - On failure (content empty / too long for v1-4) a placeholder box is shown
+ * - On failure (content empty / too long for v1-9) a placeholder box is shown
  *   and the failure is logged via [DebugLog].
  * - The QR is rendered on a white background so it scans reliably under both
  *   light and dark themes (scanners expect dark-on-light modules).
@@ -91,14 +91,14 @@ fun QrCode(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// QR encoder — byte mode, L error-correction, versions 1-4.
+// QR encoder — byte mode, L error-correction, versions 1-9.
 //
-// Scope is intentionally minimal (one mode, one EC level, four versions) which
-// covers short pairing URLs (~62 bytes max) while keeping the implementation
-// compact. Output is a real, scannable QR code.
+// Covers pairing URLs and WeChat bind URLs up to ~230 bytes. Versions 6-9 use
+// 2 RS blocks (interleaved), versions 5-9 have multiple alignment patterns,
+// and v7+ carry version-info modules. Output is a real, scannable QR code.
 // ─────────────────────────────────────────────────────────────────────────────
 
-private const val MAX_DATA_BYTES = 62 // v4-L byte-mode capacity
+private const val MAX_DATA_BYTES = 230 // v9-L byte-mode capacity
 
 private fun encodeQr(content: String): QrMatrix? {
     val bytes = content.toByteArray(Charsets.UTF_8)
@@ -130,14 +130,30 @@ private class QrMatrix(val size: Int) {
 }
 
 private object QrEncoder {
-    // Version params: [size, dataCodewords, ecCodewords, alignmentPos].
-    // V1-4 @ L are all single-block, so no interleaving is needed.
-    // alignmentPos = -1 means no alignment pattern for that version.
+    // Version params for L error-correction level (byte mode).
+    // Source: ISO/IEC 18004 Appendix D, cross-checked with thonky.com reference.
+    //  - dataCodewords: total data codewords for this version
+    //  - ecCodewords: EC codewords PER BLOCK
+    //  - numBlocks: number of equal-size data blocks (1 for v1-5, 2 for v6-9)
+    //  - alignPositions: alignment-pattern centre coordinates (empty = none)
+    private data class VersionInfo(
+        val size: Int,
+        val dataCodewords: Int,
+        val ecCodewords: Int,
+        val numBlocks: Int,
+        val alignPositions: IntArray,
+    )
+
     private val VERSIONS = arrayOf(
-        intArrayOf(21, 19, 7, -1),  // v1
-        intArrayOf(25, 28, 10, 18), // v2
-        intArrayOf(29, 44, 15, 22), // v3
-        intArrayOf(33, 64, 20, 26), // v4
+        VersionInfo(21, 19, 7, 1, intArrayOf()),           // v1
+        VersionInfo(25, 34, 10, 1, intArrayOf(18)),         // v2
+        VersionInfo(29, 55, 15, 1, intArrayOf(22)),         // v3
+        VersionInfo(33, 80, 20, 1, intArrayOf(26)),         // v4
+        VersionInfo(37, 108, 26, 1, intArrayOf(6, 30)),     // v5
+        VersionInfo(41, 136, 18, 2, intArrayOf(6, 34)),     // v6
+        VersionInfo(45, 156, 20, 2, intArrayOf(6, 22, 38)), // v7
+        VersionInfo(49, 194, 24, 2, intArrayOf(6, 24, 42)), // v8
+        VersionInfo(53, 232, 30, 2, intArrayOf(6, 26, 46)), // v9
     )
 
     // ── GF(256) tables (modular polynomial 0x11D) ──
@@ -160,18 +176,20 @@ private object QrEncoder {
         // byte-mode overhead = 4 (mode indicator) + 8 (length) bits = 12 bits.
         val need = (12 + 8 * byteCount + 7) / 8 // ceil((12 + 8n) / 8)
         for (v in VERSIONS.indices) {
-            if (need <= VERSIONS[v][1]) return v
+            if (need <= VERSIONS[v].dataCodewords) return v
         }
         return -1
     }
 
     fun encode(data: ByteArray): QrMatrix {
         val vi = selectVersion(data.size)
-        require(vi >= 0) { "data too long for v1-4: ${data.size} bytes" }
-        val size = VERSIONS[vi][0]
-        val dataCw = VERSIONS[vi][1]
-        val ecCw = VERSIONS[vi][2]
-        val alignPos = VERSIONS[vi][3]
+        require(vi >= 0) { "data too long for v1-9: ${data.size} bytes" }
+        val info = VERSIONS[vi]
+        val size = info.size
+        val dataCw = info.dataCodewords
+        val ecCw = info.ecCodewords
+        val numBlocks = info.numBlocks
+        val version = vi + 1
 
         // 1. Build data bit stream (byte mode).
         val bits = ArrayList<Int>(dataCw * 8)
@@ -198,8 +216,14 @@ private object QrEncoder {
             for (j in 0 until 8) v = (v shl 1) or bits[i * 8 + j]
             dataCodewords[i] = v
         }
-        // 4. RS error-correction codewords.
-        val ecCodewords = rsEncode(dataCodewords, ecCw)
+        // 4. Split into blocks, RS-encode each, then interleave.
+        val blockSize = dataCw / numBlocks
+        val dataBlocks = Array(numBlocks) { i -> dataCodewords.copyOfRange(i * blockSize, (i + 1) * blockSize) }
+        val ecBlocks = Array(numBlocks) { rsEncode(dataBlocks[it], ecCw) }
+        val finalCodewords = IntArray(dataCw + numBlocks * ecCw)
+        var idx = 0
+        for (j in 0 until blockSize) for (i in 0 until numBlocks) finalCodewords[idx++] = dataBlocks[i][j]
+        for (j in 0 until ecCw) for (i in 0 until numBlocks) finalCodewords[idx++] = ecBlocks[i][j]
 
         // 5. Build module matrix: function patterns first, then data.
         val m = QrMatrix(size)
@@ -207,16 +231,24 @@ private object QrEncoder {
         placeFinder(m, size - 7, 0)
         placeFinder(m, 0, size - 7)
         placeTiming(m)
-        if (alignPos > 0) placeAlignment(m, alignPos, alignPos)
+        for (cx in info.alignPositions) for (cy in info.alignPositions) {
+            // Skip alignment patterns that overlap finder patterns.
+            if (cx == 6 && cy == 6) continue
+            if (cx == 6 && cy == size - 7) continue
+            if (cx == size - 7 && cy == 6) continue
+            placeAlignment(m, cx, cy)
+        }
         reserveFormat(m)
+        if (version >= 7) reserveVersionInfo(m)
 
         // 6. Place data bits (zigzag from bottom-right).
-        placeData(m, dataCodewords + ecCodewords)
+        placeData(m, finalCodewords)
 
-        // 7. Choose best mask, apply it, then write format info.
+        // 7. Choose best mask, apply it, then write format + version info.
         val maskId = chooseMask(m)
         applyMask(m, maskId)
         placeFormat(m, bchFormat((0b01 shl 3) or maskId)) // L = 01
+        if (version >= 7) placeVersionInfo(m, version)
         return m
     }
 
@@ -260,6 +292,40 @@ private object QrEncoder {
             m.reserve(8, n - 1 - i, false)
         }
         m.reserve(8, n - 8, true) // fixed dark module
+    }
+
+    // ── Version info (v7+ only) ──
+    /** Reserve the two version-info areas so data placement skips them. */
+    private fun reserveVersionInfo(m: QrMatrix) {
+        val n = m.size
+        // Bottom-left: x=0..2, y=n-11..n-6  (3×6)
+        for (x in 0..2) for (y in 0..5) m.reserve(x, n - 11 + y, false)
+        // Top-right: x=n-11..n-6, y=0..2  (6×3)
+        for (x in 0..5) for (y in 0..2) m.reserve(n - 11 + x, y, false)
+    }
+
+    /** BCH(18,6) encode [version] (6 bits) → 18 bits. */
+    private fun bchVersion(version: Int): Int {
+        var v = version shl 12
+        for (i in 5 downTo 0) {
+            if ((v shr (i + 12)) and 1 == 1) v = v xor (0x1F25 shl i)
+        }
+        return (version shl 12) or v
+    }
+
+    /** Write the 18 version-info bits to both reserved areas. */
+    private fun placeVersionInfo(m: QrMatrix, version: Int) {
+        val n = m.size
+        val bits = bchVersion(version)
+        for (i in 0..17) {
+            val bit = ((bits shr i) and 1) == 1
+            val a = i / 3  // 0..5
+            val b = i % 3  // 0..2
+            // Bottom-left: x=b, y=n-11+a
+            m.set(b, n - 11 + a, bit)
+            // Top-right: x=n-11+a, y=b
+            m.set(n - 11 + a, b, bit)
+        }
     }
 
     // ── Data placement (zigzag, bottom-right → top-left) ──
