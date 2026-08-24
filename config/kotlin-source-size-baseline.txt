@@ -8,3 +8,4 @@ app/src/main/java/com/lxseek/chat/ui/chat/bottombar/ChatBottomBar.kt=1001
 # SettingsImGatewayPage.kt grew to 1152 lines after adding per-bot settings panel
 # (autoReplyModel selector, proactive messaging toggles, humanize messages switch).
 app/src/main/java/com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt=1152
+
