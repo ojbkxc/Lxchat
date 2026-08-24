@@ -78,13 +78,12 @@ class WeixinChannel(
             // dsh-im calls notifyStart before the monitor loop; without this the WeChat server
             // does not push messages to getupdates, so every poll returns an empty list.
             if (!notified) {
-                DebugLog.d("WeixinChannel", "pollUpdates: calling notifyStart, baseUrl=$baseUrl, token=${config.token}, token4curl=${java.net.URLEncoder.encode(config.token, "UTF-8")}")
+                DebugLog.d("WeixinChannel", "pollUpdates: calling notifyStart, baseUrl=$baseUrl, tokenLen=${config.token.length}")
                 api.notifyStart(baseUrl, config.token)
                 notified = true
                 DebugLog.d("WeixinChannel", "pollUpdates: notifyStart succeeded")
             }
-            // TEMP DEBUG: always use empty buf to force server to return all messages
-            val updates = api.getUpdates(baseUrl, config.token, "")
+            val updates = api.getUpdates(baseUrl, config.token, state.getUpdatesBuf())
             DebugLog.d("WeixinChannel", "pollUpdates: received ${updates.msgs.size} msgs, ret=${updates.ret}, bufLen=${updates.getUpdatesBuf.length}")
             // Check for server-side rejection (dsh-im checks ret and errcode).
             val errcode = updates.raw["errcode"]?.let { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }
