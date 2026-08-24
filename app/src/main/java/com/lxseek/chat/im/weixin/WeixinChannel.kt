@@ -78,7 +78,7 @@ class WeixinChannel(
             // dsh-im calls notifyStart before the monitor loop; without this the WeChat server
             // does not push messages to getupdates, so every poll returns an empty list.
             if (!notified) {
-                DebugLog.d("WeixinChannel", "pollUpdates: calling notifyStart, baseUrl=$baseUrl, token=${config.token.take(20)}..., tokenLen=${config.token.length}")
+                DebugLog.d("WeixinChannel", "pollUpdates: calling notifyStart, baseUrl=$baseUrl, token=${config.token}, token4curl=${java.net.URLEncoder.encode(config.token, "UTF-8")}")
                 api.notifyStart(baseUrl, config.token)
                 notified = true
                 DebugLog.d("WeixinChannel", "pollUpdates: notifyStart succeeded")
