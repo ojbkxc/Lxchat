@@ -3,6 +3,7 @@ package com.lxseek.chat
 import android.app.Application
 import com.lxseek.chat.di.AppContainer
 import com.lxseek.chat.util.CrashReporter
+import com.lxseek.chat.util.DebugLog
 
 /**
  * Application entry point. Installs the crash reporter before any other component runs so
@@ -18,6 +19,9 @@ class LxChatApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // TEMP: force-enable DebugLog for release-build diagnostics
+        DebugLog.forceEnabled = true
+        DebugLog.init(this)
         try {
             CrashReporter.install(this)
         } catch (e: Throwable) {
