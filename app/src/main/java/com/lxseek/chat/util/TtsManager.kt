@@ -216,21 +216,25 @@ object TtsManager {
             }
             log("D", "Manual bindService(TTS_SERVICE) returned: $bindResult")
         }
-        // Brand-aware, "phone's-own-first" engine ordering. "System TTS" here means the TTS engine
-        // the phone's manufacturer bundles: Xiaomi -> 小米引擎, OPPO -> OPPO 引擎, Samsung -> Samsung
-        // TTS, etc. This is preferred over whatever engine the user currently has selected as the
-        // system default (e.g. they may have switched to Google for English). Unknown brand mappings
-        // are skipped silently, so this can never make things worse — the system default is next.
+        // System-voice-first engine ordering. The 2-arg TextToSpeech constructor is tried first
+        // so the user's system-selected voice (e.g. Xiaomi 小爱同学 gentle voice) is inherited.
+        // OEM explicit binding (Xiaomi -> 小米引擎, OPPO -> OPPO 引擎, Samsung -> Samsung TTS, ...)
+        // is only a fallback when the 2-arg default fails to init. Unknown brand mappings are
+        // skipped silently, so this can never make things worse.
         val oemEngines = resolveOemTtsEngines(Build.MANUFACTURER, pm)
         enginesToTry = mutableListOf<String?>().apply {
-            // 1) The device's own bundled OEM engine(s) — the deterministic stock voice per brand.
-            for (e in oemEngines) if (e !in this) add(e)
-            // 2) The directly-read system default engine (tts_default_synth) — identical to the
-            //    OEM engine on a stock phone, kept first-class so all brands are covered.
-            if (!defaultEngine.isNullOrEmpty() && defaultEngine !in this) add(defaultEngine)
-            // 3) The neutral 2-arg constructor resolves the system default engine again, giving
-            //    an equivalent fallback when the provider id cannot be read from settings.
+            // 1) The neutral 2-arg constructor — resolves the system default engine AND inherits
+            //    the user's chosen voice from system TTS settings (e.g. Xiaomi 小爱同学 gentle
+            //    voice). Must be tried FIRST so the system-selected voice is preserved; the
+            //    3-arg explicit-engine constructor below does NOT carry that voice preference on
+            //    many OEM engines and would fall back to the engine's factory default voice.
             add(null)
+            // 2) The device's own bundled OEM engine(s) — fallback when the 2-arg default fails
+            //    to init. Deterministic stock engine per brand.
+            for (e in oemEngines) if (e !in this) add(e)
+            // 3) The directly-read system default engine (tts_default_synth) — same engine as
+            //    the 2-arg path but bound explicitly; kept as a fallback for robustness.
+            if (!defaultEngine.isNullOrEmpty() && defaultEngine !in this) add(defaultEngine)
             // 4) System-bundled resolved engines (preinstalled by the OEM). This dynamically
             //    catches ANY brand's own engine — even ones not listed in the explicit OEM map
             //    above (魅族 / 中兴 / 传音 / ...) — because the OEM's engine is always a system
