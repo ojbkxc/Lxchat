@@ -10,6 +10,7 @@ internal val INITIAL_KOTLIN_SOURCE_BASELINE_CAPS = mapOf(
     "app/src/main/java/com/lxseek/chat/data/DataImporter.kt" to 1509,
     "app/src/main/java/com/lxseek/chat/data/SettingsManager.kt" to 1369,
     "app/src/main/java/com/lxseek/chat/ui/chat/bottombar/ChatBottomBar.kt" to 1100,
+    "app/src/main/java/com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt" to 1200,
     "app/src/main/java/com/lxseek/chat/data/local/ChatDatabase.kt" to 1587,
     "app/src/main/java/com/lxseek/chat/model/RunLifecycle.kt" to 1389,
     "app/src/main/java/com/lxseek/chat/tool/ShellToolProvider.kt" to 1514,
