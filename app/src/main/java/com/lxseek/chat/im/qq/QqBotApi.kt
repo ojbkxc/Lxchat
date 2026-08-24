@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -192,7 +193,11 @@ data class QqMessageEvent(
      * the same thread, unlike [messageId].
      */
     val conversationId: String,
-    /** Message text (only text is supported; non-text events are dropped upstream). */
+    /**
+     * Message text. May be empty when the inbound event only carries image attachments —
+     * in that case [images] is non-empty and [QqChannel] surfaces the URLs to the agent
+     * via [com.lxseek.chat.im.ImMessage.images].
+     */
     val content: String,
     /** Sender's user_openid / member_openid. */
     val authorId: String,
@@ -208,6 +213,14 @@ data class QqMessageEvent(
     val replyScope: String,
     /** Reply target id: user_openid (c2c) or group_openid (group). */
     val replyTargetId: String,
+    /**
+     * Image attachment URLs extracted from the event's `attachments` array (JPEG/PNG/WebP/GIF).
+     * Mirrors `dsh-im/src/channels/qq/qq-bridge.mjs` `qqInboundMessage` which turns QQ's
+     * attachment metadata into image references for the harness. Empty for pure-text messages.
+     * The URLs are QQ CDN temporaries; they are passed through to the agent as Markdown links
+     * by [com.lxseek.chat.im.ImPollingReceiver.buildPromptText].
+     */
+    val images: List<String> = emptyList(),
 )
 
 /**
@@ -402,7 +415,14 @@ class QqBotWebSocketClient(
         if (data == null) return
         val messageId = data["id"]?.jsonPrimitive?.contentOrNull ?: return
         val content = data["content"]?.jsonPrimitive?.contentOrNull ?: ""
-        if (content.isEmpty()) return  // non-text (rich media / attachment only), skip
+        // Extract image attachment URLs from the event's `attachments` array. QQ delivers
+        // image messages as attachments with a `content_type` of `image/*` (and a `filename`
+        // ending in a known image extension). Mirrors `dsh-im/qq-bridge.mjs`
+        // `qqInboundMessage` / `isQqImageAttachment`. Pure-text messages carry no attachments.
+        val images = extractImageUrls(data)
+        // Skip only when there is neither text nor any image to act on. Previously any
+        // non-text event was dropped here, which silently discarded all image messages.
+        if (content.isEmpty() && images.isEmpty()) return
         val author = data["author"]?.jsonObject ?: return
         val authorId = author["member_openid"]?.jsonPrimitive?.contentOrNull
             ?: author["user_openid"]?.jsonPrimitive?.contentOrNull
@@ -439,11 +459,42 @@ class QqBotWebSocketClient(
                     rawEventType = event,
                     replyScope = replyScope,
                     replyTargetId = replyTargetId,
+                    images = images,
                 ),
             )
         } catch (e: Exception) {
             DebugLog.e(TAG, "onMessage callback threw: ${e.message}", e)
         }
+    }
+
+    /**
+     * Extract image attachment URLs from a `C2C_MESSAGE_CREATE` / `GROUP_AT_MESSAGE_CREATE`
+     * event's `attachments` array. An attachment counts as an image when its `content_type`
+     * (or `contentType`) starts with `image/`, or its `filename` matches a known image
+     * extension. Non-image attachments (files, video, audio) are ignored.
+     *
+     * Mirrors `dsh-im/src/channels/qq/qq-bridge.mjs` `isQqImageAttachment` +
+     * `attachmentMediaType`, including the dual `content_type`/`contentType` key tolerance
+     * (QQ's wire format has used both spellings across SDK revisions).
+     */
+    private fun extractImageUrls(data: JsonObject): List<String> {
+        val attachments = data["attachments"] as? JsonArray ?: return emptyList()
+        if (attachments.isEmpty()) return emptyList()
+        val urls = ArrayList<String>(attachments.size)
+        for (element in attachments) {
+            val obj = runCatching { element.jsonObject }.getOrNull() ?: continue
+            val contentType = (obj["content_type"] ?: obj["contentType"])
+                ?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+            val filename = obj["filename"]
+                ?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+            val url = obj["url"]
+                ?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+                ?: continue  // no download URL — nothing we can surface to the agent
+            val isImage = (contentType != null && contentType.startsWith("image/", ignoreCase = true))
+                || (filename != null && IMAGE_FILENAME_REGEX.matches(filename))
+            if (isImage) urls.add(url)
+        }
+        return urls
     }
 
     // ── Heartbeat & identify ─────────────────────────────────────────────────
@@ -546,5 +597,11 @@ class QqBotWebSocketClient(
         private const val INITIAL_BACKOFF_MS = 1_000L
         private const val MAX_BACKOFF_MS = 30_000L
         private const val STEP_MS = 200L
+
+        /**
+         * Image filename suffixes QQ delivers as attachments (mirrors `dsh-im/qq-bridge.mjs`
+         * `QQ_IMAGE_FILENAME`). Used as a fallback when an attachment carries no `content_type`.
+         */
+        private val IMAGE_FILENAME_REGEX = Regex("""\.(?:gif|jpe?g|png|webp)$""", RegexOption.IGNORE_CASE)
     }
 }
