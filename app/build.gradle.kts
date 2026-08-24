@@ -203,6 +203,7 @@ dependencies {
     implementation(libs.work.runtime.ktx)
     implementation(libs.jsch)
     implementation(libs.commons.compress)
+    implementation(libs.zxing.core)
     implementation("com.alphacephei:vosk-android:0.3.47")
     debugImplementation(libs.androidx.compose.ui.tooling)
 
