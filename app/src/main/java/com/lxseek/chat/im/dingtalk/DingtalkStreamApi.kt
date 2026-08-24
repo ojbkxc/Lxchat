@@ -258,20 +258,32 @@ class DingtalkStreamApi(
     /**
      * Reply via the per-message [sessionWebhook] embedded in each inbound push.
      *
-     * This is the cheapest reply path: no access token, no robotCode lookup — just POST
-     * `{ msgtype: "text", text: { content } }` to the URL DingTalk handed us. The webhook is
-     * short-lived (~1h), so callers should fall back to [sendOtoMessage]/[sendGroupMessage]
-     * when this throws. Returns true on a 2xx + `errcode==0` response.
+     * This is the cheapest reply path: no robotCode lookup — just POST
+     * `{ msgtype: "text", text: { content } }` to the URL DingTalk handed us, with the
+     * `x-acs-dingtalk-access-token` header attached (some tenants reject headerless calls).
+     * The webhook URL is validated to be https + `dingtalk.com` before posting (SSRF guard).
+     * The webhook is short-lived (~1h), so callers should fall back to
+     * [sendOtoMessage]/[sendGroupMessage] when this throws. Returns true on a 2xx + `errcode==0`
+     * response.
      */
     suspend fun replyBySessionWebhook(sessionWebhook: String, text: String): Boolean {
         require(sessionWebhook.isNotBlank()) { "sessionWebhook is required" }
         require(text.isNotBlank()) { "text is required" }
+        // Security: constrain the reply target to DingTalk's own https domain to prevent SSRF.
+        // Mirrors `normalizeDingtalkSessionWebhook` in dsh-im.
+        val safeWebhook = validateSessionWebhook(sessionWebhook)
+        // dsh-im sends x-acs-dingtalk-access-token on the webhook reply too; some tenants
+        // reject the call with errcode 40001 when the header is absent.
+        val token = accessToken()
         return withContext(Dispatchers.IO) {
             val body = buildJsonObject {
                 put("msgtype", "text")
                 putJsonObject("text") { put("content", text) }
             }.toString()
-            val resp = HttpClient.postTextResponse(sessionWebhook, body)
+            val resp = HttpClient.postTextResponse(
+                safeWebhook, body,
+                mapOf(HEADER_ACCESS_TOKEN to token),
+            )
             if (!resp.isSuccessful) return@withContext false
             val root = runCatching { json.parseToJsonElement(resp.body).jsonObject }.getOrNull()
                 ?: return@withContext true // Empty 2xx body — treat as success.
@@ -279,6 +291,20 @@ class DingtalkStreamApi(
             val code = root["code"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
             (errcode == null || errcode == 0) && (code == null || code == 0)
         }
+    }
+
+    /**
+     * Validate a DingTalk sessionWebhook URL: must be https and on a `dingtalk.com` host
+     * (either the apex or any subdomain). Throws [IllegalArgumentException] otherwise.
+     *
+     * Mirrors `normalizeDingtalkSessionWebhook` in dsh-im — prevents SSRF by constraining the
+     * reply target to DingTalk's own domain before we POST to it.
+     */
+    private fun validateSessionWebhook(url: String): String {
+        val parsed = java.net.URL(url)
+        require(parsed.protocol == "https") { "sessionWebhook must be https" }
+        require(parsed.host.endsWith("dingtalk.com")) { "sessionWebhook must be dingtalk.com domain" }
+        return url
     }
 
     // ── WebSocket stream ────────────────────────────────────────────────────
@@ -326,7 +352,8 @@ class DingtalkStreamApi(
             topic = topic,
             conversationId = conversationId,
             conversationType = data["conversationType"]?.jsonPrimitive?.contentOrNull ?: "1",
-            senderStaffId = data["senderStaffId"]?.jsonPrimitive?.contentOrNull ?: "",
+            senderStaffId = data["senderStaffId"]?.jsonPrimitive?.contentOrNull
+                ?: data["senderId"]?.jsonPrimitive?.contentOrNull ?: "",
             senderNick = data["senderNick"]?.jsonPrimitive?.contentOrNull ?: "",
             text = text,
             sessionWebhook = data["sessionWebhook"]?.jsonPrimitive?.contentOrNull ?: "",
