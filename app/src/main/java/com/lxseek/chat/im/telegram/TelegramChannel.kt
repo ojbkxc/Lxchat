@@ -29,7 +29,8 @@ import kotlinx.serialization.json.longOrNull
  * agent is never replayed even if a poll happens to re-deliver it.
  *
  * Group gate — in group/supergroup chats the bot only reacts when explicitly @-mentioned
- * (an `entities[type=mention]` whose text equals `@<botUsername>`); private chats always
+ * (an `entities[type=mention]` whose text equals `@<botUsername>`) or when the user replies to
+ * one of the bot's own messages (`reply_to_message.from.id == botId`); private chats always
  * respond. This mirrors the dsh-im telegram channel behavior and avoids the bot answering
  * every line in every group it sits in.
  *
@@ -77,9 +78,21 @@ class TelegramChannel(
             ?: return ImSendResult.Failure("Telegram chat id must be numeric: $conversationId")
         return withContext(Dispatchers.IO) {
             try {
-                val result = api.sendMessage(chatId, text)
-                val messageId = result["message_id"]?.jsonPrimitive?.contentOrNull ?: "unknown"
-                ImSendResult.Success(messageId)
+                // Telegram caps a single message at 4096 chars; we split at 4000 to leave
+                // headroom and to match dsh-im's splitMessageText behavior, sending each chunk
+                // as its own message. The first chunk carries the reply; later chunks do not.
+                val chunks = splitMessageText(text, MAX_MESSAGE_LENGTH)
+                if (chunks.isEmpty()) {
+                    ImSendResult.Success("unknown")
+                } else {
+                    var lastMessageId = "unknown"
+                    for (chunk in chunks) {
+                        val result = api.sendMessage(chatId, chunk)
+                        lastMessageId =
+                            result["message_id"]?.jsonPrimitive?.contentOrNull ?: lastMessageId
+                    }
+                    ImSendResult.Success(lastMessageId)
+                }
             } catch (e: TelegramApiException) {
                 DebugLog.e("TelegramChannel", "sendMessage failed: ${e.message} (code=${e.errorCode})")
                 ImSendResult.Failure(e.message ?: "telegram send failed")
@@ -114,9 +127,28 @@ class TelegramChannel(
     /**
      * Run one `getUpdates` long-poll, advance [updateOffset], refresh the bot identity on the
      * first call, and route every inbound text message into [pendingByChat] / [knownChats].
+     *
+     * First-poll behavior — to avoid replaying the entire backlog the bot missed while offline,
+     * the very first poll uses `offset = -1` with `timeout = 0` (per the Telegram Bot API
+     * convention: -1 yields only the most recent update). We discard that update and set
+     * [updateOffset] to `last_update_id + 1` so subsequent polls only see messages that arrive
+     * after startup. This mirrors dsh-im's `cursor === null` initialization branch.
      */
     private suspend fun pollUpdates(api: TelegramBotApi) {
         ensureBotIdentity(api)
+        val isFirstPoll = updateOffset == null
+        if (isFirstPoll) {
+            // Skip history: fetch only the latest update, then advance past it without handling.
+            val latest = api.getUpdates(offset = -1L, timeout = 0)
+            var maxUpdateId: Long? = null
+            for (update in latest) {
+                val obj = runCatching { update.jsonObject }.getOrNull() ?: continue
+                val updateId = obj["update_id"]?.jsonPrimitive?.longOrNull ?: continue
+                if (maxUpdateId == null || updateId > maxUpdateId) maxUpdateId = updateId
+            }
+            updateOffset = (maxUpdateId ?: -1L) + 1
+            return
+        }
         val updates = api.getUpdates(offset = updateOffset, timeout = POLL_TIMEOUT_SECONDS)
         var maxUpdateId: Long? = null
         for (update in updates) {
@@ -150,8 +182,13 @@ class TelegramChannel(
         val chatType = chat["type"]?.jsonPrimitive?.contentOrNull ?: "private"
         val isGroup = chatType != "private"
 
-        // Text-only for now; voice/photo/etc. are future work.
-        val text = message["text"]?.jsonPrimitive?.contentOrNull ?: return
+        // Text comes from `message.text` for plain messages, or `message.caption` for media
+        // (photo/document) messages. Photos without a caption are skipped — we don't download
+        // image bytes in this channel yet. This matches dsh-im's
+        // `message.text ?? message.caption ?? ''` extraction.
+        val text = message["text"]?.jsonPrimitive?.contentOrNull
+            ?: message["caption"]?.jsonPrimitive?.contentOrNull
+            ?: return
         val messageId = message["message_id"]?.jsonPrimitive?.contentOrNull ?: return
         val date = message["date"]?.jsonPrimitive?.longOrNull ?: 0L
         val from = message["from"]?.let { runCatching { it.jsonObject }.getOrNull() }
@@ -160,8 +197,10 @@ class TelegramChannel(
                 ?: it["first_name"]?.jsonPrimitive?.contentOrNull
         } ?: ""
 
-        // Group gate: only react when explicitly @-mentioned. Private chats always pass.
-        if (isGroup && !isMentionedForUs(message, text)) return
+        // Group gate: only react when explicitly @-mentioned OR when the user is replying to
+        // one of the bot's own messages. Private chats always pass. This mirrors dsh-im's
+        // `addressed = direct || reply_to_message.from.id == botId || mentionedUsername(...)`.
+        if (isGroup && !isMentionedForUs(message, text) && !isReplyToBot(message)) return
 
         knownChats[chatId] = ImConversation(
             id = chatId.toString(),
@@ -182,6 +221,16 @@ class TelegramChannel(
         )
     }
 
+    /** True when [message] is a reply to one of the bot's own messages (group reply gate). */
+    private fun isReplyToBot(message: JsonObject): Boolean {
+        val id = botId ?: return false
+        val replyTo = message["reply_to_message"]?.let { runCatching { it.jsonObject }.getOrNull() }
+            ?: return false
+        val from = replyTo["from"]?.let { runCatching { it.jsonObject }.getOrNull() }
+            ?: return false
+        return from["id"]?.jsonPrimitive?.longOrNull == id
+    }
+
     /** True when [message] carries an `@<botUsername>` mention entity. */
     private fun isMentionedForUs(message: JsonObject, text: String): Boolean {
         val username = botUsername ?: return false
@@ -199,6 +248,28 @@ class TelegramChannel(
         return false
     }
 
+    /**
+     * Split [value] into chunks of at most [limit] characters, preferring to break on a newline
+     * then on a space, falling back to a hard cut. Mirrors dsh-im's
+     * `splitMessageText` (editable-message-stream.mjs) so long AI replies are sent as multiple
+     * Telegram messages instead of being truncated or rejected with a 400.
+     */
+    private fun splitMessageText(value: String, limit: Int): List<String> {
+        val text = value.trim()
+        if (text.isEmpty()) return emptyList()
+        val chunks = mutableListOf<String>()
+        var remaining = text
+        while (remaining.length > limit) {
+            var cut = remaining.lastIndexOf('\n', limit)
+            if (cut < limit * 0.55) cut = remaining.lastIndexOf(' ', limit)
+            if (cut < limit * 0.55) cut = limit
+            chunks.add(remaining.substring(0, cut).trim())
+            remaining = remaining.substring(cut).trimStart()
+        }
+        if (remaining.isNotEmpty()) chunks.add(remaining)
+        return chunks
+    }
+
     private fun chatTitle(chat: JsonObject, chatId: Long): String =
         chat["title"]?.jsonPrimitive?.contentOrNull
             ?: chat["first_name"]?.jsonPrimitive?.contentOrNull
@@ -212,5 +283,7 @@ class TelegramChannel(
         private const val CHANNEL_ID = "telegram"
         private const val POLL_TIMEOUT_SECONDS = 30
         private const val MILLIS_PER_SEC = 1000L
+        /** Telegram message char cap is 4096; we split at 4000 to match dsh-im and leave headroom. */
+        private const val MAX_MESSAGE_LENGTH = 4000
     }
 }
