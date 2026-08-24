@@ -1,6 +1,7 @@
 package com.lxseek.chat.ui.settings
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -33,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -388,6 +391,8 @@ fun SettingsImGatewayPage(
     }
     // T31: Agent Preset 候选列表（来自全局 System Prompts）。
     val systemPrompts by viewModel.settings.systemPrompts.collectAsState()
+    // 已绑定机器人设置面板所需：可用模型列表（Map<providerName, List<modelName>>）。
+    val availableModels by viewModel.settings.availableModels.collectAsState()
 
     // Legacy fallback bot: shown only when the multi-config is empty and the legacy single
     // config is enabled/configured, so existing users see their prior gateway and can migrate.
@@ -430,10 +435,17 @@ fun SettingsImGatewayPage(
                 isLegacyShowing = isLegacyForThis && bots.isEmpty(),
                 agentPresets = systemPrompts,
                 bridgeService = bridgeService,
+                availableModels = availableModels,
                 onAddBot = { config ->
                     scope.launch {
                         store.upsertBot(config)
                         Toast.makeText(context, context.getString(R.string.im_channel_bound_success), Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onUpdateBot = { config ->
+                    scope.launch {
+                        store.upsertBot(config)
+                        Toast.makeText(context, context.getString(R.string.im_channel_settings_saved), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onRemoveBot = { config -> pendingRemove = platform to config },
@@ -483,7 +495,9 @@ private fun PlatformChannelCard(
     isLegacyShowing: Boolean,
     agentPresets: List<SystemPromptEntry>,
     bridgeService: ImBridgeService,
+    availableModels: Map<String, List<String>>,
     onAddBot: (ImGatewayConfig) -> Unit,
+    onUpdateBot: (ImGatewayConfig) -> Unit,
     onRemoveBot: (ImGatewayConfig) -> Unit,
     onMigrateLegacy: () -> Unit,
 ) {
@@ -550,6 +564,8 @@ private fun PlatformChannelCard(
                         platform = platform,
                         isLegacy = isLegacyShowing && idx == 0,
                         bridgeService = bridgeService,
+                        availableModels = availableModels,
+                        onUpdateBot = onUpdateBot,
                         onRemove = { onRemoveBot(bot) },
                         onMigrate = if (isLegacyShowing && idx == 0) onMigrateLegacy else null,
                     )
@@ -618,6 +634,8 @@ private fun BotSummaryRow(
     platform: ImPlatform,
     isLegacy: Boolean,
     bridgeService: ImBridgeService,
+    availableModels: Map<String, List<String>>,
+    onUpdateBot: (ImGatewayConfig) -> Unit,
     onRemove: () -> Unit,
     onMigrate: (() -> Unit)?,
 ) {
@@ -629,8 +647,11 @@ private fun BotSummaryRow(
     val strTestBtn = stringResource(R.string.im_channel_test_connection)
     val strPresetLabel = stringResource(R.string.im_channel_agent_preset)
     val strPresetFollow = stringResource(R.string.im_channel_agent_preset_follow_default)
+    val strSettings = stringResource(R.string.im_channel_settings)
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<ConnectionTestResult?>(null) }
+    // 已绑定机器人设置面板默认收起；点击 ⚙️ 设置按钮切换。
+    var settingsExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -682,6 +703,19 @@ private fun BotSummaryRow(
                     Text(strTesting)
                 } else Text(strTestBtn)
             }
+            // ⚙️ 设置按钮：展开/收起已绑定机器人的详细设置面板。
+            TextButton(onClick = {
+                settingsExpanded = !settingsExpanded
+                DebugLog.d("ImGatewayUI", "settings toggle: ${bot.effectiveChannelId} expanded=$settingsExpanded")
+            }) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = strSettings,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(strSettings)
+            }
             if (onMigrate != null) {
                 TextButton(onClick = onMigrate) { Text(stringResource(R.string.im_channel_migrate)) }
             }
@@ -706,6 +740,220 @@ private fun BotSummaryRow(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.fillMaxWidth().padding(start = 30.dp),
                 )
+            }
+        }
+        // 已绑定机器人设置面板：自动回复模型 / 主动消息 / 人性化消息。
+        AnimatedVisibility(visible = settingsExpanded) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+            BotSettingsPanel(
+                bot = bot,
+                availableModels = availableModels,
+                onSave = { updated ->
+                    onUpdateBot(updated)
+                    // 保存后自动收起。
+                    settingsExpanded = false
+                },
+            )
+        }
+    }
+}
+
+// ── Bot settings panel (autoReplyModel / proactive / humanize) ─────────────
+
+/**
+ * 已绑定机器人的可展开设置面板。本地状态用 [remember] + [mutableStateOf] 初始化为 [bot]
+ * 的当前值；点击"保存设置"时用修改后的值 copy 出新的 [ImGatewayConfig] 并回调 [onSave]。
+ *
+ * 模型选择器候选项 = "跟随默认"（空串）+ [availableModels] 扁平化为 `provider:model` 格式
+ * （与 `settings.selectedModel` 一致）；显示格式 `provider / model` 更友好。
+ */
+@Composable
+private fun BotSettingsPanel(
+    bot: ImGatewayConfig,
+    availableModels: Map<String, List<String>>,
+    onSave: (ImGatewayConfig) -> Unit,
+) {
+    // 本地编辑状态，初始化为 bot 当前值。
+    var autoReplyModel by remember { mutableStateOf(bot.autoReplyModel) }
+    var proactiveEnabled by remember { mutableStateOf(bot.proactiveEnabled) }
+    var proactiveIdleMinutes by remember { mutableStateOf(bot.proactiveIdleMinutes.toString()) }
+    var proactiveSilentStart by remember { mutableStateOf(bot.proactiveSilentStart) }
+    var proactiveSilentEnd by remember { mutableStateOf(bot.proactiveSilentEnd) }
+    var proactiveIgnoreGroups by remember { mutableStateOf(bot.proactiveIgnoreGroups) }
+    var humanizeMessages by remember { mutableStateOf(bot.humanizeMessages) }
+    var modelMenuExpanded by remember { mutableStateOf(false) }
+
+    val strFollowDefault = stringResource(R.string.im_channel_settings_follow_default)
+    val strAutoReplyModel = stringResource(R.string.im_channel_settings_auto_reply_model)
+    val strAutoReplyModelHint = stringResource(R.string.im_channel_settings_auto_reply_model_hint)
+    val strProactive = stringResource(R.string.im_channel_settings_proactive)
+    val strProactiveEnable = stringResource(R.string.im_channel_settings_proactive_enable)
+    val strProactiveIdle = stringResource(R.string.im_channel_settings_proactive_idle_minutes)
+    val strProSilentStart = stringResource(R.string.im_channel_settings_proactive_silent_start)
+    val strProSilentEnd = stringResource(R.string.im_channel_settings_proactive_silent_end)
+    val strProIgnoreGroups = stringResource(R.string.im_channel_settings_proactive_ignore_groups)
+    val strHumanize = stringResource(R.string.im_channel_settings_humanize)
+    val strSave = stringResource(R.string.im_channel_settings_save)
+
+    // 扁平化模型列表：List<Pair<providerName, modelName>>，保留 provider 信息用于显示与存储。
+    val flatModels = remember(availableModels) {
+        availableModels.flatMap { (provider, models) ->
+            models.map { model -> provider to model }
+        }
+    }
+    // 当前选中模型的显示文本：空串 → "跟随默认"；否则 `provider / model`。
+    val currentModelDisplay = if (autoReplyModel.isBlank()) strFollowDefault
+    else {
+        val idx = autoReplyModel.indexOf(':')
+        if (idx > 0) "${autoReplyModel.substring(0, idx)} / ${autoReplyModel.substring(idx + 1)}"
+        else autoReplyModel
+    }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 30.dp, top = 4.dp)) {
+        // ── 自动回复模型 ──
+        Text(
+            text = strAutoReplyModel,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            OutlinedTextField(
+                value = currentModelDisplay,
+                onValueChange = { /* 只读，由下方 Dropdown 选择 */ },
+                readOnly = true,
+                label = { Text(strAutoReplyModel) },
+                supportingText = { Text(strAutoReplyModelHint) },
+                singleLine = true,
+                trailingIcon = {
+                    IconButton(onClick = { modelMenuExpanded = true }) {
+                        Icon(imageVector = Icons.Default.ExpandMore, contentDescription = null)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            DropdownMenu(expanded = modelMenuExpanded, onDismissRequest = { modelMenuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(strFollowDefault) },
+                    onClick = { autoReplyModel = ""; modelMenuExpanded = false },
+                )
+                flatModels.forEach { (provider, model) ->
+                    DropdownMenuItem(
+                        text = { Text("$provider / $model") },
+                        onClick = {
+                            autoReplyModel = "$provider:$model"
+                            modelMenuExpanded = false
+                        },
+                    )
+                }
+            }
+        }
+
+        // ── 主动消息 ──
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = strProactive,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Switch(
+                checked = proactiveEnabled,
+                onCheckedChange = { proactiveEnabled = it },
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = strProactiveEnable)
+        }
+        // 启用主动消息后才显示子设置：空闲阈值 / 静默时段 / 群聊过滤。
+        if (proactiveEnabled) {
+            Column(modifier = Modifier.padding(start = 12.dp)) {
+                OutlinedTextField(
+                    value = proactiveIdleMinutes,
+                    onValueChange = { newVal ->
+                        // 只保留数字，避免非法输入。
+                        proactiveIdleMinutes = newVal.filter { it.isDigit() }
+                    },
+                    label = { Text(strProactiveIdle) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = proactiveSilentStart,
+                        onValueChange = { proactiveSilentStart = it },
+                        label = { Text(strProSilentStart) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = proactiveSilentEnd,
+                        onValueChange = { proactiveSilentEnd = it },
+                        label = { Text(strProSilentEnd) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Switch(
+                        checked = proactiveIgnoreGroups,
+                        onCheckedChange = { proactiveIgnoreGroups = it },
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = strProIgnoreGroups)
+                }
+            }
+        }
+
+        // ── 其他：人性化消息 ──
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Switch(
+                checked = humanizeMessages,
+                onCheckedChange = { humanizeMessages = it },
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = strHumanize)
+        }
+
+        // ── 保存按钮 ──
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Button(onClick = {
+                val idleMinutes = proactiveIdleMinutes.trim().toIntOrNull()?.takeIf { it > 0 } ?: 120
+                val updated = bot.copy(
+                    autoReplyModel = autoReplyModel.trim(),
+                    proactiveEnabled = proactiveEnabled,
+                    proactiveIdleMinutes = idleMinutes,
+                    proactiveSilentStart = proactiveSilentStart.trim(),
+                    proactiveSilentEnd = proactiveSilentEnd.trim(),
+                    proactiveIgnoreGroups = proactiveIgnoreGroups,
+                    humanizeMessages = humanizeMessages,
+                )
+                DebugLog.d(
+                    "ImGatewayUI",
+                    "saveSettings: ${updated.effectiveChannelId} model=${updated.autoReplyModel} " +
+                        "proactive=${updated.proactiveEnabled} idle=${updated.proactiveIdleMinutes} " +
+                        "silent=${updated.proactiveSilentStart}-${updated.proactiveSilentEnd} " +
+                        "ignoreGroups=${updated.proactiveIgnoreGroups} humanize=${updated.humanizeMessages}",
+                )
+                onSave(updated)
+            }) {
+                Text(strSave)
             }
         }
     }

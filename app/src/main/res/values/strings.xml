@@ -1443,4 +1443,18 @@
     <string name="im_channel_test_running">正在测试…</string>
     <string name="im_channel_test_success">✅ 连接测试成功</string>
     <string name="im_channel_test_failed">❌ 连接测试失败</string>
+    <!-- 已绑定机器人的可展开设置面板 (autoReplyModel / proactive / humanize) -->
+    <string name="im_channel_settings">设置</string>
+    <string name="im_channel_settings_auto_reply_model">自动回复模型</string>
+    <string name="im_channel_settings_auto_reply_model_hint">为该机器人单独指定模型（留空跟随默认）</string>
+    <string name="im_channel_settings_proactive">主动消息</string>
+    <string name="im_channel_settings_proactive_enable">启用主动消息</string>
+    <string name="im_channel_settings_proactive_idle_minutes">空闲阈值（分钟）</string>
+    <string name="im_channel_settings_proactive_silent_start">静默开始（HH:MM）</string>
+    <string name="im_channel_settings_proactive_silent_end">静默结束（HH:MM）</string>
+    <string name="im_channel_settings_proactive_ignore_groups">群聊不主动发消息</string>
+    <string name="im_channel_settings_humanize">人性化消息（随机打字延迟）</string>
+    <string name="im_channel_settings_save">保存设置</string>
+    <string name="im_channel_settings_saved">设置已保存</string>
+    <string name="im_channel_settings_follow_default">跟随默认</string>
 </resources>
