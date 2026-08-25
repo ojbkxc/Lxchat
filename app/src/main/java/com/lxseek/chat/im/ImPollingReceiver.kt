@@ -521,7 +521,7 @@ class ImPollingReceiver(
          * 若模型请求挂起而无超时，会把整个轮询循环卡死（其余渠道不再 getUpdates）。
          * 超时后本轮不回复、下一轮重新拉取时自动重试。比单次提示的生成期望时长略宽。
          */
-        const val AGENT_REPLY_TIMEOUT_MS = 90_000L
+        const val AGENT_REPLY_TIMEOUT_MS = 300_000L
 
         /**
          * 仅含图片、无文本时附加的默认提示，引导模型分析图片。
