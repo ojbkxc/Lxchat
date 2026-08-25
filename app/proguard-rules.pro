@@ -101,15 +101,7 @@
 -dontwarn com.materialkolor.**
 
 # ── IM IllegalAccessError 根因修复 ───────────────────────
-# 根因：proguard-android-optimize.txt 的 -allowaccessmodification 允许 R8
-# 把 ImRuntimeState.Companion 字段从 public 改成 private，
-# 导致 ImGatewayStore inline map 合成类跨类访问失败。
-# 修复：改用 proguard-android.txt（不含 -allowaccessmodification）。
-# 原有的 kotlinx.serialization keep 规则（第4-13行）已足够保护 $$serializer。
-
-# ── 禁用 R8 优化（IllegalAccessError 根治） ─────────────
-# proguard-android-optimize.txt 含 -allowaccessmodification，允许 R8 把
-# ImRuntimeState.Companion 字段从 public 改成 private，导致
-# ImGatewayStore inline map 合成类跨类访问抛 IllegalAccessError。
-# -dontoptimize 禁用优化阶段（含访问修饰符修改），保持混淆功能。
--dontoptimize
+# 根因：ImRuntimeState 的 companion object 被声明为 private，导致
+# kotlinx.serialization 生成的 $$serializer 通过 synthetic accessor 访问
+# Companion 字段时，R8 优化内联了 accessor，跨类直接访问 private 字段
+# 抛出 IllegalAccessError。修复：去掉 private，让 Companion 字段为 public。

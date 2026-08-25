@@ -211,7 +211,7 @@ data class ImRuntimeState(
         else copy(seenMessageIds = pruned, platform = gateway.platform)
     }
 
-    private companion object {
+    companion object {
         const val MAX_SEEN = 2_000
     }
 }
