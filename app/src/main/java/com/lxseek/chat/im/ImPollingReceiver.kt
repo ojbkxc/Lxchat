@@ -105,7 +105,14 @@ class ImPollingReceiver(
             }
             for ((channelKey, channel) in pollingChannels) {
                 coroutineContext.ensureActive()
-                pollChannel(channelKey, channel)
+                try {
+                    pollChannel(channelKey, channel)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 防止单个渠道异常导致整个 pollLoop 崩溃（否则入站消息永久停止）
+                    DebugLog.e("ImPolling", "pollChannel failed for $channelKey", e)
+                }
             }
             delay(interval)
         }
@@ -298,10 +305,17 @@ class ImPollingReceiver(
         }
 
         // ── 普通 AI 回复流程 ──────────────────────────────────
-        val reply = replyFromAgent(weixin, channelKey, conversation.id, lxchatConvId, merged)
-        if (!reply.isNullOrBlank()) {
-            // Long replies are split into several short messages for readability.
-            segmentSender.send(channel, conversation.id, reply)
+        try {
+            val reply = replyFromAgent(weixin, channelKey, conversation.id, lxchatConvId, merged)
+            if (!reply.isNullOrBlank()) {
+                // Long replies are split into several short messages for readability.
+                segmentSender.send(channel, conversation.id, reply)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // AI 回复或发送失败不应导致 pollLoop 崩溃
+            DebugLog.e("ImPolling", "reply/send failed for conv=${conversation.id}", e)
         }
     }
 
