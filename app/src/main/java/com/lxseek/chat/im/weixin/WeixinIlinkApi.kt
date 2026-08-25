@@ -618,11 +618,22 @@ class WeixinIlinkApi(
 
         // ── 静态工具函数（对齐 mjs 顶层导出） ─────────────────────────────
 
-        /** 提取消息文本（type=1 文本，type=3 语音转文字）。 */
+        /**
+         * 提取消息文本，支持多种消息类型：
+         * - type=1: text_item (文字)
+         * - type=3: voice_item (语音转文字)
+         * - type=4: video_item (视频 → [视频消息] 占位)
+         * - type=5: location_item (位置 → [位置: 地址])
+         * - type=6: link_item (链接 → [链接: 标题])
+         * - type=7: card_item (名片 → [名片: 姓名])
+         * - type=8: emoji_item (表情 → [表情] 占位)
+         *
+         * 之前只处理文字和语音转文字，视频/位置/链接/名片/表情被静默丢弃，
+         * AI 完全不知道用户发了什么。现在用占位文本告知 AI 消息类型，
+         * 让 AI 能做出合理回复（如"我收到了你的视频，但暂时无法查看"）。
+         */
         fun extractWeixinText(message: JsonObject): String? {
             val itemList = message["item_list"].arr() ?: return null
-            // B4: 拼接所有 text_item/voice_item 文本段，对齐 bot.py 行为。
-            // 旧逻辑只返回第一个非空文本，多段文本消息只取第一段。
             val parts = mutableListOf<String>()
             for (item in itemList) {
                 val o = item.obj() ?: continue
@@ -634,6 +645,48 @@ class WeixinIlinkApi(
                 if (type == 3) {
                     val text = o["voice_item"].obj()?.get("text").str()?.trim()
                     if (!text.isNullOrEmpty()) parts.add(text)
+                }
+                // 视频消息：告知 AI 用户发了视频
+                if (type == 4) {
+                    val video = o["video_item"].obj()
+                    if (video != null) parts.add("[视频消息]")
+                }
+                // 位置消息：提取地址信息
+                if (type == 5) {
+                    val loc = o["location_item"].obj()
+                    if (loc != null) {
+                        val label = loc["label"].str() ?: loc["address"].str() ?: loc["name"].str()
+                        val lat = loc["latitude"].str() ?: loc["lat"].str()
+                        val lng = loc["longitude"].str() ?: loc["lng"].str()
+                        if (!label.isNullOrEmpty()) parts.add("[位置: $label]")
+                        else if (!lat.isNullOrEmpty() && !lng.isNullOrEmpty()) parts.add("[位置: $lat,$lng]")
+                        else parts.add("[位置消息]")
+                    }
+                }
+                // 链接消息：提取标题
+                if (type == 6) {
+                    val link = o["link_item"].obj()
+                    if (link != null) {
+                        val title = link["title"].str() ?: link["desc"].str()
+                        val url = link["url"].str() ?: link["link"].str()
+                        if (!title.isNullOrEmpty()) parts.add("[链接: $title]")
+                        else if (!url.isNullOrEmpty()) parts.add("[链接: $url]")
+                        else parts.add("[链接消息]")
+                    }
+                }
+                // 名片消息：提取姓名
+                if (type == 7) {
+                    val card = o["card_item"].obj()
+                    if (card != null) {
+                        val name = card["nickname"].str() ?: card["name"].str() ?: card["title"].str()
+                        if (!name.isNullOrEmpty()) parts.add("[名片: $name]")
+                        else parts.add("[名片消息]")
+                    }
+                }
+                // 表情消息：占位
+                if (type == 8) {
+                    val emoji = o["emoji_item"].obj()
+                    if (emoji != null) parts.add("[表情]")
                 }
             }
             return if (parts.isEmpty()) null else parts.joinToString("\n")
