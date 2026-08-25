@@ -1,4 +1,4 @@
-﻿package com.lxseek.chat.ui.settings
+package com.lxseek.chat.ui.settings
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -237,8 +237,8 @@ private fun decodeCredentials(raw: String): Map<String, String> {
 
 /** Mask a secret for display: keep first 4 and last 4 chars, hide the middle. */
 private fun maskSecret(value: String): String {
-    if (value.length <= 8) return "鈥⑩€⑩€⑩€?
-    return value.take(4) + "鈥⑩€⑩€⑩€? + value.takeLast(4)
+    if (value.length <= 8) return "****"
+    return value.take(4) + "****" + value.takeLast(4)
 }
 
 // 鈹€鈹€ Build / summarize an ImGatewayConfig from form values 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
@@ -942,7 +942,7 @@ private fun WeixinQrBindSection(
     val strFailed = stringResource(R.string.im_channel_wechat_qr_failed)
 
     fun startBind() {
-        DebugLog.d("WeixinQrBind", "startBind: 寮€濮嬫壂鐮佺粦瀹氭祦绋?)
+        DebugLog.d("WeixinQrBind", "startBind: 开始绑定流程")
         bindJob?.cancel(); qrcodeUrl = null; statusText = null; errorMsg = null; loading = true
         val flow = WeixinBindingFlow()
         bindJob = scope.launch {
@@ -1003,7 +1003,7 @@ private fun WeixinQrBindSection(
                 }
             }
             errorMsg != null -> {
-                Text(text = "鉂?, style = MaterialTheme.typography.displaySmall)
+                Text(text = "✗", style = MaterialTheme.typography.displaySmall)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(text = stringResource(R.string.im_channel_wechat_qr_failed), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(4.dp))
