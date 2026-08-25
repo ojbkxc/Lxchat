@@ -60,7 +60,9 @@ class AppContainer(private val appContext: Context) {
     private val appScope = kotlinx.coroutines.CoroutineScope(
         kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default +
             kotlinx.coroutines.CoroutineExceptionHandler { _, e ->
-                com.lxseek.chat.util.DebugLog.e("AppContainer", "Uncaught in appScope", e)
+                // 诊断：完整输出的异常 message（如 IllegalAccessError 的 "tried to access method X"）
+                // 会被 DebugLog.safeThrowableSummary 过滤掉，这里用平台 Log 保留它以精确定位 R8 访问错误。
+                android.util.Log.e("AppContainer", "Uncaught in appScope (full)", e)
             }
     )
 
