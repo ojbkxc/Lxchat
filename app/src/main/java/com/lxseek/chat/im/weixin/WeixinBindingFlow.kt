@@ -33,6 +33,9 @@ class WeixinBindingFlow(
     data class BindingResult(
         val token: String,
         val baseUrl: String,
+        /** 远端 bot id（ilink_bot_id），用于自回复防护第一道、账号切换检测、多账号管理。
+         *  空字符串表示服务端未返回（兼容旧版）。 */
+        val botId: String = "",
     )
 
     /** 绑定流程事件（[bind] 的回调参数）。 */
@@ -41,8 +44,8 @@ class WeixinBindingFlow(
         data class QrcodeReady(val qrcodeUrl: String) : Event
         /** 扫码状态变化（wait / scaned / need_verifycode ...）。 */
         data class StatusChanged(val status: String) : Event
-        /** 绑定成功，token + baseUrl 可用。 */
-        data class Success(val token: String, val baseUrl: String) : Event
+        /** 绑定成功，token + baseUrl + botId 可用。 */
+        data class Success(val token: String, val baseUrl: String, val botId: String = "") : Event
         /** 绑定失败（过期 / 被拒 / 网络错误）。 */
         data class Failure(val error: WeixinApiError) : Event
     }
@@ -153,9 +156,13 @@ class WeixinBindingFlow(
         val baseUrl = confirmed.baseUrl?.takeIf { it.isNotBlank() }
             ?.let { WeixinIlinkApi.normalizeWeixinApiBaseUrl(it) }
             ?: WeixinIlinkApi.WEIXIN_QR_BASE_URL
-        DebugLog.d("WeixinBindingFlow", "扫码确认成功: token=${token.take(10)}... baseUrl=$baseUrl")
-        onEvent(Event.Success(token, baseUrl))
-        BindingResult(token, baseUrl)
+        // G1: 提取 ilink_bot_id，写入 BindingResult/Event.Success，由 UI 层塞进 ImGatewayConfig.botId，
+        // 使 WeixinChannel 的自回复防护第一道、账号切换检测、多账号管理生效。
+        // 参考weixin-ClawBot-API bot.py:1236-1255 登录后保存 ilink_bot_id、ilink_user_id。
+        val botId = confirmed.botId?.takeIf { it.isNotBlank() } ?: ""
+        DebugLog.d("WeixinBindingFlow", "扫码确认成功: token=${token.take(10)}... baseUrl=$baseUrl botId=${botId.take(20)}")
+        onEvent(Event.Success(token, baseUrl, botId))
+        BindingResult(token, baseUrl, botId)
     } catch (e: WeixinApiError) {
         DebugLog.e("WeixinBindingFlow", "扫码绑定失败(WeixinApiError): ${e.code} - ${e.message}", e)
         onEvent(Event.Failure(e))

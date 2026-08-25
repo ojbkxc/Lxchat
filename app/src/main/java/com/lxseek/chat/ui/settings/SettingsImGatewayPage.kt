@@ -961,11 +961,13 @@ private fun WeixinQrBindSection(
                         }
                     }
                     is WeixinBindingFlow.Event.Success -> {
-                        DebugLog.d("WeixinQrBind", "扫码绑定成功: baseUrl=${event.baseUrl}")
+                        DebugLog.d("WeixinQrBind", "扫码绑定成功: baseUrl=${event.baseUrl} botId=${event.botId.take(20)}")
                         loading = false
                         onConfirm(ImGatewayConfig(
                             enabled = true, platform = ImPlatform.WECHAT.id, baseUrl = event.baseUrl,
                             token = event.token, channelId = "wechat:${UUID.randomUUID()}", pollIntervalMs = 5_000L,
+                            // G1: 写入 ilink_bot_id，使自回复防护第一道、账号切换检测、多账号管理生效。
+                            botId = event.botId,
                         ))
                     }
                     is WeixinBindingFlow.Event.Failure -> {

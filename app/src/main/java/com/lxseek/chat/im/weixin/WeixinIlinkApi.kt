@@ -94,6 +94,11 @@ class WeixinIlinkApi(
         /** 当 status=confirmed 时携带的 token / base_url。 */
         val token: String? = null,
         val baseUrl: String? = null,
+        /** 远端 bot id（ilink_bot_id），confirmed 后用于自回复防护/账号切换检测/多账号管理。
+         *  参考weixin-ClawBot-API bot.py:1236-1255 登录后保存 ilink_bot_id。 */
+        val botId: String? = null,
+        /** 远端 user id（ilink_user_id），可选，部分流程用于会话定位。 */
+        val userId: String? = null,
         /** 原始响应，便于取额外字段（如 verify_code 提示）。 */
         val raw: JsonObject,
     )
@@ -167,21 +172,41 @@ class WeixinIlinkApi(
         var endpoint = "ilink/bot/get_qrcode_status?qrcode=${urlEncode(qr)}"
         val vc = verifyCode?.trim()?.takeIf { it.isNotEmpty() }
         if (vc != null) endpoint += "&verify_code=${urlEncode(vc)}"
-        val response = requestJson(
-            method = "GET",
-            baseUrl = baseUrl,
-            endpoint = endpoint,
-            body = null,
-            token = null,
-            timeoutMs = DEFAULT_LONG_POLL_TIMEOUT_MS,
-            authenticated = false,
-        )
+        // H9: 长轮询 35s 超时是正常控制流（服务端在 35s 内无状态变化），应视为 wait 状态
+        // 继续轮询，而非抛错导致绑定直接失败。
+        // 参考weixin-ClawBot-API bot.py:1031-1032 `if status.get("_timeout"): return {"status": "wait"}`。
+        val response = try {
+            requestJson(
+                method = "GET",
+                baseUrl = baseUrl,
+                endpoint = endpoint,
+                body = null,
+                token = null,
+                timeoutMs = DEFAULT_LONG_POLL_TIMEOUT_MS,
+                authenticated = false,
+            )
+        } catch (e: WeixinApiError) {
+            if (e.code == "timeout") {
+                return@withContext LoginStatus(
+                    status = "wait",
+                    token = null,
+                    baseUrl = null,
+                    botId = null,
+                    userId = null,
+                    raw = buildJsonObject {},
+                )
+            } else throw e
+        }
         val status = response["status"].str()?.takeIf { it in LOGIN_STATUSES }
             ?: throw WeixinApiError("invalid-login-status", "微信服务返回了无法识别的扫码状态。")
         LoginStatus(
             status = status,
             token = response["bot_token"].str(),
             baseUrl = response["baseurl"].str(),
+            // G1: 解析 ilink_bot_id / ilink_user_id，供绑定后写入 ImGatewayConfig.botId，
+            // 使自回复防护第一道、账号切换检测、多账号管理生效。
+            botId = response["ilink_bot_id"].str(),
+            userId = response["ilink_user_id"].str(),
             raw = response,
         )
     }

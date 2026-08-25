@@ -272,7 +272,12 @@ class WeixinChannel(
             // Check for server-side rejection (dsh-im checks ret and errcode).
             val errcode = updates.raw["errcode"]?.let { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }
             if ((updates.ret != 0) || (errcode != null && errcode != 0)) {
-                val code = errcode ?: updates.ret
+                // H3: 优先检查 ret，ret=-14 时 code=-14 触发 onTokenStale。
+                // 原 `errcode ?: updates.ret` 用 Elvis：当 errcode=0（非 null）时 code=0 不触发 -14，
+                // 但 bot.py 优先 ret：`self.code = self.ret if self.ret not in (None, 0) else self.errcode`，
+                // ret=-14 且 errcode=0 时 bot.py code=-14（触发 stale），Lxchat 旧逻辑 code=0（不触发）。
+                // 参考weixin-ClawBot-API bot.py:329-330。
+                val code = if (updates.ret != 0) updates.ret else (errcode ?: 0)
                 DebugLog.e("WeixinChannel", "pollUpdates rejected: ret=${updates.ret} errcode=$errcode errmsg=${updates.raw["errmsg"]?.strSafe()}")
                 if (code == -14) {
                     // token 失效：重置协议状态，让重新绑定后的新 token 能干净接管；
