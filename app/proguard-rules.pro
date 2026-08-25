@@ -122,3 +122,9 @@
 # IM 包代码量小，APK 体积影响可忽略。
 -keep class com.lxseek.chat.im.** { *; }
 -keepclassmembers class com.lxseek.chat.im.** { *; }
+
+# ── SecretCrypto (IllegalAccessError 防护) ────────────────
+# ImGatewayStore (被 keep) 跨包调用 SecretCrypto.encrypt/decrypt，
+# R8 混淆 SecretCrypto 方法可见性后跨包访问抛 IllegalAccessError。
+-keep class com.lxseek.chat.util.SecretCrypto { *; }
+-keepclassmembers class com.lxseek.chat.util.SecretCrypto { *; }
