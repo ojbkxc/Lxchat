@@ -9,6 +9,8 @@ import com.lxseek.chat.util.DebugLog
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -85,6 +87,15 @@ class WeixinChannel(
         get() = config.baseUrl.trim().ifBlank { WeixinIlinkApi.WEIXIN_QR_BASE_URL }
 
     private val state = ChannelState()
+
+    /**
+     * 串行化所有 getupdates 长轮询访问（对齐 Zyn-iLink 的"每 token 单消费者"模型）。
+     * pollLoop / testConnection / ProactiveMessagingService 都可能触发 listConversations →
+     * pollUpdates；若并发，同一 token 上会存在多个重叠长轮询，互相推进共享游标导致
+     * 消息被其中一个消费者抢走，另一个 getUpdates 永远返回 0（日志表现为两个游标交替）。
+     * 用 Mutex 把所有进入 pollUpdates 的调用排队，保证同时只有一个 getupdates 在飞。
+     */
+    private val getUpdatesMutex = Mutex()
 
     /**
      * context_token store: userId → latest context_token from inbound messages.
@@ -233,6 +244,13 @@ class WeixinChannel(
     }
 
     private suspend fun pollUpdates() {
+        // 串行化 getupdates（见 getUpdatesMutex 注释）：排队而非重叠长轮询，避免共享游标被抢导致 0 消息。
+        getUpdatesMutex.withLock {
+            pollUpdatesLocked()
+        }
+    }
+
+    private suspend fun pollUpdatesLocked() {
         // P1-8: 清理过期自回复记录，避免 recentSent 无限增长
         cleanupRecentSent()
         try {
