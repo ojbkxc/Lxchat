@@ -99,3 +99,26 @@
 # ── MaterialKolor (palette inference via reflection) ──────
 -keep class com.materialkolor.** { *; }
 -dontwarn com.materialkolor.**
+
+# ── IM gateway (IllegalAccessError 防护) ──────────────────
+# 线上日志：feedInboundBatch 处理入站消息时抛 java.lang.IllegalAccessError
+#   at com.lxseek.chat.im.b.c(...)
+#   at com.lxseek.chat.im.b.a(...)
+#   at vr5.b(...) at ur5.k(...) at si1.invokeSuspend(...)
+# App 启动时抛一次，收到入站消息后 feedInboundBatch 再抛一次，每次收到消息都抛，
+# 导致 pollLoop 永久退出。
+#
+# 根因：R8 混淆破坏了 com.lxseek.chat.im 包下类的成员访问。高风险点：
+#  1. ImGatewayStore.kt:15 `internal val Context.imGatewayDataStore by preferencesDataStore(...)`
+#     —— internal 顶层属性 + inline 委托函数，混淆后跨类访问可能失败。
+#  2. im 包下多个 `private companion object`（ImPollingReceiver / ImCommandProcessor /
+#     ProactiveMessagingService / ImRuntimeState），R8 混淆 private companion 时可能
+#     破坏成员访问。
+#  3. kotlinx.serialization 的 inline reified decodeFromString/encodeToString 在
+#     ImGatewayStore 中大量使用，混淆后访问 $$serializer 可能出错。
+#
+# CI 未上传 mapping.txt（build.yml/prerelease.yml 只上传 APK），无法精确反混淆
+# com.lxseek.chat.im.b 到具体类。保守 keep 整个 IM 包树，防止成员访问被破坏。
+# IM 包代码量小，APK 体积影响可忽略。
+-keep class com.lxseek.chat.im.** { *; }
+-keepclassmembers class com.lxseek.chat.im.** { *; }
