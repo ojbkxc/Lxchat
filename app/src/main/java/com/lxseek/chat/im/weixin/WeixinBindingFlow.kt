@@ -4,7 +4,13 @@ import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlin.coroutines.coroutineContext
+
+/** 从 JsonElement 安全提取字符串（与 WeixinChannel.kt 同名扩展对齐，本文件独立可见）。 */
+private fun JsonElement?.strSafe(): String? = (this as? JsonPrimitive)?.contentOrNull
 
 /**
  * 微信 iLink 扫码绑定流程：[begin] 拿二维码 → UI 显示 → [pollUntilConfirmed] 轮询状态
@@ -116,7 +122,12 @@ class WeixinBindingFlow(
                 // P2-5: scaned_but_redirect 切换到服务端返回的新 baseUrl 继续轮询
                 // （参考 weixin-ClawBot-API bot.py:1051-1057,1104-1107）
                 "scaned_but_redirect" -> {
-                    status.baseUrl?.takeIf { it.isNotBlank() }?.let { newUrl ->
+                    // H26: 服务端返回 redirect_host 字段（不是 baseurl），用于切换 base URL。
+                    // 参考 weixin-ClawBot-API bot.py:1051-1057。兼容 base_url/baseurl 旧字段。
+                    val redirectHost = status.raw["redirect_host"].strSafe()
+                        ?: status.raw["base_url"].strSafe()
+                        ?: status.raw["baseurl"].strSafe()
+                    redirectHost?.takeIf { it.isNotBlank() }?.let { newUrl ->
                         runCatching { WeixinIlinkApi.normalizeWeixinApiBaseUrl(newUrl) }
                             .getOrNull()?.let { currentBaseUrl = it }
                     }

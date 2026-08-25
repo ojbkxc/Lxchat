@@ -267,7 +267,9 @@ class WeixinChannel(
             DebugLog.d("WeixinChannel", "pollUpdates: received ${updates.msgs.size} msgs, ret=${updates.ret}, bufLen=${updates.getUpdatesBuf.length}, serverTimeout=${updates.longpollingTimeoutMs}")
             // Use server-suggested long-poll timeout for the next request.
             if (updates.longpollingTimeoutMs > 0) {
-                longPollTimeoutMs = updates.longpollingTimeoutMs
+                // A12: 限制长轮询超时在 [1, 120]s，防止服务端返回大值（如 600000=10分钟）
+                // 导致长轮询挂起。参考 weixin-ClawBot-API bot.py:1499-1502。
+                longPollTimeoutMs = updates.longpollingTimeoutMs.coerceIn(1_000L, 120_000L)
             }
             // Check for server-side rejection (dsh-im checks ret and errcode).
             val errcode = updates.raw["errcode"]?.let { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }
@@ -361,13 +363,15 @@ class WeixinChannel(
         if (bytes.isEmpty()) return ""
         return try {
             val s = String(bytes, Charsets.UTF_8)
-            var printable = 0
             for (c in s) {
                 val code = c.code
-                if (code == 9 || code == 10 || code == 13 || code in 32..126) printable++
-                else { printable = -1; break }
+                // H67: 允许 tab(9)/换行(10)/回车(13) 和所有非控制字符（含中文等 Unicode > 127）。
+                // 旧逻辑只允许 ASCII 32-126，中文文本文件会被判为非文本返回空串，不并入 AI 提示。
+                if (code != 9 && code != 10 && code != 13 && (code < 32 || code == 127)) {
+                    return ""
+                }
             }
-            if (printable < 0) "" else s
+            s
         } catch (e: Exception) {
             ""
         }

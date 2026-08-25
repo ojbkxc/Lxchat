@@ -246,10 +246,14 @@ class ImPollingReceiver(
         // 微信 iLink 专属扩展：跨重启恢复 + 发送输入状态。
         val weixin = channel as? WeixinCompanionChannel
         if (weixin != null && state.contextTokens.isNotEmpty()) {
-            // App 重启后先从持久化状态恢复 per-会话 context_token，
-            // 否则回复因缺少上下文令牌会被服务端静默丢弃（参考 weixin-ClawBot-API）。
-            DebugLog.d("ImPolling", "seed ${state.contextTokens.size} context tokens into $channelKey")
-            weixin.seedContextTokens(state.contextTokens)
+            // H44: 只在首次启动（contextTokenStore 为空）时才 seed 持久化 token，
+            // 不在每次 feedInboundBatch 时 seed——否则会用旧 token 覆盖 applyUpdates 刚写入的新 token，
+            // 导致回复用旧 token 被服务端拒绝。参考 weixin-ClawBot-API。
+            val current = weixin.contextTokensSnapshot()
+            if (current.isEmpty()) {
+                DebugLog.d("ImPolling", "seed ${state.contextTokens.size} context tokens into $channelKey")
+                weixin.seedContextTokens(state.contextTokens)
+            }
         }
 
         val lxchatConvId = state.conversationBindings[conversation.id]

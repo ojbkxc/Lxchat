@@ -621,19 +621,22 @@ class WeixinIlinkApi(
         /** 提取消息文本（type=1 文本，type=3 语音转文字）。 */
         fun extractWeixinText(message: JsonObject): String? {
             val itemList = message["item_list"].arr() ?: return null
+            // B4: 拼接所有 text_item/voice_item 文本段，对齐 bot.py 行为。
+            // 旧逻辑只返回第一个非空文本，多段文本消息只取第一段。
+            val parts = mutableListOf<String>()
             for (item in itemList) {
                 val o = item.obj() ?: continue
                 val type = o["type"].int()
                 if (type == 1) {
                     val text = o["text_item"].obj()?.get("text").str()?.trim()
-                    if (!text.isNullOrEmpty()) return text
+                    if (!text.isNullOrEmpty()) parts.add(text)
                 }
                 if (type == 3) {
                     val text = o["voice_item"].obj()?.get("text").str()?.trim()
-                    if (!text.isNullOrEmpty()) return text
+                    if (!text.isNullOrEmpty()) parts.add(text)
                 }
             }
-            return null
+            return if (parts.isEmpty()) null else parts.joinToString("\n")
         }
 
         /** 获取消息 ID（优先 message_id，fallback client_id）。 */
