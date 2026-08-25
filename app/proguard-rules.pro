@@ -100,50 +100,9 @@
 -keep class com.materialkolor.** { *; }
 -dontwarn com.materialkolor.**
 
-# ── IM gateway (IllegalAccessError 防护) ──────────────────
-# 线上日志：feedInboundBatch 处理入站消息时抛 java.lang.IllegalAccessError
-#   at com.lxseek.chat.im.b.c(...)
-#   at com.lxseek.chat.im.b.a(...)
-#   at vr5.b(...) at ur5.k(...) at si1.invokeSuspend(...)
-# App 启动时抛一次，收到入站消息后 feedInboundBatch 再抛一次，每次收到消息都抛，
-# 导致 pollLoop 永久退出。
-#
-# 根因：R8 混淆破坏了 com.lxseek.chat.im 包下类的成员访问。高风险点：
-#  1. ImGatewayStore.kt:15 `internal val Context.imGatewayDataStore by preferencesDataStore(...)`
-#     —— internal 顶层属性 + inline 委托函数，混淆后跨类访问可能失败。
-#  2. im 包下多个 `private companion object`（ImPollingReceiver / ImCommandProcessor /
-#     ProactiveMessagingService / ImRuntimeState），R8 混淆 private companion 时可能
-#     破坏成员访问。
-#  3. kotlinx.serialization 的 inline reified decodeFromString/encodeToString 在
-#     ImGatewayStore 中大量使用，混淆后访问 $$serializer 可能出错。
-#
-# CI 未上传 mapping.txt（build.yml/prerelease.yml 只上传 APK），无法精确反混淆
-# com.lxseek.chat.im.b 到具体类。保守 keep 整个 IM 包树，防止成员访问被破坏。
-# IM 包代码量小，APK 体积影响可忽略。
--keep class com.lxseek.chat.im.** { *; }
--keepclassmembers class com.lxseek.chat.im.** { *; }
-
-# ── SecretCrypto (IllegalAccessError 防护) ────────────────
-# ImGatewayStore (被 keep) 跨包调用 SecretCrypto.encrypt/decrypt，
-# R8 混淆 SecretCrypto 方法可见性后跨包访问抛 IllegalAccessError。
--keep class com.lxseek.chat.util.SecretCrypto { *; }
--keepclassmembers class com.lxseek.chat.util.SecretCrypto { *; }
-
-# ── 全 app keep（IllegalAccessError 根治） ────────────────
-# im 包被 keep 后跨包调用 DebugLog/ConversationRepository/HttpClient 等，
-# R8 混淆这些类方法可见性后跨包访问抛 IllegalAccessError。
-# 根治方案：keep 整个 com.lxseek.chat.**，禁止 R8 混淆任何 app 代码。
-# APK 体积增加可接受，功能稳定性优先。
--keep class com.lxseek.chat.** { *; }
--keepclassmembers class com.lxseek.chat.** { *; }
-
-# ── kotlinx 库 keep（IllegalAccessError 根治） ───────────
-# ImGatewayStore inline map 调用 kotlinx.coroutines.flow 内部 emit，
-# R8 混淆库方法可见性后抛 IllegalAccessError。
-# kotlinx.coroutines 的 @PublishedApi internal 函数被 inline 函数跨包调用，
-# R8 优化时可能改变可见性。keep 整个库树防止此问题。
--keep class kotlinx.coroutines.** { *; }
--keepclassmembers class kotlinx.coroutines.** { *; }
-# kotlinx.serialization 的 reified decodeFromString/encodeToString 访问 $$serializer
--keep class kotlinx.serialization.** { *; }
--keepclassmembers class kotlinx.serialization.** { *; }
+# ── IM IllegalAccessError 根因修复 ───────────────────────
+# 根因：proguard-android-optimize.txt 的 -allowaccessmodification 允许 R8
+# 把 ImRuntimeState.Companion 字段从 public 改成 private，
+# 导致 ImGatewayStore inline map 合成类跨类访问失败。
+# 修复：改用 proguard-android.txt（不含 -allowaccessmodification）。
+# 原有的 kotlinx.serialization keep 规则（第4-13行）已足够保护 $$serializer。
