@@ -99,67 +99,74 @@ class ImBridgeService(
     suspend fun testConnection(config: ImGatewayConfig): ConnectionTestResult {
         DebugLog.d("ImBridge", "testConnection: platform=${config.platform} channel=${config.effectiveChannelId}")
 
-        // 1. 创建渠道；未知平台或工厂返回 null → 失败。
-        val channel = try {
-            ImChannelFactory.create(config)
-        } catch (e: Exception) {
-            DebugLog.e("ImBridge", "testConnection: factory create failed", e)
-            return ConnectionTestResult.Failure("无法创建渠道：${e.message ?: e.javaClass.simpleName}")
-        } ?: return ConnectionTestResult.Failure("未支持的平台：${config.platform}")
-
-        try {
-            // 2. 校验配置完整性。
-            if (!channel.isConfigured) {
-                DebugLog.w("ImBridge", "testConnection: channel not configured")
-                return ConnectionTestResult.Failure("渠道未配置完整（缺少必填凭证或被禁用）。")
-            }
-
-            // 3. 找一个可用的测试目标会话。
-            val conversations = try {
-                channel.listConversations()
+        // 微信 iLink：优先复用后台正在轮询的同一个活跃 channel。
+        //
+        // 根因：之前的实现为每次测试新建临时 channel，它在 listConversations 内部触发一次
+        // notifyStart 抢占订阅，随后在 finally 里配对 notifyStop——这会停掉该 token 的后台
+        // 订阅；而后台活跃 channel 的 notified 已是 true，不会再 notifyStart，于是后台
+        // getUpdates 从此只返回空、入站消息不再被拉取（表现为"点击测试能收到，后台却不自动回复"）。
+        //
+        // 修复：测试复用活跃 channel（零 notifyStart/notifyStop 干扰），且任何路径都不再下发
+        // notifyStop，保证后台订阅不被误关。临时创建的非微信 channel 无需配对静默停止。
+        val active = channelFor(config.effectiveChannelId)
+        val reuseWechat = (active as? WeixinChannel)?.takeIf { it.isConfigured }
+        val channel: MessageChannel = if (reuseWechat != null) {
+            DebugLog.d("ImBridge", "testConnection: reusing live wechat channel (no subscription churn)")
+            reuseWechat
+        } else {
+            try {
+                ImChannelFactory.create(config)
             } catch (e: Exception) {
-                DebugLog.e("ImBridge", "testConnection: listConversations failed", e)
-                return ConnectionTestResult.Failure("拉取会话列表失败：${e.message ?: e.javaClass.simpleName}")
-            }
-            if (conversations.isEmpty()) {
-                DebugLog.w("ImBridge", "testConnection: no conversations available")
-                return ConnectionTestResult.Failure(
-                    "尚未收到可用于测试的私聊消息。请先在 IM 端向该机器人发一条消息，再重试连接测试。",
+                DebugLog.e("ImBridge", "testConnection: factory create failed", e)
+                return ConnectionTestResult.Failure("无法创建渠道：${e.message ?: e.javaClass.simpleName}")
+            } ?: return ConnectionTestResult.Failure("未支持的平台：${config.platform}")
+        }
+
+        // 校验配置完整性。
+        if (!channel.isConfigured) {
+            DebugLog.w("ImBridge", "testConnection: channel not configured")
+            return ConnectionTestResult.Failure("渠道未配置完整（缺少必填凭证或被禁用）。")
+        }
+
+        // 找一个可用的测试目标会话。
+        val conversations = try {
+            channel.listConversations()
+        } catch (e: Exception) {
+            DebugLog.e("ImBridge", "testConnection: listConversations failed", e)
+            return ConnectionTestResult.Failure("拉取会话列表失败：${e.message ?: e.javaClass.simpleName}")
+        }
+        if (conversations.isEmpty()) {
+            DebugLog.w("ImBridge", "testConnection: no conversations available")
+            return ConnectionTestResult.Failure(
+                "尚未收到可用于测试的私聊消息。请先在 IM 端向该机器人发一条消息，再重试连接测试。",
+            )
+        }
+        val target = conversations.first()
+        DebugLog.d("ImBridge", "testConnection: target conversation=${target.id} title=${target.title}")
+
+        // 发送测试消息。
+        val testMessage = connectionTestMessage(channel.displayName)
+        val sendResult = try {
+            channel.sendMessage(target.id, testMessage)
+        } catch (e: Exception) {
+            DebugLog.e("ImBridge", "testConnection: sendMessage failed", e)
+            return ConnectionTestResult.Failure("发送测试消息失败：${e.message ?: e.javaClass.simpleName}")
+        }
+
+        return when (sendResult) {
+            is ImSendResult.Success -> {
+                DebugLog.i("ImBridge", "testConnection: success, messageId=${sendResult.messageId}")
+                ConnectionTestResult.Success(
+                    "已向会话「${target.title.ifBlank { target.id }}」发送测试消息。",
                 )
             }
-            val target = conversations.first()
-            DebugLog.d("ImBridge", "testConnection: target conversation=${target.id} title=${target.title}")
-
-            // 4. 发送测试消息。
-            val testMessage = connectionTestMessage(channel.displayName)
-            val sendResult = try {
-                channel.sendMessage(target.id, testMessage)
-            } catch (e: Exception) {
-                DebugLog.e("ImBridge", "testConnection: sendMessage failed", e)
-                return ConnectionTestResult.Failure("发送测试消息失败：${e.message ?: e.javaClass.simpleName}")
+            is ImSendResult.Failure -> {
+                DebugLog.w("ImBridge", "testConnection: send rejected: ${sendResult.reason}")
+                ConnectionTestResult.Failure("网关拒绝发送：${sendResult.reason}")
             }
-
-            return when (sendResult) {
-                is ImSendResult.Success -> {
-                    DebugLog.i("ImBridge", "testConnection: success, messageId=${sendResult.messageId}")
-                    ConnectionTestResult.Success(
-                        "已向会话「${target.title.ifBlank { target.id }}」发送测试消息。",
-                    )
-                }
-                is ImSendResult.Failure -> {
-                    DebugLog.w("ImBridge", "testConnection: send rejected: ${sendResult.reason}")
-                    ConnectionTestResult.Failure("网关拒绝发送：${sendResult.reason}")
-                }
-                ImSendResult.NotConfigured -> {
-                    DebugLog.w("ImBridge", "testConnection: channel reports NotConfigured on send")
-                    ConnectionTestResult.Failure("渠道在发送时报告未配置。")
-                }
-            }
-        } finally {
-            // 清理：临时 channel 调了 listConversations（内部 notifyStart + getUpdates），
-            // 需配对 notifyStop 避免污染服务器状态，影响 active channel 的后续 getUpdates。
-            if (channel is WeixinChannel) {
-                try { channel.stop() } catch (_: Exception) {}
+            ImSendResult.NotConfigured -> {
+                DebugLog.w("ImBridge", "testConnection: channel reports NotConfigured on send")
+                ConnectionTestResult.Failure("渠道在发送时报告未配置。")
             }
         }
     }
