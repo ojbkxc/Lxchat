@@ -9,6 +9,7 @@ import com.lxseek.chat.util.DebugLog
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
@@ -17,6 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import java.io.ByteArrayOutputStream
+import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -36,6 +38,12 @@ interface WeixinCompanionChannel {
 
     /** 从持久化状态恢复 context_token（App 重启后仍能带上下文回复）。 */
     fun seedContextTokens(tokens: Map<String, String>)
+
+    /** Current sync_buf cursor snapshot, for persistence across restarts. */
+    fun syncBufSnapshot(): String
+
+    /** Restore sync_buf cursor from persistence (App restart). */
+    fun seedSyncBuf(buf: String)
 }
 
 /**
@@ -131,26 +139,72 @@ class WeixinChannel(
     @Volatile
     private var longPollTimeoutMs: Long = 0L
 
+    /** P0-1: Last send timestamp for rate limiting. */
+    @Volatile
+    private var lastSendTimeMs: Long = 0L
+
     override suspend fun sendMessage(conversationId: String, text: String): ImSendResult {
         if (!isConfigured) return ImSendResult.NotConfigured
         val recipient = conversationId.trim()
         if (recipient.isEmpty()) return ImSendResult.Failure("conversationId is empty")
-        return try {
-            // context_token is required by the iLink protocol for conversation association.
-            val contextToken = contextTokenStore[recipient]
-            DebugLog.d("WeixinChannel", "sendMessage: recipient=$recipient hasContextToken=${contextToken != null}")
-            api.sendText(baseUrl, config.token, recipient, text, contextToken)
-            // P1-8: 记录已发送消息，供 applyUpdates 自回复去重（防 AI 回复自己消息死循环）
-            recordSent(recipient, text)
-            // 用 client_id 风格的本地 id 作为成功回执（iLink 不回 server id）
-            ImSendResult.Success("lxchat-weixin-sent-${System.currentTimeMillis()}")
-        } catch (e: WeixinApiError) {
-            DebugLog.e("WeixinChannel", "sendMessage failed: ${e.code}", e)
-            ImSendResult.Failure(e.message ?: e.code)
-        } catch (e: Exception) {
-            DebugLog.e("WeixinChannel", "sendMessage failed", e)
-            ImSendResult.Failure(e.message ?: "send failed")
+
+        // P1-7: Strip Markdown syntax WeChat can't render
+        val plainText = WeixinMarkdownFilter.strip(text)
+        // P1-8: Cap at WeChat's max text length instead of splitting into multiple messages
+        val cappedText = if (plainText.length > WECHAT_MAX_TEXT_LENGTH) {
+            plainText.take(WECHAT_MAX_TEXT_LENGTH - 3) + "..."
+        } else {
+            plainText
         }
+
+        // P0-1: Enforce minimum interval between sends to avoid WeChat anti-spam ban.
+        enforceRateLimit()
+
+        // P2-12: Retry transient failures (network-error, timeout) up to SEND_MAX_RETRIES times.
+        val contextToken = contextTokenStore[recipient]
+        DebugLog.d("WeixinChannel", "sendMessage: recipient=$recipient hasContextToken=${contextToken != null} textLen=${cappedText.length}")
+        var lastError: Exception? = null
+        for (attempt in 1..SEND_MAX_RETRIES) {
+            try {
+                api.sendText(baseUrl, config.token, recipient, cappedText, contextToken)
+                // P1-8: 记录已发送消息，供 applyUpdates 自回复去重（防 AI 回复自己消息死循环）
+                recordSent(recipient, cappedText)
+                // 用 client_id 风格的本地 id 作为成功回执（iLink 不回 server id）
+                return ImSendResult.Success("lxchat-weixin-sent-${System.currentTimeMillis()}")
+            } catch (e: WeixinApiError) {
+                lastError = e
+                DebugLog.e("WeixinChannel", "sendMessage attempt $attempt failed: ${e.code}", e)
+                // Non-transient errors (send-rejected, invalid-*) should not retry.
+                if (e.code !in TRANSIENT_ERROR_CODES) {
+                    return ImSendResult.Failure(e.message ?: e.code)
+                }
+            } catch (e: Exception) {
+                lastError = e
+                DebugLog.e("WeixinChannel", "sendMessage attempt $attempt failed", e)
+                // Generic exceptions (e.g. IOException) are treated as transient.
+            }
+            // Transient failure: wait before retrying (unless this was the last attempt).
+            if (attempt < SEND_MAX_RETRIES) {
+                DebugLog.d("WeixinChannel", "retrying send in ${SEND_RETRY_DELAY_MS}ms (attempt $attempt)")
+                delay(SEND_RETRY_DELAY_MS)
+            }
+        }
+        val msg = lastError?.message ?: "send failed"
+        return ImSendResult.Failure(msg)
+    }
+
+    /** P0-1: Enforce minimum interval between sends to avoid WeChat anti-spam ban. */
+    private suspend fun enforceRateLimit() {
+        val now = System.currentTimeMillis()
+        val elapsed = now - lastSendTimeMs
+        val jitter = SecureRandom().nextLong(SEND_MAX_JITTER_MS + 1).coerceAtLeast(0)
+        val required = SEND_MIN_INTERVAL_MS + jitter
+        if (elapsed < required) {
+            val wait = required - elapsed
+            DebugLog.d("WeixinChannel", "rate limit: waiting ${wait}ms (elapsed=${elapsed}ms)")
+            delay(wait)
+        }
+        lastSendTimeMs = System.currentTimeMillis()
     }
 
     /**
@@ -213,6 +267,12 @@ class WeixinChannel(
 
     override fun seedContextTokens(tokens: Map<String, String>) {
         if (tokens.isNotEmpty()) contextTokenStore.putAll(tokens)
+    }
+
+    override fun syncBufSnapshot(): String = state.getUpdatesBuf()
+
+    override fun seedSyncBuf(buf: String) {
+        if (buf.isNotEmpty()) state.seedSyncBuf(buf)
     }
 
     /** 取用户 typing ticket，带 TTL 缓存；拿不到返回 null 让输入状态静默跳过。 */
@@ -421,6 +481,11 @@ class WeixinChannel(
             _getUpdatesBuf = ""
         }
 
+        /** P0-5: Restore sync_buf cursor from persistence (App restart). */
+        fun seedSyncBuf(buf: String) {
+            if (buf.isNotEmpty()) _getUpdatesBuf = buf
+        }
+
         suspend fun applyUpdates(
             updates: WeixinIlinkApi.Updates,
             contextTokenStore: ConcurrentHashMap<String, String>,
@@ -547,6 +612,18 @@ class WeixinChannel(
         const val NOTIFY_STOP_TIMEOUT_MS = 10_000L
         /** P1-8: 自回复去重窗口（毫秒），120 秒内命中视为自己消息回流。 */
         const val SELF_REPLY_DEDUP_WINDOW_MS = 120_000L
+        /** P0-1: Minimum interval between sends (ms). SpenserCai: 34s/18 msgs triggers ban. */
+        const val SEND_MIN_INTERVAL_MS = 3_000L
+        /** P0-1: Maximum random jitter added to interval (ms). */
+        const val SEND_MAX_JITTER_MS = 2_000L
+        /** P1-8: Maximum text length for a single WeChat message. */
+        const val WECHAT_MAX_TEXT_LENGTH = 2_000
+        /** P2-12: Maximum retry attempts for transient send failures. */
+        const val SEND_MAX_RETRIES = 3
+        /** P2-12: Delay between retry attempts (ms). */
+        const val SEND_RETRY_DELAY_MS = 5_000L
+        /** P2-12: Transient error codes that warrant a retry. */
+        val TRANSIENT_ERROR_CODES = setOf("network-error", "timeout")
         /** 文本类文件扩展名，解密后可直接用 UTF-8 解码并喂给模型。 */
         val TEXT_FILE_EXTS = setOf("txt", "csv", "md", "markdown", "json", "log", "html", "htm", "xml", "yml", "yaml", "ini", "conf", "properties")
         /** 单个文件内容并入提示的最大字符数，避免超大文本占用上下文。 */
