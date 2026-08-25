@@ -7,6 +7,7 @@ import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -306,12 +307,34 @@ class ImPollingReceiver(
         lxchatConvId: String,
         message: ImMessage,
     ): String? {
-        weixin?.sendTyping(convRemoteId, 1)
-        return try {
-            runOnce(channelKey, lxchatConvId, message)
-        } finally {
-            // 无论成功还是失败都以 status=2 结束输入状态，避免一直停留在"正在输入"。
-            weixin?.sendTyping(convRemoteId, 2)
+        // 非微信渠道不涉及输入状态，直接跑 agent。
+        if (weixin == null) return runOnce(channelKey, lxchatConvId, message)
+        weixin.sendTyping(convRemoteId, 1)
+        // 长回复（看图 / 多轮思考）可能超过微信"正在输入"提示的存活时间，故在生成期间
+        // 周期性重发 status=1 保活（参考 AstrBot weixin_oc 的 typing 心跳），
+        // 生成结束（含失败）一律以 status=2 收尾。每 10s 一次轻量 POST，且 typing_ticket
+        // 已有 30min TTL 缓存，性能开销可忽略。
+        return coroutineScope {
+            val keepalive = launch { typingKeepalive(weixin, convRemoteId) }
+            try {
+                runOnce(channelKey, lxchatConvId, message)
+            } finally {
+                keepalive.cancel()
+                weixin.sendTyping(convRemoteId, 2)
+            }
+        }
+    }
+
+    /** 生成期间周期性下发"正在输入"状态，直到被 [replyFromAgent] 取消。 */
+    private suspend fun typingKeepalive(weixin: WeixinCompanionChannel, convRemoteId: String) {
+        while (true) {
+            try {
+                delay(TYPING_KEEPALIVE_INTERVAL_MS)
+            } catch (e: CancellationException) {
+                return
+            }
+            // sendTyping 内部已 try/catch 兜底，这里失败不影响主流程。
+            weixin.sendTyping(convRemoteId, 1)
         }
     }
 
@@ -420,6 +443,9 @@ class ImPollingReceiver(
 
     private companion object {
         const val MAX_SEEN = 2_000
+        /** "正在输入"保活重发间隔（毫秒）：长回复超过微信提示存活时间时维持状态显示。
+         *  仅微信渠道在 agent 生成期间生效，之后立即取消。 */
+        const val TYPING_KEEPALIVE_INTERVAL_MS = 10_000L
 
         /**
          * 仅含图片、无文本时附加的默认提示，引导模型分析图片。
