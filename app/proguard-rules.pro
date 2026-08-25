@@ -128,3 +128,11 @@
 # R8 混淆 SecretCrypto 方法可见性后跨包访问抛 IllegalAccessError。
 -keep class com.lxseek.chat.util.SecretCrypto { *; }
 -keepclassmembers class com.lxseek.chat.util.SecretCrypto { *; }
+
+# ── 全 app keep（IllegalAccessError 根治） ────────────────
+# im 包被 keep 后跨包调用 DebugLog/ConversationRepository/HttpClient 等，
+# R8 混淆这些类方法可见性后跨包访问抛 IllegalAccessError。
+# 根治方案：keep 整个 com.lxseek.chat.**，禁止 R8 混淆任何 app 代码。
+# APK 体积增加可接受，功能稳定性优先。
+-keep class com.lxseek.chat.** { *; }
+-keepclassmembers class com.lxseek.chat.** { *; }
