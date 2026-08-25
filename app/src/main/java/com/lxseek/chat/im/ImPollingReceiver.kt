@@ -8,10 +8,12 @@ import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.coroutines.coroutineContext
@@ -257,8 +259,9 @@ class ImPollingReceiver(
             }
             !seen
         }
-        if (fresh.isEmpty()) return
+        // 诊断：若上一条 "feedInboundBatch" 日志缺失，说明卡在 bindConversation/seenMessageIds（DB）。
         DebugLog.d("ImPolling", "feedInboundBatch: ${fresh.size} fresh msgs for conv=${conversation.id}, lxchatConv=$lxchatConvId")
+        if (fresh.isEmpty()) return
         onMessageHandled?.invoke(conversation.id)
 
         // 持久化最新 context_token 快照到运行时状态，供 App 重启后恢复
@@ -330,8 +333,8 @@ class ImPollingReceiver(
         lxchatConvId: String,
         message: ImMessage,
     ): String? {
-        // 非微信渠道不涉及输入状态，直接跑 agent。
-        if (weixin == null) return runOnce(channelKey, lxchatConvId, message)
+        // 非微信渠道不涉及输入状态，直接跑 agent（带硬超时，防止挂起阻塞轮询）。
+        if (weixin == null) return runWithAgentTimeout(channelKey, lxchatConvId, message)
         weixin.sendTyping(convRemoteId, 1)
         // 长回复（看图 / 多轮思考）可能超过微信"正在输入"提示的存活时间，故在生成期间
         // 周期性重发 status=1 保活（参考 AstrBot weixin_oc 的 typing 心跳），
@@ -340,12 +343,26 @@ class ImPollingReceiver(
         return coroutineScope {
             val keepalive = launch { typingKeepalive(weixin, convRemoteId) }
             try {
-                runOnce(channelKey, lxchatConvId, message)
+                runWithAgentTimeout(channelKey, lxchatConvId, message)
             } finally {
                 keepalive.cancel()
                 weixin.sendTyping(convRemoteId, 2)
             }
         }
+    }
+
+    /** 带硬超时跑一轮 agent 回复；挂起/超时返回 null，下周期自动重试，不卡死轮询。 */
+    private suspend fun runWithAgentTimeout(
+        channelKey: String,
+        lxchatConvId: String,
+        message: ImMessage,
+    ): String? = try {
+        withTimeout(AGENT_REPLY_TIMEOUT_MS) {
+            runOnce(channelKey, lxchatConvId, message)
+        }
+    } catch (e: TimeoutCancellationException) {
+        DebugLog.w("ImPolling", "agent reply timed out for conv=$lxchatConvId after ${AGENT_REPLY_TIMEOUT_MS}ms")
+        null
     }
 
     /** 生成期间周期性下发"正在输入"状态，直到被 [replyFromAgent] 取消。 */
@@ -471,6 +488,12 @@ class ImPollingReceiver(
         /** "正在输入"保活重发间隔（毫秒）：长回复超过微信提示存活时间时维持状态显示。
          *  仅微信渠道在 agent 生成期间生效，之后立即取消。 */
         const val TYPING_KEEPALIVE_INTERVAL_MS = 10_000L
+        /**
+         * IM 触发单轮 agent 回复的硬超时（毫秒）。轮询与回复在同一顺序协程里跑，
+         * 若模型请求挂起而无超时，会把整个轮询循环卡死（其余渠道不再 getUpdates）。
+         * 超时后本轮不回复、下一轮重新拉取时自动重试。比单次提示的生成期望时长略宽。
+         */
+        const val AGENT_REPLY_TIMEOUT_MS = 90_000L
 
         /**
          * 仅含图片、无文本时附加的默认提示，引导模型分析图片。
