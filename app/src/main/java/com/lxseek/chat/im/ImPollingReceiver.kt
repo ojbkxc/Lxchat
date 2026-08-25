@@ -444,7 +444,9 @@ class ImPollingReceiver(
         return if (legacy.channelId.isBlank() && (legacy.platform == channelKey || legacy.platform.isBlank())) {
             legacy
         } else {
-            ImRuntimeState(channelId = channelKey, platform = channelKey)
+            // platform 留空：channelKey 是渠道实例 ID（如 "wechat:uuid"），不是平台 ID（"wechat"）。
+            // 留空让 feedInboundBatch 的 platform mismatch 检查通过，bindConversation 后会被正确设为 channel.channelId。
+            ImRuntimeState(channelId = channelKey, platform = "")
         }
     }
 
