@@ -45,5 +45,9 @@ signing.properties
 # Local build artifacts and diagnostic files
 /dist/
 build-failure.txt
+build-output.txt
 ci-log.txt
+ci-log-*.txt
+ci-logs.zip
+/ci-logs/
 runs.json

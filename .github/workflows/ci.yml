@@ -63,6 +63,7 @@ jobs:
               echo "====BOT===="; tail -8 /tmp/build.log
             } > ci-logs/build-failure.txt 2>&1
             echo "FAIL $GITHUB_SHA" > ci-logs/build-status.txt
+            echo "====FULL_BUILD_LOG_TAIL===="; tail -300 /tmp/build.log
           else
             echo "PASS $GITHUB_SHA" > ci-logs/build-status.txt
           fi
