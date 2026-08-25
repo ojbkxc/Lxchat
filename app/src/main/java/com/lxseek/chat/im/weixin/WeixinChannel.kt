@@ -9,6 +9,7 @@ import com.lxseek.chat.util.DebugLog
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -52,7 +53,32 @@ class WeixinChannel(
     override val channelId: String get() = "wechat"
     override val displayName: String get() = "微信 · iLink"
     override val isConfigured: Boolean
-        get() = config.enabled && config.token.isNotBlank()
+        // P1-1: tokenStale 时返回 false，pollChannel 跳过，避免 -14 后无效循环
+        get() = config.enabled && config.token.isNotBlank() && !tokenStale
+
+    /**
+     * P1-1: token 失效标志。-14 后置 true，isConfigured 返回 false 跳过轮询；
+     * 重新绑定成功后由 [clearTokenStale] 清除，或 buildChannels 重建新 channel 自动清除
+     * （参考 weixin-ClawBot-API bot.py:1511-1531 受控重登录）。
+     */
+    @Volatile
+    private var tokenStale = false
+
+    /** P1-1: 标记 token 失效，暂停该渠道轮询，等 UI 引导重新扫码绑定。 */
+    fun markTokenStale() {
+        if (!tokenStale) {
+            tokenStale = true
+            DebugLog.w("WeixinChannel", "tokenStale marked — polling paused until rebind")
+        }
+    }
+
+    /** P1-1: 重新绑定成功后清除失效标志，恢复轮询。 */
+    fun clearTokenStale() {
+        tokenStale = false
+        notified = false
+        state.resetCursor()
+        DebugLog.d("WeixinChannel", "tokenStale cleared — polling resumed")
+    }
 
     /** iLink base URL：配置优先，否则用协议默认。 */
     private val baseUrl: String
@@ -67,6 +93,13 @@ class WeixinChannel(
      * easy-weixin-clawbot SDK which refuses to send without it).
      */
     private val contextTokenStore = ConcurrentHashMap<String, String>()
+
+    /**
+     * P1-8: 自回复防护——记录最近 [SELF_REPLY_DEDUP_WINDOW_MS] 内自己发出的消息
+     * （key=to_user_id+content），applyUpdates 时若入站消息命中则跳过，
+     * 防止 AI 回复自己消息死循环（参考 Akasha bridge_core.py:51-64 should_ignore）。
+     */
+    private val recentSent = ConcurrentHashMap<String, Long>()
 
     /**
      * 输入状态打点：当服务端返回 errcode/ret=-14（token 失效）时触发，供 UI 引导重新扫码。
@@ -96,6 +129,8 @@ class WeixinChannel(
             val contextToken = contextTokenStore[recipient]
             DebugLog.d("WeixinChannel", "sendMessage: recipient=$recipient hasContextToken=${contextToken != null}")
             api.sendText(baseUrl, config.token, recipient, text, contextToken)
+            // P1-8: 记录已发送消息，供 applyUpdates 自回复去重（防 AI 回复自己消息死循环）
+            recordSent(recipient, text)
             // 用 client_id 风格的本地 id 作为成功回执（iLink 不回 server id）
             ImSendResult.Success("lxchat-weixin-sent-${System.currentTimeMillis()}")
         } catch (e: WeixinApiError) {
@@ -105,6 +140,46 @@ class WeixinChannel(
             DebugLog.e("WeixinChannel", "sendMessage failed", e)
             ImSendResult.Failure(e.message ?: "send failed")
         }
+    }
+
+    /**
+     * P2-1: 停止该渠道——best-effort 通知微信服务停止推送（参考 weixin-ClawBot-API bot.py:1563-1579）。
+     * 用独立短超时（10s），失败不抛，不被长轮询取消信号连带取消。
+     */
+    suspend fun stop() {
+        if (!config.enabled || config.token.isBlank()) return
+        try {
+            withTimeoutOrNull(NOTIFY_STOP_TIMEOUT_MS) {
+                api.notifyStop(baseUrl, config.token)
+            }
+            DebugLog.d("WeixinChannel", "notifyStop done")
+        } catch (e: Exception) {
+            DebugLog.w("WeixinChannel", "notifyStop failed: ${e.message}")
+        }
+    }
+
+    // ── P1-8 自回复防护辅助 ──────────────────────────────────────────────
+
+    private fun recordSent(toUserId: String, content: String) {
+        val key = selfReplyKey(toUserId, content)
+        recentSent[key] = System.currentTimeMillis()
+    }
+
+    private fun isSelfReplyEcho(toUserId: String, content: String): Boolean {
+        if (toUserId.isEmpty() || content.isEmpty()) return false
+        val key = selfReplyKey(toUserId, content)
+        val ts = recentSent[key] ?: return false
+        return System.currentTimeMillis() - ts < SELF_REPLY_DEDUP_WINDOW_MS
+    }
+
+    private fun selfReplyKey(toUserId: String, content: String): String {
+        // 用 to_user_id+content 做 key，避免不同人相同内容误判；content 截断控制 key 体积
+        return "$toUserId\u0000${content.take(200)}"
+    }
+
+    private fun cleanupRecentSent() {
+        val now = System.currentTimeMillis()
+        recentSent.entries.removeIf { now - it.value > SELF_REPLY_DEDUP_WINDOW_MS }
     }
 
     // ── WeixinCompanionChannel 实现（移动端可用）──────────────────────────
@@ -158,6 +233,8 @@ class WeixinChannel(
     }
 
     private suspend fun pollUpdates() {
+        // P1-8: 清理过期自回复记录，避免 recentSent 无限增长
+        cleanupRecentSent()
         try {
             // dsh-im calls notifyStart before the monitor loop; without this the WeChat server
             // does not push messages to getupdates, so every poll returns an empty list.
@@ -189,7 +266,7 @@ class WeixinChannel(
                 }
                 return
             }
-            state.applyUpdates(updates, contextTokenStore) { msg -> loadWeixinImageDataUris(msg) }
+            state.applyUpdates(updates, contextTokenStore, config.botId.takeIf { it.isNotBlank() }, ::isSelfReplyEcho) { msg -> loadWeixinImageDataUris(msg) }
         } catch (e: WeixinApiError) {
             DebugLog.e("WeixinChannel", "pollUpdates failed: ${e.code}", e)
         } catch (e: Exception) {
@@ -265,6 +342,8 @@ class WeixinChannel(
         suspend fun applyUpdates(
             updates: WeixinIlinkApi.Updates,
             contextTokenStore: ConcurrentHashMap<String, String>,
+            selfBotId: String?,
+            selfReplyChecker: (toUserId: String, content: String) -> Boolean,
             imageResolver: suspend (JsonObject) -> List<String>,
         ) {
             // Only update the cursor if the server returned a non-empty buf.
@@ -281,6 +360,17 @@ class WeixinChannel(
                 val text = WeixinIlinkApi.extractWeixinText(msg)
                 val msgId = WeixinIlinkApi.weixinMessageId(msg)
                 val fromUserId = msg["from_user_id"]?.strSafe()
+                // P1-8: from_user_id == 自己 botId 时跳过（自回复防护第一道）
+                if (!selfBotId.isNullOrEmpty() && fromUserId == selfBotId) {
+                    DebugLog.d("WeixinChannel", "applyUpdates: skip self-reply echo (from=botId)")
+                    continue
+                }
+                // P1-8: 内容去重——to_user_id+content 命中 recentSent 时跳过（自回复防护第二道）
+                val toUserId = msg["to_user_id"]?.strSafe()
+                if (text != null && selfReplyChecker(toUserId ?: "", text)) {
+                    DebugLog.d("WeixinChannel", "applyUpdates: skip self-reply echo (to=$toUserId)")
+                    continue
+                }
                 // Extract and store context_token — required for replies (per weixin-bot-api.md).
                 val contextToken = msg["context_token"]?.strSafe()
                 if (fromUserId != null && fromUserId.isNotEmpty() && !contextToken.isNullOrEmpty()) {
@@ -355,6 +445,10 @@ class WeixinChannel(
         const val MAX_IMAGE_DIMENSION = 1024
         /** JPEG 压缩质量（0-100），越小体积越小。 */
         const val IMAGE_JPEG_QUALITY = 70
+        /** P2-1: notifyStop 独立短超时（毫秒），不被长轮询取消信号连带取消。 */
+        const val NOTIFY_STOP_TIMEOUT_MS = 10_000L
+        /** P1-8: 自回复去重窗口（毫秒），120 秒内命中视为自己消息回流。 */
+        const val SELF_REPLY_DEDUP_WINDOW_MS = 120_000L
     }
 }
 

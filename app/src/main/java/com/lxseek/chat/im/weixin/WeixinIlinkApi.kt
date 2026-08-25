@@ -41,6 +41,22 @@ private fun JsonElement?.str(): String? = (this as? JsonPrimitive)?.contentOrNul
 private fun JsonElement?.int(): Int? = (this as? JsonPrimitive)?.intOrNull
 private fun JsonElement?.long(): Long? = (this as? JsonPrimitive)?.longOrNull
 
+/**
+ * P1-5: 响应体日志脱敏。含 token/ticket/aeskey 等敏感字段的响应只打印长度，
+ * 不打印 body 内容，避免 bot_token/context_token 等泄露到 logcat
+ * （参考 weixin-ClawBot-API bot.py:371-397 不明文打印 token）。
+ */
+private fun maskResponseBody(body: String): String {
+    val sensitiveKeys = listOf(
+        "\"bot_token\"", "\"context_token\"", "\"typing_ticket\"",
+        "\"aeskey\"", "\"qrcode\"", "\"qrcode_img_content\"",
+    )
+    if (sensitiveKeys.any { body.contains(it) }) {
+        return "[sensitive body masked, len=${body.length}]"
+    }
+    return body.take(500)
+}
+
 /** 微信 iLink 协议错误。code 与 dsh-im/weixin-api.mjs 的 WeixinApiError 对齐。 */
 class WeixinApiError(
     val code: String,
@@ -245,9 +261,13 @@ class WeixinIlinkApi(
             timeoutMs = DEFAULT_TIMEOUT_MS,
             authenticated = true,
         )
-        val ret = response["ret"].int()
-        if (ret != null && ret != 0) {
-            throw WeixinApiError("send-rejected", "微信服务拒绝了回复消息。")
+        // P2-2: 同时校验 ret 和 errcode，防止 ret=0/null 但 errcode=-14 被当成功
+        // （参考 weixin-ClawBot-API bot.py:435-448 ensure_business_success）
+        val ret = response["ret"].long()
+        val errcode = response["errcode"].long()
+        val ok = (ret == null || ret == 0L) && (errcode == null || errcode == 0L)
+        if (!ok) {
+            throw WeixinApiError("send-rejected", "微信服务拒绝了回复消息（ret=$ret errcode=$errcode）。")
         }
         true
     }
@@ -413,7 +433,8 @@ class WeixinIlinkApi(
         DebugLog.d("WeixinIlinkApi", "requestJson: $method $url (authenticated=$authenticated) body=${body?.take(300)}")
         try {
             val raw = executeCall(method, url, headers, body, timeoutMs)
-            DebugLog.d("WeixinIlinkApi", "requestJson: 响应 code=${raw.code} len=${raw.body.length} body=${raw.body.take(500)}")
+            // P1-5: 响应体脱敏，含 token 等敏感字段时只打印长度不打印 body
+            DebugLog.d("WeixinIlinkApi", "requestJson: 响应 code=${raw.code} len=${raw.body.length} body=${maskResponseBody(raw.body)}")
             if (raw.code !in 200..299) {
                 throw WeixinApiError(
                     code = "http-error",

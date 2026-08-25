@@ -70,16 +70,32 @@ class WeixinBindingFlow(
         baseUrl: String = WeixinIlinkApi.WEIXIN_QR_BASE_URL,
         onStatus: (String) -> Unit = {},
     ): WeixinIlinkApi.LoginStatus {
+        // P2-5: baseUrl 可变，scaned_but_redirect 时切换到新 baseUrl 继续轮询
+        var currentBaseUrl = baseUrl
         while (true) {
             coroutineContext.ensureActive()
-            val status = api.pollLogin(qrcode, baseUrl)
+            val status = api.pollLogin(qrcode, currentBaseUrl)
             onStatus(status.status)
             when (status.status) {
                 "confirmed" -> return status
                 "expired" -> throw WeixinApiError("login-expired", "二维码已过期，请重新扫码。")
                 "verify_code_blocked" ->
                     throw WeixinApiError("verify-blocked", "验证码输入过多，请稍后再试。")
-                // wait / scaned / need_verifycode / scaned_but_redirect / binded_redirect → 继续
+                // P2-5: scaned_but_redirect 切换到服务端返回的新 baseUrl 继续轮询
+                // （参考 weixin-ClawBot-API bot.py:1051-1057,1104-1107）
+                "scaned_but_redirect" -> {
+                    status.baseUrl?.takeIf { it.isNotBlank() }?.let { newUrl ->
+                        runCatching { WeixinIlinkApi.normalizeWeixinApiBaseUrl(newUrl) }
+                            .getOrNull()?.let { currentBaseUrl = it }
+                    }
+                }
+                // P2-5: binded_redirect 视为已完成，复用本地 token
+                // （参考 weixin-ClawBot-API bot.py:1166-1177）
+                "binded_redirect" -> {
+                    if (!status.token.isNullOrBlank()) return status
+                    // token 为空时无法复用，继续轮询等服务端返回 token
+                }
+                // wait / scaned / need_verifycode → 继续
             }
             delay(1_000L)
         }

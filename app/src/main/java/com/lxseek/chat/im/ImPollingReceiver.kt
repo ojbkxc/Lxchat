@@ -2,6 +2,7 @@ package com.lxseek.chat.im
 
 import com.lxseek.chat.automation.TaskExecutionEngine
 import com.lxseek.chat.data.repository.ConversationRepository
+import com.lxseek.chat.im.weixin.WeixinChannel
 import com.lxseek.chat.im.weixin.WeixinCompanionChannel
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CancellationException
@@ -73,6 +74,14 @@ class ImPollingReceiver(
         pollJob?.cancel()
         pollJob = null
         stopPushListeners()
+        // P2-1: best-effort 通知微信服务停止推送，用独立协程避免被长轮询取消连带
+        for ((_, channel) in bridge.channels()) {
+            if (channel is WeixinChannel) {
+                scope.launch(Dispatchers.Default) {
+                    runCatching { channel.stop() }
+                }
+            }
+        }
     }
 
     // ── Polling path ──────────────────────────────────────────

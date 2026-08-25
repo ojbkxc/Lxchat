@@ -1,5 +1,6 @@
 package com.lxseek.chat.im
 
+import com.lxseek.chat.im.weixin.WeixinChannel
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -57,6 +58,11 @@ class ImBridgeService(
         for (config in cfg.all) {
             if (!config.enabled) continue
             val channel = ImChannelFactory.create(config) ?: continue
+            // P1-1: 接通 WeixinChannel.onTokenStale，-14 后暂停该渠道轮询等重新绑定
+            // （参考 weixin-ClawBot-API bot.py:1511-1531 受控重登录）
+            if (channel is WeixinChannel) {
+                channel.onTokenStale = { channel.markTokenStale() }
+            }
             if (!channel.isConfigured) continue
             result[config.effectiveChannelId] = channel
         }
