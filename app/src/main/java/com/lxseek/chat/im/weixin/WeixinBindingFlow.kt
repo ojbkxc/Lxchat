@@ -144,9 +144,10 @@ class WeixinBindingFlow(
             "beginLogin 成功: qrcode=${begin.qrcode.take(10)}... url=${begin.qrcodeUrl}",
         )
         onEvent(Event.QrcodeReady(begin.qrcodeUrl))
-        val confirmed = pollUntilConfirmed(begin.qrcode) { status ->
-            onEvent(Event.StatusChanged(status))
-        }
+        val confirmed = pollUntilConfirmed(
+            begin.qrcode,
+            onStatus = { status -> onEvent(Event.StatusChanged(status)) },
+        )
         val token = confirmed.token?.takeIf { it.isNotBlank() }
             ?: throw WeixinApiError("no-token", "扫码成功但微信服务未返回 token。")
         val baseUrl = confirmed.baseUrl?.takeIf { it.isNotBlank() }
