@@ -106,3 +106,10 @@
 # 导致 ImGatewayStore inline map 合成类跨类访问失败。
 # 修复：改用 proguard-android.txt（不含 -allowaccessmodification）。
 # 原有的 kotlinx.serialization keep 规则（第4-13行）已足够保护 $$serializer。
+
+# ── 禁用 R8 优化（IllegalAccessError 根治） ─────────────
+# proguard-android-optimize.txt 含 -allowaccessmodification，允许 R8 把
+# ImRuntimeState.Companion 字段从 public 改成 private，导致
+# ImGatewayStore inline map 合成类跨类访问抛 IllegalAccessError。
+# -dontoptimize 禁用优化阶段（含访问修饰符修改），保持混淆功能。
+-dontoptimize
