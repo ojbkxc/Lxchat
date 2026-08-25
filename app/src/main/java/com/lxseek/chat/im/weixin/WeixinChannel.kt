@@ -7,11 +7,33 @@ import com.lxseek.chat.im.ImSendResult
 import com.lxseek.chat.im.MessageChannel
 import com.lxseek.chat.util.DebugLog
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+
+/**
+ * 微信 iLink 专属扩展能力，由 [com.lxseek.chat.im.ImPollingReceiver] 通过类型检查选择性调用
+ * （移动端可用，全部走官方 iLink 纯 HTTP 协议）：
+ *  - [sendTyping]：发送"正在输入"状态，参考 weixin-ClawBot-API / openclaw-weixin 的 getconfig+sendtyping。
+ *  - [contextTokensSnapshot] / [seedContextTokens]：跨重启持久化 per-会话 context_token，避免重启后
+ *    由于没有 context_token 而导致的回复被服务端静默丢弃。
+ */
+interface WeixinCompanionChannel {
+    /** 发送"正在输入"状态：status=1 生成中，status=2 完成。尽力而为，失败不抛。 */
+    suspend fun sendTyping(conversationId: String, status: Int)
+
+    /** 当前持有的 context_token 快照（conversationId/userId → token），用于持久化。 */
+    fun contextTokensSnapshot(): Map<String, String>
+
+    /** 从持久化状态恢复 context_token（App 重启后仍能带上下文回复）。 */
+    fun seedContextTokens(tokens: Map<String, String>)
+}
 
 /**
  * 微信 iLink 渠道：把 [WeixinIlinkApi] 的长轮询协议适配到 [MessageChannel]。
@@ -25,7 +47,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 class WeixinChannel(
     private val config: com.lxseek.chat.im.ImGatewayConfig,
     private val api: WeixinIlinkApi = WeixinIlinkApi(),
-) : MessageChannel {
+) : MessageChannel, WeixinCompanionChannel {
 
     override val channelId: String get() = "wechat"
     override val displayName: String get() = "微信 · iLink"
@@ -45,6 +67,17 @@ class WeixinChannel(
      * easy-weixin-clawbot SDK which refuses to send without it).
      */
     private val contextTokenStore = ConcurrentHashMap<String, String>()
+
+    /**
+     * 输入状态打点：当服务端返回 errcode/ret=-14（token 失效）时触发，供 UI 引导重新扫码。
+     * 由调用方（如 IM 设置页）在创建渠道后按需注册；进程内默认为 null。
+     */
+    @Volatile
+    var onTokenStale: (() -> Unit)? = null
+
+    /** typing ticket 缓存（userId → ticket）+ 上次拉取时间，避免每次 getconfig。 */
+    private val typingTicketCache = ConcurrentHashMap<String, String>()
+    private val typingTicketFetchedAt = ConcurrentHashMap<String, Long>()
 
     /** Ensures notifyStart is called once before the first getUpdates poll. */
     @Volatile
@@ -72,6 +105,42 @@ class WeixinChannel(
             DebugLog.e("WeixinChannel", "sendMessage failed", e)
             ImSendResult.Failure(e.message ?: "send failed")
         }
+    }
+
+    // ── WeixinCompanionChannel 实现（移动端可用）──────────────────────────
+
+    override suspend fun sendTyping(conversationId: String, status: Int) {
+        if (!isConfigured) return
+        val recipient = conversationId.trim()
+        if (recipient.isEmpty()) return
+        try {
+            // getconfig 需要 context_token 做上下文关联；拿不到就跳过输入状态。
+            val contextToken = contextTokenStore[recipient] ?: return
+            val ticket = typingTicketFor(recipient, contextToken) ?: return
+            api.sendTyping(baseUrl, config.token, recipient, ticket, status)
+        } catch (e: Exception) {
+            DebugLog.e("WeixinChannel", "sendTyping failed", e)
+        }
+    }
+
+    override fun contextTokensSnapshot(): Map<String, String> = contextTokenStore.toMap()
+
+    override fun seedContextTokens(tokens: Map<String, String>) {
+        if (tokens.isNotEmpty()) contextTokenStore.putAll(tokens)
+    }
+
+    /** 取用户 typing ticket，带 TTL 缓存；拿不到返回 null 让输入状态静默跳过。 */
+    private suspend fun typingTicketFor(userId: String, contextToken: String): String? {
+        val now = System.currentTimeMillis()
+        val cached = typingTicketCache[userId]
+        val fetchedAt = typingTicketFetchedAt[userId] ?: 0L
+        if (cached != null && now - fetchedAt < TYPING_TICKET_TTL_MS) return cached
+        val fresh = api.getConfig(baseUrl, config.token, userId, contextToken) ?: cached
+        if (!fresh.isNullOrEmpty()) {
+            typingTicketCache[userId] = fresh
+            typingTicketFetchedAt[userId] = now
+        }
+        return fresh
     }
 
     override suspend fun listConversations(): List<ImConversation> {
@@ -111,11 +180,16 @@ class WeixinChannel(
                 val code = errcode ?: updates.ret
                 DebugLog.e("WeixinChannel", "pollUpdates rejected: ret=${updates.ret} errcode=$errcode errmsg=${updates.raw["errmsg"]?.strSafe()}")
                 if (code == -14) {
+                    // token 失效：重置协议状态，让重新绑定后的新 token 能干净接管；
+                    // 并通过 onTokenStale 提醒 UI 引导重新扫码（参考 weixin-ClawBot-API 的受控重登录）。
                     DebugLog.e("WeixinChannel", "stale token (errcode -14) — re-scan required")
+                    notified = false
+                    state.resetCursor()
+                    runCatching { onTokenStale?.invoke() }
                 }
                 return
             }
-            state.applyUpdates(updates, contextTokenStore)
+            state.applyUpdates(updates, contextTokenStore) { msg -> loadWeixinImageDataUris(msg) }
         } catch (e: WeixinApiError) {
             DebugLog.e("WeixinChannel", "pollUpdates failed: ${e.code}", e)
         } catch (e: Exception) {
@@ -123,9 +197,58 @@ class WeixinChannel(
         }
     }
 
+    /**
+     * 把一条入站消息里的微信图片 下载 → AES-128-ECB 解密 → 压缩 → base64 data URI，
+     * 供 [com.lxseek.chat.im.ImPollingReceiver.buildPromptText] 以 Markdown 图片链接喂给视觉模型。
+     *
+     * 只保留图片、无文本的消息此前会被静默丢弃，接通后模型能看到图片。单张失败不影响其余图片和文本。
+     */
+    private suspend fun loadWeixinImageDataUris(message: JsonObject): List<String> {
+        val refs = api.inboundImages(message)
+        if (refs.isEmpty()) return emptyList()
+        val uris = ArrayList<String>(refs.size)
+        for (ref in refs) {
+            try {
+                val bytes = ref.load(MAX_IMAGE_DOWNLOAD_BYTES)
+                weixinImageDataUri(bytes)?.let { uris.add(it) }
+            } catch (e: Exception) {
+                DebugLog.w("WeixinChannel", "load image ${ref.name} failed: ${e.message}")
+            }
+        }
+        return uris
+    }
+
+    /** 解密后的图片字节 → 缩放 + JPEG 压缩 → `data:image/jpeg;base64,xxx`；失败返回 null。 */
+    private fun weixinImageDataUri(bytes: ByteArray): String? = try {
+        if (bytes.isEmpty()) return null
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+        val scaled = downscaleToMax(bitmap, MAX_IMAGE_DIMENSION)
+        val out = ByteArrayOutputStream()
+        scaled.compress(Bitmap.CompressFormat.JPEG, IMAGE_JPEG_QUALITY, out)
+        val data = out.toByteArray()
+        "data:image/jpeg;base64," + android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP)
+    } catch (e: Exception) {
+        DebugLog.w("WeixinChannel", "image → data uri failed: ${e.message}")
+        null
+    }
+
+    private fun downscaleToMax(bmp: Bitmap, maxDim: Int): Bitmap {
+        val w = bmp.width
+        val h = bmp.height
+        if (maxDim <= 0 || (w <= maxDim && h <= maxDim)) return bmp
+        val scale = maxDim.toFloat() / maxOf(w, h)
+        return Bitmap.createScaledBitmap(
+            bmp,
+            (w * scale).toInt().coerceAtLeast(1),
+            (h * scale).toInt().coerceAtLeast(1),
+            true,
+        )
+    }
+
     // ── 内存状态 ─────────────────────────────────────────────────────────
 
     private class ChannelState {
+
         @Volatile
         private var _getUpdatesBuf: String = ""
 
@@ -134,7 +257,16 @@ class WeixinChannel(
 
         fun getUpdatesBuf(): String = _getUpdatesBuf
 
-        fun applyUpdates(updates: WeixinIlinkApi.Updates, contextTokenStore: ConcurrentHashMap<String, String>) {
+        /** token 失效（-14）或需要重新绑定时重置游标，保证重新绑定后不丢不重。 */
+        fun resetCursor() {
+            _getUpdatesBuf = ""
+        }
+
+        suspend fun applyUpdates(
+            updates: WeixinIlinkApi.Updates,
+            contextTokenStore: ConcurrentHashMap<String, String>,
+            imageResolver: suspend (JsonObject) -> List<String>,
+        ) {
             // Only update the cursor if the server returned a non-empty buf.
             // An empty buf would reset the cursor and potentially miss messages.
             // (Matches easy-weixin-clawbot monitor.ts behavior.)
@@ -155,8 +287,16 @@ class WeixinChannel(
                     contextTokenStore[fromUserId] = contextToken
                     DebugLog.d("WeixinChannel", "applyUpdates: stored context_token for user=$fromUserId")
                 }
-                DebugLog.d("WeixinChannel", "applyUpdates: msg text=${text?.take(50)} id=$msgId from=$fromUserId hasCtxToken=${!contextToken.isNullOrEmpty()} keys=${msg.keys}")
-                if (text == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - text is null"); continue }
+                // 下载+解密图片 → data URI，让只发图片的消息也能被模型识别（此前会被静默丢弃）。
+                val images = try {
+                    imageResolver(msg)
+                } catch (e: Exception) {
+                    DebugLog.w("WeixinChannel", "applyUpdates: resolve images failed: ${e.message}")
+                    emptyList()
+                }
+                DebugLog.d("WeixinChannel", "applyUpdates: msg text=${text?.take(50)} images=${images.size} id=$msgId from=$fromUserId hasCtxToken=${!contextToken.isNullOrEmpty()} keys=${msg.keys}")
+                // 只有文本、图片都没有才跳过，保证纯图片消息能进入管线。
+                if (text.isNullOrBlank() && images.isEmpty()) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - no text and no images"); continue }
                 if (msgId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - msgId is null"); continue }
                 if (fromUserId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is null"); continue }
                 if (fromUserId.isEmpty()) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is empty"); continue }
@@ -165,9 +305,10 @@ class WeixinChannel(
                     id = msgId,
                     conversationId = fromUserId,
                     direction = ImMessageDirection.INCOMING,
-                    text = text,
+                    text = text?.trim() ?: "",
                     sender = fromUserId,
                     timestampMs = timestampMs,
+                    images = images,
                 )
                 val list = messages.computeIfAbsent(fromUserId) { CopyOnWriteArrayList() }
                 if (list.none { it.id == msgId }) list.add(imMsg)
@@ -203,6 +344,17 @@ class WeixinChannel(
             if (value == null || value <= 0L) return System.currentTimeMillis()
             return if (value > 1_000_000_000_000L) value else value * 1_000L
         }
+    }
+
+    private companion object {
+        /** typing ticket 缓存时长（毫秒）。低于此时长内复用已取的 ticket，避免频繁 getconfig。 */
+        const val TYPING_TICKET_TTL_MS = 30L * 60 * 1000
+        /** 图片下载上限：超过视为异常，但仍保留文本。 */
+        const val MAX_IMAGE_DOWNLOAD_BYTES = 8L * 1024 * 1024
+        /** 缩放后最大边长（像素），控制 base64 体积，兼顾模型可读。 */
+        const val MAX_IMAGE_DIMENSION = 1024
+        /** JPEG 压缩质量（0-100），越小体积越小。 */
+        const val IMAGE_JPEG_QUALITY = 70
     }
 }
 

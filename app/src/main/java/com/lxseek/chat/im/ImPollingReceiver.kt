@@ -2,6 +2,7 @@ package com.lxseek.chat.im
 
 import com.lxseek.chat.automation.TaskExecutionEngine
 import com.lxseek.chat.data.repository.ConversationRepository
+import com.lxseek.chat.im.weixin.WeixinCompanionChannel
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -216,6 +217,15 @@ class ImPollingReceiver(
             return
         }
 
+        // 微信 iLink 专属扩展：跨重启恢复 + 发送输入状态。
+        val weixin = channel as? WeixinCompanionChannel
+        if (weixin != null && state.contextTokens.isNotEmpty()) {
+            // App 重启后先从持久化状态恢复 per-会话 context_token，
+            // 否则回复因缺少上下文令牌会被服务端静默丢弃（参考 weixin-ClawBot-API）。
+            DebugLog.d("ImPolling", "seed ${state.contextTokens.size} context tokens into $channelKey")
+            weixin.seedContextTokens(state.contextTokens)
+        }
+
         val lxchatConvId = state.conversationBindings[conversation.id]
             ?: bindConversation(channelKey, channel, conversation)
 
@@ -233,6 +243,15 @@ class ImPollingReceiver(
         if (fresh.isEmpty()) return
         DebugLog.d("ImPolling", "feedInboundBatch: ${fresh.size} fresh msgs for conv=${conversation.id}, lxchatConv=$lxchatConvId")
         onMessageHandled?.invoke(conversation.id)
+
+        // 持久化最新 context_token 快照到运行时状态，供 App 重启后恢复
+        // （入站消息在 poll 阶段就已写入 channel 的 contextTokenStore）。
+        if (weixin != null) {
+            val tokens = weixin.contextTokensSnapshot()
+            if (tokens.isNotEmpty() && tokens != state.contextTokens) {
+                store.updateChannelState(channelKey) { s -> s.copy(contextTokens = tokens) }
+            }
+        }
 
         // Merge the batch of new messages into one synthetic inbound message so the private
         // runOnce overload (which expects an ImMessage for id/timestamp tracking) can be reused.
@@ -256,7 +275,7 @@ class ImPollingReceiver(
                 if (cmdResult.isSteer && !cmdResult.steerText.isNullOrBlank()) {
                     // /steer：将补充指令作为用户消息走正常 AI 回复流程。
                     val steerMessage = merged.copy(text = cmdResult.steerText)
-                    val reply = runOnce(channelKey, lxchatConvId, steerMessage)
+                    val reply = replyFromAgent(weixin, channelKey, conversation.id, lxchatConvId, steerMessage)
                     if (!reply.isNullOrBlank()) {
                         segmentSender.send(channel, conversation.id, reply)
                     }
@@ -269,10 +288,30 @@ class ImPollingReceiver(
         }
 
         // ── 普通 AI 回复流程 ──────────────────────────────────
-        val reply = runOnce(channelKey, lxchatConvId, merged)
+        val reply = replyFromAgent(weixin, channelKey, conversation.id, lxchatConvId, merged)
         if (!reply.isNullOrBlank()) {
             // Long replies are split into several short messages for readability.
             segmentSender.send(channel, conversation.id, reply)
+        }
+    }
+
+    /**
+     * 跑一轮 agent 生成回复；对微信渠道在生成前后发送"正在输入"状态
+     * （status=1 生成中 / status=2 完成），提升对方体验。失败也以 status=2 收尾。
+     */
+    private suspend fun replyFromAgent(
+        weixin: WeixinCompanionChannel?,
+        channelKey: String,
+        convRemoteId: String,
+        lxchatConvId: String,
+        message: ImMessage,
+    ): String? {
+        weixin?.sendTyping(convRemoteId, 1)
+        return try {
+            runOnce(channelKey, lxchatConvId, message)
+        } finally {
+            // 无论成功还是失败都以 status=2 结束输入状态，避免一直停留在"正在输入"。
+            weixin?.sendTyping(convRemoteId, 2)
         }
     }
 

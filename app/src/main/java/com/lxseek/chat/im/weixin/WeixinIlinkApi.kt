@@ -285,6 +285,85 @@ class WeixinIlinkApi(
         )
     }
 
+    /**
+     * 获取用户的输入状态凭证 typing_ticket（供 [sendTyping] 使用）。
+     *
+     * 对齐 weixin-ClawBot-API bot.py 的 `ilink/bot/getconfig`：按用户缓存、失败不阻断文字回复。
+     * 返回 null 表示当前拿不到 ticket（无 context_token / 服务拒绝 / 网络错误），调用方应静默忽略。
+     */
+    suspend fun getConfig(
+        baseUrl: String,
+        token: String,
+        userId: String,
+        contextToken: String? = null,
+    ): String? = withContext(Dispatchers.IO) {
+        val recipient = userId.trim().takeIf { it.isNotEmpty() } ?: return@withContext null
+        val body = buildJsonObject {
+            put("ilink_user_id", recipient)
+            contextToken?.trim()?.takeIf { it.isNotEmpty() }?.let { put("context_token", it) }
+            put("base_info", baseInfoJson())
+        }.toString()
+        try {
+            val response = requestJson(
+                method = "POST",
+                baseUrl = baseUrl,
+                endpoint = "ilink/bot/getconfig",
+                body = body,
+                token = token,
+                timeoutMs = 10_000L,
+                authenticated = true,
+            )
+            val ret = response["ret"].int()
+            if (ret != null && ret != 0) {
+                DebugLog.w("WeixinIlinkApi", "getconfig rejected ret=$ret")
+                return@withContext null
+            }
+            response["typing_ticket"].str()?.trim()?.takeIf { it.isNotEmpty() }
+        } catch (e: Exception) {
+            DebugLog.e("WeixinIlinkApi", "getconfig failed", e)
+            null
+        }
+    }
+
+    /**
+     * 发送微信"正在输入"状态：status=1 表示生成中，status=2 表示完成。
+     * 尽力而为，失败不抛（输入状态只是反馈，不该影响文字回复）。
+     * 对齐 weixin-ClawBot-API bot.py 的 `ilink/bot/sendtyping`。
+     */
+    suspend fun sendTyping(
+        baseUrl: String,
+        token: String,
+        userId: String,
+        typingTicket: String,
+        status: Int,
+    ) = withContext(Dispatchers.IO) {
+        val recipient = userId.trim().takeIf { it.isNotEmpty() } ?: return@withContext
+        val ticket = typingTicket.trim().takeIf { it.isNotEmpty() } ?: return@withContext
+        val body = buildJsonObject {
+            put("ilink_user_id", recipient)
+            put("typing_ticket", ticket)
+            put("status", status)
+            put("base_info", baseInfoJson())
+        }.toString()
+        try {
+            val response = requestJson(
+                method = "POST",
+                baseUrl = baseUrl,
+                endpoint = "ilink/bot/sendtyping",
+                body = body,
+                token = token,
+                timeoutMs = 10_000L,
+                authenticated = true,
+            )
+            val ret = response["ret"].int()
+            if (ret != null && ret != 0) {
+                DebugLog.w("WeixinIlinkApi", "sendTyping rejected ret=$ret")
+            }
+        } catch (e: Exception) {
+            DebugLog.e("WeixinIlinkApi", "sendTyping failed", e)
+        }
+    }
+
     /** 提取消息中的图片引用（懒加载解密）。 */
     fun extractWeixinImages(message: JsonObject): List<WeixinImageRef> {
         val itemList = message["item_list"].arr() ?: return emptyList()

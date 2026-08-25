@@ -196,6 +196,11 @@ data class ImMultiGatewayConfig(
 data class ImRuntimeState(
     val conversationBindings: Map<String, String> = emptyMap(),
     val seenMessageIds: List<String> = emptyList(),
+    /**
+     * WeChat iLink per-会话 context_token（conversationId/userId → token）。
+     * 持久化以便 App 重启后 Proactive/离体发送仍能带回 context_token，避免回复被服务端静默丢弃。
+     */
+    val contextTokens: Map<String, String> = emptyMap(),
     val platform: String = "wechat",
     /** Local channel instance id this state belongs to; blank = legacy single-channel state. */
     val channelId: String = "",
