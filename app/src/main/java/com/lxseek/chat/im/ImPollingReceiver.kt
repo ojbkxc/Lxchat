@@ -111,7 +111,7 @@ class ImPollingReceiver(
                     pollChannel(channelKey, channel)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     // 防止单个渠道异常导致整个 pollLoop 崩溃（否则入站消息永久停止）
                     DebugLog.e("ImPolling", "pollChannel failed for $channelKey", e)
                 }
@@ -125,7 +125,7 @@ class ImPollingReceiver(
             channel.listConversations()
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             DebugLog.e("ImPolling", "listConversations failed for $channelKey", e)
             emptyList()
         }
@@ -145,7 +145,7 @@ class ImPollingReceiver(
             channel.fetchMessages(conversation.id)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             DebugLog.e("ImPolling", "fetchMessages failed for ${conversation.id}", e)
             emptyList()
         }
@@ -287,7 +287,7 @@ class ImPollingReceiver(
                 commandProcessor.process(merged.text, channelKey, conversation.id)
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 DebugLog.e("ImPolling", "command processing failed", e)
                 null
             }
@@ -316,7 +316,7 @@ class ImPollingReceiver(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             // AI 回复或发送失败不应导致 pollLoop 崩溃
             DebugLog.e("ImPolling", "reply/send failed for conv=${conversation.id}", e)
         }
