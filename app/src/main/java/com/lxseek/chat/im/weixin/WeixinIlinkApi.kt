@@ -114,6 +114,12 @@ class WeixinIlinkApi(
         suspend fun load(maxBytes: Long = DEFAULT_IMAGE_MAX_BYTES): ByteArray
     }
 
+    /** 文件引用（懒加载解密）。文件与图片共用 AES-128-ECB 下载+解密链路。 */
+    interface WeixinFileRef {
+        val name: String
+        suspend fun load(maxBytes: Long = DEFAULT_IMAGE_MAX_BYTES): ByteArray
+    }
+
     // ── 公开 API ─────────────────────────────────────────────────────────
 
     /** 申请扫码绑定二维码。返回二维码令牌 + 图片 URL。 */
@@ -408,6 +414,29 @@ class WeixinIlinkApi(
 
     /** 入站图片引用（[extractWeixinImages] 的别名，对齐 mjs 命名）。 */
     fun inboundImages(message: JsonObject): List<WeixinImageRef> = extractWeixinImages(message)
+
+    /** 提取消息中的文件引用（懒加载解密）。文件与图片共用 AES 解密，供文本类文件内容识别。 */
+    fun inboundFiles(message: JsonObject): List<WeixinFileRef> {
+        val itemList = message["item_list"].arr() ?: return emptyList()
+        val files = ArrayList<WeixinFileRef>()
+        for (item in itemList) {
+            val fileItem = item.obj()?.get("file_item").obj() ?: continue
+            val filename = fileItem["filename"].str().orEmpty().ifEmpty { "file" }
+            val index = files.size
+            files.add(object : WeixinFileRef {
+                override val name: String = if (index == 0) filename else "$filename-${index + 1}"
+                override suspend fun load(maxBytes: Long): ByteArray = withContext(Dispatchers.IO) {
+                    val key = parseWeixinImageAesKey(fileItem)
+                    val media = fileItem["media"].obj()
+                        ?: throw WeixinApiError("missing-file-url", "微信文件没有可用的下载地址。")
+                    val url = weixinImageDownloadUrl(media)
+                    val ciphertext = fetchImageBytes(url, maxBytes + 16)
+                    decryptWeixinImage(ciphertext, key)
+                }
+            })
+        }
+        return files
+    }
 
     // ── HTTP 请求 ───────────────────────────────────────────────────────
 

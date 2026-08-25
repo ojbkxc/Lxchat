@@ -284,7 +284,14 @@ class WeixinChannel(
                 }
                 return
             }
-            state.applyUpdates(updates, contextTokenStore, config.botId.takeIf { it.isNotBlank() }, ::isSelfReplyEcho) { msg -> loadWeixinImageDataUris(msg) }
+            state.applyUpdates(
+                updates,
+                contextTokenStore,
+                config.botId.takeIf { it.isNotBlank() },
+                ::isSelfReplyEcho,
+                { msg -> loadWeixinImageDataUris(msg) },
+                { msg -> loadWeixinFileText(msg) },
+            )
         } catch (e: WeixinApiError) {
             DebugLog.e("WeixinChannel", "pollUpdates failed: ${e.code}", e)
         } catch (e: Exception) {
@@ -311,6 +318,54 @@ class WeixinChannel(
             }
         }
         return uris
+    }
+
+    /**
+     * 提取文件消息的可读文本：文本类文件（txt/csv/md/json/log 等）下载解密后转为
+     * UTF-8 文本并入提示，让 AI 能读到文件内容；非文本文件只报文件名，不拉取大文件。
+     * 对齐 Zyn-iLink 的 _auto_ai_reply_with_file。无文件返回空串，零开销。
+     */
+    private suspend fun loadWeixinFileText(message: JsonObject): String {
+        val refs = api.inboundFiles(message)
+        if (refs.isEmpty()) return ""
+        val parts = ArrayList<String>()
+        for (ref in refs) {
+            val fname = ref.name
+            if (!isTextFile(fname)) { parts += "[文件 $fname]"; continue }
+            try {
+                val bytes = ref.load(MAX_IMAGE_DOWNLOAD_BYTES)
+                val text = utf8Text(bytes)
+                if (text.isNotBlank()) parts += "[文件 $fname 内容]\n${text.take(MAX_FILE_TEXT_CHARS)}"
+                else parts += "[文件 $fname]"
+            } catch (e: Exception) {
+                DebugLog.w("WeixinChannel", "load file ${ref.name} failed: ${e.message}")
+                parts += "[文件 $fname]"
+            }
+        }
+        return parts.joinToString("\n")
+    }
+
+    /** 是否为文本类文件扩展名（可安全解码为 UTF-8 提示给模型）。 */
+    private fun isTextFile(fileName: String): Boolean {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return ext in TEXT_FILE_EXTS
+    }
+
+    /** 将 AES 解密后的字节尝试按 UTF-8 解码；含二进制控制字符则视为非文本，返回空串。 */
+    private fun utf8Text(bytes: ByteArray): String {
+        if (bytes.isEmpty()) return ""
+        return try {
+            val s = String(bytes, Charsets.UTF_8)
+            var printable = 0
+            for (c in s) {
+                val code = c.code
+                if (code == 9 || code == 10 || code == 13 || code in 32..126) printable++
+                else { printable = -1; break }
+            }
+            if (printable < 0) "" else s
+        } catch (e: Exception) {
+            ""
+        }
     }
 
     /** 解密后的图片字节 → 缩放 + JPEG 压缩 → `data:image/jpeg;base64,xxx`；失败返回 null。 */
@@ -363,6 +418,7 @@ class WeixinChannel(
             selfBotId: String?,
             selfReplyChecker: (toUserId: String, content: String) -> Boolean,
             imageResolver: suspend (JsonObject) -> List<String>,
+            fileResolver: suspend (JsonObject) -> String,
         ) {
             // Only update the cursor if the server returned a non-empty buf.
             // An empty buf would reset the cursor and potentially miss messages.
@@ -402,18 +458,33 @@ class WeixinChannel(
                     DebugLog.w("WeixinChannel", "applyUpdates: resolve images failed: ${e.message}")
                     emptyList()
                 }
-                DebugLog.d("WeixinChannel", "applyUpdates: msg text=${text?.take(50)} images=${images.size} id=$msgId from=$fromUserId hasCtxToken=${!contextToken.isNullOrEmpty()} keys=${msg.keys}")
-                // 只有文本、图片都没有才跳过，保证纯图片消息能进入管线。
-                if (text.isNullOrBlank() && images.isEmpty()) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - no text and no images"); continue }
+                // 下载+解密文件 → 文本（文本类文件并入提示），对齐 Zyn-iLink 文件识别。
+                val fileText = try {
+                    fileResolver(msg)
+                } catch (e: Exception) {
+                    DebugLog.w("WeixinChannel", "applyUpdates: resolve files failed: ${e.message}")
+                    ""
+                }
+                val hasFile = fileText.isNotBlank()
+                DebugLog.d("WeixinChannel", "applyUpdates: msg text=${text?.take(50)} images=${images.size} files=$hasFile id=$msgId from=$fromUserId hasCtxToken=${!contextToken.isNullOrEmpty()} keys=${msg.keys}")
+                // 只有文本、图片、文件内容都没有才跳过，保证纯图片/纯文件消息能进入管线。
+                if (text.isNullOrBlank() && images.isEmpty() && !hasFile) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - no text, images, or files"); continue }
                 if (msgId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - msgId is null"); continue }
                 if (fromUserId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is null"); continue }
                 if (fromUserId.isEmpty()) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is empty"); continue }
                 val timestampMs = normalizeTimestamp(msg["create_time"]?.longSafe())
+                val combinedText = buildString {
+                    text?.trim()?.let { append(it) }
+                    if (fileText.isNotBlank()) {
+                        if (isNotEmpty()) append('\n')
+                        append(fileText)
+                    }
+                }
                 val imMsg = ImMessage(
                     id = msgId,
                     conversationId = fromUserId,
                     direction = ImMessageDirection.INCOMING,
-                    text = text?.trim() ?: "",
+                    text = combinedText.trim(),
                     sender = fromUserId,
                     timestampMs = timestampMs,
                     images = images,
@@ -467,6 +538,10 @@ class WeixinChannel(
         const val NOTIFY_STOP_TIMEOUT_MS = 10_000L
         /** P1-8: 自回复去重窗口（毫秒），120 秒内命中视为自己消息回流。 */
         const val SELF_REPLY_DEDUP_WINDOW_MS = 120_000L
+        /** 文本类文件扩展名，解密后可直接用 UTF-8 解码并喂给模型。 */
+        val TEXT_FILE_EXTS = setOf("txt", "csv", "md", "markdown", "json", "log", "html", "htm", "xml", "yml", "yaml", "ini", "conf", "properties")
+        /** 单个文件内容并入提示的最大字符数，避免超大文本占用上下文。 */
+        const val MAX_FILE_TEXT_CHARS = 12_000
     }
 }
 
