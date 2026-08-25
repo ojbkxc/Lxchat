@@ -315,6 +315,12 @@ class ImPollingReceiver(
         }
 
         // ── 普通 AI 回复流程 ──────────────────────────────────
+        // 按好友 AI 开关（对齐 Zyn is_ai_enabled_for_user）：被 /ai off 关闭的好友
+        // 不再自动回复，但命令（如 /ai on）已在上方处理，可随时恢复。
+        if (state.aiDisabledContacts.contains(conversation.id)) {
+            DebugLog.d("ImPolling", "Auto-reply disabled for ${conversation.id}, skip")
+            return
+        }
         // 对齐 Zyn-iLink 的 ai_cooldown：同一好友短时间连发时，冷却期内本轮不回复，
         // 避免触发一串 AI 请求互相打断。消息已在 seen 集合标记，冷却后不会重试。
         val coolKey = "$channelKey\u0000${conversation.id}"

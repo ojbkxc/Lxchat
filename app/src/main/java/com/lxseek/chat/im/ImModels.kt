@@ -201,6 +201,12 @@ data class ImRuntimeState(
      * 持久化以便 App 重启后 Proactive/离体发送仍能带回 context_token，避免回复被服务端静默丢弃。
      */
     val contextTokens: Map<String, String> = emptyMap(),
+    /**
+     * 关闭自动回复的会话 id 集合（默认空 = 全部好友自动回复）。
+     * 对齐 Zyn-iLink 的 is_ai_enabled_for_user：可单独关闭某个好友触发 AI 回复，
+     * 但命令（如 /ai on）仍会被处理，便于随时恢复。由 `/ai` 命令读写。
+     */
+    val aiDisabledContacts: Set<String> = emptySet(),
     val platform: String = "wechat",
     /** Local channel instance id this state belongs to; blank = legacy single-channel state. */
     val channelId: String = "",

@@ -163,6 +163,7 @@ class ImCommandProcessor(
         "workspacelist" -> cmdWorkspaceList()
         "sessionlist" -> cmdSessionList()
         "session" -> cmdSession(cmd.args, channelKey, imConversationId)
+        "ai" -> cmdAi(cmd.args, channelKey, imConversationId)
         else -> {
             DebugLog.d(TAG, "unknown command: /${cmd.name}")
             CommandResult.text("未知命令：/${cmd.name}\n\n${helpText()}")
@@ -519,6 +520,42 @@ class ImCommandProcessor(
 
     // ── 辅助方法 ──────────────────────────────────────────────
 
+    /**
+     * `/ai` — 查看/开启/关闭当前好友的自动 AI 回复。
+     *
+     * 对齐 Zyn-iLink 的 is_ai_enabled_for_user。关闭后该好友的普通消息不再触发
+     * AI 回复，但命令（含本命令）仍会被响应，便于随时恢复。
+     */
+    private suspend fun cmdAi(
+        args: String,
+        channelKey: String,
+        imConversationId: String,
+    ): CommandResult {
+        val disabled = channelState(channelKey).aiDisabledContacts.contains(imConversationId)
+        val arg = args.trim().lowercase()
+        return when (arg) {
+            "" -> CommandResult.text(
+                if (disabled) "当前好友已关闭自动回复。（/ai on 恢复）"
+                else "当前好友自动回复：开启。（/ai off 关闭）",
+            )
+            "on", "enable" -> {
+                store.updateChannelState(channelKey) { s ->
+                    s.copy(aiDisabledContacts = s.aiDisabledContacts - imConversationId)
+                }
+                DebugLog.i(TAG, "/ai on: enabled auto-reply for IM conv=$imConversationId")
+                CommandResult.text("已开启当前好友的自动 AI 回复。")
+            }
+            "off", "disable" -> {
+                store.updateChannelState(channelKey) { s ->
+                    s.copy(aiDisabledContacts = s.aiDisabledContacts + imConversationId)
+                }
+                DebugLog.i(TAG, "/ai off: disabled auto-reply for IM conv=$imConversationId")
+                CommandResult.text("已关闭当前好友的自动 AI 回复。想恢复请输入 /ai on。")
+            }
+            else -> CommandResult.text("用法：/ai [on|off|status]")
+        }
+    }
+
     /** 读取 [channelKey] 的运行时状态（多渠道优先，回退到 legacy）。 */
     private suspend fun channelState(channelKey: String): ImRuntimeState {
         val multi = store.multiRuntimeState.first()
@@ -569,6 +606,7 @@ class ImCommandProcessor(
             appendLine("/workspacelist       列出工作区（暂不支持）")
             appendLine("/sessionlist         列出已绑定的会话")
             appendLine("/session <会话ID>    绑定到指定 Lxchat 会话")
+            appendLine("/ai [on|off|status]  查看或开启/关闭当前好友的自动回复")
             appendLine()
             appendLine("命令名称不区分大小写。")
         }.trimEnd()
