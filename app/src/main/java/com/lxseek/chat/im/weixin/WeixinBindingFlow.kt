@@ -1,6 +1,7 @@
 package com.lxseek.chat.im.weixin
 
 import com.lxseek.chat.util.DebugLog
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
@@ -64,23 +65,51 @@ class WeixinBindingFlow(
      *
      * pollLogin 本身是 35s 长轮询，正常情况下服务器有状态变化才返回；这里额外加 1s 间隔
      * 作为保险，防止服务器立即返回时 busy loop。
+     *
+     * P1-4: [onNeedVerifyCode] 在服务端返回 `need_verifycode` 状态时被调用，调用方
+     * （UI 层 Compose Dialog）通过它弹窗让用户输入配对码并返回；返回非空时带 verifyCode
+     * 继续轮询，返回 null（UI 未实现或用户取消）时保持兼容继续轮询等下次。
+     * 参考weixin-ClawBot-API bot.py:1114-1121 终端读取配对码。
      */
     suspend fun pollUntilConfirmed(
         qrcode: String,
         baseUrl: String = WeixinIlinkApi.WEIXIN_QR_BASE_URL,
         onStatus: (String) -> Unit = {},
+        onNeedVerifyCode: suspend () -> String? = { null },
     ): WeixinIlinkApi.LoginStatus {
         // P2-5: baseUrl 可变，scaned_but_redirect 时切换到新 baseUrl 继续轮询
         var currentBaseUrl = baseUrl
+        // P1-4: 用户输入的配对码；非空时下次 pollLogin 带上 verify_code 提交。
+        var pendingVerifyCode: String? = null
         while (true) {
             coroutineContext.ensureActive()
-            val status = api.pollLogin(qrcode, currentBaseUrl)
+            val status = if (pendingVerifyCode != null) {
+                api.pollLogin(qrcode, currentBaseUrl, verifyCode = pendingVerifyCode)
+            } else {
+                api.pollLogin(qrcode, currentBaseUrl)
+            }
             onStatus(status.status)
             when (status.status) {
                 "confirmed" -> return status
                 "expired" -> throw WeixinApiError("login-expired", "二维码已过期，请重新扫码。")
                 "verify_code_blocked" ->
                     throw WeixinApiError("verify-blocked", "验证码输入过多，请稍后再试。")
+                // P1-4: 服务端要求配对验证码——调回调拿用户输入，非空则下次带上提交，
+                // null 则继续轮询等下次（UI 未实现时保持兼容，不会卡死）。
+                "need_verifycode" -> {
+                    val code = try {
+                        onNeedVerifyCode()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        DebugLog.w("WeixinBindingFlow", "onNeedVerifyCode failed: ${e.message}")
+                        null
+                    }
+                    pendingVerifyCode = code?.takeIf { it.isNotBlank() }
+                    if (pendingVerifyCode == null) {
+                        DebugLog.d("WeixinBindingFlow", "need_verifycode: no code provided, keep polling")
+                    }
+                }
                 // P2-5: scaned_but_redirect 切换到服务端返回的新 baseUrl 继续轮询
                 // （参考 weixin-ClawBot-API bot.py:1051-1057,1104-1107）
                 "scaned_but_redirect" -> {
@@ -95,7 +124,7 @@ class WeixinBindingFlow(
                     if (!status.token.isNullOrBlank()) return status
                     // token 为空时无法复用，继续轮询等服务端返回 token
                 }
-                // wait / scaned / need_verifycode → 继续
+                // wait / scaned → 继续
             }
             delay(1_000L)
         }

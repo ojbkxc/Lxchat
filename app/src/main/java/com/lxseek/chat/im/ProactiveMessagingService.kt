@@ -50,11 +50,23 @@ class ProactiveMessagingService(
         job = scope.launch(Dispatchers.Default) {
             while (currentCoroutineContext().isActive) {
                 try {
-                    val config = store.config.first()
-                    if (config.isConfigured && config.proactiveEnabled) {
-                        scan(config)
+                    // P1-7: 遍历所有渠道，对每个 proactiveEnabled 的渠道独立扫描，
+                    // 不再用 store.config.first() / bridge.currentChannel() 只处理第一个渠道。
+                    // （参考 Lxchat 多渠道架构 ImBridgeService.buildChannels）
+                    val multi = store.multiConfig.first()
+                    val legacy = store.config.first()
+                    val configs = if (multi.all.isEmpty()) {
+                        if (legacy.isConfigured) listOf(legacy) else emptyList()
                     } else {
+                        multi.all.filter { it.isConfigured && it.proactiveEnabled }
+                    }
+                    if (configs.isEmpty()) {
                         lastSeenActive.clear()
+                    } else {
+                        for (config in configs) {
+                            currentCoroutineContext().ensureActive()
+                            scan(config)
+                        }
                     }
                 } catch (e: CancellationException) {
                     throw e
@@ -77,11 +89,20 @@ class ProactiveMessagingService(
     }
 
     private suspend fun scan(config: ImGatewayConfig) {
-        val channel = bridge.currentChannel() ?: return
+        // P1-7: 按 config.effectiveChannelId 找对应渠道，不再用 bridge.currentChannel()。
+        // 没有 sendMessage 能力的渠道（PushMessageChannel 等不支持 proactive 的）跳过。
+        val channel = bridge.channelFor(config.effectiveChannelId) ?: run {
+            DebugLog.d("ProactiveMsg", "scan: no channel for ${config.effectiveChannelId}, skip")
+            return
+        }
         if (!channel.isConfigured) return
         val now = System.currentTimeMillis()
         val thresholdMs = config.proactiveIdleMinutes.coerceAtLeast(5) * 60_000L
-        val bindings = store.runtimeState.first().conversationBindings
+        // P1-7: 按渠道 id 取该渠道的运行时绑定，避免多渠道串台。
+        val state = store.multiRuntimeState.first()[config.effectiveChannelId]
+            ?: store.runtimeState.first().takeIf { it.channelId.isBlank() }
+            ?: ImRuntimeState()
+        val bindings = state.conversationBindings
 
         channel.listConversations().forEach { conversation ->
             currentCoroutineContext().ensureActive()
@@ -98,17 +119,18 @@ class ProactiveMessagingService(
             if (now - lastActive < thresholdMs) return@forEach
             if (inQuietWindow(config.proactiveSilentStart, config.proactiveSilentEnd)) return@forEach
 
-            greet(conversation, bindings.getValue(conversation.id), config)
+            greet(channel, conversation, bindings.getValue(conversation.id), config)
             lastSeenActive[conversation.id] = now
         }
     }
 
     private suspend fun greet(
+        channel: MessageChannel,
         conversation: ImConversation,
         lxchatConvId: String,
         config: ImGatewayConfig,
     ) {
-        DebugLog.d("ProactiveMsg", "Greeting idle contact ${conversation.title}")
+        DebugLog.d("ProactiveMsg", "Greeting idle contact ${conversation.title} on ${config.effectiveChannelId}")
         val result = taskEngine.runOnce(
             conversationId = lxchatConvId,
             userText = PROACTIVE_TRIGGER,
@@ -118,7 +140,7 @@ class ProactiveMessagingService(
             is TaskExecutionEngine.Result.Success -> {
                 val reply = result.text.trim()
                 if (reply.isNotEmpty()) {
-                    val channel = bridge.currentChannel() ?: return
+                    // P1-7: 用传入的 channel 发送，不再 bridge.currentChannel()。
                     // Long greetings are split into several short messages for readability.
                     segmentSender.send(channel, conversation.id, reply)
                 }
