@@ -1,0 +1,87 @@
+﻿> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:pluginDescriptors
+> Task :build-logic:processResources
+> Task :build-logic:compileKotlin
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:classes
+> Task :build-logic:jar
+
+> Configure project :app
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+WARNING: [CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+[CXX5101] NDK folder 'C:\temp\android-sdk\ndk\28.2.13676358' specified does not contain 'platforms'.
+Build-tool 36.0.0 is missing AAPT at C:\temp\android-sdk\build-tools\36.0.0\aapt.exe
+.\gradlew.bat : 
+所在位置 行:1 字符: 84
++ ... ub/Lxchat ; .\gradlew.bat compilePlayDebugKotlin --rerun-tasks 2>&1 | ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Could not determine the dependencies of task ':app:compilePlayDebugKotlin'.
+> Failed to find target with hash string 'android-36' in: C:\temp\android-sdk
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 5s
+4 actionable tasks: 4 executed

@@ -1,0 +1,66 @@
+﻿2026-08-25T13:45:15.6776191Z ##[group]Run chmod +x ./gradlew
+2026-08-25T13:45:15.6776585Z [36;1mchmod +x ./gradlew[0m
+2026-08-25T13:45:15.6776917Z [36;1m./gradlew -p build-logic test[0m
+2026-08-25T13:45:15.6777263Z [36;1m./gradlew verifyKotlinFileSize[0m
+2026-08-25T13:45:15.6816752Z shell: /usr/bin/bash -e {0}
+2026-08-25T13:45:15.6817059Z env:
+2026-08-25T13:45:15.6817435Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-8/x64
+2026-08-25T13:45:15.6818002Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-8/x64
+2026-08-25T13:45:15.6818458Z   ANDROID_HOME: /usr/local/lib/android/sdk
+2026-08-25T13:45:15.6819172Z   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+2026-08-25T13:45:15.6819610Z   ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
+2026-08-25T13:45:15.6820038Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-08-25T13:45:15.6820396Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-08-25T13:45:15.6820742Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-08-25T13:45:15.6821120Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+2026-08-25T13:45:15.6821620Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-08-25T13:45:15.6822171Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-08-25T13:45:15.6822547Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-08-25T13:45:15.6822866Z ##[endgroup]
+2026-08-25T13:45:17.9104115Z Starting a Gradle Daemon (subsequent builds will be faster)
+2026-08-25T13:45:25.1107688Z > Task :checkKotlinGradlePluginConfigurationErrors SKIPPED
+2026-08-25T13:45:25.7130064Z > Task :pluginDescriptors
+2026-08-25T13:45:25.8099299Z > Task :processResources
+2026-08-25T13:45:25.8100111Z > Task :processTestResources NO-SOURCE
+2026-08-25T13:45:33.9156912Z > Task :compileKotlin
+2026-08-25T13:45:33.9189612Z > Task :compileJava NO-SOURCE
+2026-08-25T13:45:33.9192726Z > Task :classes
+2026-08-25T13:45:33.9219437Z > Task :jar
+2026-08-25T13:45:34.0099929Z > Task :pluginUnderTestMetadata
+2026-08-25T13:45:34.9115129Z > Task :compileTestKotlin
+2026-08-25T13:45:34.9116565Z > Task :compileTestJava NO-SOURCE
+2026-08-25T13:45:34.9130470Z > Task :testClasses UP-TO-DATE
+2026-08-25T13:45:35.7099718Z > Task :test
+2026-08-25T13:45:35.7110205Z gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_3-1787665521722.json
+2026-08-25T13:45:35.7111093Z 
+2026-08-25T13:45:35.7111355Z BUILD SUCCESSFUL in 19s
+2026-08-25T13:45:35.7111924Z 7 actionable tasks: 7 executed
+2026-08-25T13:45:35.7113313Z Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.5.1/userguide/configuration_cache_enabling.html
+2026-08-25T13:45:36.7020610Z Starting a Gradle Daemon, 1 incompatible Daemon could not be reused, use --status for details
+2026-08-25T13:45:43.1027083Z > Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+2026-08-25T13:45:43.3989981Z > Task :build-logic:compileKotlin UP-TO-DATE
+2026-08-25T13:45:43.4020089Z > Task :build-logic:compileJava NO-SOURCE
+2026-08-25T13:45:43.4021240Z > Task :build-logic:pluginDescriptors UP-TO-DATE
+2026-08-25T13:45:43.4022421Z > Task :build-logic:processResources UP-TO-DATE
+2026-08-25T13:45:43.4023401Z > Task :build-logic:classes UP-TO-DATE
+2026-08-25T13:45:43.4024390Z > Task :build-logic:jar UP-TO-DATE
+2026-08-25T13:45:47.7981573Z > Task :verifyKotlinFileSize FAILED
+2026-08-25T13:45:47.8989739Z 
+2026-08-25T13:45:47.8991150Z gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_3-1787665539396.json
+2026-08-25T13:45:47.9009855Z FAILURE: Build failed with an exception.
+2026-08-25T13:45:47.9010419Z 
+2026-08-25T13:45:47.9010713Z * What went wrong:
+2026-08-25T13:45:47.9011907Z Execution failed for task ':verifyKotlinFileSize' (registered by plugin 'buildlogic.kotlin-source-size').
+2026-08-25T13:45:47.9013126Z > Kotlin source file size verification failed:
+2026-08-25T13:45:47.9014568Z    - app/src/main/java/com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt: 1024 lines (allowed 1023; baseline_growth)
+2026-08-25T13:45:47.9016592Z   Handwritten Kotlin files must stay at or below 999 physical lines.
+2026-08-25T13:45:47.9017188Z 
+2026-08-25T13:45:47.9017379Z * Try:
+2026-08-25T13:45:47.9018037Z > Run with --stacktrace option to get the stack trace.
+2026-08-25T13:45:47.9019561Z > Run with --info or --debug option to get more log output.
+2026-08-25T13:45:47.9020587Z > Run with --scan to get full insights from a Build Scan (powered by Develocity).
+2026-08-25T13:45:47.9021183Z > Get more help at https://help.gradle.org.
+2026-08-25T13:45:47.9021437Z 
+2026-08-25T13:45:47.9021681Z BUILD FAILED in 11s
+2026-08-25T13:45:47.9022347Z 5 actionable tasks: 1 executed, 4 up-to-date
+2026-08-25T13:45:48.2796881Z ##[error]Process completed with exit code 1.

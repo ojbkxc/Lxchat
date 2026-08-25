@@ -1,0 +1,254 @@
+﻿2026-08-25T13:44:44.3863010Z ##[group]Run chmod +x build-proot.sh
+2026-08-25T13:44:44.3863348Z [36;1mchmod +x build-proot.sh[0m
+2026-08-25T13:44:44.3863610Z [36;1m./build-proot.sh force[0m
+2026-08-25T13:44:44.3899197Z shell: /usr/bin/bash -e {0}
+2026-08-25T13:44:44.3899443Z env:
+2026-08-25T13:44:44.3899738Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-8/x64
+2026-08-25T13:44:44.3900225Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-8/x64
+2026-08-25T13:44:44.3900619Z   ANDROID_HOME: /usr/local/lib/android/sdk
+2026-08-25T13:44:44.3900908Z   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+2026-08-25T13:44:44.3901259Z   ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
+2026-08-25T13:44:44.3901590Z ##[endgroup]
+2026-08-25T13:44:44.4003910Z === build-proot.sh: NDK=/usr/local/lib/android/sdk/ndk/28.2.13676358 ===
+2026-08-25T13:44:44.4023574Z   (first build, no hash file)
+2026-08-25T13:44:44.4024113Z === build-proot.sh: Building proot binaries ===
+2026-08-25T13:44:44.4041348Z   [1/3] Building libtalloc.so...
+2026-08-25T13:44:50.0170565Z talloc.c:436:2: warning: "No __attribute__((constructor)) support found on this platform, additional talloc security measures not available" [-W#warnings]
+2026-08-25T13:44:50.1286052Z   436 | #warning "No __attribute__((constructor)) support found on this platform, additional talloc security measures not available"
+2026-08-25T13:44:50.1287030Z       |  ^
+2026-08-25T13:44:50.2438692Z talloc.c:2582:9: warning: 'va_copy' macro redefined [-Wmacro-redefined]
+2026-08-25T13:44:50.2440032Z  2582 | #define va_copy(dest, src) (dest) = (src)
+2026-08-25T13:44:50.2440680Z       |         ^
+2026-08-25T13:44:50.2442223Z /usr/local/lib/android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/19/include/__stdarg_va_copy.h:11:9: note: previous definition is here
+2026-08-25T13:44:50.2443847Z    11 | #define va_copy(dest, src) __builtin_va_copy(dest, src)
+2026-08-25T13:44:50.2444519Z       |         ^
+2026-08-25T13:44:51.2285657Z 2 warnings generated.
+2026-08-25T13:44:53.5702054Z   [1/3] Done: 41872 bytes
+2026-08-25T13:44:53.5702478Z   [2/3] Building proot (GNUmakefile)...
+2026-08-25T13:44:54.0374657Z   GEN	build.h
+2026-08-25T13:44:54.0448439Z   CC	cli/cli.o
+2026-08-25T13:44:54.6569140Z ./cli/cli.c:572:14: warning: unused variable 'pointers' [-Wunused-variable]
+2026-08-25T13:44:54.6629534Z   572 |         void *const pointers[] = { this_function, call_site };
+2026-08-25T13:44:54.6630154Z       |                     ^~~~~~~~
+2026-08-25T13:44:54.7162544Z 1 warning generated.
+2026-08-25T13:44:54.7213572Z   CC	cli/proot.o
+2026-08-25T13:44:54.8506376Z   CC	cli/note.o
+2026-08-25T13:44:54.8798770Z   CC	execve/enter.o
+2026-08-25T13:44:55.0117146Z   CC	execve/exit.o
+2026-08-25T13:44:55.1538007Z   CC	execve/shebang.o
+2026-08-25T13:44:55.2840288Z   CC	execve/elf.o
+2026-08-25T13:44:55.3223123Z   CC	execve/ldso.o
+2026-08-25T13:44:55.3450293Z ./execve/ldso.c:108:8: warning: variable 'is_known' set but not used [-Wunused-but-set-variable]
+2026-08-25T13:44:55.3451487Z   108 |                 bool is_known = false;
+2026-08-25T13:44:55.3452186Z       |                      ^
+2026-08-25T13:44:55.4099349Z 1 warning generated.
+2026-08-25T13:44:55.4147591Z   CC	execve/auxv.o
+2026-08-25T13:44:55.4562363Z   CC	execve/aoxp.o
+2026-08-25T13:44:55.5149029Z   CC	path/binding.o
+2026-08-25T13:44:55.6025008Z   CC	path/glue.o
+2026-08-25T13:44:55.6420582Z ./path/glue.c:76:14: warning: 'talloc_autofree_context' is deprecated [-Wdeprecated-declarations]
+2026-08-25T13:44:55.6421451Z    76 |         autofreed = talloc_autofree_context();
+2026-08-25T13:44:55.6429990Z       |                     ^
+2026-08-25T13:44:55.6834756Z /home/runner/work/Lxchat/Lxchat/.build-proot/sysroot/arm64-v8a/include/talloc.h:1084:46: note: 'talloc_autofree_context' has been explicitly marked deprecated here
+2026-08-25T13:44:55.6836695Z  1084 | _PUBLIC_ void *talloc_autofree_context(void) _DEPRECATED_;
+2026-08-25T13:44:55.6837536Z       |                                              ^
+2026-08-25T13:44:55.6838602Z /home/runner/work/Lxchat/Lxchat/.build-proot/sysroot/arm64-v8a/include/talloc.h:119:38: note: expanded from macro '_DEPRECATED_'
+2026-08-25T13:44:55.6840561Z   119 | #define _DEPRECATED_ __attribute__ ((deprecated))
+2026-08-25T13:44:55.6841100Z       |                                      ^
+2026-08-25T13:44:55.6927427Z 1 warning generated.
+2026-08-25T13:44:55.6970764Z   CC	path/canon.o
+2026-08-25T13:44:55.7598321Z   CC	path/f2fs-bug.o
+2026-08-25T13:44:55.8120915Z   CC	path/path.o
+2026-08-25T13:44:55.9051105Z   CC	path/proc.o
+2026-08-25T13:44:55.9392708Z   CC	path/temp.o
+2026-08-25T13:44:55.9603701Z ./path/temp.c:37:33: warning: 'talloc_autofree_context' is deprecated [-Wdeprecated-declarations]
+2026-08-25T13:44:55.9604843Z    37 |         temp_directory = talloc_strdup(talloc_autofree_context(), tmp);
+2026-08-25T13:44:55.9605349Z       |                                        ^
+2026-08-25T13:44:55.9606370Z /home/runner/work/Lxchat/Lxchat/.build-proot/sysroot/arm64-v8a/include/talloc.h:1084:46: note: 'talloc_autofree_context' has been explicitly marked deprecated here
+2026-08-25T13:44:55.9607349Z  1084 | _PUBLIC_ void *talloc_autofree_context(void) _DEPRECATED_;
+2026-08-25T13:44:55.9607818Z       |                                              ^
+2026-08-25T13:44:55.9608905Z /home/runner/work/Lxchat/Lxchat/.build-proot/sysroot/arm64-v8a/include/talloc.h:119:38: note: expanded from macro '_DEPRECATED_'
+2026-08-25T13:44:55.9609797Z   119 | #define _DEPRECATED_ __attribute__ ((deprecated))
+2026-08-25T13:44:55.9610247Z       |                                      ^
+2026-08-25T13:44:55.9620355Z ./path/temp.c:273:13: warning: 'talloc_autofree_context' is deprecated [-Wdeprecated-declarations]
+2026-08-25T13:44:55.9621356Z   273 |                 context = talloc_autofree_context();
+2026-08-25T13:44:55.9621862Z       |                           ^
+2026-08-25T13:44:55.9622723Z /home/runner/work/Lxchat/Lxchat/.build-proot/sysroot/arm64-v8a/include/talloc.h:1084:46: note: 'talloc_autofree_context' has been explicitly marked deprecated here
+2026-08-25T13:44:55.9623569Z  1084 | _PUBLIC_ void *talloc_autofree_context(void) _DEPRECATED_;
+2026-08-25T13:44:55.9623985Z       |                                              ^
+2026-08-25T13:44:55.9624712Z /home/runner/work/Lxchat/Lxchat/.build-proot/sysroot/arm64-v8a/include/talloc.h:119:38: note: expanded from macro '_DEPRECATED_'
+2026-08-25T13:44:55.9625411Z   119 | #define _DEPRECATED_ __attribute__ ((deprecated))
+2026-08-25T13:44:55.9625781Z       |                                      ^
+2026-08-25T13:44:55.9812456Z 2 warnings generated.
+2026-08-25T13:44:55.9854806Z   CC	syscall/seccomp.o
+2026-08-25T13:44:56.0601397Z   CC	syscall/syscall.o
+2026-08-25T13:44:56.1033198Z   CC	syscall/chain.o
+2026-08-25T13:44:56.1404136Z   CC	syscall/enter.o
+2026-08-25T13:44:56.6009697Z   CC	syscall/exit.o
+2026-08-25T13:44:56.6743644Z   CC	syscall/sysnum.o
+2026-08-25T13:44:56.7103220Z   CC	syscall/socket.o
+2026-08-25T13:44:56.7320053Z ./syscall/socket.c:123:10: warning: 'mktemp' is deprecated: mktemp is unsafe, use mkstemp or tmpfile instead [-Wdeprecated-declarations]
+2026-08-25T13:44:56.7321005Z   123 |                 (void) mktemp(shorter_host_path);
+2026-08-25T13:44:56.7321415Z       |                        ^
+2026-08-25T13:44:56.7322556Z /usr/local/lib/android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/../sysroot/usr/include/stdlib.h:61:66: note: 'mktemp' has been explicitly marked deprecated here
+2026-08-25T13:44:56.7324411Z    61 | char* _Nullable mktemp(char* _Nonnull __template) __attribute__((__deprecated__("mktemp is unsafe, use mkstemp or tmpfile instead")));
+2026-08-25T13:44:56.7325406Z       |                                                                  ^
+2026-08-25T13:44:56.7444916Z 1 warning generated.
+2026-08-25T13:44:56.7488410Z   CC	syscall/heap.o
+2026-08-25T13:44:56.7866874Z   CC	syscall/rlimit.o
+2026-08-25T13:44:56.8179749Z   CC	tracee/tracee.o
+2026-08-25T13:44:56.8914083Z   CC	tracee/mem.o
+2026-08-25T13:44:57.0104878Z   CC	tracee/reg.o
+2026-08-25T13:44:57.0589217Z   CC	tracee/event.o
+2026-08-25T13:44:57.0887192Z ./tracee/event.c:699:95: warning: comparison of integers of different signs: 'int' and 'word_t' (aka 'unsigned long') [-Wsign-compare]
+2026-08-25T13:44:57.0890008Z   699 |                                 if (tracee->skip_next_seccomp_signal || (seccomp_after_ptrace_enter && siginfo.si_syscall == SYSCALL_AVOIDER)) {
+2026-08-25T13:44:57.0891566Z       |                                                                                                        ~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~
+2026-08-25T13:44:57.1294235Z 1 warning generated.
+2026-08-25T13:44:57.1339705Z   CC	tracee/seccomp.o
+2026-08-25T13:44:57.1668528Z ./tracee/seccomp.c:296:7: warning: variable 'status' set but not used [-Wunused-but-set-variable]
+2026-08-25T13:44:57.1669929Z   296 |                 int status;
+2026-08-25T13:44:57.1670821Z       |                     ^
+2026-08-25T13:44:57.1682265Z ./tracee/seccomp.c:604:29: warning: comparison of integers of different signs: 'gid_t' (aka 'unsigned int') and 'int' [-Wsign-compare]
+2026-08-25T13:44:57.1683751Z   604 |                 if (rxid != rxid_ && rxid != -1)
+2026-08-25T13:44:57.1684565Z       |                                      ~~~~ ^  ~~
+2026-08-25T13:44:57.1685667Z ./tracee/seccomp.c:606:29: warning: comparison of integers of different signs: 'gid_t' (aka 'unsigned int') and 'int' [-Wsign-compare]
+2026-08-25T13:44:57.1686514Z   606 |                 if (exid != exid_ && exid != -1)
+2026-08-25T13:44:57.1687054Z       |                                      ~~~~ ^  ~~
+2026-08-25T13:44:57.1687891Z ./tracee/seccomp.c:608:29: warning: comparison of integers of different signs: 'gid_t' (aka 'unsigned int') and 'int' [-Wsign-compare]
+2026-08-25T13:44:57.1688624Z   608 |                 if (sxid != sxid_ && sxid != -1)
+2026-08-25T13:44:57.1702039Z       |                                      ~~~~ ^  ~~
+2026-08-25T13:44:57.1872111Z ./tracee/seccomp.c:597:12: warning: variable 'ret' is used uninitialized whenever 'if' condition is false [-Wsometimes-uninitialized]
+2026-08-25T13:44:57.1872996Z   597 |                 else if (sysnum == PR_setresgid)
+2026-08-25T13:44:57.1873435Z       |                          ^~~~~~~~~~~~~~~~~~~~~~
+2026-08-25T13:44:57.1873931Z ./tracee/seccomp.c:599:7: note: uninitialized use occurs here
+2026-08-25T13:44:57.1874503Z   599 |                 if (ret) {  // EFAULT = address outside address space
+2026-08-25T13:44:57.1874929Z       |                     ^~~
+2026-08-25T13:44:57.2295406Z ./tracee/seccomp.c:597:8: note: remove the 'if' if its condition is always true
+2026-08-25T13:44:57.2296285Z   597 |                 else if (sysnum == PR_setresgid)
+2026-08-25T13:44:57.2296904Z       |                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-08-25T13:44:57.2297559Z   598 |                         ret = getresgid(&rxid_, &exid_, &sxid_);
+2026-08-25T13:44:57.2349931Z ./tracee/seccomp.c:120:9: note: initialize the variable 'ret' to silence this warning
+2026-08-25T13:44:57.2400171Z   120 |         int ret;
+2026-08-25T13:44:57.2400773Z       |                ^
+2026-08-25T13:44:57.2401407Z       |                 = 0
+2026-08-25T13:44:57.2711366Z 5 warnings generated.
+2026-08-25T13:44:57.2759969Z   CC	tracee/statx.o
+2026-08-25T13:44:57.3222644Z   CC	ptrace/ptrace.o
+2026-08-25T13:44:57.3785606Z   CC	ptrace/user.o
+2026-08-25T13:44:57.4004228Z   CC	ptrace/wait.o
+2026-08-25T13:44:57.4429140Z   CC	extension/extension.o
+2026-08-25T13:44:57.4783896Z   CC	extension/ashmem_memfd/ashmem_memfd.o
+2026-08-25T13:44:57.5117775Z ./extension/ashmem_memfd/ashmem_memfd.c:171:96: warning: unused parameter 'data2' [-Wunused-parameter]
+2026-08-25T13:44:57.5119602Z   171 | int ashmem_memfd_callback(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
+2026-08-25T13:44:57.5120845Z       |                                                                                                ^
+2026-08-25T13:44:57.5290854Z 1 warning generated.
+2026-08-25T13:44:57.5337304Z   CC	extension/kompat/kompat.o
+2026-08-25T13:44:57.6222723Z   CC	extension/fake_id0/chown.o
+2026-08-25T13:44:57.6509198Z   CC	extension/fake_id0/chroot.o
+2026-08-25T13:44:57.6829196Z ./extension/fake_id0/chroot.c:54:2: warning: ignoring return value of function declared with 'warn_unused_result' attribute [-Wunused-result]
+2026-08-25T13:44:57.6830983Z    54 |         realpath(path, path_host_absolute);
+2026-08-25T13:44:57.6831743Z       |         ^~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~
+2026-08-25T13:44:57.6929048Z 1 warning generated.
+2026-08-25T13:44:57.6969208Z   CC	extension/fake_id0/getsockopt.o
+2026-08-25T13:44:57.7268386Z   CC	extension/fake_id0/sendmsg.o
+2026-08-25T13:44:57.7686855Z   CC	extension/fake_id0/socket.o
+2026-08-25T13:44:57.7935183Z   CC	extension/fake_id0/open.o
+2026-08-25T13:44:57.8220290Z   CC	extension/fake_id0/unlink.o
+2026-08-25T13:44:57.8493075Z   CC	extension/fake_id0/rename.o
+2026-08-25T13:44:57.8787910Z   CC	extension/fake_id0/chmod.o
+2026-08-25T13:44:57.9073417Z   CC	extension/fake_id0/utimensat.o
+2026-08-25T13:44:57.9390254Z   CC	extension/fake_id0/access.o
+2026-08-25T13:44:57.9681751Z   CC	extension/fake_id0/exec.o
+2026-08-25T13:44:57.9949722Z   CC	extension/fake_id0/link.o
+2026-08-25T13:44:58.0201520Z   CC	extension/fake_id0/symlink.o
+2026-08-25T13:44:58.0449061Z   CC	extension/fake_id0/mk.o
+2026-08-25T13:44:58.0703332Z   CC	extension/fake_id0/stat.o
+2026-08-25T13:44:58.1065762Z   CC	extension/fake_id0/helper_functions.o
+2026-08-25T13:44:58.1308324Z ./extension/fake_id0/helper_functions.c:185:3: warning: misleading indentation; statement is not part of the previous 'else' [-Wmisleading-indentation]
+2026-08-25T13:44:58.1309580Z   185 |                 emulated_gid = config->egid;
+2026-08-25T13:44:58.1309990Z       |                 ^
+2026-08-25T13:44:58.1310570Z ./extension/fake_id0/helper_functions.c:183:2: note: previous statement is here
+2026-08-25T13:44:58.1311110Z   183 |         else
+2026-08-25T13:44:58.1311405Z       |         ^
+2026-08-25T13:44:58.1692794Z 1 warning generated.
+2026-08-25T13:44:58.1744451Z   CC	extension/fake_id0/fake_id0.o
+2026-08-25T13:44:58.2976427Z   CC	extension/hidden_files/hidden_files.o
+2026-08-25T13:44:58.3492886Z   CC	extension/mountinfo/mountinfo.o
+2026-08-25T13:44:58.3987463Z   CC	extension/port_switch/port_switch.o
+2026-08-25T13:44:58.4286362Z ./extension/port_switch/port_switch.c:174:100: warning: sizeof on array function parameter will return size of 'long *' instead of 'long[]' [-Wsizeof-array-argument]
+2026-08-25T13:44:58.4288094Z   174 |                     write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), socketcall_arg2, sizeof(socketcall_arg2));
+2026-08-25T13:44:58.4289611Z       |                                                                                                    ^
+2026-08-25T13:44:58.4290620Z ./extension/port_switch/port_switch.c:145:121: note: declared here
+2026-08-25T13:44:58.4291746Z   145 | void mod_port(Tracee *tracee, bool is_socketcall, bool is_bind, bool is_udp, struct sockaddr_storage *my_sockaddr, long socketcall_arg2[]) {   
+2026-08-25T13:44:58.4293204Z       |                                                                                                                         ^
+2026-08-25T13:44:58.4295100Z ./extension/port_switch/port_switch.c:182:100: warning: sizeof on array function parameter will return size of 'long *' instead of 'long[]' [-Wsizeof-array-argument]
+2026-08-25T13:44:58.4296425Z   182 |                     write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), socketcall_arg2, sizeof(socketcall_arg2));
+2026-08-25T13:44:58.4297612Z       |                                                                                                    ^
+2026-08-25T13:44:58.4298501Z ./extension/port_switch/port_switch.c:145:121: note: declared here
+2026-08-25T13:44:58.4299751Z   145 | void mod_port(Tracee *tracee, bool is_socketcall, bool is_bind, bool is_udp, struct sockaddr_storage *my_sockaddr, long socketcall_arg2[]) {   
+2026-08-25T13:44:58.4300572Z       |                                                                                                                         ^
+2026-08-25T13:44:58.4301661Z ./extension/port_switch/port_switch.c:204:100: warning: sizeof on array function parameter will return size of 'long *' instead of 'long[]' [-Wsizeof-array-argument]
+2026-08-25T13:44:58.4302687Z   204 |                     write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), socketcall_arg2, sizeof(socketcall_arg2));
+2026-08-25T13:44:58.4303343Z       |                                                                                                    ^
+2026-08-25T13:44:58.4303840Z ./extension/port_switch/port_switch.c:145:121: note: declared here
+2026-08-25T13:44:58.4304677Z   145 | void mod_port(Tracee *tracee, bool is_socketcall, bool is_bind, bool is_udp, struct sockaddr_storage *my_sockaddr, long socketcall_arg2[]) {   
+2026-08-25T13:44:58.4305501Z       |                                                                                                                         ^
+2026-08-25T13:44:58.4306433Z ./extension/port_switch/port_switch.c:212:100: warning: sizeof on array function parameter will return size of 'long *' instead of 'long[]' [-Wsizeof-array-argument]
+2026-08-25T13:44:58.4307447Z   212 |                     write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), socketcall_arg2, sizeof(socketcall_arg2));
+2026-08-25T13:44:58.4308137Z       |                                                                                                    ^
+2026-08-25T13:44:58.4308629Z ./extension/port_switch/port_switch.c:145:121: note: declared here
+2026-08-25T13:44:58.4309610Z   145 | void mod_port(Tracee *tracee, bool is_socketcall, bool is_bind, bool is_udp, struct sockaddr_storage *my_sockaddr, long socketcall_arg2[]) {   
+2026-08-25T13:44:58.4310419Z       |                                                                                                                         ^
+2026-08-25T13:44:58.4447379Z 4 warnings generated.
+2026-08-25T13:44:58.4489935Z   CC	extension/sysvipc/sysvipc.o
+2026-08-25T13:44:58.5126731Z   CC	extension/sysvipc/sysvipc_msg.o
+2026-08-25T13:44:58.5814893Z   CC	extension/sysvipc/sysvipc_sem.o
+2026-08-25T13:44:58.6399795Z   CC	extension/sysvipc/sysvipc_shm.o
+2026-08-25T13:44:58.6754323Z ./extension/sysvipc/sysvipc_shm.c:814:10: warning: 'mktemp' is deprecated: mktemp is unsafe, use mkstemp or tmpfile instead [-Wdeprecated-declarations]
+2026-08-25T13:44:58.6755505Z   814 |                 (void) mktemp(path);
+2026-08-25T13:44:58.6755914Z       |                        ^
+2026-08-25T13:44:58.6757061Z /usr/local/lib/android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/../sysroot/usr/include/stdlib.h:61:66: note: 'mktemp' has been explicitly marked deprecated here
+2026-08-25T13:44:58.6758593Z    61 | char* _Nullable mktemp(char* _Nonnull __template) __attribute__((__deprecated__("mktemp is unsafe, use mkstemp or tmpfile instead")));
+2026-08-25T13:44:58.6760493Z       |                                                                  ^
+2026-08-25T13:44:58.7528212Z 1 warning generated.
+2026-08-25T13:44:58.7580483Z   CC	extension/link2symlink/link2symlink.o
+2026-08-25T13:44:58.8349786Z   CC	extension/fix_symlink_size/fix_symlink_size.o
+2026-08-25T13:44:58.8689232Z   CC	loader/loader.o
+2026-08-25T13:44:58.9519717Z ./loader/loader.c:253:5: warning: inline asm clobber list contains reserved registers: SP [-Winline-asm]
+2026-08-25T13:44:58.9521388Z   253 |                                 BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
+2026-08-25T13:44:58.9522074Z       |                                 ^
+2026-08-25T13:44:58.9522693Z ./loader/assembly-arm64.h:32:3: note: expanded from macro 'BRANCH'
+2026-08-25T13:44:58.9523397Z    32 |                 "// Restore initial stack pointer.      \n\t"   \
+2026-08-25T13:44:58.9523899Z       |                 ^
+2026-08-25T13:44:58.9525009Z ./loader/loader.c:253:5: note: Reserved registers on the clobber list may not be preserved across the asm statement, and clobbering them may lead to undefined behaviour.
+2026-08-25T13:44:58.9526010Z ./loader/assembly-arm64.h:32:3: note: expanded from macro 'BRANCH'
+2026-08-25T13:44:58.9526827Z    32 |                 "// Restore initial stack pointer.      \n\t"   \
+2026-08-25T13:44:58.9527223Z       |                 ^
+2026-08-25T13:44:58.9846045Z 1 warning generated.
+2026-08-25T13:44:58.9892688Z   CC	loader/assembly.o
+2026-08-25T13:44:59.0465877Z   LD	loader/loader
+2026-08-25T13:44:59.0620147Z readelf -s loader/loader | awk -f loader/loader-info.awk > loader/loader-info.c
+2026-08-25T13:44:59.1575699Z   CC	loader/loader-info.o
+2026-08-25T13:44:59.1784235Z   CC	loader/loader-m32.o
+2026-08-25T13:44:59.3621511Z ./loader/loader.c:253:5: warning: inline asm clobber list contains reserved registers: SP, PC [-Winline-asm]
+2026-08-25T13:44:59.3622723Z   253 |                                 BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
+2026-08-25T13:44:59.3623411Z       |                                 ^
+2026-08-25T13:44:59.3624083Z ./loader/assembly-arm.h:32:3: note: expanded from macro 'BRANCH'
+2026-08-25T13:44:59.3624825Z    32 |                 "// Restore initial stack pointer.      \n\t"   \
+2026-08-25T13:44:59.3625378Z       |                 ^
+2026-08-25T13:44:59.3626658Z ./loader/loader.c:253:5: note: Reserved registers on the clobber list may not be preserved across the asm statement, and clobbering them may lead to undefined behaviour.
+2026-08-25T13:44:59.3628038Z ./loader/assembly-arm.h:32:3: note: expanded from macro 'BRANCH'
+2026-08-25T13:44:59.3629332Z    32 |                 "// Restore initial stack pointer.      \n\t"   \
+2026-08-25T13:44:59.3629881Z       |                 ^
+2026-08-25T13:44:59.3630261Z 1 warning generated.
+2026-08-25T13:44:59.3676986Z   CC	loader/assembly-m32.o
+2026-08-25T13:44:59.3981411Z   LD	loader/loader-m32
+2026-08-25T13:44:59.4389946Z   LD	proot
+2026-08-25T13:44:59.4837198Z rm .check_seccomp_filter.o .check_process_vm.o .check_seccomp_filter .check_process_vm
+2026-08-25T13:44:59.4854381Z   [2/3] Done: 259872 bytes
+2026-08-25T13:44:59.4854747Z   [3/3] Stripping and deploying...
+2026-08-25T13:44:59.8586104Z   [3/3] Binaries deployed:
+2026-08-25T13:44:59.8600830Z     227616 bytes  libproot_exec.so
+2026-08-25T13:44:59.8614633Z     18296 bytes  libproot_loader.so
+2026-08-25T13:44:59.8628139Z     35432 bytes  libtalloc.so
+2026-08-25T13:44:59.8766161Z === build-proot.sh: Complete ===

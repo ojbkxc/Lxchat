@@ -1,0 +1,10 @@
+﻿2026-08-25T13:44:44.3689508Z ##[group]Run NDK_HOME=$(ls -d $ANDROID_HOME/ndk/28.2.13676358 2>/dev/null || ls -d $ANDROID_HOME/ndk/*/ 2>/dev/null | sort -V | tail -1 | sed 's:/$::')
+2026-08-25T13:44:44.3690601Z [36;1mNDK_HOME=$(ls -d $ANDROID_HOME/ndk/28.2.13676358 2>/dev/null || ls -d $ANDROID_HOME/ndk/*/ 2>/dev/null | sort -V | tail -1 | sed 's:/$::')[0m
+2026-08-25T13:44:44.3691240Z [36;1mecho "ANDROID_NDK_HOME=$NDK_HOME" >> $GITHUB_ENV[0m
+2026-08-25T13:44:44.3732447Z shell: /usr/bin/bash -e {0}
+2026-08-25T13:44:44.3732720Z env:
+2026-08-25T13:44:44.3733035Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-8/x64
+2026-08-25T13:44:44.3733559Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-8/x64
+2026-08-25T13:44:44.3733970Z   ANDROID_HOME: /usr/local/lib/android/sdk
+2026-08-25T13:44:44.3734292Z   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+2026-08-25T13:44:44.3734570Z ##[endgroup]

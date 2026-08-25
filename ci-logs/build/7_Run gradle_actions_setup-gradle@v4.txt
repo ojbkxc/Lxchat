@@ -1,0 +1,101 @@
+﻿2026-08-25T13:44:59.8936487Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-25T13:44:59.8937772Z ##[group]Run gradle/actions/setup-gradle@v4
+2026-08-25T13:44:59.8938051Z with:
+2026-08-25T13:44:59.8938247Z   cache-disabled: false
+2026-08-25T13:44:59.8938472Z   cache-read-only: false
+2026-08-25T13:44:59.8938877Z   cache-write-only: false
+2026-08-25T13:44:59.8939295Z   cache-overwrite-existing: false
+2026-08-25T13:44:59.8939562Z   cache-cleanup: on-success
+2026-08-25T13:44:59.8939854Z   gradle-home-cache-includes: caches
+notifications
+
+2026-08-25T13:44:59.8940203Z   add-job-summary: always
+2026-08-25T13:44:59.8940452Z   add-job-summary-as-pr-comment: never
+2026-08-25T13:44:59.8940725Z   dependency-graph: disabled
+2026-08-25T13:44:59.8941024Z   dependency-graph-report-dir: dependency-graph-reports
+2026-08-25T13:44:59.8941413Z   dependency-graph-continue-on-failure: true
+2026-08-25T13:44:59.8941710Z   build-scan-publish: false
+2026-08-25T13:44:59.8941947Z   validate-wrappers: true
+2026-08-25T13:44:59.8942186Z   allow-snapshot-wrappers: false
+2026-08-25T13:44:59.8942454Z   gradle-home-cache-strict-match: false
+2026-08-25T13:44:59.8942731Z   workflow-job-context: null
+2026-08-25T13:44:59.8945120Z   github-token: ***
+2026-08-25T13:44:59.8945324Z env:
+2026-08-25T13:44:59.8945615Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-8/x64
+2026-08-25T13:44:59.8946098Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-8/x64
+2026-08-25T13:44:59.8946490Z   ANDROID_HOME: /usr/local/lib/android/sdk
+2026-08-25T13:44:59.8946781Z   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+2026-08-25T13:44:59.8947132Z   ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
+2026-08-25T13:44:59.8947456Z ##[endgroup]
+2026-08-25T13:45:00.2242557Z Merged default JDK locations into /home/runner/.m2/toolchains.xml
+2026-08-25T13:45:00.2245007Z Preparing cache for cleanup.
+2026-08-25T13:45:00.2249482Z ##[group]Restore Gradle state from cache
+2026-08-25T13:45:00.3108282Z Cache hit for restore-key: gradle-home-v1|Linux-X64|build[b8a35c2f917259958c9abe8f2ff1b5ff]-453dba0e973fb408d539837f10c66f57d7745707
+2026-08-25T13:45:00.4993610Z Received 9613554 of 9613554 (100.0%), 63.2 MBs/sec
+2026-08-25T13:45:00.4995221Z Cache Size: ~9 MB (9613554 B)
+2026-08-25T13:45:00.5031809Z [command]/usr/bin/tar -xf /home/runner/work/_temp/b48c1f8d-f86c-432f-8ab2-14ec04894b3c/cache.tzst -P -C /home/runner/work/Lxchat/Lxchat --use-compress-program unzstd
+2026-08-25T13:45:00.6891120Z Cache restored successfully
+2026-08-25T13:45:00.6899996Z Restored cache entry with key gradle-home-v1|Linux-X64|build[b8a35c2f917259958c9abe8f2ff1b5ff]-26f1f8d06b626ff03c2145a1527695a5ee49df82 to /home/runner/.gradle/caches,/home/runner/.gradle/notifications,/home/runner/.gradle/.setup-gradle in 463ms
+2026-08-25T13:45:00.7714085Z Cache hit for: gradle-generated-gradle-jars-v1-a170f616d8fd19db0bb463c397263c9f
+2026-08-25T13:45:00.7809985Z Cache hit for: gradle-wrapper-zips-v1-32a3a100d181ec75e824fde1164fcedd
+2026-08-25T13:45:00.8107366Z Cache hit for: gradle-instrumented-jars-v1-e946f99b47eefc96413c4059cbcd5d81
+2026-08-25T13:45:00.8110801Z Cache hit for: gradle-generated-gradle-jars-v1-7f51e1825575b1932e13b11a63c71a3f
+2026-08-25T13:45:00.8113026Z Cache hit for: gradle-groovy-dsl-v1-ebd13e4e8ee0ddec4f5f052207120116
+2026-08-25T13:45:00.8119032Z Cache hit for: gradle-transforms-v1-3db85ba73354b8e95f21148abd6e541a
+2026-08-25T13:45:00.8203935Z Cache hit for: gradle-kotlin-dsl-v1-0a16ab77eec778bad1b8b836e96c5720
+2026-08-25T13:45:00.8316085Z Cache hit for: gradle-dependencies-v1-fd92992bde69543df7d229328ce8018c
+2026-08-25T13:45:01.0275582Z Received 65128 of 65128 (100.0%), 0.5 MBs/sec
+2026-08-25T13:45:01.0277322Z Cache Size: ~0 MB (65128 B)
+2026-08-25T13:45:01.0415813Z Received 26532 of 26532 (100.0%), 0.2 MBs/sec
+2026-08-25T13:45:01.0417133Z Cache Size: ~0 MB (26532 B)
+2026-08-25T13:45:01.0541738Z Received 128812 of 128812 (100.0%), 0.8 MBs/sec
+2026-08-25T13:45:01.0542507Z Cache Size: ~0 MB (128812 B)
+2026-08-25T13:45:01.0865976Z Received 303971 of 303971 (100.0%), 1.7 MBs/sec
+2026-08-25T13:45:01.0866621Z Cache Size: ~0 MB (303971 B)
+2026-08-25T13:45:01.1653323Z [command]/usr/bin/tar -xf /home/runner/work/_temp/44750cd2-cffd-4aeb-a123-a2eecd9f5170/cache.tzst -P -C /home/runner/work/Lxchat/Lxchat --use-compress-program unzstd
+2026-08-25T13:45:01.1873885Z [command]/usr/bin/tar -xf /home/runner/work/_temp/be458ab5-991b-4036-bcad-50e44586a66e/cache.tzst -P -C /home/runner/work/Lxchat/Lxchat --use-compress-program unzstd
+2026-08-25T13:45:01.1966135Z Cache restored successfully
+2026-08-25T13:45:01.2013674Z Restored cache entry with key gradle-instrumented-jars-v1-e946f99b47eefc96413c4059cbcd5d81 to /home/runner/.gradle/caches/jars-*/*/ in 510ms
+2026-08-25T13:45:01.2088658Z Cache restored successfully
+2026-08-25T13:45:01.2127279Z [command]/usr/bin/tar -xf /home/runner/work/_temp/d2ba106c-e766-4357-a3ff-2a9083e58b16/cache.tzst -P -C /home/runner/work/Lxchat/Lxchat --use-compress-program unzstd
+2026-08-25T13:45:01.2182272Z Restored cache entry with key gradle-generated-gradle-jars-v1-7f51e1825575b1932e13b11a63c71a3f to /home/runner/.gradle/caches/9.5.1/generated-gradle-jars/gradle-test-kit-9.5.1.jar in 527ms
+2026-08-25T13:45:01.2743782Z [command]/usr/bin/tar -xf /home/runner/work/_temp/5dfdfc1d-a9aa-499d-a4c1-61f41e417bf1/cache.tzst -P -C /home/runner/work/Lxchat/Lxchat --use-compress-program unzstd
+2026-08-25T13:45:01.2947101Z Cache restored successfully
+2026-08-25T13:45:01.2994258Z Restored cache entry with key gradle-groovy-dsl-v1-ebd13e4e8ee0ddec4f5f052207120116 to /home/runner/.gradle/caches/*/groovy-dsl/*/ in 607ms
+2026-08-25T13:45:01.4469904Z Cache restored successfully
+2026-08-25T13:45:01.4561068Z Restored cache entry with key gradle-kotlin-dsl-v1-0a16ab77eec778bad1b8b836e96c5720 to /home/runner/.gradle/caches/*/kotlin-dsl/accessors/*/,/home/runner/.gradle/caches/*/kotlin-dsl/scripts/*/ in 760ms
+2026-08-25T13:45:01.5901915Z Received 42069608 of 42069608 (100.0%), 50.3 MBs/sec
+2026-08-25T13:45:01.5904695Z Cache Size: ~40 MB (42069608 B)
+2026-08-25T13:45:01.7458597Z [command]/usr/bin/tar -xf /home/runner/work/_temp/ba62ff36-a8fc-4b34-b437-ffd3060e2955/cache.tzst -P -C /home/runner/work/Lxchat/Lxchat --use-compress-program unzstd
+2026-08-25T13:45:01.8720315Z Received 58720256 of 139612273 (42.1%), 54.9 MBs/sec
+2026-08-25T13:45:01.9090116Z Received 62914560 of 985762071 (6.4%), 60.0 MBs/sec
+2026-08-25T13:45:01.9235090Z Received 62914560 of 465333077 (13.5%), 59.8 MBs/sec
+2026-08-25T13:45:02.2064205Z Cache restored successfully
+2026-08-25T13:45:02.2153994Z Restored cache entry with key gradle-generated-gradle-jars-v1-a170f616d8fd19db0bb463c397263c9f to /home/runner/.gradle/caches/9.5.1/generated-gradle-jars/gradle-api-9.5.1.jar in 1524ms
+2026-08-25T13:45:02.5453153Z Received 139612273 of 139612273 (100.0%), 78.5 MBs/sec
+2026-08-25T13:45:02.5455897Z Cache Size: ~133 MB (139612273 B)
+2026-08-25T13:45:02.5805016Z [command]/usr/bin/tar -xf /home/runner/work/_temp/fe32beb6-228c-443a-b287-8e456b6f2ae4/cache.tzst -P -C /home/runner/work/Lxchat/Lxchat --use-compress-program unzstd
+2026-08-25T13:45:02.9290247Z Received 192937984 of 985762071 (19.6%), 91.2 MBs/sec
+2026-08-25T13:45:02.9299692Z Received 167772160 of 465333077 (36.1%), 79.7 MBs/sec
+2026-08-25T13:45:02.9882995Z Cache restored successfully
+2026-08-25T13:45:02.9979494Z Restored cache entry with key gradle-wrapper-zips-v1-32a3a100d181ec75e824fde1164fcedd to /home/runner/.gradle/wrapper/dists/gradle-9.5.1-bin/iq79hdu3mqx29lgffhp8bfmx in 2306ms
+2026-08-25T13:45:03.9275981Z Received 406847488 of 985762071 (41.3%), 128.5 MBs/sec
+2026-08-25T13:45:03.9277049Z Received 343932928 of 465333077 (73.9%), 109.0 MBs/sec
+2026-08-25T13:45:04.8149469Z Received 465333077 of 465333077 (100.0%), 113.9 MBs/sec
+2026-08-25T13:45:04.8152074Z Cache Size: ~444 MB (465333077 B)
+2026-08-25T13:45:04.8866895Z [command]/usr/bin/tar -xf /home/runner/work/_temp/87c9468b-c205-4235-9a21-99ebe609bb57/cache.tzst -P -C /home/runner/work/Lxchat/Lxchat --use-compress-program unzstd
+2026-08-25T13:45:04.9283022Z Received 645922816 of 985762071 (65.5%), 153.3 MBs/sec
+2026-08-25T13:45:05.9380609Z Received 859832320 of 985762071 (87.2%), 163.2 MBs/sec
+2026-08-25T13:45:06.1246776Z Cache restored successfully
+2026-08-25T13:45:06.5030026Z Received 985762071 of 985762071 (100.0%), 168.1 MBs/sec
+2026-08-25T13:45:06.5032967Z Cache Size: ~940 MB (985762071 B)
+2026-08-25T13:45:06.5172831Z Restored cache entry with key gradle-dependencies-v1-fd92992bde69543df7d229328ce8018c to /home/runner/.gradle/caches/modules-*/files-*/*/*/*/* in 5825ms
+2026-08-25T13:45:06.5230673Z [command]/usr/bin/tar -xf /home/runner/work/_temp/21459b85-944b-4570-91df-dfae053d12c8/cache.tzst -P -C /home/runner/work/Lxchat/Lxchat --use-compress-program unzstd
+2026-08-25T13:45:15.2059123Z Cache restored successfully
+2026-08-25T13:45:15.5608086Z Restored cache entry with key gradle-transforms-v1-3db85ba73354b8e95f21148abd6e541a to /home/runner/.gradle/caches/transforms-4/*/,/home/runner/.gradle/caches/*/transforms/*/ in 14868ms
+2026-08-25T13:45:15.5691040Z ##[endgroup]
+2026-08-25T13:45:15.6330532Z ##[group]All Gradle Wrapper jars are valid
+2026-08-25T13:45:15.6331978Z ✓ Found known Gradle Wrapper JAR files:
+2026-08-25T13:45:15.6333036Z   76805e32c009c0cf0dd5d206bddc9fb22ea42e84db904b764f3047de095493f3 gradle/wrapper/gradle-wrapper.jar
+2026-08-25T13:45:15.6334435Z   e996d452d2645e70c01c11143ca2d3742734a28da2bf61f25c82bdc288c9e637 thirdparty/llama.cpp/examples/llama.android/gradle/wrapper/gradle-wrapper.jar
+2026-08-25T13:45:15.6335541Z ##[endgroup]
