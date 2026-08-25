@@ -63,6 +63,13 @@ class ImPollingReceiver(
     /** One listening job per push channel key, so we can stop/restart individual channels. */
     private val pushJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
 
+    /**
+     * 按好友 AI 回复冷却打点（key = channelKey + conversationId）。
+     * 对齐 Zyn-iLink 的 ai_cooldown：防止同一好友短时间内连发触发一串 AI 请求互相打断，
+     * 冷却期内对该好友的消息本轮不回复（消息已被 seen 标记，不会重试）。
+     */
+    private val lastAiReplyAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
     /** Start (or restart) the background receiver. Polling and push channels are both wired. */
     fun start() {
         stop()
@@ -308,6 +315,16 @@ class ImPollingReceiver(
         }
 
         // ── 普通 AI 回复流程 ──────────────────────────────────
+        // 对齐 Zyn-iLink 的 ai_cooldown：同一好友短时间连发时，冷却期内本轮不回复，
+        // 避免触发一串 AI 请求互相打断。消息已在 seen 集合标记，冷却后不会重试。
+        val coolKey = "$channelKey\u0000${conversation.id}"
+        val now = System.currentTimeMillis()
+        val lastReply = lastAiReplyAt[coolKey] ?: 0L
+        if (now - lastReply < AI_COOLDOWN_MS) {
+            DebugLog.d("ImPolling", "AI cooldown for ${conversation.id}, skip reply")
+            return
+        }
+        lastAiReplyAt[coolKey] = now
         try {
             val reply = replyFromAgent(weixin, channelKey, conversation.id, lxchatConvId, merged)
             if (!reply.isNullOrBlank()) {
@@ -485,6 +502,11 @@ class ImPollingReceiver(
 
     private companion object {
         const val MAX_SEEN = 2_000
+        /**
+         * 按好友 AI 回复冷却（毫秒），对齐 Zyn-iLink 的 ai_cooldown：
+         * 同一好友在此窗口内只回复一次，防止连发触发一串 AI 请求互相打断。
+         */
+        const val AI_COOLDOWN_MS = 5_000L
         /** "正在输入"保活重发间隔（毫秒）：长回复超过微信提示存活时间时维持状态显示。
          *  仅微信渠道在 agent 生成期间生效，之后立即取消。 */
         const val TYPING_KEEPALIVE_INTERVAL_MS = 10_000L
