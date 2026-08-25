@@ -136,3 +136,14 @@
 # APK 体积增加可接受，功能稳定性优先。
 -keep class com.lxseek.chat.** { *; }
 -keepclassmembers class com.lxseek.chat.** { *; }
+
+# ── kotlinx 库 keep（IllegalAccessError 根治） ───────────
+# ImGatewayStore inline map 调用 kotlinx.coroutines.flow 内部 emit，
+# R8 混淆库方法可见性后抛 IllegalAccessError。
+# kotlinx.coroutines 的 @PublishedApi internal 函数被 inline 函数跨包调用，
+# R8 优化时可能改变可见性。keep 整个库树防止此问题。
+-keep class kotlinx.coroutines.** { *; }
+-keepclassmembers class kotlinx.coroutines.** { *; }
+# kotlinx.serialization 的 reified decodeFromString/encodeToString 访问 $$serializer
+-keep class kotlinx.serialization.** { *; }
+-keepclassmembers class kotlinx.serialization.** { *; }
