@@ -80,20 +80,20 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.UUID
 
-// 鈹€鈹€ Platform display metadata 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ── Platform display metadata ──────────────────────────────────────────────
 
 /** Emoji glyph used as a lightweight platform icon (per project icon-style preference). */
 private fun ImPlatform.emoji(): String = when (this) {
-    ImPlatform.WECHAT -> "馃挰"
-    ImPlatform.TELEGRAM -> "鉁堬笍"
-    ImPlatform.LARK -> "馃惁"
-    ImPlatform.DINGTALK -> "馃搶"
-    ImPlatform.WECOM -> "馃彚"
-    ImPlatform.QQ -> "馃惂"
-    ImPlatform.DISCORD -> "馃幃"
-    ImPlatform.SLACK -> "馃捈"
-    ImPlatform.WHATSAPP -> "馃煝"
-    ImPlatform.SMS -> "馃摫"
+    ImPlatform.WECHAT -> "💬"
+    ImPlatform.TELEGRAM -> "✈️"
+    ImPlatform.LARK -> "🐦"
+    ImPlatform.DINGTALK -> "📌"
+    ImPlatform.WECOM -> "🏢"
+    ImPlatform.QQ -> "🐧"
+    ImPlatform.DISCORD -> "🎮"
+    ImPlatform.SLACK -> "💼"
+    ImPlatform.WHATSAPP -> "🟢"
+    ImPlatform.SMS -> "📱"
 }
 
 /** Localized display name resource for a platform. */
@@ -154,7 +154,7 @@ private fun ImPlatform.bindMethod(): BindMethod = when (this) {
  */
 private val PUSH_PENDING_PLATFORMS: Set<ImPlatform> = emptySet()
 
-// 鈹€鈹€ Credential field schema per platform 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ── Credential field schema per platform ───────────────────────────────────
 
 private enum class FieldKind { TEXT, SECRET, URL, NUMBER }
 
@@ -168,7 +168,7 @@ private data class CredField(
 
 /** Credential fields shown in the bind form for [platform]. */
 private fun ImPlatform.credentialFields(): List<CredField> = when (this) {
-    // 寰俊璧?iLink 鎵爜缁戝畾锛圵eixinBindingFlow锛夛紝鏃犻渶鎵嬪姩閰嶇疆 base_url/token銆?
+    // 微信走 iLink 扫码绑定（WeixinBindingFlow），无需手动配置 base_url/token。
     ImPlatform.WECHAT -> emptyList()
     ImPlatform.WECOM -> listOf(
         CredField("corp_id", R.string.im_channel_field_corp_id, FieldKind.TEXT),
@@ -209,7 +209,7 @@ private fun ImPlatform.credentialFields(): List<CredField> = when (this) {
     )
 }
 
-// 鈹€鈹€ Credential encode / decode (stored in ImGatewayConfig.token as JSON) 鈹€鈹€鈹€鈹€
+// ── Credential encode / decode (stored in ImGatewayConfig.token as JSON) ────
 
 private val credJson = Json { ignoreUnknownKeys = true }
 
@@ -237,17 +237,17 @@ private fun decodeCredentials(raw: String): Map<String, String> {
 
 /** Mask a secret for display: keep first 4 and last 4 chars, hide the middle. */
 private fun maskSecret(value: String): String {
-    if (value.length <= 8) return "****"
-    return value.take(4) + "****" + value.takeLast(4)
+    if (value.length <= 8) return "••••"
+    return value.take(4) + "••••" + value.takeLast(4)
 }
 
-// 鈹€鈹€ Build / summarize an ImGatewayConfig from form values 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ── Build / summarize an ImGatewayConfig from form values ───────────────────
 
 /**
  * Build an [ImGatewayConfig] from the [values] entered for [platform], or null when required
  * fields are missing. A fresh [channelId] is generated so each bind creates a distinct bot.
  *
- * @param agentPreset 閫変腑鐨?Agent Preset ID锛涚┖涓茶〃绀鸿窡闅忛粯璁ゃ€?
+ * @param agentPreset 选中的 Agent Preset ID；空串表示跟随默认。
  */
 private fun buildBotConfig(
     platform: ImPlatform,
@@ -343,12 +343,12 @@ private fun botSummary(bot: ImGatewayConfig, platform: ImPlatform): Pair<String,
             listOfNotNull(
                 bot.baseUrl.takeIf { it.isNotBlank() },
                 bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) },
-            ).joinToString(" 路 ")
+            ).joinToString(" · ")
         }
         ImPlatform.WECOM -> listOfNotNull(
             bot.token.takeIf { it.isNotBlank() },       // corp_id
             bot.botId.takeIf { it.isNotBlank() },        // agent_id
-        ).joinToString(" 路 ")
+        ).joinToString(" · ")
         ImPlatform.QQ -> bot.token.takeIf { it.isNotBlank() }.orEmpty()  // app_id
         ImPlatform.TELEGRAM, ImPlatform.DISCORD ->
             bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
@@ -361,7 +361,7 @@ private fun botSummary(bot: ImGatewayConfig, platform: ImPlatform): Pair<String,
     return title to subtitle
 }
 
-// 鈹€鈹€ Main page 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ── Main page ──────────────────────────────────────────────────────────────
 
 /**
  * IM multi-channel management page. Lists every [ImPlatform] as a card showing bind status,
@@ -371,7 +371,7 @@ private fun botSummary(bot: ImGatewayConfig, platform: ImPlatform): Pair<String,
  * context, which reuses the same encrypted DataStore as the rest of the app). The legacy
  * single-config [ChatViewModel.settings.imGatewayConfig] is still read for backward
  * compatibility: when no multi-config exists yet, a configured legacy bot is shown under
- * its platform with an "鏃х増" tag and a one-tap migrate action.
+ * its platform with an "旧版" tag and a one-tap migrate action.
  */
 @Composable
 fun SettingsImGatewayPage(
@@ -384,13 +384,13 @@ fun SettingsImGatewayPage(
     val legacyConfig by viewModel.settings.imGatewayConfig.collectAsState()
     val scope = rememberCoroutineScope()
 
-    // T31: ImBridgeService 鐢ㄤ簬杩炴帴娴嬭瘯锛涗粠 AppContainer 鍙栧崟渚嬨€?
+    // T31: ImBridgeService 用于连接测试；从 AppContainer 取单例。
     val bridgeService = remember(context) {
         (context.applicationContext as LxChatApplication).container.imBridgeService
     }
-    // T31: Agent Preset 鍊欓€夊垪琛紙鏉ヨ嚜鍏ㄥ眬 System Prompts锛夈€?
+    // T31: Agent Preset 候选列表（来自全局 System Prompts）。
     val systemPrompts by viewModel.settings.systemPrompts.collectAsState()
-    // 宸茬粦瀹氭満鍣ㄤ汉璁剧疆闈㈡澘鎵€闇€锛氬彲鐢ㄦā鍨嬪垪琛紙Map<providerName, List<modelName>>锛夈€?
+    // 已绑定机器人设置面板所需：可用模型列表（Map<providerName, List<modelName>>）。
     val availableModels by viewModel.settings.availableModels.collectAsState()
 
     // Legacy fallback bot: shown only when the multi-config is empty and the legacy single
@@ -484,7 +484,8 @@ fun SettingsImGatewayPage(
     }
 }
 
-// 鈹€鈹€ Platform card 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+// ── Platform card ──────────────────────────────────────────────────────────
 
 @Composable
 private fun PlatformChannelCard(
@@ -624,7 +625,7 @@ private fun BindStatusBadge(bound: Boolean, count: Int) {
     }
 }
 
-// 鈹€鈹€ Bot summary row 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ── Bot summary row ────────────────────────────────────────────────────────
 
 @Composable
 private fun BotSummaryRow(
@@ -648,7 +649,7 @@ private fun BotSummaryRow(
     val strSettings = stringResource(R.string.im_channel_settings)
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<ConnectionTestResult?>(null) }
-    // 宸茬粦瀹氭満鍣ㄤ汉璁剧疆闈㈡澘榛樿鏀惰捣锛涚偣鍑?鈿欙笍 璁剧疆鎸夐挳鍒囨崲銆?
+    // 已绑定机器人设置面板默认收起；点击 ⚙️ 设置按钮切换。
     var settingsExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
@@ -701,7 +702,7 @@ private fun BotSummaryRow(
                     Text(strTesting)
                 } else Text(strTestBtn)
             }
-            // 鈿欙笍 璁剧疆鎸夐挳锛氬睍寮€/鏀惰捣宸茬粦瀹氭満鍣ㄤ汉鐨勮缁嗚缃潰鏉裤€?
+            // ⚙️ 设置按钮：展开/收起已绑定机器人的详细设置面板。
             TextButton(onClick = {
                 settingsExpanded = !settingsExpanded
                 DebugLog.d("ImGatewayUI", "settings toggle: ${bot.effectiveChannelId} expanded=$settingsExpanded")
@@ -740,7 +741,7 @@ private fun BotSummaryRow(
                 )
             }
         }
-        // 宸茬粦瀹氭満鍣ㄤ汉璁剧疆闈㈡澘锛氳嚜鍔ㄥ洖澶嶆ā鍨?/ 涓诲姩娑堟伅 / 浜烘€у寲娑堟伅銆?
+        // 已绑定机器人设置面板：自动回复模型 / 主动消息 / 人性化消息。
         AnimatedVisibility(visible = settingsExpanded) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
             BotSettingsPanel(
@@ -748,7 +749,7 @@ private fun BotSummaryRow(
                 availableModels = availableModels,
                 onSave = { updated ->
                     onUpdateBot(updated)
-                    // 淇濆瓨鍚庤嚜鍔ㄦ敹璧枫€?
+                    // 保存后自动收起。
                     settingsExpanded = false
                 },
             )
@@ -756,7 +757,7 @@ private fun BotSummaryRow(
     }
 }
 
-// 鈹€鈹€ Bind form 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ── Bind form ──────────────────────────────────────────────────────────────
 
 @Composable
 private fun BindFormSection(
@@ -765,7 +766,7 @@ private fun BindFormSection(
     onConfirm: (ImGatewayConfig) -> Unit,
     onCancel: () -> Unit,
 ) {
-    // 寰俊璧?iLink 鎵爜缁戝畾娴佺▼锛圵eixinBindingFlow锛夛紝涓嶄娇鐢ㄨ〃鍗曞瓧娈点€?
+    // 微信走 iLink 扫码绑定流程（WeixinBindingFlow），不使用表单字段。
     if (platform == ImPlatform.WECHAT) {
         WeixinQrBindSection(onConfirm = onConfirm, onCancel = onCancel)
         return
@@ -780,7 +781,7 @@ private fun BindFormSection(
     val showSecret = remember { mutableStateMapOf<String, Boolean>().apply { fields.forEach { put(it.key, false) } } }
     var validationError by remember { mutableStateOf(false) }
 
-    // T31: Agent Preset 閫夋嫨鐘舵€併€傜┖涓?= 璺熼殢榛樿銆?
+    // T31: Agent Preset 选择状态。空串 = 跟随默认。
     var selectedPreset by remember { mutableStateOf("") }
     var presetMenuExpanded by remember { mutableStateOf(false) }
     val strPresetLabel = stringResource(R.string.im_channel_agent_preset)
@@ -802,7 +803,7 @@ private fun BindFormSection(
                     modifier = Modifier.fillMaxWidth().padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(text = "馃摲", style = MaterialTheme.typography.displaySmall)
+                    Text(text = "📷", style = MaterialTheme.typography.displaySmall)
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = stringResource(R.string.im_channel_bind_qr),
@@ -867,14 +868,14 @@ private fun BindFormSection(
             )
         }
 
-        // T31: Agent Preset 閫夋嫨鍣紙Dropdown锛夈€?
-        // 鍊欓€夐」 = "璺熼殢榛樿" + 鍏ㄥ眬 System Prompts锛涢€変腑鍚庡啓鍏?selectedPreset锛堢┖涓?璺熼殢榛樿锛夈€?
+        // T31: Agent Preset 选择器（Dropdown）。
+        // 候选项 = "跟随默认" + 全局 System Prompts；选中后写入 selectedPreset（空串=跟随默认）。
         Spacer(modifier = Modifier.height(4.dp))
         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             OutlinedTextField(
                 value = if (selectedPreset.isBlank()) strPresetFollow
                         else agentPresets.firstOrNull { it.id == selectedPreset }?.title ?: selectedPreset,
-                onValueChange = { /* 鍙锛岀敱涓嬫柟 Dropdown 閫夋嫨 */ },
+                onValueChange = { /* 只读，由下方 Dropdown 选择 */ },
                 readOnly = true,
                 label = { Text(strPresetLabel) },
                 supportingText = { Text(strPresetHint) },
@@ -917,12 +918,12 @@ private fun BindFormSection(
     }
 }
 
-// 鈹€鈹€ 寰俊 iLink 鎵爜缁戝畾 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ── 微信 iLink 扫码绑定 ────────────────────────────────────────────────────
 
 /**
- * 寰俊 iLink 鎵爜缁戝畾 UI锛氳繘鍏ュ嵆鍚姩 [WeixinBindingFlow.bind]锛屾樉绀轰簩缁寸爜鍥剧墖 鈫?
- * 杞鎵爜鐘舵€?鈫?鎴愬姛鍚庢瀯寤?[ImGatewayConfig] 骞跺洖璋?[onConfirm]銆?
- * 鍗忕▼鍦?[DisposableEffect] 涓彇娑堬紝閬垮厤绂诲紑 Composable 鍚庣户缁疆璇€?
+ * 微信 iLink 扫码绑定 UI：进入即启动 [WeixinBindingFlow.bind]，显示二维码图片 →
+ * 轮询扫码状态 → 成功后构建 [ImGatewayConfig] 并回调 [onConfirm]。
+ * 协程在 [DisposableEffect] 中取消，避免离开 Composable 后继续轮询。
  */
 @Composable
 private fun WeixinQrBindSection(
@@ -942,35 +943,34 @@ private fun WeixinQrBindSection(
     val strFailed = stringResource(R.string.im_channel_wechat_qr_failed)
 
     fun startBind() {
-        DebugLog.d("WeixinQrBind", "startBind: 开始绑定流程")
+        DebugLog.d("WeixinQrBind", "startBind: 开始扫码绑定流程")
         bindJob?.cancel(); qrcodeUrl = null; statusText = null; errorMsg = null; loading = true
         val flow = WeixinBindingFlow()
         bindJob = scope.launch {
             flow.bind { event ->
                 when (event) {
                     is WeixinBindingFlow.Event.QrcodeReady -> {
-                        DebugLog.d("WeixinQrBind", "鏀跺埌浜岀淮鐮?URL: ${event.qrcodeUrl}")
+                        DebugLog.d("WeixinQrBind", "收到二维码 URL: ${event.qrcodeUrl}")
                         loading = false; qrcodeUrl = event.qrcodeUrl; statusText = strWaiting
                     }
                     is WeixinBindingFlow.Event.StatusChanged -> {
-                        DebugLog.d("WeixinQrBind", "鎵爜鐘舵€佸彉鍖? ${event.status}")
+                        DebugLog.d("WeixinQrBind", "扫码状态变化: ${event.status}")
                         statusText = when (event.status) {
                             "wait" -> strWaiting; "scaned" -> strScanned; "confirmed" -> strConfirming
                             "need_verifycode" -> strVerify; else -> event.status
                         }
                     }
                     is WeixinBindingFlow.Event.Success -> {
-                        DebugLog.d("WeixinQrBind", "鎵爜缁戝畾鎴愬姛: baseUrl=${event.baseUrl} botId=${event.botId.take(20)}")
+                        DebugLog.d("WeixinQrBind", "扫码绑定成功: baseUrl=${event.baseUrl}")
                         loading = false
                         onConfirm(ImGatewayConfig(
                             enabled = true, platform = ImPlatform.WECHAT.id, baseUrl = event.baseUrl,
                             token = event.token, channelId = "wechat:${UUID.randomUUID()}", pollIntervalMs = 5_000L,
-                            // G1: 鍐欏叆 ilink_bot_id锛屼娇鑷洖澶嶉槻鎶ょ涓€閬撱€佽处鍙峰垏鎹㈡娴嬨€佸璐﹀彿绠＄悊鐢熸晥銆?
-                            botId = event.botId,
+                            botId = event.botId, // G1: 写入 ilink_bot_id
                         ))
                     }
                     is WeixinBindingFlow.Event.Failure -> {
-                        DebugLog.e("WeixinQrBind", "鎵爜缁戝畾澶辫触: ${event.error.code} - ${event.error.message}")
+                        DebugLog.e("WeixinQrBind", "扫码绑定失败: ${event.error.code} - ${event.error.message}")
                         loading = false; qrcodeUrl = null; errorMsg = event.error.message ?: strFailed
                     }
                 }
@@ -1003,7 +1003,7 @@ private fun WeixinQrBindSection(
                 }
             }
             errorMsg != null -> {
-                Text(text = "✗", style = MaterialTheme.typography.displaySmall)
+                Text(text = "❌", style = MaterialTheme.typography.displaySmall)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(text = stringResource(R.string.im_channel_wechat_qr_failed), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(4.dp))
