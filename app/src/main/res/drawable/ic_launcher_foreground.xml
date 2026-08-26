@@ -1,16 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- LxChat launcher icon foreground.
+     A flat, geometric design: a bold blue "L" (for LxChat) over a white
+     background, with three short orange accent strokes beneath the L
+     inspired by ClashMetaForAndroid's whisker-like marks.
+     Viewport is 240x240; the adaptive icon trims to a 108dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="240"
     android:viewportHeight="240">
+    <!-- Blue geometric "L" — vertical bar (filled path) -->
     <path
-        android:fillColor="#000000"
-        android:pathData="M79.7,162.1l23.8-84.1h12.8l-23.8,84.1h-12.8Z"/>
+        android:fillColor="#3474B8"
+        android:pathData="M78,42 h32 v120 h-32 z" />
+    <!-- Blue geometric "L" — horizontal foot (filled path) -->
     <path
-        android:fillColor="#000000"
-        android:pathData="M160.3,162.1l-23.8-84.1h-12.8l23.8,84.1h12.8Z"/>
+        android:fillColor="#3474B8"
+        android:pathData="M78,130 h90 v32 h-90 z" />
+    <!-- Orange accent strokes beneath the L -->
     <path
-        android:fillColor="#000000"
-        android:pathData="M120,129.1m-9.1,0a9.1,9.1 0,1,1 18.2,0a9.1,9.1 0,1,1 -18.2,0"/>
+        android:strokeColor="#FF9900"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M92,188 L110,176" />
+    <path
+        android:strokeColor="#FF9900"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M110,189 L128,177" />
+    <path
+        android:strokeColor="#FF9900"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M128,188 L146,176" />
 </vector>

@@ -15,6 +15,8 @@
 
 ## Download
 
+**Latest: v1.0.30**
+
 [![F-Droid](https://img.shields.io/badge/F--Droid-Install-blue?logo=fdroid)](https://f-droid.org/packages/com.lxseek.chat/)
 &nbsp;&nbsp;
 [![Google Play](https://img.shields.io/badge/Google_Play-Install-blue?logo=google-play)](https://play.google.com/store/apps/details?id=com.lxseek.chat)
@@ -43,6 +45,8 @@ LxChat is a derivative project based on **[Agora](https://github.com/ojbkxc/Agor
 - **Privacy-first design** — everything stored locally, no telemetry
 
 The internal identifiers (`agora_db`, `agora_llama`, `agora_proot`, the `Agora*` class names, etc.) have been fully renamed to `lxchat*` so the original token no longer appears anywhere in the source or the built APK.
+
+In addition to the inherited Agora capabilities, LxChat introduces a new **IM Gateway** subsystem (iLink protocol-based WeChat auto-reply and multi-platform messaging) that is not present in the upstream project.
 
 ## Screenshots
 
@@ -99,6 +103,14 @@ The internal identifiers (`agora_db`, `agora_llama`, `agora_proot`, the `Agora*`
 - Token bucket rate limiting and nonce-based anti-replay protection
 - **Multi-device support** — configure and switch between multiple remote servers
 - **MCP integration** — Conch as a Claude Desktop MCP server
+
+### IM Gateway & Auto-Reply
+- **WeChat (微信) auto-reply** via iLink protocol — scan QR to login, AI auto-replies to incoming messages
+- **Multi-platform IM support** — WeChat, Telegram, Lark, DingTalk, WeCom, QQ, Discord, Slack
+- **System notification auto-reply** — listen to WeChat notifications and trigger AI responses
+- **Media support** — send/receive images, files, voice messages via iLink CDN
+- **Message type support** — text, voice, video, location, link, card, emoji
+- **Rate limiting & cooldown** — prevent triggering WeChat bans with configurable delays
 
 ### Knowledge Management
 - **RAG semantic search** across all past conversations using cosine similarity
@@ -197,6 +209,10 @@ The internal identifiers (`agora_db`, `agora_llama`, `agora_proot`, the `Agora*`
 - **Image Loading:** Coil
 - **Markdown:** Multiplatform Markdown Renderer M3
 - **Math:** JLaTeXMath-Android
+- **IM Gateway:** iLink protocol (WeChat), multi-platform push/poll channels
+- **Voice Recognition:** Vosk (offline ASR), OpenAI Whisper (online)
+- **Media:** ExoPlayer (video playback), CameraX (in-app camera)
+- **SSH:** JSch for remote device management
 
 ## Contributing
 
