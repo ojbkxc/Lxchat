@@ -244,7 +244,7 @@ class WeixinChannel(
             ?: return ImSendResult.Failure("图片下载失败，请检查 URL。")
         val name = fileNameFromUrl(trimmed)
         return sendMedia(conversationId, WeixinMediaSpec(
-            kind = WeixinIlinkApi.WeixinMediaKind.IMAGE,
+            kind = WeixinMediaKind.IMAGE,
             rawBytes = bytes,
             fileName = name,
             thumbBytes = imageThumb(bytes),
@@ -258,7 +258,7 @@ class WeixinChannel(
             ?: return ImSendResult.Failure("文件下载失败，请检查 URL。")
         val name = fileNameFromUrl(trimmed)
         return sendMedia(conversationId, WeixinMediaSpec(
-            kind = WeixinIlinkApi.WeixinMediaKind.FILE,
+            kind = WeixinMediaKind.FILE,
             rawBytes = bytes,
             fileName = name,
         ))
@@ -272,18 +272,18 @@ class WeixinChannel(
             "找不到已缓存的媒体：$key。可先让好友发送图片/文件，或用 /sendimage /sendfile 发送直链；/forward 无参数可查看缓存列表。",
         )
         // 以名字前缀 image 判定为图片（入站图片缓存名为 image / image-N）。
-        val kind = if (key.startsWith("image")) WeixinIlinkApi.WeixinMediaKind.IMAGE
-                   else WeixinIlinkApi.WeixinMediaKind.FILE
+        val kind = if (key.startsWith("image")) WeixinMediaKind.IMAGE
+                   else WeixinMediaKind.FILE
         return sendMedia(conversationId, WeixinMediaSpec(
             kind = kind,
             rawBytes = bytes,
             fileName = key,
-            thumbBytes = if (kind == WeixinIlinkApi.WeixinMediaKind.IMAGE) imageThumb(bytes) else null,
+            thumbBytes = if (kind == WeixinMediaKind.IMAGE) imageThumb(bytes) else null,
         ))
     }
 
     /** 媒体发送核心：限速 → sendmediaitem → 回写新 context_token。 */
-    private suspend fun sendMedia(conversationId: String, spec: WeixinIlinkApi.WeixinMediaSpec): ImSendResult {
+    private suspend fun sendMedia(conversationId: String, spec: WeixinMediaSpec): ImSendResult {
         if (!isConfigured) return ImSendResult.NotConfigured
         val recipient = conversationId.trim()
         if (recipient.isEmpty()) return ImSendResult.Failure("conversationId is empty")
@@ -294,7 +294,7 @@ class WeixinChannel(
         val contextToken = contextTokenStore[recipient]
         DebugLog.d("WeixinChannel", "sendMedia: recipient=$recipient kind=${spec.kind} size=${spec.rawBytes.size} hasCtx=${contextToken != null}")
         return try {
-            val newCtx = api.sendMediaItem(baseUrl, config.token, recipient, spec, contextToken)
+            val newCtx = WeixinMediaSender(api).sendMediaItem(baseUrl, config.token, recipient, spec, contextToken)
             if (!newCtx.isNullOrEmpty() && newCtx != contextToken) contextTokenStore[recipient] = newCtx
             ImSendResult.Success("lxchat-weixin-media-${System.currentTimeMillis()}")
         } catch (e: WeixinApiError) {
