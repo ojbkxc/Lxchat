@@ -6,7 +6,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.putJsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -61,7 +64,7 @@ class WeixinMediaSender(private val api: WeixinIlinkApi) {
 
         // 2) 图片需要缩略图（发送方预先压缩为 JPEG 字节）。
         var thumb: ThumbInfo? = null
-        if (spec.kind == WeixinMediaKind.IMAGE && spec.thumbBytes.orEmpty().isNotEmpty()) {
+        if (spec.kind == WeixinMediaKind.IMAGE && !spec.thumbBytes.isNullOrEmpty()) {
             val tKey = ByteArray(16).also { SECURE_RANDOM.nextBytes(it) }
             val tEncrypted = encryptWeixinMedia(spec.thumbBytes!!, tKey)
             thumb = ThumbInfo(
@@ -121,7 +124,7 @@ class WeixinMediaSender(private val api: WeixinIlinkApi) {
                                 thumb!!.aesKeyHex.toByteArray(Charsets.UTF_8), Base64.NO_WRAP,
                             )
                             val thumbMedia = uploadCdn(
-                                thumbUploadParam, "$filekey_thumb", thumb!!.encrypted, thumbAesKeyB64,
+                                thumbUploadParam, "${filekey}_thumb", thumb!!.encrypted, thumbAesKeyB64,
                             )
                             putJsonObject("thumb_media", thumbMedia)
                             put("thumb_size", thumb!!.encrypted.size)

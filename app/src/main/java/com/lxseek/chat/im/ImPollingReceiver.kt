@@ -537,9 +537,9 @@ class ImPollingReceiver(
 
     /** 把媒体发送结果转为给用户的提示文本。 */
     private fun mediaResultText(kind: String, result: ImSendResult): String = when (result) {
-        is ImSendResult.Success -> "$kind已发送。"
-        is ImSendResult.Failure -> "$kind发送失败：${result.reason}"
-        ImSendResult.NotConfigured -> "微信渠道未配置，无法发送$kind。"
+        is ImSendResult.Success -> "${kind}已发送。"
+        is ImSendResult.Failure -> "${kind}发送失败：${result.reason}"
+        ImSendResult.NotConfigured -> "微信渠道未配置，无法发送${kind}。"
     }
 
     // ── State / config resolution (multi-channel with legacy fallback) ──
