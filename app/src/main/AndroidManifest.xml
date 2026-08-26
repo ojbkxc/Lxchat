@@ -163,6 +163,17 @@
             </intent-filter>
         </service>
 
+        <!-- System notification auto-reply (listens for WeChat/whitelisted notifications and
+             replies via the bound IM channel). Requires the user to grant Notification access. -->
+        <service
+            android:name=".notification.NotificationAutoReplyService"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <!-- Fires a scheduled task; internal only. -->
         <receiver
             android:name=".automation.AutomationAlarmReceiver"

@@ -263,6 +263,7 @@ private val settingsGroups = listOf(
         SettingsCategory("runtime_status", R.string.settings_runtime_status, R.string.settings_runtime_status_desc, Icons.Default.Speed),
         SettingsCategory("pet_overlay", R.string.settings_pet_overlay, R.string.settings_pet_overlay_desc, Icons.Default.Android),
         SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
+        SettingsCategory("notification_reply", R.string.settings_notification_reply, R.string.settings_notification_reply_desc, Icons.Default.Notifications),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
@@ -333,6 +334,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "pet_overlay" -> SettingsPetOverlayPage(viewModel, onBack = { selectedCategory = null })
                 "runtime_status" -> SettingsRuntimeStatusPage(viewModel, onBack = { selectedCategory = null })
                 "im_gateway" -> SettingsImGatewayPage(viewModel, onBack = { selectedCategory = null })
+                "notification_reply" -> NotificationReplySettingsPage(viewModel, onBack = { selectedCategory = null })
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })
                 "language" -> SettingsLanguagePage(viewModel, onBack = { selectedCategory = null })
                 "titlegen" -> SettingsTitleGenPage(viewModel, onBack = { selectedCategory = null })
