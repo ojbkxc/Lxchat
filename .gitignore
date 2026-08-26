@@ -51,3 +51,4 @@ ci-log-*.txt
 ci-logs.zip
 /ci-logs/
 runs.json
+.codeartsdoer/plans/weixin-bot-fix/defects.md
