@@ -455,9 +455,20 @@ class WeixinChannel(
                 api.notifyStart(baseUrl, config.token)
                 notified = true
                 DebugLog.d("WeixinChannel", "pollUpdates: notifyStart succeeded")
+                // release 可见：确认订阅是否建立（若始终无此日志说明未走到轮询/崩溃）
+                Log.e("WxRecv", "notifyStart ok, notified=true")
             }
             val timeoutMs = if (longPollTimeoutMs > 0) longPollTimeoutMs else WeixinIlinkApi.DEFAULT_LONG_POLL_TIMEOUT_MS
             val updates = api.getUpdates(baseUrl, config.token, state.getUpdatesBuf(), timeoutMs)
+            // release 可见定义入站根因：看 getupdates 是否空、是否被拒、首条消息的关键字段
+            val firstMsg = updates.msgs.firstOrNull()
+            Log.e(
+                "WxRecv",
+                "getupdates ret=${updates.ret} msgs=${updates.msgs.size} bufLen=${updates.getUpdatesBuf.length} " +
+                    "errcode=${updates.raw["errcode"]?.strSafe()} " +
+                    "firstMsgKeys=${firstMsg?.keys?.joinToString(",") ?: ""} " +
+                    "firstFrom=${firstMsg?.get("from_user_id")?.strSafe()} firstTo=${firstMsg?.get("to_user_id")?.strSafe()}",
+            )
             DebugLog.d("WeixinChannel", "pollUpdates: received ${updates.msgs.size} msgs, ret=${updates.ret}, bufLen=${updates.getUpdatesBuf.length}, serverTimeout=${updates.longpollingTimeoutMs}")
             // Use server-suggested long-poll timeout for the next request.
             if (updates.longpollingTimeoutMs > 0) {
@@ -475,6 +486,7 @@ class WeixinChannel(
                 // 参考weixin-ClawBot-API bot.py:329-330。
                 val code = if (updates.ret != 0) updates.ret else (errcode ?: 0)
                 DebugLog.e("WeixinChannel", "pollUpdates rejected: ret=${updates.ret} errcode=$errcode errmsg=${updates.raw["errmsg"]?.strSafe()}")
+                Log.e("WxRecv", "REJECTED ret=${updates.ret} errcode=$errcode errmsg=${updates.raw["errmsg"]?.strSafe()}")
                 if (code == -14) {
                     // token 失效：重置协议状态，让重新绑定后的新 token 能干净接管；
                     // 并通过 onTokenStale 提醒 UI 引导重新扫码（参考 weixin-ClawBot-API 的受控重登录）。
