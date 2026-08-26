@@ -251,6 +251,7 @@ private val settingsGroups = listOf(
         SettingsCategory("websearch", R.string.settings_web_search, R.string.settings_web_search_desc, Icons.Default.Language),
         SettingsCategory("search", R.string.search_title, R.string.search_desc, Icons.Default.Search),
         SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Terminal),
+        SettingsCategory("adb_shell", R.string.settings_adb_shell, R.string.settings_adb_shell_desc, Icons.Default.Terminal),
         SettingsCategory(
             "mcp",
             R.string.mcp_title,
@@ -323,6 +324,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "websearch" -> SettingsWebSearchPage(viewModel, onBack = { selectedCategory = null })
                 "imagegen" -> SettingsImageGenPage(viewModel, onBack = { selectedCategory = null })
                 "shell" -> SettingsShellPage(viewModel, onBack = { selectedCategory = null })
+                "adb_shell" -> SettingsAdbPage(viewModel, onBack = { selectedCategory = null })
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
                 "automation" -> SettingsAutomationPage(
                     viewModel,

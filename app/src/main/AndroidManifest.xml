@@ -21,6 +21,12 @@
          restrictions require this permission to bindService to system TTS engines (e.g. Xiaomi
          Mi Brain). Without it, TextToSpeech OnInit returns ERROR (-1) on MIUI. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
+    <!-- ADB Shell extension: allows cycling wireless debugging and granting WRITE_SECURE_SETTINGS
+         to itself via `pm grant`. User-granted via adb or root; not dangerous-permission gated. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <!-- Local network discovery (mDNS / NSD) for ADB wireless-debugging port discovery. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <!-- Allows a visibility-safe preflight before using the platform capture contract. -->
     <queries>

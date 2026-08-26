@@ -106,6 +106,7 @@ internal class GenerationToolExecutor private constructor(
             val shellProvider = ShellToolProvider(
                 sandboxFactory = sandboxFactory,
                 imageStore = ToolImageStore(app),
+                appContext = app,
             ).also { provider ->
                 provider.confirm = confirmShellCommand
             }
