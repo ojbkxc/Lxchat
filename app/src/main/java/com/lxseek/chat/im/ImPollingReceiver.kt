@@ -263,7 +263,12 @@ class ImPollingReceiver(
         // 会导致 get_updates 使用失效游标一直返回空，bot 收不到任何消息（v1.0.27 回归根因，
         // 与 v1.0.23 的正常行为一致）。
 
+        // 绑定可能指向已删除/失效的 Lxchat 会话（重装应用、清库、或手动删除会话）。
+        // 若只判断"绑定是否存在"而不校验"绑定指向的会话是否仍在"，runOnce 会在
+        // TaskExecutionEngine 里查到不到会话直接失败，好友消息收得到但 AI 不回复（v3 实测根因）。
+        // 这里在此校验：绑定会话已不存在时走 bindConversation 重建并更新绑定。
         val lxchatConvId = state.conversationBindings[conversation.id]
+            ?.takeIf { bound -> runCatching { conversationRepository.getConversation(bound) != null }.getOrDefault(false) }
             ?: bindConversation(channelKey, channel, conversation)
 
         // Reserve every inbound message id up front so a concurrent poll cannot re-handle it,
