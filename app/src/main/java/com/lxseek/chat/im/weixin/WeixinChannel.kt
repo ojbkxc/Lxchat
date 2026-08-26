@@ -495,8 +495,14 @@ class WeixinChannel(
             )
         } catch (e: WeixinApiError) {
             DebugLog.e("WeixinChannel", "pollUpdates failed: ${e.code}", e)
+            // 网络抖动/超时后重置 notified，下轮重新 notifyStart 订阅：
+            // 服务端可能在连接中断后悄悄丢弃该账号的推送订阅，不重置就一直 getupdates 空轮询（收不到好友消息）。
+            if (e.code == "network-error" || e.code == "timeout") {
+                notified = false
+            }
         } catch (e: Exception) {
             DebugLog.e("WeixinChannel", "pollUpdates failed", e)
+            notified = false
         }
     }
 

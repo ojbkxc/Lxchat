@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
+import com.lxseek.chat.notification.ContactMapping
 import com.lxseek.chat.notification.NotificationReplyConfig
 import com.lxseek.chat.notification.NotificationReplyStore
 import com.lxseek.chat.viewmodel.ChatViewModel
@@ -62,7 +63,7 @@ fun NotificationReplySettingsPage(
     var enabled by remember(config) { mutableStateOf(config.enabled) }
     var packagesText by remember(config) { mutableStateOf(config.packages.joinToString(",")) }
     var contactsText by remember(config) {
-        mutableStateOf(config.contacts.entries.joinToString("\n") { "${it.key}=${it.value}" })
+        mutableStateOf(config.contacts.entries.joinToString("\n") { "${it.key}=${it.value.userId}" })
     }
     var promptText by remember(config) { mutableStateOf(config.promptHeader) }
     var cooldownSeconds by remember(config) { mutableStateOf((config.cooldownMs / 1000).toString()) }
@@ -71,13 +72,16 @@ fun NotificationReplySettingsPage(
         scope.launch {
             val parsedPackages = packagesText.split(',')
                 .map { it.trim() }.filter { it.isNotEmpty() }
-            val parsedContacts = linkedMapOf<String, String>()
+            val parsedContacts = linkedMapOf<String, ContactMapping>()
             contactsText.lineSequence().forEach { line ->
                 val idx = line.indexOf('=')
                 if (idx > 0) {
                     val name = line.substring(0, idx).trim()
                     val id = line.substring(idx + 1).trim()
-                    if (name.isNotEmpty() && id.isNotEmpty()) parsedContacts[name] = id
+                    if (name.isNotEmpty() && id.isNotEmpty()) {
+                        // 手动输入行没有渠道信息 → 用空渠道，发送时回退到任意已配置微信账号。
+                        parsedContacts[name] = ContactMapping(userId = id)
+                    }
                 }
             }
             val cooldown = cooldownSeconds.trim().toLongOrNull()?.coerceAtLeast(0) ?: 0L
