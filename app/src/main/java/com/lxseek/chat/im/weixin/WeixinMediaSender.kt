@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -64,7 +65,7 @@ class WeixinMediaSender(private val api: WeixinIlinkApi) {
 
         // 2) 图片需要缩略图（发送方预先压缩为 JPEG 字节）。
         var thumb: ThumbInfo? = null
-        if (spec.kind == WeixinMediaKind.IMAGE && !spec.thumbBytes.isNullOrEmpty()) {
+        if (spec.kind == WeixinMediaKind.IMAGE && spec.thumbBytes != null && spec.thumbBytes!!.isNotEmpty()) {
             val tKey = ByteArray(16).also { SECURE_RANDOM.nextBytes(it) }
             val tEncrypted = encryptWeixinMedia(spec.thumbBytes!!, tKey)
             thumb = ThumbInfo(
@@ -111,22 +112,26 @@ class WeixinMediaSender(private val api: WeixinIlinkApi) {
         val media = uploadCdn(uploadParam, filekey, encrypted, aesKeyB64)
 
         // 5) 构造 item_list 并 sendmessage。
+        // 缩略图二次上传是挂起操作，需在 buildJsonObject 的同步 lambda 之外先完成。
         val thumbUploadParam = uploadResp["thumb_upload_param"].strSafe()
+        val thumbMedia: JsonObject? =
+            if (spec.kind == WeixinMediaKind.IMAGE && thumb != null && thumbUploadParam != null && thumbUploadParam.isNotEmpty()) {
+                val thumbAesKeyB64 = Base64.encodeToString(
+                    thumb!!.aesKeyHex.toByteArray(Charsets.UTF_8), Base64.NO_WRAP,
+                )
+                uploadCdn(thumbUploadParam, "${filekey}_thumb", thumb!!.encrypted, thumbAesKeyB64)
+            } else {
+                null
+            }
         val itemList = ArrayList<JsonElement>(1).apply {
             if (spec.kind == WeixinMediaKind.IMAGE) {
                 add(buildJsonObject {
                     put("type", WEIXIN_MSG_ITEM_IMAGE)
                     putJsonObject("image_item") {
-                        putJsonObject("media", media)
+                        put("media", media)
                         put("mid_size", encrypted.size)
-                        if (thumb != null && !thumbUploadParam.isNullOrEmpty()) {
-                            val thumbAesKeyB64 = Base64.encodeToString(
-                                thumb!!.aesKeyHex.toByteArray(Charsets.UTF_8), Base64.NO_WRAP,
-                            )
-                            val thumbMedia = uploadCdn(
-                                thumbUploadParam, "${filekey}_thumb", thumb!!.encrypted, thumbAesKeyB64,
-                            )
-                            putJsonObject("thumb_media", thumbMedia)
+                        thumbMedia?.let { tm ->
+                            put("thumb_media", tm)
                             put("thumb_size", thumb!!.encrypted.size)
                         }
                     }
@@ -135,7 +140,7 @@ class WeixinMediaSender(private val api: WeixinIlinkApi) {
                 add(buildJsonObject {
                     put("type", WEIXIN_MSG_ITEM_FILE)
                     putJsonObject("file_item") {
-                        putJsonObject("media", media)
+                        put("media", media)
                         put("file_name", spec.fileName.ifBlank { "file" })
                         put("len", rawBytes.size)
                     }
