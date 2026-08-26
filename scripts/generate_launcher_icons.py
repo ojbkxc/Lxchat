@@ -50,7 +50,7 @@ SS = 4
 def _render_at_viewport(round_mask: bool) -> Image.Image:
     """Render the design at full viewport size (with supersampling)."""
     size = VIEWPORT * SS
-    img = Image.new("RGBA", (size, size), SEMI_WHITE)
+    img = Image.new("RGBA", (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
 
     # Blue L — vertical bar
