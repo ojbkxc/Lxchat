@@ -10,6 +10,7 @@ import com.lxseek.chat.util.DebugLog
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -171,13 +172,24 @@ class WeixinChannel(
         val recipient = conversationId.trim()
         if (recipient.isEmpty()) return ImSendResult.Failure("conversationId is empty")
 
+        // 诊断日志（直接 android.util.Log.e，绕过 DebugLog，release build 也能看到）
+        Log.e("WxSend", "entry: recipient=$recipient textLen=${text.length} textHead=${text.take(100)}")
+
         // P1-7: Strip Markdown syntax WeChat can't render
         val plainText = WeixinMarkdownFilter.strip(text)
-        // P1-8: Cap at WeChat's max text length instead of splitting into multiple messages
-        val cappedText = if (plainText.length > WECHAT_MAX_TEXT_LENGTH) {
-            plainText.take(WECHAT_MAX_TEXT_LENGTH - 3) + "..."
+        Log.e("WxSend", "after strip: plainLen=${plainText.length} plainHead=${plainText.take(100)}")
+        // fallback: 如果 strip 后为空，用原文发送（避免 sendText 抛 IllegalArgumentException）
+        val effectiveText = if (plainText.isBlank()) {
+            Log.e("WxSend", "strip produced empty text, falling back to original (len=${text.length})")
+            text
         } else {
             plainText
+        }
+        // P1-8: Cap at WeChat's max text length instead of splitting into multiple messages
+        val cappedText = if (effectiveText.length > WECHAT_MAX_TEXT_LENGTH) {
+            effectiveText.take(WECHAT_MAX_TEXT_LENGTH - 3) + "..."
+        } else {
+            effectiveText
         }
 
         // P0-1: Enforce minimum interval between sends to avoid WeChat anti-spam ban.
@@ -189,7 +201,9 @@ class WeixinChannel(
         var lastError: Exception? = null
         for (attempt in 1..SEND_MAX_RETRIES) {
             try {
+                Log.e("WxSend", "attempt $attempt: recipient=$recipient textLen=${cappedText.length} hasCtx=${contextToken != null}")
                 val newContextToken = api.sendText(baseUrl, config.token, recipient, cappedText, contextToken)
+                Log.e("WxSend", "attempt $attempt: sendText success, newCtx=${newContextToken != null}")
                 // 响应回写新 context_token（对齐 weixin_client.py _extract_response_context_token）。
                 if (!newContextToken.isNullOrEmpty() && newContextToken != contextToken) {
                     contextTokenStore[recipient] = newContextToken
@@ -201,6 +215,7 @@ class WeixinChannel(
                 return ImSendResult.Success("lxchat-weixin-sent-${System.currentTimeMillis()}")
             } catch (e: WeixinApiError) {
                 lastError = e
+                Log.e("WxSend", "attempt $attempt: WeixinApiError code=${e.code} msg=${e.message}")
                 DebugLog.e("WeixinChannel", "sendMessage attempt $attempt failed: ${e.code}", e)
                 // Non-transient errors (send-rejected, invalid-*) should not retry.
                 if (e.code !in TRANSIENT_ERROR_CODES) {
@@ -208,6 +223,7 @@ class WeixinChannel(
                 }
             } catch (e: Exception) {
                 lastError = e
+                Log.e("WxSend", "attempt $attempt: Exception ${e.javaClass.name}: ${e.message}")
                 DebugLog.e("WeixinChannel", "sendMessage attempt $attempt failed", e)
                 // Generic exceptions (e.g. IOException) are treated as transient.
             }
@@ -218,6 +234,7 @@ class WeixinChannel(
             }
         }
         val msg = lastError?.message ?: "send failed"
+        Log.e("WxSend", "final Failure: msg=$msg lastError=${lastError?.javaClass?.name}")
         return ImSendResult.Failure(msg)
     }
 
