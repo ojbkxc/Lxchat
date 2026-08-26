@@ -466,6 +466,23 @@ class ImPollingReceiver(
         }
         return created
     }
+            DebugLog.w("ImPolling", "bindConversation: created=$created not found yet, attempt $attempts, retrying")
+            delay(100L * attempts)
+        }
+        if (!persisted) {
+            DebugLog.e("ImPolling", "bindConversation: created=$created still not found after $attempts attempts, conversation may not be queryable")
+        } else {
+            DebugLog.d("ImPolling", "bindConversation: created=$created persisted and queryable")
+        }
+        store.updateChannelState(channelKey) { s ->
+            s.copy(
+                conversationBindings = s.conversationBindings + (conversation.id to created),
+                platform = channel.channelId,
+                channelId = channelKey,
+            )
+        }
+        return created
+    }
 
     private suspend fun runOnce(channelKey: String, lxchatConvId: String, message: ImMessage): String? {
         val config = configForChannel(channelKey)
