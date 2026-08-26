@@ -652,10 +652,12 @@ class WeixinChannel(
                 _getUpdatesBuf = updates.getUpdatesBuf
             }
             DebugLog.d("WeixinChannel", "applyUpdates: processing ${updates.msgs.size} msgs, bufUpdated=${updates.getUpdatesBuf.isNotEmpty()}")
+            // WxRecv 下游诊断：确认进入 applyUpdates 的消息条数（getupdates 有返回但这里为 0 说明上游就断了）
+            Log.e("WxRecv", "applyUpdates enter msgs=${updates.msgs.size} bufUpdated=${updates.getUpdatesBuf.isNotEmpty()}")
             for (msg in updates.msgs) {
                 // dsh-im skips message_type === 2 (outgoing messages sent by the bot itself).
                 val msgType = msg["message_type"]?.let { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }
-                if (msgType == 2) { DebugLog.d("WeixinChannel", "applyUpdates: skipped - outgoing msg (type=2)"); continue }
+                if (msgType == 2) { DebugLog.d("WeixinChannel", "applyUpdates: skipped - outgoing msg (type=2)"); Log.e("WxRecv", "applyUpdates skip type=2"); continue }
                 val text = WeixinIlinkApi.extractWeixinText(msg)
                 val msgId = WeixinIlinkApi.weixinMessageId(msg)
                 val fromUserId = msg["from_user_id"]?.strSafe()
@@ -693,10 +695,10 @@ class WeixinChannel(
                 val hasFile = fileText.isNotBlank()
                 DebugLog.d("WeixinChannel", "applyUpdates: msg text=${text?.take(50)} images=${images.size} files=$hasFile id=$msgId from=$fromUserId hasCtxToken=${!contextToken.isNullOrEmpty()} keys=${msg.keys}")
                 // 只有文本、图片、文件内容都没有才跳过，保证纯图片/纯文件消息能进入管线。
-                if (text.isNullOrBlank() && images.isEmpty() && !hasFile) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - no text, images, or files"); continue }
-                if (msgId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - msgId is null"); continue }
-                if (fromUserId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is null"); continue }
-                if (fromUserId.isEmpty()) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is empty"); continue }
+                if (text.isNullOrBlank() && images.isEmpty() && !hasFile) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - no text, images, or files"); Log.e("WxRecv", "applyUpdates skip NO_CONTENT id=$msgId from=$fromUserId"); continue }
+                if (msgId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - msgId is null"); Log.e("WxRecv", "applyUpdates skip MSGID_NULL"); continue }
+                if (fromUserId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is null"); Log.e("WxRecv", "applyUpdates skip FROM_NULL"); continue }
+                if (fromUserId.isEmpty()) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is empty"); Log.e("WxRecv", "applyUpdates skip FROM_EMPTY"); continue }
                 val timestampMs = normalizeTimestamp(msg["create_time"]?.longSafe())
                 val combinedText = buildString {
                     text?.trim()?.let { append(it) }
@@ -705,6 +707,8 @@ class WeixinChannel(
                         append(fileText)
                     }
                 }
+                // WxRecv 下游诊断：正常入队消息 —— 这条日志若在 getupdates msgs>0 时出现但 UI 无显示，说明断点是下游轮询/去重。
+                Log.e("WxRecv", "applyUpdates QUEUED id=$msgId from=$fromUserId len=${combinedText.length} imgs=${images.size} files=$hasFile")
                 val imMsg = ImMessage(
                     id = msgId,
                     conversationId = fromUserId,

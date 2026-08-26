@@ -5,6 +5,7 @@ import com.lxseek.chat.data.repository.ConversationRepository
 import com.lxseek.chat.im.weixin.WeixinChannel
 import com.lxseek.chat.im.weixin.WeixinCompanionChannel
 import com.lxseek.chat.util.DebugLog
+import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -137,6 +138,7 @@ class ImPollingReceiver(
             emptyList()
         }
         DebugLog.d("ImPolling", "pollChannel $channelKey: ${conversations.size} conversations")
+        Log.e("WxRecv", "pollChannel $channelKey convs=${conversations.size}")
         for (conversation in conversations) {
             coroutineContext.ensureActive()
             pollConversation(channelKey, channel, conversation)
@@ -158,6 +160,7 @@ class ImPollingReceiver(
         }
         val inbox = messages.filter { it.direction == ImMessageDirection.INCOMING }
         DebugLog.d("ImPolling", "pollConversation ${conversation.id}: ${inbox.size} inbox msgs")
+        Log.e("WxRecv", "pollConversation ${conversation.id} inbox=${inbox.size}")
         if (inbox.isEmpty()) return
         feedInboundBatch(channelKey, channel, conversation, inbox)
     }
@@ -276,6 +279,8 @@ class ImPollingReceiver(
         }
         // 诊断：若上一条 "feedInboundBatch" 日志缺失，说明卡在 bindConversation/seenMessageIds（DB）。
         DebugLog.d("ImPolling", "feedInboundBatch: ${fresh.size} fresh msgs for conv=${conversation.id}, lxchatConv=$lxchatConvId")
+        // WxRecv 下游诊断：fresh=0 说明被 seen 去重/绑定吃掉；fresh>0 才触发 AI 回复。
+        Log.e("WxRecv", "feedInboundBatch fresh=${fresh.size} in=${inbox.size} conv=${conversation.id} lxchatConv=$lxchatConvId bindLxchat=${lxchatConvId.isNotBlank()}")
         if (fresh.isEmpty()) return
         onMessageHandled?.invoke(conversation.id)
 
