@@ -1,5 +1,6 @@
 package com.lxseek.chat.im.weixin
 
+import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.im.ImConversation
 import com.lxseek.chat.im.ImMessage
 import com.lxseek.chat.im.ImMessageDirection
@@ -9,15 +10,19 @@ import com.lxseek.chat.util.DebugLog
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import java.io.ByteArrayOutputStream
+import java.net.URI
+import java.net.URLDecoder
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
@@ -44,6 +49,18 @@ interface WeixinCompanionChannel {
 
     /** Restore sync_buf cursor from persistence (App restart). */
     fun seedSyncBuf(buf: String)
+
+    /** 下载 [url] 的图片并发送给 [conversationId]（命令 `/sendimage`）。 */
+    suspend fun sendImageUrl(conversationId: String, url: String): ImSendResult
+
+    /** 下载 [url] 的文件并发送给 [conversationId]（命令 `/sendfile`）。 */
+    suspend fun sendFileUrl(conversationId: String, url: String): ImSendResult
+
+    /** 已缓存入站媒体的名称列表（供 `/forward` 列出可选转发项）。 */
+    fun cachedMediaNames(): List<String>
+
+    /** 把之前收到的名为 [name] 的媒体转发给 [conversationId]（命令 `/forward`）。 */
+    suspend fun forwardMedia(conversationId: String, name: String): ImSendResult
 }
 
 /**
@@ -143,6 +160,12 @@ class WeixinChannel(
     @Volatile
     private var lastSendTimeMs: Long = 0L
 
+    /**
+     * 入站媒体缓存（name → 已解密字节），供 `/forward` 转发已收到的图片/文件。
+     * 容量与单条大小均受限，避免内存无限增长。
+     */
+    private val inboundMediaCache = InboundMediaCache(MEDIA_CACHE_MAX, MEDIA_CACHE_MAX_BYTES)
+
     override suspend fun sendMessage(conversationId: String, text: String): ImSendResult {
         if (!isConfigured) return ImSendResult.NotConfigured
         val recipient = conversationId.trim()
@@ -166,7 +189,12 @@ class WeixinChannel(
         var lastError: Exception? = null
         for (attempt in 1..SEND_MAX_RETRIES) {
             try {
-                api.sendText(baseUrl, config.token, recipient, cappedText, contextToken)
+                val newContextToken = api.sendText(baseUrl, config.token, recipient, cappedText, contextToken)
+                // 响应回写新 context_token（对齐 weixin_client.py _extract_response_context_token）。
+                if (!newContextToken.isNullOrEmpty() && newContextToken != contextToken) {
+                    contextTokenStore[recipient] = newContextToken
+                    DebugLog.d("WeixinChannel", "sendMessage: refreshed context_token for $recipient")
+                }
                 // P1-8: 记录已发送消息，供 applyUpdates 自回复去重（防 AI 回复自己消息死循环）
                 recordSent(recipient, cappedText)
                 // 用 client_id 风格的本地 id 作为成功回执（iLink 不回 server id）
@@ -205,6 +233,105 @@ class WeixinChannel(
             delay(wait)
         }
         lastSendTimeMs = System.currentTimeMillis()
+    }
+
+    // ── 媒体发送（无 UI 场景：协议能力 + 命令触发） ──────────────────────
+
+    override suspend fun sendImageUrl(conversationId: String, url: String): ImSendResult {
+        val trimmed = url.trim()
+        if (!isConfigured) return ImSendResult.NotConfigured
+        val bytes = withContext(Dispatchers.IO) { HttpClient.getBytes(trimmed) }
+            ?: return ImSendResult.Failure("图片下载失败，请检查 URL。")
+        val name = fileNameFromUrl(trimmed)
+        return sendMedia(conversationId, WeixinMediaSpec(
+            kind = WeixinIlinkApi.WeixinMediaKind.IMAGE,
+            rawBytes = bytes,
+            fileName = name,
+            thumbBytes = imageThumb(bytes),
+        ))
+    }
+
+    override suspend fun sendFileUrl(conversationId: String, url: String): ImSendResult {
+        val trimmed = url.trim()
+        if (!isConfigured) return ImSendResult.NotConfigured
+        val bytes = withContext(Dispatchers.IO) { HttpClient.getBytes(trimmed) }
+            ?: return ImSendResult.Failure("文件下载失败，请检查 URL。")
+        val name = fileNameFromUrl(trimmed)
+        return sendMedia(conversationId, WeixinMediaSpec(
+            kind = WeixinIlinkApi.WeixinMediaKind.FILE,
+            rawBytes = bytes,
+            fileName = name,
+        ))
+    }
+
+    override fun cachedMediaNames(): List<String> = inboundMediaCache.names()
+
+    override suspend fun forwardMedia(conversationId: String, name: String): ImSendResult {
+        val key = name.trim()
+        val bytes = inboundMediaCache.get(key) ?: return ImSendResult.Failure(
+            "找不到已缓存的媒体：$key。可先让好友发送图片/文件，或用 /sendimage /sendfile 发送直链；/forward 无参数可查看缓存列表。",
+        )
+        // 以名字前缀 image 判定为图片（入站图片缓存名为 image / image-N）。
+        val kind = if (key.startsWith("image")) WeixinIlinkApi.WeixinMediaKind.IMAGE
+                   else WeixinIlinkApi.WeixinMediaKind.FILE
+        return sendMedia(conversationId, WeixinMediaSpec(
+            kind = kind,
+            rawBytes = bytes,
+            fileName = key,
+            thumbBytes = if (kind == WeixinIlinkApi.WeixinMediaKind.IMAGE) imageThumb(bytes) else null,
+        ))
+    }
+
+    /** 媒体发送核心：限速 → sendmediaitem → 回写新 context_token。 */
+    private suspend fun sendMedia(conversationId: String, spec: WeixinIlinkApi.WeixinMediaSpec): ImSendResult {
+        if (!isConfigured) return ImSendResult.NotConfigured
+        val recipient = conversationId.trim()
+        if (recipient.isEmpty()) return ImSendResult.Failure("conversationId is empty")
+        if (spec.rawBytes.size > MAX_MEDIA_BYTES) {
+            return ImSendResult.Failure("媒体过大（>${MAX_MEDIA_BYTES / 1024 / 1024}MB），暂不支持发送。")
+        }
+        enforceRateLimit()
+        val contextToken = contextTokenStore[recipient]
+        DebugLog.d("WeixinChannel", "sendMedia: recipient=$recipient kind=${spec.kind} size=${spec.rawBytes.size} hasCtx=${contextToken != null}")
+        return try {
+            val newCtx = api.sendMediaItem(baseUrl, config.token, recipient, spec, contextToken)
+            if (!newCtx.isNullOrEmpty() && newCtx != contextToken) contextTokenStore[recipient] = newCtx
+            ImSendResult.Success("lxchat-weixin-media-${System.currentTimeMillis()}")
+        } catch (e: WeixinApiError) {
+            DebugLog.e("WeixinChannel", "sendMedia failed: ${e.code}", e)
+            ImSendResult.Failure(e.message ?: e.code)
+        } catch (e: Exception) {
+            DebugLog.e("WeixinChannel", "sendMedia failed", e)
+            ImSendResult.Failure(e.message ?: "发送失败")
+        }
+    }
+
+    /** 从 URL 取文件名（URL decode 末尾路径段），失败回退 "file"。 */
+    private fun fileNameFromUrl(url: String): String {
+        val last = url.substringAfterLast('/')
+        val decoded = runCatching { URLDecoder.decode(last.substringBefore('?'), "UTF-8") }.getOrNull()
+            ?.takeIf { it.isNotBlank() } ?: return "file"
+        return decoded.ifBlank { "file" }
+    }
+
+    /** 图片字节 → 240x240 JPEG 缩略图（供微信图片发送），失败返回 null。 */
+    private fun imageThumb(bytes: ByteArray): ByteArray? = try {
+        if (bytes.isEmpty()) return null
+        val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+        val scaled = downscaleToMax(bmp, MEDIA_THUMB_MAX_DIMENSION)
+        val out = ByteArrayOutputStream()
+        scaled.compress(Bitmap.CompressFormat.JPEG, MEDIA_THUMB_QUALITY, out)
+        out.toByteArray()
+    } catch (e: Exception) {
+        DebugLog.w("WeixinChannel", "image thumb failed: ${e.message}")
+        null
+    }
+
+    /** 缓存一条已解密的入站媒体（供 /forward 转发）。容量与大小受限，忽略超限项。 */
+    private fun cacheInboundMedia(name: String, bytes: ByteArray) {
+        if (name.isBlank() || bytes.isEmpty()) return
+        if (bytes.size > MEDIA_CACHE_MAX_BYTES) return
+        inboundMediaCache.put(name, bytes)
     }
 
     /**
@@ -379,6 +506,8 @@ class WeixinChannel(
         for (ref in refs) {
             try {
                 val bytes = ref.load(MAX_IMAGE_DOWNLOAD_BYTES)
+                // 缓存原始解密字节，供 /forward 转发收到过的图片。
+                cacheInboundMedia(ref.name, bytes)
                 weixinImageDataUri(bytes)?.let { uris.add(it) }
             } catch (e: Exception) {
                 DebugLog.w("WeixinChannel", "load image ${ref.name} failed: ${e.message}")
@@ -401,6 +530,8 @@ class WeixinChannel(
             if (!isTextFile(fname)) { parts += "[文件 $fname]"; continue }
             try {
                 val bytes = ref.load(MAX_IMAGE_DOWNLOAD_BYTES)
+                // 缓存文本类文件解密字节，供 /forward 转发。
+                cacheInboundMedia(ref.name, bytes)
                 val text = utf8Text(bytes)
                 if (text.isNotBlank()) parts += "[文件 $fname 内容]\n${text.take(MAX_FILE_TEXT_CHARS)}"
                 else parts += "[文件 $fname]"
@@ -620,8 +751,18 @@ class WeixinChannel(
         const val WECHAT_MAX_TEXT_LENGTH = 2_000
         /** P2-12: Maximum retry attempts for transient send failures. */
         const val SEND_MAX_RETRIES = 3
-        /** P2-12: Delay between retry attempts (ms). */
+        /** P2-12: Retry delay between attempts excluding last (`SEND_RETRY_DELAY_MS`). */
         const val SEND_RETRY_DELAY_MS = 5_000L
+        /** 媒体（图片/文件）单条发送上限（字节），超过不发送。 */
+        const val MAX_MEDIA_BYTES = 20L * 1024 * 1024
+        /** 图片缩略图最大边长（像素）。 */
+        const val MEDIA_THUMB_MAX_DIMENSION = 240
+        /** 缩略图 JPEG 质量（0-100）。 */
+        const val MEDIA_THUMB_QUALITY = 85
+        /** 入站媒体缓存最大条数（超出丢弃最旧）。 */
+        const val MEDIA_CACHE_MAX = 64
+        /** 入站媒体单条缓存上限（字节），过大不缓存。 */
+        const val MEDIA_CACHE_MAX_BYTES = 15L * 1024 * 1024
         /** P2-12: Transient error codes that warrant a retry. */
         val TRANSIENT_ERROR_CODES = setOf("network-error", "timeout")
         /** 文本类文件扩展名，解密后可直接用 UTF-8 解码并喂给模型。 */
@@ -637,4 +778,30 @@ private fun kotlinx.serialization.json.JsonElement?.strSafe(): String? =
 
 private fun kotlinx.serialization.json.JsonElement?.longSafe(): Long? =
     (this as? JsonPrimitive)?.longOrNull
+
+// ── 入站媒体缓存：name → 已解密字节，供 /forward 转发 ──
+/** 线程安全的容量受限媒体字节缓存。超容量丢弃最旧；单条超上限直接忽略。 */
+private class InboundMediaCache(
+    private val maxEntries: Int,
+    private val maxBytesPerEntry: Long,
+) {
+    private val lock = Any()
+    private val map = java.util.LinkedHashMap<String, ByteArray>(16, 0.75f, false)
+
+    fun put(name: String, bytes: ByteArray) {
+        if (name.isBlank() || bytes.isEmpty() || bytes.size.toLong() > maxBytesPerEntry) return
+        synchronized(lock) {
+            // 已存在则先移除，保证最近写入排在队尾（保留最新语义）。
+            map.remove(name)
+            if (map.size >= maxEntries) {
+                map.entries.firstOrNull()?.let { e -> map.remove(e.key) }
+            }
+            map[name] = bytes
+        }
+    }
+
+    fun get(name: String): ByteArray? = synchronized(lock) { map[name] }
+
+    fun names(): List<String> = synchronized(lock) { map.keys.toList() }
+}
 

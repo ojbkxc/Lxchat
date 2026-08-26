@@ -313,7 +313,13 @@ class ImPollingReceiver(
                 null
             }
             if (cmdResult != null) {
-                if (cmdResult.isSteer && !cmdResult.steerText.isNullOrBlank()) {
+                if (cmdResult.mediaAction != null) {
+                    // 媒体发送命令（/sendimage /sendfile /forward）：用微信渠道执行，结果回文本。
+                    val mediaReply = executeMediaAction(weixin, conversation.id, cmdResult.mediaAction)
+                    if (mediaReply.isNotBlank()) {
+                        segmentSender.send(channel, conversation.id, mediaReply)
+                    }
+                } else if (cmdResult.isSteer && !cmdResult.steerText.isNullOrBlank()) {
                     // /steer：将补充指令作为用户消息走正常 AI 回复流程。
                     val steerMessage = merged.copy(text = cmdResult.steerText)
                     val reply = replyFromAgent(weixin, channelKey, conversation.id, lxchatConvId, steerMessage)
@@ -482,6 +488,58 @@ class ImPollingReceiver(
             message.text.isBlank() -> "$imageMarkdown $DEFAULT_IMAGE_PROMPT"
             else -> "$imageMarkdown ${message.text}"
         }
+    }
+
+    // ── 媒体发送命令执行 ──────────────────────────────────────────────────
+
+    /**
+     * 执行媒体发送动作（`/sendimage` `/sendfile` `/forward`）并返回给用户的提示文本。
+     * 仅微信 iLink 渠道支持；其余渠道回"不支持"提示。
+     */
+    private suspend fun executeMediaAction(
+        weixin: WeixinCompanionChannel?,
+        conversationId: String,
+        action: CommandResult.MediaAction,
+    ): String {
+        if (weixin == null) {
+            return "当前渠道不支持发送图片/文件/转发。（仅微信 iLink 支持）"
+        }
+        return try {
+            when (action) {
+                is CommandResult.MediaAction.SendImage -> {
+                    if (action.url.isBlank()) "用法：/sendimage <图片URL>"
+                    else mediaResultText("图片", weixin.sendImageUrl(conversationId, action.url))
+                }
+                is CommandResult.MediaAction.SendFile -> {
+                    if (action.url.isBlank()) "用法：/sendfile <文件URL>"
+                    else mediaResultText("文件", weixin.sendFileUrl(conversationId, action.url))
+                }
+                is CommandResult.MediaAction.Forward -> {
+                    if (action.name.isBlank()) {
+                        val names = weixin.cachedMediaNames()
+                        if (names.isEmpty()) {
+                            "暂无已缓存媒体。先让好友发送图片/文件，或用 /sendimage /sendfile 发送直链。"
+                        } else {
+                            "可转发媒体（/forward 名称）：\n" + names.joinToString("\n")
+                        }
+                    } else {
+                        mediaResultText("媒体", weixin.forwardMedia(conversationId, action.name))
+                    }
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            DebugLog.e("ImPolling", "media action failed", e)
+            "媒体操作失败：${e.message ?: "未知错误"}"
+        }
+    }
+
+    /** 把媒体发送结果转为给用户的提示文本。 */
+    private fun mediaResultText(kind: String, result: ImSendResult): String = when (result) {
+        is ImSendResult.Success -> "$kind已发送。"
+        is ImSendResult.Failure -> "$kind发送失败：${result.reason}"
+        ImSendResult.NotConfigured -> "微信渠道未配置，无法发送$kind。"
     }
 
     // ── State / config resolution (multi-channel with legacy fallback) ──

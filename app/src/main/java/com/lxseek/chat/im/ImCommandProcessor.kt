@@ -22,7 +22,25 @@ data class CommandResult(
     val requiresNewSession: Boolean = false,
     val isSteer: Boolean = false,
     val steerText: String? = null,
+    /**
+     * 媒体发送动作（`/sendimage` `/sendfile` `/forward`）。由
+     * [com.lxseek.chat.im.ImPollingReceiver] 用当前渠道执行；[replyText] 留空。
+     */
+    val mediaAction: MediaAction? = null,
 ) {
+
+    /** 媒体发送动作：来源是 URL 或已缓存媒体名。 */
+    sealed class MediaAction {
+        /** 下载 [url] 并作为图片发送。 */
+        data class SendImage(val url: String) : MediaAction()
+
+        /** 下载 [url] 并作为文件发送。 */
+        data class SendFile(val url: String) : MediaAction()
+
+        /** 转发已收到名为 [name] 的媒体；[name] 为空表示列出可选转发项。 */
+        data class Forward(val name: String) : MediaAction()
+    }
+
     companion object {
         /** 构造一个纯文本回复（不触发 AI，不解除绑定）。 */
         fun text(reply: String): CommandResult = CommandResult(replyText = reply)
@@ -33,6 +51,10 @@ data class CommandResult(
             isSteer = true,
             steerText = instruction,
         )
+
+        /** 构造一个媒体发送命令。成功/失败提示由执行方回填。 */
+        fun media(action: MediaAction): CommandResult =
+            CommandResult(replyText = "", mediaAction = action)
     }
 }
 
@@ -164,6 +186,9 @@ class ImCommandProcessor(
         "sessionlist" -> cmdSessionList()
         "session" -> cmdSession(cmd.args, channelKey, imConversationId)
         "ai" -> cmdAi(cmd.args, channelKey, imConversationId)
+        "sendimage" -> cmdSendImage(cmd.args)
+        "sendfile" -> cmdSendFile(cmd.args)
+        "forward" -> cmdForward(cmd.args)
         else -> {
             DebugLog.d(TAG, "unknown command: /${cmd.name}")
             CommandResult.text("未知命令：/${cmd.name}\n\n${helpText()}")
@@ -556,6 +581,36 @@ class ImCommandProcessor(
         }
     }
 
+    /**
+     * `/sendimage <URL>` — 下载 URL 中的图片并发送到当前会话。
+     * 仅微信 iLink 渠道支持；其余渠道由执行方回提示。
+     */
+    private fun cmdSendImage(args: String): CommandResult {
+        val url = args.trim()
+        if (url.isEmpty()) return CommandResult.text("用法：/sendimage <图片URL>")
+        // 仅允许 https 直接下载；其余由执行方统一处理。
+        return CommandResult.media(CommandResult.MediaAction.SendImage(url))
+    }
+
+    /**
+     * `/sendfile <URL>` — 下载 URL 中的文件并发送到当前会话。
+     * 仅微信 iLink 渠道支持；其余渠道由执行方回提示。
+     */
+    private fun cmdSendFile(args: String): CommandResult {
+        val url = args.trim()
+        if (url.isEmpty()) return CommandResult.text("用法：/sendfile <文件URL>")
+        return CommandResult.media(CommandResult.MediaAction.SendFile(url))
+    }
+
+    /**
+     * `/forward [名称]` — 转发之前收到的媒体到当前会话。
+     * 无参数时列出可选转发项；仅微信 iLink 渠道支持。
+     */
+    private fun cmdForward(args: String): CommandResult {
+        val name = args.trim()
+        return CommandResult.media(CommandResult.MediaAction.Forward(name))
+    }
+
     /** 读取 [channelKey] 的运行时状态（多渠道优先，回退到 legacy）。 */
     private suspend fun channelState(channelKey: String): ImRuntimeState {
         val multi = store.multiRuntimeState.first()
@@ -607,6 +662,9 @@ class ImCommandProcessor(
             appendLine("/sessionlist         列出已绑定的会话")
             appendLine("/session <会话ID>    绑定到指定 Lxchat 会话")
             appendLine("/ai [on|off|status]  查看或开启/关闭当前好友的自动回复")
+            appendLine("/sendimage <URL>    下载图片并发送（微信）")
+            appendLine("/sendfile <URL>     下载文件并发送（微信）")
+            appendLine("/forward [名称]     转发已收到的媒体（微信）")
             appendLine()
             appendLine("命令名称不区分大小写。")
         }.trimEnd()
