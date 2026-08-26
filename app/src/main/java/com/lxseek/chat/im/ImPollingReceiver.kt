@@ -439,6 +439,24 @@ class ImPollingReceiver(
             systemPromptId = null,
             modelId = null,
         )
+        // 验证对话是否已持久化，避免 runOnce 中查不到导致 "Conversation not found"
+        var persisted = false
+        var attempts = 0
+        while (!persisted && attempts < 5) {
+            attempts++
+            val found = conversationRepository.getConversation(created)
+            if (found != null) {
+                persisted = true
+                break
+            }
+            DebugLog.w("ImPolling", "bindConversation: created=$created not found yet, attempt $attempts, retrying")
+            delay(100L * attempts)
+        }
+        if (!persisted) {
+            DebugLog.e("ImPolling", "bindConversation: created=$created still not found after $attempts attempts, conversation may not be queryable")
+        } else {
+            DebugLog.d("ImPolling", "bindConversation: created=$created persisted and queryable")
+        }
         store.updateChannelState(channelKey) { s ->
             s.copy(
                 conversationBindings = s.conversationBindings + (conversation.id to created),
