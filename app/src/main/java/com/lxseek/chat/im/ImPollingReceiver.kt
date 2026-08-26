@@ -255,11 +255,10 @@ class ImPollingReceiver(
                 weixin.seedContextTokens(state.contextTokens)
             }
         }
-        // P0-5: 跨重启恢复 sync_buf 游标，避免重启后从头拉取导致消息重复或遗漏。
-        if (weixin != null && state.syncBuf.isNotEmpty() && weixin.syncBufSnapshot().isEmpty()) {
-            DebugLog.d("ImPolling", "seed syncBuf into $channelKey")
-            weixin.seedSyncBuf(state.syncBuf)
-        }
+        // 注意：不持久化 sync_buf 游标。游标仅在内存（WeixinChannel.ChannelState）中维护，
+        // 重启/重新绑定后重置为空，从当前时刻开始拉取。若把旧游标持久化并在重绑后 seed，
+        // 会导致 get_updates 使用失效游标一直返回空，bot 收不到任何消息（v1.0.27 回归根因，
+        // 与 v1.0.23 的正常行为一致）。
 
         val lxchatConvId = state.conversationBindings[conversation.id]
             ?: bindConversation(channelKey, channel, conversation)
@@ -286,11 +285,6 @@ class ImPollingReceiver(
             val tokens = weixin.contextTokensSnapshot()
             if (tokens.isNotEmpty() && tokens != state.contextTokens) {
                 store.updateChannelState(channelKey) { s -> s.copy(contextTokens = tokens) }
-            }
-            // P0-5: 持久化最新 sync_buf 游标，供 App 重启后从上次位置继续拉取。
-            val buf = weixin.syncBufSnapshot()
-            if (buf.isNotEmpty() && buf != state.syncBuf) {
-                store.updateChannelState(channelKey) { s -> s.copy(syncBuf = buf) }
             }
         }
 

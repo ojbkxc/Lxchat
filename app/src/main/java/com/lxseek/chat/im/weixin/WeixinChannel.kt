@@ -45,12 +45,6 @@ interface WeixinCompanionChannel {
     /** 从持久化状态恢复 context_token（App 重启后仍能带上下文回复）。 */
     fun seedContextTokens(tokens: Map<String, String>)
 
-    /** Current sync_buf cursor snapshot, for persistence across restarts. */
-    fun syncBufSnapshot(): String
-
-    /** Restore sync_buf cursor from persistence (App restart). */
-    fun seedSyncBuf(buf: String)
-
     /** 下载 [url] 的图片并发送给 [conversationId]（命令 `/sendimage`）。 */
     suspend fun sendImageUrl(conversationId: String, url: String): ImSendResult
 
@@ -415,12 +409,6 @@ class WeixinChannel(
         if (tokens.isNotEmpty()) contextTokenStore.putAll(tokens)
     }
 
-    override fun syncBufSnapshot(): String = state.getUpdatesBuf()
-
-    override fun seedSyncBuf(buf: String) {
-        if (buf.isNotEmpty()) state.seedSyncBuf(buf)
-    }
-
     /** 取用户 typing ticket，带 TTL 缓存；拿不到返回 null 让输入状态静默跳过。 */
     private suspend fun typingTicketFor(userId: String, contextToken: String): String? {
         val now = System.currentTimeMillis()
@@ -629,11 +617,6 @@ class WeixinChannel(
         /** token 失效（-14）或需要重新绑定时重置游标，保证重新绑定后不丢不重。 */
         fun resetCursor() {
             _getUpdatesBuf = ""
-        }
-
-        /** P0-5: Restore sync_buf cursor from persistence (App restart). */
-        fun seedSyncBuf(buf: String) {
-            if (buf.isNotEmpty()) _getUpdatesBuf = buf
         }
 
         suspend fun applyUpdates(

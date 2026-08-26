@@ -202,11 +202,6 @@ data class ImRuntimeState(
      */
     val contextTokens: Map<String, String> = emptyMap(),
     /**
-     * WeChat iLink getupdates 游标（sync_buf），持久化以便 App 重启后从上次位置继续拉取，
-     * 避免重启后从头开始导致消息重复或遗漏。
-     */
-    val syncBuf: String = "",
-    /**
      * 关闭自动回复的会话 id 集合（默认空 = 全部好友自动回复）。
      * 对齐 Zyn-iLink 的 is_ai_enabled_for_user：可单独关闭某个好友触发 AI 回复，
      * 但命令（如 /ai on）仍会被处理，便于随时恢复。由 `/ai` 命令读写。

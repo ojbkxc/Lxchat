@@ -71,14 +71,14 @@ class NotificationAutoReplyService : NotificationListenerService() {
             val dedupKey = "${sbn.packageName}|${sbn.key}"
             if (isDuplicate(dedupKey)) return
 
-            // 昵称 → user_id 映射决定了能否/向谁回复；解析不到就直接跳过（宁可不回，不发错）。
+            // 昵称 → 联系人映射决定了能否/向谁回复；解析不到就直接跳过（宁可不回，不发错）。
             val recipient = resolveRecipient(cfg.contacts, sender)
-            if (recipient.isNullOrEmpty()) {
+            if (recipient == null) {
                 DebugLog.w("NotifReply", "no recipient for sender=$sender, skip")
                 return
             }
 
-            if (inCooldown(recipient, cfg.cooldownMs)) return
+            if (inCooldown(recipient.userId, cfg.cooldownMs)) return
 
             val convId = ensureConversation()
             val prompt = buildPrompt(cfg.promptHeader, sbn.packageName, sender, content)
@@ -87,9 +87,9 @@ class NotificationAutoReplyService : NotificationListenerService() {
                 DebugLog.w("NotifReply", "AI returned empty reply for $sender")
                 return
             }
-            DebugLog.d("NotifReply", "replying to $recipient: ${reply.take(60)}")
+            DebugLog.d("NotifReply", "replying to ${recipient.userId} via $recipient.channelKey: ${reply.take(60)}")
 
-            markReplied(recipient)
+            markReplied(recipient.userId)
             sendReply(recipient, reply)
         } catch (e: Exception) {
             DebugLog.e("NotifReply", "handleNotification failed", e)
@@ -108,8 +108,8 @@ class NotificationAutoReplyService : NotificationListenerService() {
         return false
     }
 
-    /** 昵称精确 → 忽略空白的宽匹配。命中任何一个即返回对应 user_id。 */
-    private fun resolveRecipient(contacts: Map<String, String>, sender: String): String? {
+    /** 昵称精确 → 忽略空白的宽匹配。命中任何一个即返回对应联系人映射。 */
+    private fun resolveRecipient(contacts: Map<String, ContactMapping>, sender: String): ContactMapping? {
         contacts[sender]?.let { return it }
         val normalized = sender.replace(" ", "").trim()
         contacts.entries.forEach { (name, id) ->
@@ -177,20 +177,25 @@ class NotificationAutoReplyService : NotificationListenerService() {
         }
     }
 
-    private suspend fun sendReply(recipient: String, reply: String) {
-        val owner = container
-        val wechat = owner.imBridgeService.channels().values
-            .filterIsInstance<WeixinChannel>()
-            .firstOrNull { it.isConfigured }
+    private suspend fun sendReply(mapping: ContactMapping, reply: String) {
+        val channels = container.imBridgeService.channels()
+        // 优先用该好友所属的渠道（多 Bot 时避免发到错误账号）；key 不匹配则回退到任意已配置渠道。
+        val wechat = channels.entries
+            .filter { it.value is WeixinChannel && it.value.isConfigured }
+            .firstOrNull { it.key == mapping.channelKey }
+            ?.value as? WeixinChannel
+            ?: channels.values
+                .filterIsInstance<WeixinChannel>()
+                .firstOrNull { it.isConfigured }
         if (wechat == null) {
             DebugLog.w("NotifReply", "no configured WeixinChannel to send reply")
             return
         }
-        val result = wechat.sendMessage(recipient, reply)
+        val result = wechat.sendMessage(mapping.userId, reply)
         if (result is com.lxseek.chat.im.ImSendResult.Failure) {
             DebugLog.e("NotifReply", "send reply failed: ${result.reason}")
         } else {
-            DebugLog.d("NotifReply", "sent reply to $recipient")
+            DebugLog.d("NotifReply", "sent reply to ${mapping.userId}")
         }
     }
 
