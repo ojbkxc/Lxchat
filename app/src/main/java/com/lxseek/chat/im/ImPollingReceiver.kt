@@ -267,9 +267,13 @@ class ImPollingReceiver(
         // 若只判断"绑定是否存在"而不校验"绑定指向的会话是否仍在"，runOnce 会在
         // TaskExecutionEngine 里查到不到会话直接失败，好友消息收得到但 AI 不回复（v3 实测根因）。
         // 这里在此校验：绑定会话已不存在时走 bindConversation 重建并更新绑定。
-        val lxchatConvId = state.conversationBindings[conversation.id]
-            ?.takeIf { bound -> runCatching { conversationRepository.getConversation(bound) != null }.getOrDefault(false) }
-            ?: bindConversation(channelKey, channel, conversation)
+        val existingBind = state.conversationBindings[conversation.id]
+        val bindValid = existingBind != null &&
+            runCatching { conversationRepository.getConversation(existingBind) != null }.getOrDefault(false)
+        val lxchatConvId = if (bindValid) existingBind!!
+        else bindConversation(channelKey, channel, conversation)
+        // WxRecv: 区分「复用有效绑定」vs「重建失效绑定」，验证孤儿绑定自动重建是否生效。
+        Log.e("WxRecv", "binding conv=${conversation.id} -> ${if (bindValid) "reuse=$existingBind" else "rebuilt=$lxchatConvId"}")
 
         // Reserve every inbound message id up front so a concurrent poll cannot re-handle it,
         // then merge the batch of new messages into one agent turn (fewer, more coherent replies
