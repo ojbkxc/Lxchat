@@ -38,6 +38,7 @@ BLUE = (52, 116, 184, 255)    # #3474B8
 ORANGE = (255, 153, 0, 255)   # #FF9900
 WHITE = (255, 255, 255, 255)
 TRANSPARENT = (0, 0, 0, 0)
+SEMI_WHITE = (255, 255, 255, 128)  # 50% transparent white for semi-transparent background
 
 # Supersampling factor for anti-aliasing
 SS = 4
@@ -49,7 +50,7 @@ SS = 4
 def _render_at_viewport(round_mask: bool) -> Image.Image:
     """Render the design at full viewport size (with supersampling)."""
     size = VIEWPORT * SS
-    img = Image.new("RGBA", (size, size), TRANSPARENT)
+    img = Image.new("RGBA", (size, size), SEMI_WHITE)
     draw = ImageDraw.Draw(img)
 
     # Blue L — vertical bar
