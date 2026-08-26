@@ -45,12 +45,6 @@ interface WeixinCompanionChannel {
     /** 从持久化状态恢复 context_token（App 重启后仍能带上下文回复）。 */
     fun seedContextTokens(tokens: Map<String, String>)
 
-    /** Current sync_buf cursor snapshot, for persistence across restarts. */
-    fun syncBufSnapshot(): String
-
-    /** Restore sync_buf cursor from persistence (App restart). */
-    fun seedSyncBuf(buf: String)
-
     /** 下载 [url] 的图片并发送给 [conversationId]（命令 `/sendimage`）。 */
     suspend fun sendImageUrl(conversationId: String, url: String): ImSendResult
 
@@ -242,7 +236,9 @@ class WeixinChannel(
     private suspend fun enforceRateLimit() {
         val now = System.currentTimeMillis()
         val elapsed = now - lastSendTimeMs
-        val jitter = SecureRandom().nextLong(SEND_MAX_JITTER_MS + 1).coerceAtLeast(0)
+        // SecureRandom.nextLong(bound) 在低版本 Android 系统上不存在（NoSuchMethodError），
+        // 改为无参 nextLong() % bound + abs，兼容全部 API 级别。
+        val jitter = Math.abs(SecureRandom().nextLong() % (SEND_MAX_JITTER_MS + 1))
         val required = SEND_MIN_INTERVAL_MS + jitter
         if (elapsed < required) {
             val wait = required - elapsed
@@ -627,11 +623,6 @@ class WeixinChannel(
         /** token 失效（-14）或需要重新绑定时重置游标，保证重新绑定后不丢不重。 */
         fun resetCursor() {
             _getUpdatesBuf = ""
-        }
-
-        /** P0-5: Restore sync_buf cursor from persistence (App restart). */
-        fun seedSyncBuf(buf: String) {
-            if (buf.isNotEmpty()) _getUpdatesBuf = buf
         }
 
         suspend fun applyUpdates(
