@@ -22,8 +22,8 @@ import java.util.concurrent.TimeUnit
  * - `n`      单个值
  * - `a,b,c`  列表
  * - `a-b`    范围
- * - `*/n`    步长（从字段最小值开始）
- * - `a-b/n`  范围内步长
+* - 步长：在字段（含「任意」通配）后追加 /n 生效，从字段最小值开始
+* - `a-b/n`  范围内步长
  *
  * day-of-week：0 与 7 均表示周日（POSIX cron 习惯）。
  * 当 day-of-month 与 day-of-week 同时被限制（都不是 `*`）时，按 POSIX 规则取「或」关系；
