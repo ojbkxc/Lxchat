@@ -61,7 +61,7 @@ internal fun SlashCommandSuggestions(
                     )
                     Text(
                         command.description,
-                        style = ChatType.bodySmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

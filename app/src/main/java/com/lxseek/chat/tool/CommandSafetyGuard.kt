@@ -97,7 +97,7 @@ object CommandSafetyGuard {
         val program = effective.firstOrNull() ?: return null
 
         if (isRmCommand(program)) {
-            val (recursive, force, paths) = analyzeRmArgs(effective)
+            val (recursive, paths) = analyzeRmArgs(effective)
             if (recursive && paths.any { isDangerousDeleteTarget(it) }) {
                 return "安全防护：禁止递归删除根目录或系统关键目录（$program ${effective.joinToString(" ")}）"
             }
