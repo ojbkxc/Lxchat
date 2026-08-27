@@ -422,7 +422,7 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
             buildJsonObject {
                 put("type", "device_read_sensor")
                 put("sensor", sensor.name)
-                put("values", buildJsonArray { valuesHolder.get().forEach { add(JsonPrimitive(it)) } })
+                put("values", buildJsonArray { valuesHolder.get().forEach { add(JsonPrimitive(it.toDouble())) } })
             }.toString()
         } catch (e: SecurityException) {
             err("permission_denied", e.message)
