@@ -5,9 +5,12 @@ import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.data.McpServerConfig
 import com.lxseek.chat.data.McpTransportType
 import com.lxseek.chat.data.repository.SettingsRepository
+import com.lxseek.chat.plugin.Plugin
 import com.lxseek.chat.plugin.PluginHost
+import com.lxseek.chat.plugin.adapters.ToolPkgAdapter
 import com.lxseek.chat.skill.Skill
 import com.lxseek.chat.tool.ToolProvider
+import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.File
 import java.io.IOException
 
 /**
@@ -150,6 +154,28 @@ class PluginMarket(
                     serverTransport = meta.serverTransport ?: McpTransportType.STREAMABLE_HTTP,
                 )
             }
+            MarketPluginKind.TOOLPKG -> {
+                val downloadUrl = meta.downloadUrl
+                    ?: throw IllegalArgumentException("ToolPkg 插件缺少 downloadUrl")
+                val localPath = downloadToolpkg(meta.id, downloadUrl)
+                // 安装前校验包结构：坏包立即报错并清理下载文件，不落安装记录。
+                if (ToolPkgAdapter().adapt(File(localPath), meta.id) == null) {
+                    File(localPath).delete()
+                    throw IllegalArgumentException("ToolPkg 包结构无效或文件损坏")
+                }
+                MarketInstallation(
+                    pluginId = meta.id,
+                    sourceId = meta.sourceId,
+                    name = meta.name,
+                    version = meta.version,
+                    kind = meta.kind,
+                    description = meta.description,
+                    author = meta.author,
+                    requiresMembership = meta.requiresMembership,
+                    downloadUrl = downloadUrl,
+                    localPath = localPath,
+                )
+            }
         }
         host.register(buildPlugin(installation), initiallyEnabled = true)
         val updated = _installations.value + installation
@@ -157,12 +183,16 @@ class PluginMarket(
         persistInstallations(updated)
     }
 
-    /** 卸载插件：从宿主移除并删除安装记录。 */
+    /** 卸载插件：从宿主移除、删除安装记录，并清理 ToolPkg 本地文件。 */
     suspend fun uninstall(pluginId: String) {
+        val removed = _installations.value.firstOrNull { it.pluginId == pluginId }
         host.unregister(pluginId)
         val updated = _installations.value.filterNot { it.pluginId == pluginId }
         _installations.value = updated
         persistInstallations(updated)
+        if (removed?.kind == MarketPluginKind.TOOLPKG && removed.localPath.isNotBlank()) {
+            runCatching { File(removed.localPath).delete() }
+        }
     }
 
     /** 启停已安装插件，同步宿主与持久化记录。 */
@@ -207,12 +237,18 @@ class PluginMarket(
         response.body
     }
 
-    /** 启动时按持久化记录重建插件并注册（离线可用）。 */
+    /** 启动时按持久化记录重建插件并注册（离线可用）；单个坏记录不阻断整体恢复。 */
     private fun registerRuntime(installation: MarketInstallation) {
-        host.register(buildPlugin(installation), initiallyEnabled = true)
+        runCatching { host.register(buildPlugin(installation), initiallyEnabled = true) }
+            .onFailure {
+                DebugLog.e(
+                    "PluginMarket",
+                    "恢复插件失败 id=${installation.pluginId} kind=${installation.kind}: ${it.message}",
+                )
+            }
     }
 
-    private fun buildPlugin(installation: MarketInstallation): MarketPlugin {
+    private fun buildPlugin(installation: MarketInstallation): Plugin {
         val providers = mutableListOf<ToolProvider>()
         val skills = mutableListOf<Skill>()
         var onEnable: (() -> Unit)? = null
@@ -243,6 +279,11 @@ class PluginMarket(
                 onEnable = provider::start
                 onDisable = provider::close
             }
+            MarketPluginKind.TOOLPKG -> {
+                val file = File(installation.localPath)
+                return ToolPkgAdapter().adapt(file, installation.pluginId)
+                    ?: throw IllegalStateException("ToolPkg 解析失败或本地文件缺失")
+            }
         }
         return MarketPlugin(
             installation = installation,
@@ -252,6 +293,26 @@ class PluginMarket(
             onDisableAction = onDisable,
         )
     }
+
+    /** 下载 .toolpkg 到 filesDir 并返回本地路径（filesDir 不会被系统清理，可离线恢复）。 */
+    private suspend fun downloadToolpkg(pluginId: String, url: String): String =
+        withContext(Dispatchers.IO) {
+            val bytes = HttpClient.getBytes(url)
+                ?: throw IOException("ToolPkg 下载失败：HTTP 错误或连接中断")
+            if (bytes.isEmpty()) throw IOException("ToolPkg 下载内容为空")
+            val dir = File(context.filesDir, "market/toolpkg").apply { mkdirs() }
+            val file = File(dir, "${safeFileName(pluginId)}.toolpkg")
+            file.writeBytes(bytes)
+            file.absolutePath
+        }
+
+    /** 把任意插件 id 归一化为安全文件名。 */
+    private fun safeFileName(id: String): String =
+        id.map { if (it.isLetterOrDigit() || it == '_' || it == '-') it else '_' }
+            .joinToString("")
+            .trim('_', '-')
+            .ifBlank { "plugin" }
+            .take(64)
 
     /** 由插件 id 派生稳定的技能名（目录去重保证 id 唯一）。 */
     private fun skillNameFor(pluginId: String): String {

@@ -1,0 +1,448 @@
+package com.lxseek.chat.ui.settings
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.lxseek.chat.R
+import com.lxseek.chat.plugin.market.MarketInstallation
+import com.lxseek.chat.plugin.market.MarketPluginKind
+import com.lxseek.chat.plugin.market.MarketPluginMeta
+import com.lxseek.chat.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
+
+/**
+ * Online plugin market: browse the merged catalog of all enabled market sources and
+ * install / uninstall / toggle market plugins (Skill / MCP / ToolPkg).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsPluginMarketPage(
+    viewModel: ChatViewModel,
+    onBack: () -> Unit,
+    onOpenSources: () -> Unit,
+) {
+    val market = viewModel.pluginMarket
+    val sources by market.sources.collectAsState()
+    val catalog by market.catalog.collectAsState()
+    val installations by market.installations.collectAsState()
+    val refreshing by market.refreshing.collectAsState()
+    val refreshError by market.lastRefreshError.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var installingId by remember { mutableStateOf<String?>(null) }
+    var uninstallTarget by remember { mutableStateOf<String?>(null) }
+
+    val installedIds = remember(installations) { installations.map { it.pluginId }.toSet() }
+
+    // 首次进入自动拉取目录。
+    LaunchedEffect(Unit) {
+        if (sources.isEmpty() || catalog.isEmpty()) market.refreshCatalog()
+    }
+
+    BackHandler { onBack() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_online_market)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null,
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onOpenSources) {
+                        Icon(
+                            imageVector = Icons.Default.List,
+                            contentDescription = stringResource(R.string.market_sources),
+                        )
+                    }
+                    IconButton(
+                        onClick = { scope.launch { market.refreshCatalog() } },
+                        enabled = !refreshing,
+                    ) {
+                        if (refreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = stringResource(R.string.market_refresh),
+                            )
+                        }
+                    }
+                },
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            if (installations.isNotEmpty()) {
+                item(key = "section_installed") {
+                    MarketSectionHeader(stringResource(R.string.market_section_installed))
+                }
+                items(installations, key = { "inst_${it.pluginId}" }) { inst ->
+                    InstalledPluginRow(
+                        installation = inst,
+                        onToggle = { market.setEnabled(inst.pluginId, it) },
+                        onUninstall = { uninstallTarget = inst.pluginId },
+                    )
+                }
+            }
+
+            item(key = "section_catalog") {
+                MarketSectionHeader(stringResource(R.string.market_section_catalog))
+            }
+            when {
+                refreshing && catalog.isEmpty() -> {
+                    item(key = "loading") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+                sources.isEmpty() -> {
+                    item(key = "no_sources") {
+                        MarketEmptyState(
+                            title = stringResource(R.string.market_no_sources_title),
+                            hint = stringResource(R.string.market_no_sources_hint),
+                            actionLabel = stringResource(R.string.market_add_source),
+                            onAction = onOpenSources,
+                        )
+                    }
+                }
+                catalog.isEmpty() -> {
+                    item(key = "empty_catalog") {
+                        MarketEmptyState(
+                            title = stringResource(R.string.market_catalog_empty),
+                            hint = refreshError?.takeIf { !refreshing }.orEmpty(),
+                        )
+                    }
+                }
+                else -> {
+                    items(catalog, key = { "cat_${it.id}" }) { meta ->
+                        val installed = meta.id in installedIds
+                        CatalogPluginRow(
+                            meta = meta,
+                            installed = installed,
+                            installing = installingId == meta.id,
+                            onInstall = {
+                                installingId = meta.id
+                                scope.launch {
+                                    try {
+                                        market.install(meta)
+                                        viewModel.emitSnackbar(
+                                            context.getString(R.string.market_installed_ok),
+                                        )
+                                    } catch (e: Exception) {
+                                        viewModel.emitSnackbar(
+                                            context.getString(R.string.market_operation_failed) +
+                                                "：${e.message}",
+                                        )
+                                    } finally {
+                                        installingId = null
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    val target = uninstallTarget
+    if (target != null) {
+        AlertDialog(
+            onDismissRequest = { uninstallTarget = null },
+            title = { Text(stringResource(R.string.market_uninstall)) },
+            text = { Text(stringResource(R.string.market_uninstall_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        uninstallTarget = null
+                        scope.launch {
+                            try {
+                                market.uninstall(target)
+                                viewModel.emitSnackbar(
+                                    context.getString(R.string.market_uninstalled_ok),
+                                )
+                            } catch (e: Exception) {
+                                viewModel.emitSnackbar(
+                                    context.getString(R.string.market_operation_failed) +
+                                        "：${e.message}",
+                                )
+                            }
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { uninstallTarget = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+}
+
+/** Section header inside the market list. */
+@Composable
+private fun MarketSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+    )
+}
+
+/** Shared empty-state block with an optional primary action button. */
+@Composable
+fun MarketEmptyState(
+    title: String,
+    hint: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+        )
+        if (hint.isNotBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (actionLabel != null && onAction != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(onClick = onAction) {
+                Text(actionLabel)
+            }
+        }
+    }
+}
+
+/** A small colored badge showing the plugin kind. */
+@Composable
+private fun KindBadge(kind: MarketPluginKind) {
+    val label = when (kind) {
+        MarketPluginKind.SKILL -> stringResource(R.string.market_kind_skill)
+        MarketPluginKind.MCP -> stringResource(R.string.market_kind_mcp)
+        MarketPluginKind.TOOLPKG -> stringResource(R.string.market_kind_toolpkg)
+    }
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+    )
+}
+
+/** Installed market plugin row: name + kind + version + enable switch + uninstall. */
+@Composable
+private fun InstalledPluginRow(
+    installation: MarketInstallation,
+    onToggle: (Boolean) -> Unit,
+    onUninstall: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = installation.name,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                KindBadge(installation.kind)
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "v${installation.version}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = installation.enabled, onCheckedChange = onToggle)
+        IconButton(onClick = onUninstall) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = stringResource(R.string.market_uninstall),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+    HorizontalDivider(
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outlineVariant,
+        modifier = Modifier.padding(horizontal = 16.dp),
+    )
+}
+
+/** Catalog row: name + kind + membership star + description + install / installed / installing. */
+@Composable
+private fun CatalogPluginRow(
+    meta: MarketPluginMeta,
+    installed: Boolean,
+    installing: Boolean,
+    onInstall: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = meta.name,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                KindBadge(meta.kind)
+                if (meta.requiresMembership) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
+            if (!meta.description.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = meta.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            val author = meta.author?.let { "$it · " }.orEmpty()
+            Text(
+                text = "${author}v${meta.version}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        when {
+            installing -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp,
+                )
+            }
+            installed -> {
+                Text(
+                    text = stringResource(R.string.market_installed),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            else -> {
+                OutlinedButton(onClick = onInstall) {
+                    Text(stringResource(R.string.market_install))
+                }
+            }
+        }
+    }
+    HorizontalDivider(
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outlineVariant,
+        modifier = Modifier.padding(horizontal = 16.dp),
+    )
+}

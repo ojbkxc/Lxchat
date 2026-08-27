@@ -50,10 +50,16 @@ class ToolPkgAdapter {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    /** Parse a ToolPkg ZIP file and create a [Plugin]. Returns null on any structural error. */
-    fun adapt(zipFile: File): Plugin? = runCatching { adaptOrThrow(zipFile) }.getOrNull()
+    /**
+     * Parse a ToolPkg ZIP file and create a [Plugin]. Returns null on any structural error.
+     *
+     * @param overrideId when non-null, the resulting plugin's id is forced to this value
+     *   (used by the plugin market so the registered id always matches the market record).
+     */
+    fun adapt(zipFile: File, overrideId: String? = null): Plugin? =
+        runCatching { adaptOrThrow(zipFile, overrideId) }.getOrNull()
 
-    private fun adaptOrThrow(zipFile: File): Plugin? {
+    private fun adaptOrThrow(zipFile: File, overrideId: String? = null): Plugin? {
         ZipFile(zipFile).use { zip ->
             val manifest = readManifest(zip) ?: return null
             val toolpkgId = primitiveString(manifest["toolpkg_id"]) ?: return null
@@ -66,7 +72,7 @@ class ToolPkgAdapter {
 
             return ToolPkgPlugin(
                 manifest = PluginManifest(
-                    id = toolpkgId,
+                    id = overrideId ?: toolpkgId,
                     name = display ?: toolpkgId,
                     version = version,
                     category = PluginCategory.External,

@@ -1045,6 +1045,38 @@
     <string name="rename">重命名</string>
     <string name="quit">退出</string>
 
+    <!-- Plugin Market -->
+    <string name="settings_online_market">在线插件市场</string>
+    <string name="settings_online_market_desc">浏览并安装社区插件</string>
+    <string name="market_section_installed">已安装</string>
+    <string name="market_section_catalog">在线目录</string>
+    <string name="market_no_sources_title">尚未添加市场源</string>
+    <string name="market_no_sources_hint">添加市场源后可浏览其中的插件</string>
+    <string name="market_add_source">添加市场源</string>
+    <string name="market_add_source_title">添加市场源</string>
+    <string name="market_source_name">来源名称</string>
+    <string name="market_source_name_placeholder">例如：官方源</string>
+    <string name="market_source_url">索引地址</string>
+    <string name="market_source_url_placeholder">https://example.com/index.json</string>
+    <string name="market_refresh">刷新</string>
+    <string name="market_refreshing">刷新中…</string>
+    <string name="market_install">安装</string>
+    <string name="market_installing">安装中…</string>
+    <string name="market_installed">已安装</string>
+    <string name="market_uninstall">卸载</string>
+    <string name="market_uninstall_message">确定要卸载该插件及其本地文件吗？</string>
+    <string name="market_kind_skill">技能</string>
+    <string name="market_kind_mcp">MCP</string>
+    <string name="market_kind_toolpkg">ToolPkg</string>
+    <string name="market_catalog_empty">未找到插件</string>
+    <string name="market_installed_ok">插件安装成功</string>
+    <string name="market_uninstalled_ok">插件已卸载</string>
+    <string name="market_operation_failed">操作失败</string>
+    <string name="market_sources">市场源</string>
+    <string name="market_sources_desc">管理插件市场来源</string>
+    <string name="market_sources_empty">暂无市场源</string>
+    <string name="market_source_error">来源加载失败</string>
+
     <!-- Chat Actions -->
     <string name="generate_title">生成标题</string>
     <string name="rename_chat">重命名对话</string>

@@ -899,6 +899,36 @@
     <string name="settings_market_empty">No skills or plugins registered</string>
     <string name="settings_market_section_skills">Skills</string>
     <string name="settings_market_section_plugins">Plugins</string>
+    <string name="settings_online_market">Online Plugin Market</string>
+    <string name="settings_online_market_desc">Browse and install community plugins</string>
+    <string name="market_section_installed">Installed</string>
+    <string name="market_section_catalog">Catalog</string>
+    <string name="market_no_sources_title">No market sources</string>
+    <string name="market_no_sources_hint">Add a source to browse its plugins</string>
+    <string name="market_add_source">Add market source</string>
+    <string name="market_add_source_title">Add market source</string>
+    <string name="market_source_name">Source name</string>
+    <string name="market_source_name_placeholder">e.g. Official</string>
+    <string name="market_source_url">Index URL</string>
+    <string name="market_source_url_placeholder">https://example.com/index.json</string>
+    <string name="market_refresh">Refresh</string>
+    <string name="market_refreshing">Refreshing…</string>
+    <string name="market_install">Install</string>
+    <string name="market_installing">Installing…</string>
+    <string name="market_installed">Installed</string>
+    <string name="market_uninstall">Uninstall</string>
+    <string name="market_uninstall_message">Remove this plugin and its local files?</string>
+    <string name="market_kind_skill">Skill</string>
+    <string name="market_kind_mcp">MCP</string>
+    <string name="market_kind_toolpkg">ToolPkg</string>
+    <string name="market_catalog_empty">No plugins found</string>
+    <string name="market_installed_ok">Plugin installed</string>
+    <string name="market_uninstalled_ok">Plugin uninstalled</string>
+    <string name="market_operation_failed">Operation failed</string>
+    <string name="market_sources">Market sources</string>
+    <string name="market_sources_desc">Manage plugin market sources</string>
+    <string name="market_sources_empty">No market sources</string>
+    <string name="market_source_error">Source error</string>
     <string name="rating_category">Rate</string>
 
     <!-- About -->

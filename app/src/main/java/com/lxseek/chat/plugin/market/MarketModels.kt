@@ -19,6 +19,9 @@ enum class MarketPluginKind {
 
     /** MCP 插件：按 serverUrl/transport 建立单服务连接暴露工具。 */
     MCP,
+
+    /** ToolPkg 插件：下载 .toolpkg ZIP，经 ToolPkgAdapter 解析为 Plugin。 */
+    TOOLPKG,
 }
 
 /** 用户添加的市场源。id 在创建时生成，安装记录通过 sourceId 关联回来源。 */
@@ -54,6 +57,8 @@ data class MarketPluginMeta(
     /** MCP 插件：服务端点。 */
     val serverUrl: String? = null,
     val serverTransport: McpTransportType? = null,
+    /** TOOLPKG 插件：.toolpkg ZIP 的下载地址。 */
+    val downloadUrl: String? = null,
     val requiresMembership: Boolean = false,
     /** 合并目录时由市场服务填充：本条来自哪个源。 */
     val sourceId: String = "",
@@ -78,6 +83,9 @@ data class MarketInstallation(
     /** MCP 插件：服务端点。 */
     val serverUrl: String = "",
     val serverTransport: McpTransportType = McpTransportType.STREAMABLE_HTTP,
+    /** TOOLPKG 插件：下载源地址与本地落盘路径（离线恢复时凭 localPath 重建）。 */
+    val downloadUrl: String = "",
+    val localPath: String = "",
     val installedAt: Long = System.currentTimeMillis(),
     val enabled: Boolean = true,
 )

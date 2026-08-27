@@ -2,6 +2,7 @@ package com.lxseek.chat.plugin.adapters
 
 import com.lxseek.chat.plugin.Plugin
 import java.io.File
+import java.io.FileOutputStream
 import java.util.zip.ZipFile
 
 /**
@@ -68,7 +69,7 @@ class ToolPkgLoader(private val cacheDir: File) {
                 if (!canonicalOut.startsWith(canonicalDest)) continue // zip-slip guard
                 out.parentFile?.mkdirs()
                 zip.getInputStream(entry).use { input ->
-                    out.outputStream().use { output -> input.copyTo(output) }
+                    FileOutputStream(out).use { output -> input.copyTo(output) }
                 }
             }
         }
