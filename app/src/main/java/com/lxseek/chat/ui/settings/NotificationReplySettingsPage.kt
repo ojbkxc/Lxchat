@@ -492,9 +492,10 @@ fun NotificationReplySettingsPage(
                 val currentModelDisplay = if (modelId.isNullOrBlank()) {
                     stringResource(R.string.im_channel_settings_follow_default)
                 } else {
-                    val idx = modelId.indexOf(':')
-                    if (idx > 0) "${modelId.substring(0, idx)} / ${modelId.substring(idx + 1)}"
-                    else modelId
+                    // modelId 是 Compose 委托属性（String?），无法智能转换；先读为局部非空值再操作
+                    val mId: String = modelId ?: ""
+                    val idx = mId.indexOf(':')
+                    if (idx > 0) "${mId.substring(0, idx)} / ${mId.substring(idx + 1)}" else mId
                 }
 
                 Box(modifier = Modifier.fillMaxWidth()) {
