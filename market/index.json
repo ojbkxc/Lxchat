@@ -10,6 +10,17 @@
       "author": "LxChat",
       "description": "An example skill demonstrating how to author and publish skills for the LxChat plugin market.",
       "manifestUrl": "https://raw.githubusercontent.com/ojbkxc/Lxchat/main/market/examples/hello-skill/SKILL.md"
+    },
+    {
+      "id": "news-extractor",
+      "name": "News Extractor",
+      "version": "1.0.0",
+      "kind": "MCP",
+      "author": "NewsCrawler",
+      "description": "Extract clean article text from 12 news platforms (WeChat, Toutiao, NetEase, Sohu, Tencent, BBC, CNN, Naver, Detik, Quora...) via a remote MCP server. Configure the server address after install.",
+      "homepage": "https://github.com/NanmiCoder/NewsCrawler",
+      "serverUrl": "http://127.0.0.1:8765/mcp",
+      "serverTransport": "streamable_http"
     }
   ]
 }

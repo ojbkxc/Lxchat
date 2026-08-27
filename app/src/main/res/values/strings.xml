@@ -911,6 +911,7 @@
     <string name="membership_source_yipay">Source: Yipay</string>
     <string name="membership_upgrade_prompt">Upgrade to unlock more features</string>
     <string name="membership_redeem_code_hint">Enter redemption code</string>
+    <string name="membership_redeem_section_title">Redemption Code</string>
     <string name="membership_redeem_button">Redeem</string>
     <string name="membership_redeem_success">Membership activated!</string>
     <string name="membership_redeem_invalid">Invalid code: %1$s</string>
@@ -951,6 +952,11 @@
     <string name="market_source_delete">Delete source</string>
     <string name="market_source_delete_message">Remove this market source?</string>
     <string name="market_source_saved">Market source saved</string>
+    <string name="market_edit_url">Edit server URL</string>
+    <string name="market_edit_url_title">Configure MCP server</string>
+    <string name="market_edit_url_label">Server address</string>
+    <string name="market_edit_url_hint">e.g. http://192.168.1.10:8765/mcp</string>
+    <string name="market_url_saved">Server address updated</string>
     <string name="rating_category">Rate</string>
 
     <!-- About -->

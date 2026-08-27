@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
@@ -30,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -80,6 +82,8 @@ fun SettingsPluginMarketPage(
 
     var installingId by remember { mutableStateOf<String?>(null) }
     var uninstallTarget by remember { mutableStateOf<String?>(null) }
+    var editingUrlFor by remember { mutableStateOf<MarketInstallation?>(null) }
+    var urlDraft by remember { mutableStateOf("") }
 
     val installedIds = remember(installations) { installations.map { it.pluginId }.toSet() }
 
@@ -143,6 +147,14 @@ fun SettingsPluginMarketPage(
                         installation = inst,
                         onToggle = { market.setEnabled(inst.pluginId, it) },
                         onUninstall = { uninstallTarget = inst.pluginId },
+                        onEditUrl = if (inst.kind == MarketPluginKind.MCP) {
+                            {
+                                urlDraft = inst.serverUrl
+                                editingUrlFor = inst
+                            }
+                        } else {
+                            null
+                        },
                     )
                 }
             }
@@ -248,6 +260,40 @@ fun SettingsPluginMarketPage(
             },
         )
     }
+
+    editingUrlFor?.let { inst ->
+        AlertDialog(
+            onDismissRequest = { editingUrlFor = null },
+            title = { Text(stringResource(R.string.market_edit_url_title)) },
+            text = {
+                OutlinedTextField(
+                    value = urlDraft,
+                    onValueChange = { urlDraft = it },
+                    label = { Text(stringResource(R.string.market_edit_url_label)) },
+                    placeholder = { Text(stringResource(R.string.market_edit_url_hint)) },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        market.updateServerUrl(inst.pluginId, urlDraft)
+                        editingUrlFor = null
+                        viewModel.emitSnackbar(
+                            context.getString(R.string.market_url_saved),
+                        )
+                    },
+                ) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingUrlFor = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
 }
 
 /** Section header inside the market list. */
@@ -321,6 +367,7 @@ private fun InstalledPluginRow(
     installation: MarketInstallation,
     onToggle: (Boolean) -> Unit,
     onUninstall: () -> Unit,
+    onEditUrl: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -349,6 +396,15 @@ private fun InstalledPluginRow(
             )
         }
         Switch(checked = installation.enabled, onCheckedChange = onToggle)
+        if (onEditUrl != null) {
+            IconButton(onClick = onEditUrl) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = stringResource(R.string.market_edit_url),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         IconButton(onClick = onUninstall) {
             Icon(
                 imageVector = Icons.Default.Delete,

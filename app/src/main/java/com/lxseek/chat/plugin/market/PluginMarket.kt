@@ -204,6 +204,25 @@ class PluginMarket(
         }
     }
 
+    /**
+     * 修改已安装 MCP 插件的服务器地址：重建运行时并同步持久化记录。
+     * 目录默认地址（如 127.0.0.1）在设备上不可达，用户需改为实际服务地址。
+     */
+    fun updateServerUrl(pluginId: String, url: String) {
+        val trimmed = url.trim()
+        if (trimmed.isEmpty()) return
+        val current = _installations.value.firstOrNull { it.pluginId == pluginId } ?: return
+        if (current.kind != MarketPluginKind.MCP || current.serverUrl == trimmed) return
+        host.unregister(pluginId)
+        val updated = current.copy(serverUrl = trimmed)
+        val updatedList = _installations.value.map {
+            if (it.pluginId == pluginId) updated else it
+        }
+        _installations.value = updatedList
+        persistInstallations(updatedList)
+        if (updated.enabled) host.register(buildPlugin(updated), initiallyEnabled = true)
+    }
+
     /** 启停已安装插件，同步宿主与持久化记录。 */
     fun setEnabled(pluginId: String, enabled: Boolean) {
         if (_installations.value.none { it.pluginId == pluginId }) return

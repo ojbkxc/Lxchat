@@ -1087,6 +1087,11 @@
     <string name="market_source_delete">删除来源</string>
     <string name="market_source_delete_message">确定删除该市场源？</string>
     <string name="market_source_saved">市场源已保存</string>
+    <string name="market_edit_url">编辑服务器地址</string>
+    <string name="market_edit_url_title">配置 MCP 服务器</string>
+    <string name="market_edit_url_label">服务器地址</string>
+    <string name="market_edit_url_hint">例如：http://192.168.1.10:8765/mcp</string>
+    <string name="market_url_saved">服务器地址已更新</string>
 
     <!-- Chat Actions -->
     <string name="generate_title">生成标题</string>
