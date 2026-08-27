@@ -33,6 +33,7 @@ import com.lxseek.chat.model.SelectedAttachment
 import com.lxseek.chat.sandbox.SandboxManager
 import com.lxseek.chat.sandbox.SandboxManagerFactory
 import com.lxseek.chat.service.LxChatForegroundService
+import com.lxseek.chat.tool.AutoMemoryToolProvider
 import com.lxseek.chat.tool.ToolApprovalResult
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.util.NetworkMonitor
@@ -247,10 +248,9 @@ class ChatViewModel(
         // Provider map / model-list sync jobs now run on the process-scoped registry
         // (launched once in AppContainer), so they survive ViewModel recreation.
     }
-
     // Per-conversation generation lifecycle (IO scope, job, slot, race-free stop/persist tokens)
     // lives in [ConversationGenerationState], one per conversation via [generationRegistry].
-
+    private val autoMemoryToolProvider by lazy { AutoMemoryToolProvider(AutoMemoryExtractor(memoryManager, settings, providerRegistry)) }
     private val generationManager by lazy {
         GenerationManager(
             app = application,
@@ -260,7 +260,7 @@ class ChatViewModel(
             context = appContext,
             sandboxFactory = sandboxFactory,
             additionalToolProviders = listOfNotNull(automationToolProvider, mcpToolProvider, androidControlToolProvider,
-                gitToolProvider, imToolProvider, reminderToolProvider, subAgentToolProvider), smartRouterFactory = smartRouterFactory,
+                gitToolProvider, imToolProvider, reminderToolProvider, subAgentToolProvider, autoMemoryToolProvider), smartRouterFactory = smartRouterFactory,
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
             gm.onMessagePersisted = { messageId, text -> ragManager.indexMessageForRag(messageId, text) }
