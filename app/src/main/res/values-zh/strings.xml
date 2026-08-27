@@ -572,6 +572,9 @@
     <string name="adb_connected_idle">已连接 — Shell 空闲</string>
     <string name="adb_info">说明</string>
     <string name="adb_info_text">ADB Shell 让 AI 在本设备上执行命令。Root 用户无需设置；非 Root 用户（Android 11+）需下载一个小的 adb 二进制文件并通过无线调试配对一次。</string>
+    <string name="adb_logs_title">配对 / 执行日志</string>
+    <string name="adb_logs_clear">清空</string>
+    <string name="adb_logs_empty">暂无日志。配对、Root 检测、命令执行的过程都会实时显示在这里。</string>
     <string name="shell_enable">启用终端工具</string>
     <string name="shell_enable_desc">允许模型通过远程服务器执行 Shell 命令</string>
     <string name="shell_device_name">名称</string>

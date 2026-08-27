@@ -16,13 +16,21 @@ object RootDetector {
      */
     fun isRootAvailable(): Boolean {
         cached?.let { return it }
-        val result = try {
+        var result = false
+        var detail = ""
+        try {
             val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
-            p.waitFor()
-            p.exitValue() == 0
+            val waitOk = p.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+            val out = p.inputStream.bufferedReader().use { it.readText() }
+            val err = p.errorStream.bufferedReader().use { it.readText() }
+            result = waitOk && p.exitValue() == 0
+            detail = "waitOk=$waitOk exit=${if (waitOk) p.exitValue() else -1} out=${out.trim()} err=${err.trim()}"
         } catch (e: Exception) {
-            false
+            detail = "exception=${e.javaClass.name}: ${e.message}"
         }
+        // 镜像到进程内日志源，让用户看到 su 检测的具体结果（root 未生效时原因一目了然）。
+        AdbLog.log("RootDetector: ${if (result) "root available" else "root NOT available"} — $detail")
+        android.util.Log.d("RootDetector", "isRootAvailable=$result detail=$detail")
         cached = result
         return result
     }

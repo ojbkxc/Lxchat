@@ -1,0 +1,42 @@
+package com.lxseek.chat.adb
+
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/**
+ * 进程内 ADB Shell 诊断日志源（配对 / root 检测 / 命令执行共用）。
+ *
+ * 所有发生在 [LadbManager]、[RootDetector]、[AdbShellBackend] 关键路径的步骤都会写入这里，
+ * 供 [com.lxseek.chat.ui.settings.SettingsAdbPage] 的"配对日志"区实时展示——用户无需抓 logcat
+ * 即可看到无线配对 / root 检测的完整过程。容量有上限，超限丢弃最旧条目。
+ */
+object AdbLog {
+
+    private const val TAG = "AdbLog"
+    private const val MAX_ENTRIES = 400
+
+    /** 时间格式：HH:mm:ss.SSS */
+    private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
+
+    private val _entries = MutableStateFlow<List<String>>(emptyList())
+    val entries: StateFlow<List<String>> = _entries
+
+    /** 追加一条日志（时间戳前缀），同时镜像到 logcat 便于抓包排查。 */
+    fun log(msg: String) {
+        val line = buildString {
+            append(timeFormat.format(Date()))
+            append("  ")
+            append(msg)
+        }
+        android.util.Log.i(TAG, msg)
+        _entries.value = (_entries.value + line).takeLast(MAX_ENTRIES)
+    }
+
+    /** 清空日志。 */
+    fun clear() {
+        _entries.value = emptyList()
+    }
+}

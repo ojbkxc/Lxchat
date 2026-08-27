@@ -33,7 +33,11 @@ internal class AdbShellBackend(
     // ── Command execution ───────────────────────────────────
 
     override suspend fun executeCommand(cmd: String, workdir: String, timeoutMs: Int): String {
-        val actualCmd = if (workdir.isNotBlank()) "cd $workdir && $cmd" else cmd
+        // Strip "adb shell" prefix — the backend already provides device shell access,
+        // so "adb shell ls" should become "ls". Handles both space and tab separators.
+        val strippedCmd = cmd.removePrefix("adb shell ").removePrefix("adb\tshell\t").trim()
+        val effectiveCmd = if (strippedCmd.isNotBlank() && strippedCmd != cmd.trim()) strippedCmd else cmd
+        val actualCmd = if (workdir.isNotBlank()) "cd $workdir && $effectiveCmd" else effectiveCmd
         return if (rootAvailable) {
             executeRoot(actualCmd, cmd, timeoutMs)
         } else {
@@ -43,18 +47,31 @@ internal class AdbShellBackend(
 
     private fun executeRoot(actualCmd: String, cmd: String, timeoutMs: Int): String {
         return try {
-            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", actualCmd))
-            p.waitFor(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+            // If the adb binary is installed, add its directory to PATH so `adb` commands work
+            // under root (the system PATH does not include the app's filesDir).
+            val adbDir = ladbManager?.let { mgr ->
+                if (mgr.isBinaryInstalled()) {
+                    java.io.File(mgr.getAdbPath()).parentFile?.absolutePath
+                } else null
+            }
+            val fullCmd = if (adbDir != null) "export PATH=\"\$PATH:$adbDir\"; $actualCmd" else actualCmd
+            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", fullCmd))
+            val waitOk = p.waitFor(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
             val output = p.inputStream.bufferedReader().use { it.readText() } +
                 p.errorStream.bufferedReader().use { it.readText() }
+            // 镜像到进程内日志源，方便在设置页直接看到 root 执行的命令与结果。
+            com.lxseek.chat.adb.AdbLog.log(
+                "root> $cmd  → exit=${if (waitOk) p.exitValue() else -1} out=${output.trim().take(200)}",
+            )
             buildJsonObject {
                 put("type", "execute_shell_command")
                 put("server", "ADB Shell (root)")
                 put("command", cmd)
-                put("exit_code", p.exitValue())
+                put("exit_code", if (waitOk) p.exitValue() else -1)
                 put("output", output.trimEnd())
             }.toString()
         } catch (e: Exception) {
+            com.lxseek.chat.adb.AdbLog.log("root> $cmd  → exception=${e.javaClass.name}: ${e.message}")
             jsonError("execute_shell_command", e.message ?: "Root execution failed",
                 server = "ADB Shell (root)", command = cmd)
         }
@@ -67,6 +84,7 @@ internal class AdbShellBackend(
         )
         return if (mgr.isRunning()) {
             val output = mgr.sendCommand(actualCmd)
+            com.lxseek.chat.adb.AdbLog.log("wireless> $cmd  → out=${output.trim().take(200)}")
             buildJsonObject {
                 put("type", "execute_shell_command")
                 put("server", "ADB Shell (wireless)")

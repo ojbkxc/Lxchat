@@ -15,6 +15,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.adb.AdbExtensionManager
+import com.lxseek.chat.adb.AdbLog
 import com.lxseek.chat.adb.LadbManager
 import com.lxseek.chat.adb.RootDetector
 import com.lxseek.chat.viewmodel.ChatViewModel
@@ -69,6 +70,9 @@ fun SettingsAdbPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     // Reconnecting
     var reconnecting by remember { mutableStateOf(false) }
     var reconnectResult by remember { mutableStateOf<String?>(null) }
+
+    // Live pairing / shell diagnostic logs (visible in-app, no logcat required)
+    val adbLogs by AdbLog.entries.collectAsState()
 
     CollapsingSettingsScaffold(
         title = stringResource(R.string.settings_adb_shell),
@@ -340,6 +344,35 @@ fun SettingsAdbPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     })
                 }
             }
+
+            // ── Live Logs ──────────────────────────────────
+            SettingsGroup(title = stringResource(R.string.adb_logs_title), items = listOf {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(enabled = adbLogs.isNotEmpty(), onClick = { AdbLog.clear() }) {
+                            Text(stringResource(R.string.adb_logs_clear))
+                        }
+                    }
+                    if (adbLogs.isEmpty()) {
+                        Text(
+                            stringResource(R.string.adb_logs_empty),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    } else {
+                        adbLogs.forEach { line ->
+                            Text(
+                                line,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 2.dp),
+                            )
+                        }
+                    }
+                }
+            })
 
             // ── Info ────────────────────────────────────────
             SettingsGroup(title = stringResource(R.string.adb_info), items = listOf {

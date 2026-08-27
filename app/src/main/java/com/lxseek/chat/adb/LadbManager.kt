@@ -96,6 +96,9 @@ class LadbManager private constructor(private val context: Context) {
     /** True if the adb binary exists at [adbPath]. */
     fun isBinaryInstalled(): Boolean = File(adbPath).exists() && File(adbPath).canExecute()
 
+    /** Path to the downloaded adb binary (exposed for backends that need to set PATH). */
+    fun getAdbPath(): String = adbPath
+
     /** True if the shell process is alive and ready. */
     fun isRunning(): Boolean = _running.value == true
 
@@ -525,6 +528,8 @@ class LadbManager private constructor(private val context: Context) {
             if (outputBufferFile.exists())
                 outputBufferFile.appendText("* $msg" + System.lineSeparator())
         }
+        // 镜像到进程内日志源，供设置页"配对日志"实时展示。
+        AdbLog.log(msg)
     }
 
     /** Starts the mDNS port discovery scan. Call before [initServer]. */

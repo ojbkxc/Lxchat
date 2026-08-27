@@ -533,6 +533,9 @@
     <string name="adb_connected_idle">Connected — shell idle</string>
     <string name="adb_info">Info</string>
     <string name="adb_info_text">ADB Shell lets the AI execute commands on this device. Root users need no setup. Non-root users on Android 11+ download a small adb binary and pair once via wireless debugging.</string>
+    <string name="adb_logs_title">Pairing / Execution Logs</string>
+    <string name="adb_logs_clear">Clear</string>
+    <string name="adb_logs_empty">No logs yet. Pairing, root detection and command execution appear here in real time.</string>
     <string name="shell_enable">Enable Shell Tool</string>
     <string name="shell_enable_desc">Allow the model to execute shell commands via remote servers</string>
     <string name="shell_device_name">Name</string>
