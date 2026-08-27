@@ -63,6 +63,15 @@
 -keep class com.jcraft.jsch.** { *; }
 -dontwarn com.jcraft.jsch.**
 
+# ── Shizuku user service ─────────────────────────────────
+# ShellUserService is instantiated reflectively by the Shizuku server in an
+# isolated privileged process (by fully qualified class name), so it must keep
+# its public constructors and not be renamed/stripped. IShellService is the
+# AIDL interface used to build the client-side proxy.
+-keep,allowobfuscation class com.lxseek.chat.adb.IShellService { *; }
+-keep class com.lxseek.chat.adb.IShellService$* { *; }
+-keep class com.lxseek.chat.adb.ShellUserService { *; }
+
 # ── Compose ───────────────────────────────────────────────
 -dontwarn androidx.compose.**
 

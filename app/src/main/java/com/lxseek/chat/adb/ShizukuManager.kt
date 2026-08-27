@@ -1,11 +1,12 @@
 package com.lxseek.chat.adb
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.os.IBinder
+import com.lxseek.chat.BuildConfig
 import rikka.shizuku.Shizuku
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.util.concurrent.TimeUnit
 
 /**
  * Shizuku 后端管理器：替代 LadbManager，为非 root 设备提供 ADB 级别的 shell 访问。
@@ -16,13 +17,13 @@ import java.util.concurrent.TimeUnit
  *   2. Shizuku 服务已启动（[isShizukuRunning]，由 [Shizuku.pingBinder] 检测）
  *   3. 本 app 已被用户授权（[isPermissionGranted]，由 [Shizuku.checkSelfPermission] 检测）
  *
- * 三者均满足时 [isReady] 返回 true，此时 [executeCommand] 可直接通过
- * [Shizuku.newProcess] 执行任意 shell 命令（uid=root 或 shell，取决于 Shizuku 启动方式）。
+ * 三者均满足时 [isReady] 返回 true，此时 [executeCommand] 通过 Shizuku 的
+ * UserService（[ShellUserService]）在特权进程中执行任意 shell 命令
+ * （uid=root 或 shell，取决于 Shizuku 启动方式）。
  *
- * 与 LadbManager 的差异：
- *  - 无需下载/打包 adb binary，无需无线调试配对；
- *  - 无需 WRITE_SECURE_SETTINGS；
- *  - 单次 [executeCommand] 启动一个短生命进程，不复用长 shell 管道（更稳，避免僵尸进程）。
+ * 说明：Shizuku API 13.1.5 中 `Shizuku.newProcess` 已改为 private，官方推荐用
+ * UserService 替代。这里通过 [Shizuku.bindUserService] 绑定隔离进程中的
+ * [IShellService] 服务来执行命令。
  */
 class ShizukuManager(private val context: Context) {
 
@@ -41,6 +42,66 @@ class ShizukuManager(private val context: Context) {
         private const val PERMISSION_REQUEST_CODE = 1001
 
         private const val TAG = "ShizukuManager"
+
+        /** 等待 user-service binder 连上的最长时间（毫秒）。 */
+        private const val BIND_TIMEOUT_MS = 15_000L
+
+        /** 组装绑定参数：组件指向 [ShellUserService]，非 daemon（进程随宿主结束）。 */
+        private fun createArgs(): Shizuku.UserServiceArgs =
+            Shizuku.UserServiceArgs(
+                ComponentName("com.lxseek.chat", ShellUserService::class.java.name),
+            )
+                .daemon(false)
+                .processNameSuffix("shell")
+                .debuggable(false)
+                .version(BuildConfig.VERSION_CODE.coerceAtLeast(1))
+    }
+
+    /** 当前连接的 [IShellService] 代理；为空表示尚未连接。 */
+    @Volatile
+    private var shellService: IShellService? = null
+
+    /** 为等待连接唤醒/超时用的监听锁。 */
+    private val lock = java.lang.Object()
+
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, binder: IBinder) {
+            synchronized(lock) {
+                shellService = IShellService.Stub.asInterface(binder)
+                lock.notifyAll()
+            }
+            AdbLog.log("ShizukuManager: shell service connected ($name)")
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+            synchronized(lock) { shellService = null }
+            AdbLog.log("ShizukuManager: shell service disconnected")
+        }
+
+        override fun onBindingDied(name: ComponentName) {
+            onServiceDisconnected(name)
+        }
+    }
+
+    private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
+        AdbLog.log("ShizukuManager: binder received; reconnecting shell service")
+        connectIfPossible()
+    }
+
+    init {
+        // 当 Shizuku binder（重新）就绪时自动（重新）建立 user-service 连接。
+        Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
+    }
+
+    /** 条件允许时绑定 user service。 */
+    private fun connectIfPossible() {
+        if (isReady()) {
+            try {
+                Shizuku.bindUserService(createArgs(), serviceConnection)
+            } catch (e: Exception) {
+                AdbLog.log("ShizukuManager: bindUserService failed — ${e.javaClass.name}: ${e.message}")
+            }
+        }
     }
 
     /** Shizuku app 是否已安装。 */
@@ -86,14 +147,14 @@ class ShizukuManager(private val context: Context) {
      *
      * 实现细节：
      *  - 若 [cmd] 以 `adb shell ` 开头，自动剥离该前缀（兼容旧工具调用约定）；
-     *  - 使用 `sh -c <cmd>` 形式调用 [Shizuku.newProcess]，与 `Runtime.exec` 行为一致；
-     *  - 进程在 [timeoutMs] 内未结束则强制销毁，避免 hang 死调用线程；
-     *  - stdout/stderr 合并读取，超出 64KB 截断，防止 OOM。
+     *  - 通过 [IShellService.exec] 在特权进程中执行 `sh -c <command>`；
+     *  - 首次调用会绑定 user service 并最多等待 [BIND_TIMEOUT_MS]；
+     *  - 输出解析由远程服务完成并截断，防止 OOM。
      *
      * @param cmd 要执行的 shell 命令字符串。
-     * @param timeoutMs 超时毫秒，默认 30s。
-     * @return 命令输出文本（trim 后）。
-     * @throws IllegalStateException 当 Shizuku 未就绪时抛出，调用方应先 [isReady] 检查。
+     * @param timeoutMs 保留参数（绑定等待会取它和 [BIND_TIMEOUT_MS] 较小值）。
+     * @return 命令输出文本。
+     * @throws IllegalStateException 当 Shizuku 未就绪或服务连接超时时抛出，调用方应先 [isReady] 检查。
      */
     fun executeCommand(cmd: String, timeoutMs: Int = 30_000): String {
         if (!isReady()) {
@@ -111,67 +172,43 @@ class ShizukuManager(private val context: Context) {
 
         AdbLog.log("ShizukuManager: exec → $actualCmd")
 
-        val process: Process = Shizuku.newProcess(arrayOf("sh", "-c", actualCmd), null, null)
-        try {
-            // 合并 stdout + stderr
-            val output = StringBuilder()
-            val reader = BufferedReader(InputStreamReader(process.inputStream))
-            val errReader = BufferedReader(InputStreamReader(process.errorStream))
+        val service = obtainService(timeoutMs.toLong())
+            ?: throw IllegalStateException("Shizuku shell service unavailable (bind timeout)")
 
-            val maxBytes = 64 * 1024
-            val outThread = Thread {
-                try {
-                    var ch: Int
-                    val buf = CharArray(2048)
-                    while (reader.read(buf).also { ch = it } > 0) {
-                        if (output.length + ch > maxBytes) {
-                            output.append(buf, 0, maxBytes - output.length)
-                            break
-                        }
-                        output.append(buf, 0, ch)
-                    }
-                } catch (_: Exception) {
-                    // 读流异常不致命，已读到的内容仍可返回
-                }
-            }
-            val errThread = Thread {
-                try {
-                    var ch: Int
-                    val buf = CharArray(2048)
-                    while (errReader.read(buf).also { ch = it } > 0) {
-                        if (output.length + ch > maxBytes) {
-                            output.append(buf, 0, maxBytes - output.length)
-                            break
-                        }
-                        output.append(buf, 0, ch)
-                    }
-                } catch (_: Exception) {
-                    // 同上
-                }
-            }
-            outThread.start()
-            errThread.start()
+        return try {
+            val output = service.exec(actualCmd) ?: ""
+            AdbLog.log("ShizukuManager: exec len=${output.length}")
+            output
+        } catch (e: Exception) {
+            // IPC 失败通常是服务进程被杀，丢弃代理以便下次重新绑定。
+            synchronized(lock) { shellService = null }
+            AdbLog.log("ShizukuManager: exec threw — ${e.javaClass.name}: ${e.message}")
+            throw e
+        }
+    }
 
-            val finished = process.waitFor(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            if (!finished) {
-                process.destroyForcibly()
-                outThread.interrupt()
-                errThread.interrupt()
-                AdbLog.log("ShizukuManager: exec timeout after ${timeoutMs}ms — forcibly destroyed")
-                throw IllegalStateException("Shizuku command timed out after ${timeoutMs}ms")
-            }
-            outThread.join(500)
-            errThread.join(500)
+    /** 获取 [IShellService] 代理；为空时发起绑定并等待（最多至超时）。 */
+    private fun obtainService(timeoutMs: Long): IShellService? {
+        val existing = shellService
+        if (existing != null) return existing
 
-            val result = output.toString().trim()
-            AdbLog.log("ShizukuManager: exec exit=${process.exitValue()} len=${result.length}")
-            return result
-        } finally {
+        val waitLimit = timeoutMs.coerceIn(1_000, BIND_TIMEOUT_MS)
+        synchronized(lock) {
             try {
-                process.destroy()
-            } catch (_: Exception) {
-                // ignore
+                Shizuku.bindUserService(createArgs(), serviceConnection)
+            } catch (e: Exception) {
+                AdbLog.log("ShizukuManager: bindUserService failed — ${e.javaClass.name}: ${e.message}")
             }
+            val deadline = System.currentTimeMillis() + waitLimit
+            while (shellService == null && System.currentTimeMillis() < deadline) {
+                try {
+                    (lock as java.lang.Object).wait((deadline - System.currentTimeMillis()).coerceAtLeast(1L))
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return null
+                }
+            }
+            return shellService
         }
     }
 }
