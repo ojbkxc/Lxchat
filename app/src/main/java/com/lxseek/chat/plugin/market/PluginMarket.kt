@@ -63,7 +63,16 @@ class PluginMarket(
 
     init {
         scope.launch {
-            settings.marketSourcesRaw.collect { raw -> _sources.value = decodeList(raw) }
+            settings.marketSourcesRaw.collect { raw ->
+                val list = decodeList<MarketSource>(raw)
+                if (list.isEmpty()) {
+                    // 首次启动：无任何源时自动注册官方默认源（用户可删除或停用）。
+                    _sources.value = listOf(DEFAULT_SOURCE)
+                    persistSources(_sources.value)
+                } else {
+                    _sources.value = list
+                }
+            }
         }
         scope.launch {
             settings.marketInstalledRaw.collect { raw -> _installations.value = decodeList(raw) }
@@ -336,4 +345,12 @@ class PluginMarket(
     private inline fun <reified T> decodeList(raw: String): List<T> =
         if (raw.isBlank()) emptyList()
         else runCatching { json.decodeFromString<List<T>>(raw) }.getOrDefault(emptyList())
+
+    companion object {
+        /** 官方默认市场源：首次启动无源时自动注册，用户可删除或停用。 */
+        val DEFAULT_SOURCE = MarketSource(
+            name = "官方源",
+            indexUrl = "https://raw.githubusercontent.com/ojbkxc/Lxchat/main/market/index.json",
+        )
+    }
 }

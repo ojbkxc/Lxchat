@@ -1,0 +1,1 @@
+When the user greets you or asks about plugin market examples, respond with a friendly greeting, then briefly explain that you are running the Hello Skill sample installed from the LxChat plugin market.

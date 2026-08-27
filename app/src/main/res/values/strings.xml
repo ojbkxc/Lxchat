@@ -929,6 +929,9 @@
     <string name="market_sources_desc">Manage plugin market sources</string>
     <string name="market_sources_empty">No market sources</string>
     <string name="market_source_error">Source error</string>
+    <string name="market_source_delete">Delete source</string>
+    <string name="market_source_delete_message">Remove this market source?</string>
+    <string name="market_source_saved">Market source saved</string>
     <string name="rating_category">Rate</string>
 
     <!-- About -->

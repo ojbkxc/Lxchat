@@ -1046,6 +1046,14 @@
     <string name="quit">退出</string>
 
     <!-- Plugin Market -->
+    <string name="settings_market">插件市场</string>
+    <string name="settings_market_desc">浏览并开关内置技能与插件</string>
+    <string name="settings_market_tab_all">全部</string>
+    <string name="settings_market_tab_skills">技能</string>
+    <string name="settings_market_tab_plugins">插件</string>
+    <string name="settings_market_empty">暂无已注册的技能或插件</string>
+    <string name="settings_market_section_skills">技能</string>
+    <string name="settings_market_section_plugins">插件</string>
     <string name="settings_online_market">在线插件市场</string>
     <string name="settings_online_market_desc">浏览并安装社区插件</string>
     <string name="market_section_installed">已安装</string>
@@ -1076,6 +1084,9 @@
     <string name="market_sources_desc">管理插件市场来源</string>
     <string name="market_sources_empty">暂无市场源</string>
     <string name="market_source_error">来源加载失败</string>
+    <string name="market_source_delete">删除来源</string>
+    <string name="market_source_delete_message">确定删除该市场源？</string>
+    <string name="market_source_saved">市场源已保存</string>
 
     <!-- Chat Actions -->
     <string name="generate_title">生成标题</string>

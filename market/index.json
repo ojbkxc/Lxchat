@@ -1,0 +1,15 @@
+{
+  "schema": "1.0",
+  "generatedAt": 0,
+  "plugins": [
+    {
+      "id": "hello-skill",
+      "name": "Hello Skill",
+      "version": "1.0.0",
+      "kind": "SKILL",
+      "author": "LxChat",
+      "description": "An example skill demonstrating how to author and publish skills for the LxChat plugin market.",
+      "manifestUrl": "https://raw.githubusercontent.com/ojbkxc/Lxchat/main/market/examples/hello-skill/SKILL.md"
+    }
+  ]
+}

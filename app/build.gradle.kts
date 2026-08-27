@@ -115,6 +115,19 @@ android {
         }
     }
 
+    // ABI splits: ship a single arm64-v8a APK per flavor. This matches the
+    // ndk.abiFilters above and keeps the release artifact small (no universal
+    // APK with duplicated native libs). Other ABIs (armeabi-v7a, x86, x86_64)
+    // are intentionally excluded — LxChat only targets 64-bit ARM devices.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a")
+            isUniversalApk = false
+        }
+    }
+
     // Extract .so files to disk for ProcessBuilder exec (Kai approach)
     @Suppress("UnstableApiUsage")
     packaging {
