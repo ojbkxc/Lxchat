@@ -21,6 +21,17 @@
       "homepage": "https://github.com/NanmiCoder/NewsCrawler",
       "serverUrl": "http://127.0.0.1:8765/mcp",
       "serverTransport": "streamable_http"
+    },
+    {
+      "id": "modelscope-mcp-server",
+      "name": "ModelScope MCP",
+      "version": "1.0.0",
+      "kind": "MCP",
+      "author": "ModelScope",
+      "description": "Official ModelScope (魔搭社区) MCP server: search models, datasets, studios, papers and MCP servers, plus AIGC image generation. Run it locally first, then configure the server address and your API token.",
+      "homepage": "https://github.com/modelscope/modelscope-mcp-server",
+      "serverUrl": "http://127.0.0.1:8000/mcp",
+      "serverTransport": "streamable_http"
     }
   ]
 }

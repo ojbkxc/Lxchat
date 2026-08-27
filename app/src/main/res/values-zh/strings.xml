@@ -1090,8 +1090,14 @@
     <string name="market_edit_url">编辑服务器地址</string>
     <string name="market_edit_url_title">配置 MCP 服务器</string>
     <string name="market_edit_url_label">服务器地址</string>
-    <string name="market_edit_url_hint">例如：http://192.168.1.10:8765/mcp</string>
-    <string name="market_url_saved">服务器地址已更新</string>
+    <string name="market_edit_url_hint">例如：http://192.168.1.10:8000/mcp</string>
+    <string name="market_config_saved">配置已保存</string>
+    <string name="market_headers">请求头</string>
+    <string name="market_headers_empty">未配置请求头</string>
+    <string name="market_header_name">请求头名称</string>
+    <string name="market_header_value">值</string>
+    <string name="market_add_header">添加请求头</string>
+    <string name="market_remove_header">删除请求头</string>
 
     <!-- Chat Actions -->
     <string name="generate_title">生成标题</string>

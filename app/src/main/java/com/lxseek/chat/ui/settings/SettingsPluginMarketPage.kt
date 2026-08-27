@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -23,6 +25,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +55,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
@@ -59,6 +65,7 @@ import com.lxseek.chat.plugin.market.MarketPluginKind
 import com.lxseek.chat.plugin.market.MarketPluginMeta
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
  * Online plugin market: browse the merged catalog of all enabled market sources and
@@ -82,8 +89,9 @@ fun SettingsPluginMarketPage(
 
     var installingId by remember { mutableStateOf<String?>(null) }
     var uninstallTarget by remember { mutableStateOf<String?>(null) }
-    var editingUrlFor by remember { mutableStateOf<MarketInstallation?>(null) }
+    var editingFor by remember { mutableStateOf<MarketInstallation?>(null) }
     var urlDraft by remember { mutableStateOf("") }
+    var headerDrafts by remember { mutableStateOf<List<MarketHeaderDraft>>(emptyList()) }
 
     val installedIds = remember(installations) { installations.map { it.pluginId }.toSet() }
 
@@ -147,10 +155,13 @@ fun SettingsPluginMarketPage(
                         installation = inst,
                         onToggle = { market.setEnabled(inst.pluginId, it) },
                         onUninstall = { uninstallTarget = inst.pluginId },
-                        onEditUrl = if (inst.kind == MarketPluginKind.MCP) {
+                        onEdit = if (inst.kind == MarketPluginKind.MCP) {
                             {
                                 urlDraft = inst.serverUrl
-                                editingUrlFor = inst
+                                headerDrafts = inst.headers.map { (name, value) ->
+                                    MarketHeaderDraft(name = name, value = value)
+                                }
+                                editingFor = inst
                             }
                         } else {
                             null
@@ -261,26 +272,68 @@ fun SettingsPluginMarketPage(
         )
     }
 
-    editingUrlFor?.let { inst ->
+    editingFor?.let { inst ->
         AlertDialog(
-            onDismissRequest = { editingUrlFor = null },
+            onDismissRequest = { editingFor = null },
             title = { Text(stringResource(R.string.market_edit_url_title)) },
             text = {
-                OutlinedTextField(
-                    value = urlDraft,
-                    onValueChange = { urlDraft = it },
-                    label = { Text(stringResource(R.string.market_edit_url_label)) },
-                    placeholder = { Text(stringResource(R.string.market_edit_url_hint)) },
-                    singleLine = true,
-                )
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(top = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    OutlinedTextField(
+                        value = urlDraft,
+                        onValueChange = { urlDraft = it },
+                        label = { Text(stringResource(R.string.market_edit_url_label)) },
+                        placeholder = { Text(stringResource(R.string.market_edit_url_hint)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = stringResource(R.string.market_headers),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (headerDrafts.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.market_headers_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    headerDrafts.forEach { header ->
+                        MarketHeaderRow(
+                            header = header,
+                            onChange = { updated ->
+                                headerDrafts = headerDrafts.map {
+                                    if (it.id == updated.id) updated else it
+                                }
+                            },
+                            onDelete = {
+                                headerDrafts = headerDrafts.filterNot { it.id == header.id }
+                            },
+                        )
+                    }
+                    TextButton(
+                        onClick = { headerDrafts = headerDrafts + MarketHeaderDraft() },
+                    ) {
+                        Text(stringResource(R.string.market_add_header))
+                    }
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        market.updateServerUrl(inst.pluginId, urlDraft)
-                        editingUrlFor = null
+                        market.updateMcpConfig(
+                            inst.pluginId,
+                            urlDraft,
+                            buildMarketHeaders(headerDrafts),
+                        )
+                        editingFor = null
                         viewModel.emitSnackbar(
-                            context.getString(R.string.market_url_saved),
+                            context.getString(R.string.market_config_saved),
                         )
                     },
                 ) {
@@ -288,7 +341,7 @@ fun SettingsPluginMarketPage(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { editingUrlFor = null }) {
+                TextButton(onClick = { editingFor = null }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -367,7 +420,7 @@ private fun InstalledPluginRow(
     installation: MarketInstallation,
     onToggle: (Boolean) -> Unit,
     onUninstall: () -> Unit,
-    onEditUrl: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -396,8 +449,8 @@ private fun InstalledPluginRow(
             )
         }
         Switch(checked = installation.enabled, onCheckedChange = onToggle)
-        if (onEditUrl != null) {
-            IconButton(onClick = onEditUrl) {
+        if (onEdit != null) {
+            IconButton(onClick = onEdit) {
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = stringResource(R.string.market_edit_url),
@@ -502,3 +555,71 @@ private fun CatalogPluginRow(
         modifier = Modifier.padding(horizontal = 16.dp),
     )
 }
+
+/** A draft request-header row inside the MCP config editor. */
+private data class MarketHeaderDraft(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val value: String = "",
+    val reveal: Boolean = false,
+)
+
+/** Compact header name/value row with a reveal toggle and a delete button. */
+@Composable
+private fun MarketHeaderRow(
+    header: MarketHeaderDraft,
+    onChange: (MarketHeaderDraft) -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = header.name,
+            onValueChange = { onChange(header.copy(name = it)) },
+            label = { Text(stringResource(R.string.market_header_name)) },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        OutlinedTextField(
+            value = header.value,
+            onValueChange = { onChange(header.copy(value = it)) },
+            label = { Text(stringResource(R.string.market_header_value)) },
+            singleLine = true,
+            visualTransformation = if (header.reveal) {
+                VisualTransformation.None
+            } else {
+                PasswordVisualTransformation()
+            },
+            trailingIcon = {
+                IconButton(onClick = { onChange(header.copy(reveal = !header.reveal)) }) {
+                    Icon(
+                        imageVector = if (header.reveal) {
+                            Icons.Default.VisibilityOff
+                        } else {
+                            Icons.Default.Visibility
+                        },
+                        contentDescription = null,
+                    )
+                }
+            },
+            modifier = Modifier.weight(1.4f),
+        )
+        IconButton(onClick = onDelete) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = stringResource(R.string.market_remove_header),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/** Convert draft header rows into a config map (blank rows are dropped). */
+private fun buildMarketHeaders(rows: List<MarketHeaderDraft>): Map<String, String> =
+    buildMap {
+        rows.filterNot { it.name.isBlank() && it.value.isBlank() }
+            .forEach { header -> put(header.name.trim(), header.value.trim()) }
+    }

@@ -57,6 +57,8 @@ data class MarketPluginMeta(
     /** MCP 插件：服务端点。 */
     val serverUrl: String? = null,
     val serverTransport: McpTransportType? = null,
+    /** MCP 插件：附加请求头（如 Authorization: Bearer <token>），可让用户在软件内配置凭据。 */
+    val headers: Map<String, String> = emptyMap(),
     /** TOOLPKG 插件：.toolpkg ZIP 的下载地址。 */
     val downloadUrl: String? = null,
     val requiresMembership: Boolean = false,
@@ -83,6 +85,8 @@ data class MarketInstallation(
     /** MCP 插件：服务端点。 */
     val serverUrl: String = "",
     val serverTransport: McpTransportType = McpTransportType.STREAMABLE_HTTP,
+    /** MCP 插件：附加请求头（离线恢复时凭此重建认证连接）。 */
+    val headers: Map<String, String> = emptyMap(),
     /** TOOLPKG 插件：下载源地址与本地落盘路径（离线恢复时凭 localPath 重建）。 */
     val downloadUrl: String = "",
     val localPath: String = "",

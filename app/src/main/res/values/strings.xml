@@ -955,8 +955,14 @@
     <string name="market_edit_url">Edit server URL</string>
     <string name="market_edit_url_title">Configure MCP server</string>
     <string name="market_edit_url_label">Server address</string>
-    <string name="market_edit_url_hint">e.g. http://192.168.1.10:8765/mcp</string>
-    <string name="market_url_saved">Server address updated</string>
+    <string name="market_edit_url_hint">e.g. http://192.168.1.10:8000/mcp</string>
+    <string name="market_config_saved">Configuration saved</string>
+    <string name="market_headers">Headers</string>
+    <string name="market_headers_empty">No headers configured</string>
+    <string name="market_header_name">Header</string>
+    <string name="market_header_value">Value</string>
+    <string name="market_add_header">Add header</string>
+    <string name="market_remove_header">Remove header</string>
     <string name="rating_category">Rate</string>
 
     <!-- About -->
