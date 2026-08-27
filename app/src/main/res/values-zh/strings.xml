@@ -551,11 +551,7 @@
     <string name="adb_root_desc">命令直接通过 su -c 执行，无需下载或配对。</string>
     <string name="adb_info">说明</string>
     <string name="adb_info_text">ADB Shell 让 AI 在本设备上执行命令。Root 用户无需设置；非 Root 用户安装 Shizuku、启动其服务并授权即可，无需无线调试配对或下载 adb 二进制文件。</string>
-    <string name="adb_logs_title">执行日志</string>
-    <string name="adb_logs_clear">清空</string>
-    <string name="adb_logs_empty">暂无日志。Root 检测、Shizuku 检查、命令执行的过程都会实时显示在这里。</string>
-    <!-- Shizuku backend -->
-    <string name="adb_shizuku">Shizuku</string>
+    <string name="adb_shizuku">Shizuku</string><!-- Shizuku backend -->
     <string name="adb_shizuku_not_installed">Shizuku 未安装</string>
     <string name="adb_shizuku_download">下载 Shizuku</string>
     <string name="adb_shizuku_not_running">Shizuku 服务未运行，请先启动</string>
