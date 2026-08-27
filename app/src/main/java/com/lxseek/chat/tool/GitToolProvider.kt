@@ -35,7 +35,7 @@ class GitToolProvider(
 
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> {
         // Git 工具依赖本地沙箱执行；沙箱不可用时整体隐藏。
-        if (sandbox?.isAvailable() != true) return emptyList()
+        if (sandbox?.isAvailableSync() != true) return emptyList()
         val pathProp = ToolProperty("string", "Git repository root directory (optional; defaults to the sandbox working directory).")
         return buildList {
             add(ToolDefinition(function = ToolFunction(
@@ -140,7 +140,7 @@ class GitToolProvider(
     }
 
     private fun getSandboxBackend(): Backend? {
-        if (sandbox?.isAvailable() != true) return null
+        if (sandbox?.isAvailableSync() != true) return null
         return SandboxBackend(sandbox)
     }
 
