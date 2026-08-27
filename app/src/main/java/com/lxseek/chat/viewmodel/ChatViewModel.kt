@@ -77,6 +77,7 @@ class ChatViewModel(
     private val shellConfirmation: ShellConfirmationController,
     private val mcpRegistry: com.lxseek.chat.mcp.McpRegistry,
     val pluginHost: com.lxseek.chat.plugin.PluginHost,
+    val pluginMarket: com.lxseek.chat.plugin.market.PluginMarket,
     private val taskExecutionEngine: com.lxseek.chat.automation.TaskExecutionEngine,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : AndroidViewModel(application) {

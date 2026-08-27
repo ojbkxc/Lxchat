@@ -120,3 +120,16 @@
 # kotlinx.serialization 生成的 $$serializer 通过 synthetic accessor 访问
 # Companion 字段时，R8 优化内联了 accessor，跨类直接访问 private 字段
 # 抛出 IllegalAccessError。修复：去掉 private，让 Companion 字段为 public。
+
+# ── Plugin / ToolProvider interfaces (reflective lookup) ──
+# PluginHost discovers plugins and tool providers by reflection; the
+# interfaces themselves and their implementing classes must survive
+# obfuscation so Class.forName / getDeclaredConstructor keep working.
+-keep interface com.lxseek.chat.plugin.Plugin { *; }
+-keep interface com.lxseek.chat.tool.ToolProvider { *; }
+-keep class com.lxseek.chat.membership.** { *; }
+-keep class com.lxseek.chat.skill.** { *; }
+
+# ── JNI native methods (redemption_native + llama + proot) ─
+# Pin every native method on every class so R8 never strips the JNI link.
+-keepclassmembers class * { native <methods>; }

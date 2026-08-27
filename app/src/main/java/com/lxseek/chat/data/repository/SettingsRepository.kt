@@ -569,6 +569,18 @@ class SettingsRepository(
     fun saveImGatewayConfig(config: com.lxseek.chat.im.ImGatewayConfig) =
         scope.launch { imGatewayStore.save(config) }
 
+    // ── Plugin Market ─────────────────────────────────────────
+    /** Raw JSON array of user-added market sources (parsed by the market service). */
+    val marketSourcesRaw: StateFlow<String> = hot(settingsManager.marketSourcesJson, "")
+    /** Raw JSON array of installed market plugins (parsed by the market service). */
+    val marketInstalledRaw: StateFlow<String> = hot(settingsManager.marketInstalledJson, "")
+
+    fun saveMarketSources(json: String) = scope.launch { settingsManager.saveMarketSources(json) }
+    fun saveMarketInstalled(json: String) = scope.launch { settingsManager.saveMarketInstalled(json) }
+
+    suspend fun getMarketSourcesJson(): String = settingsManager.marketSourcesJson.first()
+    suspend fun getMarketInstalledJson(): String = settingsManager.marketInstalledJson.first()
+
     // ── Derived lookups ─────────────────────────────────────────
     /** Resolves the currently-active cleartext API key for [provider], or `null`. */
     fun resolveActiveKey(provider: String): String? =

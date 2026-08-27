@@ -931,6 +931,24 @@ class SettingsManager(private val context: Context) {
         }
     }
 
+    // ── Plugin Market (offline persistence) ──────────────────
+    // Raw JSON is stored as-is and parsed by the market service; the data module
+    // deliberately stays unaware of market model shapes.
+    val marketSourcesJson: Flow<String> =
+        context.dataStore.data.map { it[MARKET_SOURCES_JSON] ?: "" }
+    val marketInstalledJson: Flow<String> =
+        context.dataStore.data.map { it[MARKET_INSTALLED_JSON] ?: "" }
+
+    /** Persist the whole market-sources JSON array. */
+    suspend fun saveMarketSources(json: String) {
+        context.dataStore.edit { it[MARKET_SOURCES_JSON] = json }
+    }
+
+    /** Persist the whole installed-plugins JSON array. */
+    suspend fun saveMarketInstalled(json: String) {
+        context.dataStore.edit { it[MARKET_INSTALLED_JSON] = json }
+    }
+
     /**
      * Clears only settings that are portable across devices. Secrets, conversation-scoped
      * overrides, local model files, sandbox state, onboarding/rating metadata, and auto-backup

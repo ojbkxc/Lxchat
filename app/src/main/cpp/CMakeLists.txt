@@ -65,6 +65,14 @@ target_link_options(lxchat_proot PRIVATE
     -Wl,--build-id=none -Wl,--hash-style=gnu -Wl,--icf=all
 )
 
+# ── Redemption code native validator ─────────────────────
+# Self-contained HMAC-SHA256 + base64 + expiry check; no external deps.
+add_library(redemption_native SHARED redemption_native.cpp)
+target_link_libraries(redemption_native log)
+target_link_options(redemption_native PRIVATE
+    -Wl,--build-id=none -Wl,--hash-style=gnu -Wl,--icf=all
+)
+
 # ── Reproducible: strip .comment ─────────────────────────
 if(DEFINED ENV{SOURCE_DATE_EPOCH})
     add_definitions(-DSOURCE_DATE_EPOCH=$ENV{SOURCE_DATE_EPOCH})
@@ -75,5 +83,8 @@ if(LLVM_OBJCOPY)
     )
     add_custom_command(TARGET lxchat_proot POST_BUILD
         COMMAND ${LLVM_OBJCOPY} --remove-section .comment $<TARGET_FILE:lxchat_proot>
+    )
+    add_custom_command(TARGET redemption_native POST_BUILD
+        COMMAND ${LLVM_OBJCOPY} --remove-section .comment $<TARGET_FILE:redemption_native>
     )
 endif()

@@ -891,6 +891,14 @@
     <string name="settings_group_about">About</string>
     <string name="settings_plugins">Plugins &amp; Skills</string>
     <string name="settings_plugins_desc">Manage extensions, skills, and marketplace</string>
+    <string name="settings_market">Market</string>
+    <string name="settings_market_desc">Browse and toggle built-in skills and plugins</string>
+    <string name="settings_market_tab_all">All</string>
+    <string name="settings_market_tab_skills">Skills</string>
+    <string name="settings_market_tab_plugins">Plugins</string>
+    <string name="settings_market_empty">No skills or plugins registered</string>
+    <string name="settings_market_section_skills">Skills</string>
+    <string name="settings_market_section_plugins">Plugins</string>
     <string name="rating_category">Rate</string>
 
     <!-- About -->

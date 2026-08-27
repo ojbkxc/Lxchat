@@ -256,6 +256,11 @@ class AppContainer(private val appContext: Context) {
         }
     }
 
+    /** 插件市场服务：抓取目录、安装/卸载/启停市场插件，启动时离线恢复已装插件。 */
+    val pluginMarket: com.lxseek.chat.plugin.market.PluginMarket by lazy {
+        com.lxseek.chat.plugin.market.PluginMarket(appContext, settingsRepository, pluginHost, appScope)
+    }
+
     /** Read-only Git tools (status/log/diff/branches/remote) executed in the local sandbox. */
     val gitToolProvider: com.lxseek.chat.tool.GitToolProvider by lazy {
         com.lxseek.chat.tool.GitToolProvider(sandboxManagerFactory)
@@ -536,7 +541,7 @@ class AppContainer(private val appContext: Context) {
             autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
             taskManager, loopManager, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-            mcpRegistry, pluginHost, taskExecutionEngine, smartRouterFactory,
+            mcpRegistry, pluginHost, pluginMarket, taskExecutionEngine, smartRouterFactory,
         )
 
     /** Factory for the workflow editor's dedicated view-model (kept out of ChatViewModel). */

@@ -160,3 +160,9 @@ internal val MEMBERSHIP_SOURCE = stringPreferencesKey("membership_source")
 internal val MEMBERSHIP_IS_ACTIVE = booleanPreferencesKey("membership_is_active")
 /** Set of redeemed code nonces to prevent re-use (replay protection). */
 internal val MEMBERSHIP_REDEEMED_NONCES = stringSetPreferencesKey("membership_redeemed_nonces")
+
+// ── Plugin Market (offline) ──────────────────────────────
+/** JSON array of user-added market sources ([com.lxseek.chat.plugin.market.MarketSource]). */
+internal val MARKET_SOURCES_JSON = stringPreferencesKey("market_sources_json")
+/** JSON array of installed market plugins ([com.lxseek.chat.plugin.market.MarketInstallation]). */
+internal val MARKET_INSTALLED_JSON = stringPreferencesKey("market_installed_json")

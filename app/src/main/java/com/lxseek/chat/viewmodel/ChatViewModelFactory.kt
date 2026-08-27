@@ -42,6 +42,7 @@ class ChatViewModelFactory(
     private val shellConfirmationController: ShellConfirmationController,
     private val mcpRegistry: McpRegistry,
     private val pluginHost: PluginHost,
+    private val pluginMarket: com.lxseek.chat.plugin.market.PluginMarket,
     private val taskExecutionEngine: TaskExecutionEngine,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : ViewModelProvider.Factory {
@@ -53,7 +54,7 @@ class ChatViewModelFactory(
                 autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
                 taskManager, loopManager, conversationExecutionCoordinator,
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-                mcpRegistry, pluginHost, taskExecutionEngine,
+                mcpRegistry, pluginHost, pluginMarket, taskExecutionEngine,
                 smartRouterFactory,
             ) as T
         }

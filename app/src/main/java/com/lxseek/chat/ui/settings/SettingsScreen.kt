@@ -270,6 +270,7 @@ private val settingsGroups = listOf(
         SettingsCategory("sms_command", R.string.settings_sms_command, R.string.settings_sms_command_desc, Icons.Default.Sms),
         SettingsCategory("reply_channel", R.string.settings_reply_channel, R.string.settings_reply_channel_desc, Icons.Default.Send),
         SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
+        SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
@@ -332,6 +333,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "adb_shell" -> SettingsAdbPage(viewModel, onBack = { selectedCategory = null })
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
                 "plugins" -> SettingsPluginsListPage(viewModel, onBack = { selectedCategory = null })
+                "market" -> SettingsMarketPage(viewModel, onBack = { selectedCategory = null })
                 "automation" -> SettingsAutomationPage(
                     viewModel,
                     onBack = { selectedCategory = null },

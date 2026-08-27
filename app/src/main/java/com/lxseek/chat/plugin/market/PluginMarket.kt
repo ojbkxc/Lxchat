@@ -1,0 +1,278 @@
+package com.lxseek.chat.plugin.market
+
+import android.content.Context
+import com.lxseek.chat.api.HttpClient
+import com.lxseek.chat.data.McpServerConfig
+import com.lxseek.chat.data.McpTransportType
+import com.lxseek.chat.data.repository.SettingsRepository
+import com.lxseek.chat.plugin.PluginHost
+import com.lxseek.chat.skill.Skill
+import com.lxseek.chat.tool.ToolProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.IOException
+
+/**
+ * 插件市场服务：抓取/校验/合并市场索引，安装/卸载/启停插件，启动时离线恢复已装插件。
+ *
+ * 状态全部以 StateFlow 暴露给 UI；持久化经由 [SettingsRepository] 的原始 JSON 通道，
+ * 数据层对市场模型不感知。
+ *
+ * 生命周期：
+ * - 目录（[catalog]）由 [refreshCatalog] 拉取全部启用源后合并（按插件 id 去重，首个源优先）；
+ * - 安装（[install]）把插件构建为 [MarketPlugin] 注册进 [PluginHost]，并持久化 [MarketInstallation]；
+ * - 重启时 [restoreOnStartup] 仅凭持久化记录离线重建并注册，无需联网。
+ */
+class PluginMarket(
+    private val context: Context,
+    private val settings: SettingsRepository,
+    private val host: PluginHost,
+    private val scope: CoroutineScope,
+) {
+    private val json = Json { ignoreUnknownKeys = true }
+
+    private val _sources = MutableStateFlow<List<MarketSource>>(emptyList())
+    /** 用户添加的市场源列表。 */
+    val sources: StateFlow<List<MarketSource>> = _sources.asStateFlow()
+
+    private val _installations = MutableStateFlow<List<MarketInstallation>>(emptyList())
+    /** 已安装插件记录列表。 */
+    val installations: StateFlow<List<MarketInstallation>> = _installations.asStateFlow()
+
+    private val _catalog = MutableStateFlow<List<MarketPluginMeta>>(emptyList())
+    /** 合并后的在线目录（浏览列表）。 */
+    val catalog: StateFlow<List<MarketPluginMeta>> = _catalog.asStateFlow()
+
+    private val _refreshing = MutableStateFlow(false)
+    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
+    private val _lastRefreshError = MutableStateFlow<String?>(null)
+    val lastRefreshError: StateFlow<String?> = _lastRefreshError.asStateFlow()
+
+    init {
+        scope.launch {
+            settings.marketSourcesRaw.collect { raw -> _sources.value = decodeList(raw) }
+        }
+        scope.launch {
+            settings.marketInstalledRaw.collect { raw -> _installations.value = decodeList(raw) }
+        }
+        scope.launch {
+            // Await the persisted value (the eager StateFlow default "" must not be trusted),
+            // then restore every enabled installation offline.
+            val installed = decodeList<MarketInstallation>(settings.getMarketInstalledJson())
+            _installations.value = installed
+            installed.filter { it.enabled }.forEach { registerRuntime(it) }
+        }
+    }
+
+    // ── 目录抓取与合并 ─────────────────────────────────────────
+
+    /** 抓取全部启用源的市场索引并合并为目录。 */
+    suspend fun refreshCatalog() {
+        _refreshing.value = true
+        _lastRefreshError.value = null
+        try {
+            val enabled = _sources.value.filter { it.enabled }
+            if (enabled.isEmpty()) {
+                _catalog.value = emptyList()
+                return
+            }
+            val merged = LinkedHashMap<String, MarketPluginMeta>()
+            enabled.forEach { source ->
+                val index = runCatching { fetchIndex(source.indexUrl) }
+                index.exceptionOrNull()?.let { e ->
+                    _lastRefreshError.value = "源「${source.name}」加载失败：${e.message}"
+                }
+                index.getOrNull()?.plugins?.forEach { meta ->
+                    if (meta.id.isNotBlank() && meta.id !in merged) {
+                        merged[meta.id] = meta.copy(sourceId = source.id)
+                    }
+                }
+            }
+            _catalog.value = merged.values.toList()
+        } finally {
+            _refreshing.value = false
+        }
+    }
+
+    private suspend fun fetchIndex(url: String): MarketIndex = withContext(Dispatchers.IO) {
+        val response = HttpClient.getTextResponse(url)
+        if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+        json.decodeFromString<MarketIndex>(response.body)
+    }
+
+    // ── 安装 / 卸载 / 启停 ─────────────────────────────────────
+
+    /** 安装目录条目：拉取技能正文（SKILL）或建立连接配置（MCP），注册进宿主并持久化。 */
+    suspend fun install(meta: MarketPluginMeta) {
+        if (_installations.value.any { it.pluginId == meta.id }) {
+            throw IllegalArgumentException("该插件已安装")
+        }
+        val installation = when (meta.kind) {
+            MarketPluginKind.SKILL -> {
+                val manifestUrl = meta.manifestUrl
+                    ?: throw IllegalArgumentException("技能插件缺少 manifestUrl")
+                val content = fetchText(manifestUrl)
+                if (content.isBlank()) throw IllegalArgumentException("技能正文为空")
+                MarketInstallation(
+                    pluginId = meta.id,
+                    sourceId = meta.sourceId,
+                    name = meta.name,
+                    version = meta.version,
+                    kind = meta.kind,
+                    description = meta.description,
+                    author = meta.author,
+                    requiresMembership = meta.requiresMembership,
+                    content = content,
+                )
+            }
+            MarketPluginKind.MCP -> {
+                val serverUrl = meta.serverUrl
+                    ?: throw IllegalArgumentException("MCP 插件缺少 serverUrl")
+                MarketInstallation(
+                    pluginId = meta.id,
+                    sourceId = meta.sourceId,
+                    name = meta.name,
+                    version = meta.version,
+                    kind = meta.kind,
+                    description = meta.description,
+                    author = meta.author,
+                    requiresMembership = meta.requiresMembership,
+                    serverUrl = serverUrl,
+                    serverTransport = meta.serverTransport ?: McpTransportType.STREAMABLE_HTTP,
+                )
+            }
+        }
+        host.register(buildPlugin(installation), initiallyEnabled = true)
+        val updated = _installations.value + installation
+        _installations.value = updated
+        persistInstallations(updated)
+    }
+
+    /** 卸载插件：从宿主移除并删除安装记录。 */
+    suspend fun uninstall(pluginId: String) {
+        host.unregister(pluginId)
+        val updated = _installations.value.filterNot { it.pluginId == pluginId }
+        _installations.value = updated
+        persistInstallations(updated)
+    }
+
+    /** 启停已安装插件，同步宿主与持久化记录。 */
+    fun setEnabled(pluginId: String, enabled: Boolean) {
+        if (_installations.value.none { it.pluginId == pluginId }) return
+        host.setEnabled(pluginId, enabled)
+        val updated = _installations.value.map {
+            if (it.pluginId == pluginId) it.copy(enabled = enabled) else it
+        }
+        _installations.value = updated
+        persistInstallations(updated)
+    }
+
+    // ── 市场源管理 ─────────────────────────────────────────────
+
+    /** 添加市场源；相同 indexUrl 视为同一源，覆盖旧记录。 */
+    fun addSource(source: MarketSource) {
+        val updated = _sources.value.filterNot { it.indexUrl == source.indexUrl } + source
+        _sources.value = updated
+        persistSources(updated)
+    }
+
+    fun removeSource(sourceId: String) {
+        val updated = _sources.value.filterNot { it.id == sourceId }
+        _sources.value = updated
+        persistSources(updated)
+    }
+
+    fun setSourceEnabled(sourceId: String, enabled: Boolean) {
+        val updated = _sources.value.map {
+            if (it.id == sourceId) it.copy(enabled = enabled) else it
+        }
+        _sources.value = updated
+        persistSources(updated)
+    }
+
+    // ── 内部工具 ───────────────────────────────────────────────
+
+    private suspend fun fetchText(url: String): String = withContext(Dispatchers.IO) {
+        val response = HttpClient.getTextResponse(url)
+        if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+        response.body
+    }
+
+    /** 启动时按持久化记录重建插件并注册（离线可用）。 */
+    private fun registerRuntime(installation: MarketInstallation) {
+        host.register(buildPlugin(installation), initiallyEnabled = true)
+    }
+
+    private fun buildPlugin(installation: MarketInstallation): MarketPlugin {
+        val providers = mutableListOf<ToolProvider>()
+        val skills = mutableListOf<Skill>()
+        var onEnable: (() -> Unit)? = null
+        var onDisable: (() -> Unit)? = null
+        when (installation.kind) {
+            MarketPluginKind.SKILL -> skills += Skill(
+                name = skillNameFor(installation.pluginId),
+                description = installation.description ?: installation.name,
+                whenToUse = installation.description,
+                body = installation.content,
+                source = installation.sourceId,
+                requiresMembership = installation.requiresMembership,
+            )
+            MarketPluginKind.MCP -> {
+                val provider = ScopedMcpToolProvider(
+                    context = context,
+                    pluginId = installation.pluginId,
+                    config = McpServerConfig(
+                        id = installation.pluginId,
+                        name = installation.name,
+                        enabled = true,
+                        url = installation.serverUrl,
+                        transport = installation.serverTransport,
+                    ),
+                    scope = scope,
+                )
+                providers += provider
+                onEnable = provider::start
+                onDisable = provider::close
+            }
+        }
+        return MarketPlugin(
+            installation = installation,
+            providers = providers,
+            skills = skills,
+            onEnableAction = onEnable,
+            onDisableAction = onDisable,
+        )
+    }
+
+    /** 由插件 id 派生稳定的技能名（目录去重保证 id 唯一）。 */
+    private fun skillNameFor(pluginId: String): String {
+        val cleaned = pluginId
+            .map { if (it.isLetterOrDigit() || it == '_' || it == '-') it else '_' }
+            .joinToString("")
+            .trim('_', '-')
+            .ifBlank { "plugin" }
+            .take(48)
+        return "market_$cleaned"
+    }
+
+    private fun persistSources(list: List<MarketSource>) {
+        scope.launch { settings.saveMarketSources(json.encodeToString(list)) }
+    }
+
+    private fun persistInstallations(list: List<MarketInstallation>) {
+        scope.launch { settings.saveMarketInstalled(json.encodeToString(list)) }
+    }
+
+    private inline fun <reified T> decodeList(raw: String): List<T> =
+        if (raw.isBlank()) emptyList()
+        else runCatching { json.decodeFromString<List<T>>(raw) }.getOrDefault(emptyList())
+}

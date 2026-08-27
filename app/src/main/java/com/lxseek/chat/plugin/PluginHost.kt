@@ -83,6 +83,18 @@ class PluginHost(
     fun isEnabled(id: String): Boolean = enabled[id] ?: false
 
     /**
+     * 卸载插件：移除注册、技能、启用状态与工具提供者，并回调 [Plugin.onDisable]。
+     * 卸载后无法再通过 [setEnabled] 恢复，需重新 [register]。
+     */
+    fun unregister(id: String) {
+        val plugin = registered.remove(id) ?: return
+        enabled.remove(id)
+        if (enabledProviders.remove(id) != null) plugin.onDisable()
+        pluginSkills.remove(id)?.forEach { skillHost.unregister(it) }
+        refresh()
+    }
+
+    /**
      * 聚合当前启用插件的全部工具提供者。
      *
      * 会员插件（manifest.requiresMembership = true）的工具被 [MembershipToolProvider] 包装，

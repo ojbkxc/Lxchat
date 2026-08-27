@@ -50,7 +50,7 @@ android {
             cmake {
                 cppFlags += "-std=c++17"
                 arguments += listOf("-DANDROID_STL=c++_shared")
-                targets += listOf("lxchat_llama", "lxchat_proot")
+                targets += listOf("lxchat_llama", "lxchat_proot", "redemption_native")
             }
         }
     }
