@@ -170,7 +170,7 @@ private fun RenderNode(node: UiDslNode, onAction: (String) -> Unit) {
  * Unknown keys are ignored so the DSL stays forward-compatible.
  */
 private fun modifierFromProps(props: Map<String, String>): Modifier {
-    var modifier = Modifier
+    var modifier: Modifier = Modifier
     props["padding"]?.toIntOrNull()?.let { modifier = modifier.padding(it.dp) }
     props["width"]?.toIntOrNull()?.let { modifier = modifier.width(it.dp) }
     props["height"]?.toIntOrNull()?.let { modifier = modifier.height(it.dp) }
