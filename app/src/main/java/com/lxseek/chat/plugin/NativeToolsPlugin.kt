@@ -16,4 +16,48 @@ class NativeToolsPlugin(
     )
 
     override fun toolProviders(context: PluginContext): List<ToolProvider> = providers
+
+    /** Settings schema for the native toolset: shell execution, sandbox isolation,
+     *  confirmation gate, shared-storage access, and the automation/task tools.
+     *  Keys mirror the DataStore preference keys so the generic settings UI can
+     *  read/write the same persisted state as the hand-rolled settings pages. */
+    override fun settingsSchema(): PluginSettingsSchema = PluginSettingsSchema(
+        fields = listOf(
+            SettingsField(
+                key = "shell_enabled",
+                label = "Shell",
+                type = FieldType.SWITCH,
+                defaultValue = "true",
+                description = "Enable shell command execution",
+            ),
+            SettingsField(
+                key = "sandbox_enabled",
+                label = "Sandbox",
+                type = FieldType.SWITCH,
+                defaultValue = "false",
+                description = "Run shell commands in an isolated sandbox",
+            ),
+            SettingsField(
+                key = "shell_confirm_enabled",
+                label = "Shell confirmation",
+                type = FieldType.SWITCH,
+                defaultValue = "true",
+                description = "Require confirmation before running shell commands",
+            ),
+            SettingsField(
+                key = "sandbox_shared_storage_enabled",
+                label = "Sandbox shared storage",
+                type = FieldType.SWITCH,
+                defaultValue = "false",
+                description = "Allow sandbox to access shared storage",
+            ),
+            SettingsField(
+                key = "automation_tools_enabled",
+                label = "Automation tools",
+                type = FieldType.SWITCH,
+                defaultValue = "true",
+                description = "Enable automation/task tools",
+            ),
+        ),
+    )
 }

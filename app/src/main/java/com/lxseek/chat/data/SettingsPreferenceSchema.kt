@@ -148,3 +148,15 @@ internal val ASR_PROVIDER_MODEL = stringPreferencesKey("asr_provider_model")
 internal val VAD_THRESHOLD = stringPreferencesKey("vad_threshold")
 internal val VAD_MIN_SILENCE = stringPreferencesKey("vad_min_silence")
 internal val VAD_MAX_SPEECH = stringPreferencesKey("vad_max_speech")
+
+// ── Membership (offline) ─────────────────────────────────
+/** Current membership tier name (Free/Premium/Pro). */
+internal val MEMBERSHIP_TIER = stringPreferencesKey("membership_tier")
+/** Epoch millis when the current membership expires; absent = no expiry / free. */
+internal val MEMBERSHIP_EXPIRY_TIMESTAMP = longPreferencesKey("membership_expiry_timestamp")
+/** Source of the current membership: "yipay" or "redemption_code". */
+internal val MEMBERSHIP_SOURCE = stringPreferencesKey("membership_source")
+/** Whether the current membership is considered active right now. */
+internal val MEMBERSHIP_IS_ACTIVE = booleanPreferencesKey("membership_is_active")
+/** Set of redeemed code nonces to prevent re-use (replay protection). */
+internal val MEMBERSHIP_REDEEMED_NONCES = stringSetPreferencesKey("membership_redeemed_nonces")

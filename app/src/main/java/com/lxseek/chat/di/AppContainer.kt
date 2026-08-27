@@ -23,6 +23,7 @@ import com.lxseek.chat.tool.AndroidAppControllerToolProvider
 import com.lxseek.chat.tool.McpToolProvider
 import com.lxseek.chat.mcp.McpRegistry
 import com.lxseek.chat.plugin.McpPlugin
+import com.lxseek.chat.plugin.BuiltinSkillsPlugin
 import com.lxseek.chat.plugin.NativeToolsPlugin
 import com.lxseek.chat.plugin.PluginContext
 import com.lxseek.chat.plugin.PluginHost
@@ -249,6 +250,9 @@ class AppContainer(private val appContext: Context) {
                     ),
                 ),
             )
+            // Built-in skill templates: validate the plugin → skillHost → disclosure
+            // wiring end-to-end. Skills land in host.skillHost on register.
+            host.register(BuiltinSkillsPlugin())
         }
     }
 

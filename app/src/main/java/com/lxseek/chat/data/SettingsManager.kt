@@ -878,6 +878,59 @@ class SettingsManager(private val context: Context) {
     suspend fun saveLastModelsFetchFingerprint(fingerprint: String) =
         modelPreferenceStore.saveLastModelsFetchFingerprint(fingerprint)
 
+    // ── Membership (offline persistence) ──────────────────────
+    // Raw fields are exposed here so the membership module can assemble its own
+    // MembershipStatus snapshot without forcing the data module to depend on it.
+    val membershipTier: Flow<String> =
+        context.dataStore.data.map { it[MEMBERSHIP_TIER] ?: "Free" }
+    val membershipExpiryTimestamp: Flow<Long?> =
+        context.dataStore.data.map { it[MEMBERSHIP_EXPIRY_TIMESTAMP] }
+    val membershipSource: Flow<String> =
+        context.dataStore.data.map { it[MEMBERSHIP_SOURCE] ?: "" }
+    val membershipIsActive: Flow<Boolean> =
+        context.dataStore.data.map { it[MEMBERSHIP_IS_ACTIVE] ?: false }
+    val membershipRedeemedNonces: Flow<Set<String>> =
+        context.dataStore.data.map { it[MEMBERSHIP_REDEEMED_NONCES] ?: emptySet() }
+
+    /** Persist the full membership status snapshot atomically. */
+    suspend fun saveMembershipStatus(
+        tier: String,
+        expiryTimestamp: Long?,
+        source: String,
+        isActive: Boolean,
+    ) {
+        context.dataStore.edit { prefs ->
+            prefs[MEMBERSHIP_TIER] = tier
+            if (expiryTimestamp == null) {
+                prefs.remove(MEMBERSHIP_EXPIRY_TIMESTAMP)
+            } else {
+                prefs[MEMBERSHIP_EXPIRY_TIMESTAMP] = expiryTimestamp
+            }
+            prefs[MEMBERSHIP_SOURCE] = source
+            prefs[MEMBERSHIP_IS_ACTIVE] = isActive
+        }
+    }
+
+    /** Record a redeemed code nonce so it cannot be redeemed again. */
+    suspend fun addRedeemedNonce(nonce: String) {
+        if (nonce.isBlank()) return
+        context.dataStore.edit { prefs ->
+            val current = prefs[MEMBERSHIP_REDEEMED_NONCES] ?: emptySet()
+            prefs[MEMBERSHIP_REDEEMED_NONCES] = current + nonce
+        }
+    }
+
+    /** Clear all membership state (e.g. on sign-out or manual revoke). */
+    suspend fun clearMembership() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(MEMBERSHIP_TIER)
+            prefs.remove(MEMBERSHIP_EXPIRY_TIMESTAMP)
+            prefs.remove(MEMBERSHIP_SOURCE)
+            prefs.remove(MEMBERSHIP_IS_ACTIVE)
+            prefs.remove(MEMBERSHIP_REDEEMED_NONCES)
+        }
+    }
+
     /**
      * Clears only settings that are portable across devices. Secrets, conversation-scoped
      * overrides, local model files, sandbox state, onboarding/rating metadata, and auto-backup
