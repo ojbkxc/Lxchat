@@ -1,7 +1,7 @@
 package com.lxseek.chat.tool
 
 import android.content.Context
-import com.lxseek.chat.adb.LadbManager
+import com.lxseek.chat.adb.ShizukuManager
 import com.lxseek.chat.adb.RootDetector
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.data.ShellDeviceConfig
@@ -28,7 +28,7 @@ import kotlinx.serialization.json.putJsonArray
 class ShellToolProvider(
     private val sandboxFactory: SandboxManagerFactory? = null,
     private val imageStore: ToolImageStore? = null,
-    /** Application context for creating the LADB manager; null disables ADB Shell. */
+    /** Application context for creating the Shizuku manager; null disables ADB Shell. */
     private val appContext: Context? = null,
 ) : ToolProvider {
 
@@ -36,9 +36,9 @@ class ShellToolProvider(
     private val durableJobs = ShellDurableJobExecutor()
     private val monitorTools = ShellMonitorTools()
 
-    /** Lazily-created LADB manager singleton; only instantiated when ADB Shell is first used. */
-    private val ladbManager: LadbManager? by lazy {
-        appContext?.let { LadbManager.getInstance(it) }
+    /** Lazily-created Shizuku manager; only instantiated when ADB Shell is first used. */
+    private val shizukuManager: ShizukuManager? by lazy {
+        appContext?.let { ShizukuManager(it) }
     }
 
     /**
@@ -79,11 +79,11 @@ class ShellToolProvider(
         val hasSandbox = ctx.sandboxEnabled && sandboxFactory?.isAvailable() == true
         val allNames = buildList {
             if (hasSandbox) add("\"Local Sandbox\"")
-            // Include ADB Shell in the available list if root or the binary is present.
+            // Include ADB Shell in the available list if root is present or Shizuku is installed.
             if (appContext != null) {
                 val rootAvailable = RootDetector.isRootAvailable()
-                val adbInstalled = ladbManager?.isBinaryInstalled() == true
-                if (rootAvailable || adbInstalled) add("\"ADB Shell\"")
+                val shizukuInstalled = shizukuManager?.isShizukuInstalled() == true
+                if (rootAvailable || shizukuInstalled) add("\"ADB Shell\"")
             }
             addAll(ctx.shellDevices.map { "\"${it.name}\"" })
         }
@@ -97,12 +97,12 @@ class ShellToolProvider(
     }
 
     private suspend fun getBackend(serverName: String, ctx: GenerationContext): Backend? {
-        // ADB Shell — local on-device execution via root (su -c) or wireless debugging (LADB).
+        // ADB Shell — local on-device execution via root (su -c) or Shizuku.
         if (serverName.equals("ADB Shell", ignoreCase = true)) {
             val rootAvailable = RootDetector.isRootAvailable()
-            // For non-root, only return the backend if the adb binary is installed.
-            val mgr = ladbManager
-            if (!rootAvailable && mgr != null && !mgr.isBinaryInstalled()) return null
+            // For non-root, only return the backend if Shizuku is fully ready.
+            val mgr = shizukuManager
+            if (!rootAvailable && mgr != null && !mgr.isReady()) return null
             return AdbShellBackend(rootAvailable, mgr)
         }
         // Local Sandbox
@@ -124,8 +124,14 @@ class ShellToolProvider(
 
     // ── ToolProvider interface ─────────────────────────────
 
-    override fun definitions(ctx: GenerationContext): List<ToolDefinition> =
-        ShellToolDefinitions.build(ctx)
+    override fun definitions(ctx: GenerationContext): List<ToolDefinition> {
+        // ADB Shell is exposed to the model when root is available OR Shizuku app is installed
+        // (even if not yet running/authorized — the user can configure it from Settings).
+        val adbShellAvailable = if (appContext != null) {
+            RootDetector.isRootAvailable() || shizukuManager?.isShizukuInstalled() == true
+        } else false
+        return ShellToolDefinitions.build(ctx, adbShellAvailable = adbShellAvailable)
+    }
 
     override suspend fun execute(name: String, arguments: String, ctx: GenerationContext): String {
         return when (name) {
@@ -198,14 +204,14 @@ class ShellToolProvider(
                     put("type", "local")
                 })
             }
-            // ADB Shell — available if root is present or the adb binary is installed.
+            // ADB Shell — available if root is present or Shizuku is installed.
             if (appContext != null) {
                 val rootAvailable = RootDetector.isRootAvailable()
-                val adbInstalled = ladbManager?.isBinaryInstalled() == true
-                if (rootAvailable || adbInstalled) {
+                val shizukuInstalled = shizukuManager?.isShizukuInstalled() == true
+                if (rootAvailable || shizukuInstalled) {
                     add(buildJsonObject {
                         put("name", "ADB Shell")
-                        put("description", if (rootAvailable) "Local ADB via root (su)" else "Local ADB via wireless debugging")
+                        put("description", if (rootAvailable) "Local ADB via root (su)" else "Local ADB via Shizuku")
                         put("type", "adb")
                     })
                 }

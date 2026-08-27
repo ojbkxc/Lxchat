@@ -100,6 +100,12 @@
 -keep class com.materialkolor.** { *; }
 -dontwarn com.materialkolor.**
 
+# ── Shizuku (IPC + reflection) ────────────────────────────
+-keep class rikka.shizuku.** { *; }
+-keep class moe.shizuku.** { *; }
+-dontwarn rikka.shizuku.**
+-dontwarn moe.shizuku.**
+
 # ── IM IllegalAccessError 根因修复 ───────────────────────
 # 根因：ImRuntimeState 的 companion object 被声明为 private，导致
 # kotlinx.serialization 生成的 $$serializer 通过 synthetic accessor 访问

@@ -7,13 +7,14 @@ import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.viewmodel.GenerationContext
 
 internal object ShellToolDefinitions {
-    fun build(ctx: GenerationContext): List<ToolDefinition> {
+    fun build(ctx: GenerationContext, adbShellAvailable: Boolean = false): List<ToolDefinition> {
         if (!ctx.shellEnabled) return emptyList()
-        if (ctx.shellDevices.isEmpty() && !ctx.sandboxEnabled) return emptyList()
+        if (ctx.shellDevices.isEmpty() && !ctx.sandboxEnabled && !adbShellAvailable) return emptyList()
 
         val hasLocal = ctx.sandboxEnabled
         val allDeviceNames = buildList {
             if (hasLocal) add("Local Sandbox")
+            if (adbShellAvailable) add("ADB Shell")
             addAll(ctx.shellDevices.map { d -> "\"${d.name}\"" })
         }
         val deviceNamesStr = allDeviceNames.joinToString(", ")
@@ -36,12 +37,12 @@ internal object ShellToolDefinitions {
         val shellTools = buildList {
             add(ToolDefinition(function = ToolFunction(
                 name = "list_shells",
-                description = "List configured shell servers including the local sandbox (if enabled).",
+                description = "List configured shell servers including the local sandbox and ADB Shell (if available).",
                 parameters = ToolParameters(properties = emptyMap(), required = emptyList())
             )))
             add(ToolDefinition(function = ToolFunction(
                 name = "execute_shell_command",
-                description = "Execute a shell command. Set background=true for a durable Conch job that survives client disconnects.",
+                description = "Execute a shell command. Set background=true for a durable Conch job that survives client disconnects. Note: 'ADB Shell' provides direct device shell access — run commands directly, without 'adb shell' prefix.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "command" to ToolProperty("string", "The shell command to execute."),

@@ -21,10 +21,11 @@
          restrictions require this permission to bindService to system TTS engines (e.g. Xiaomi
          Mi Brain). Without it, TextToSpeech OnInit returns ERROR (-1) on MIUI. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
-    <!-- ADB Shell extension: allows cycling wireless debugging and granting WRITE_SECURE_SETTINGS
-         to itself via `pm grant`. User-granted via adb or root; not dangerous-permission gated. -->
+    <!-- ADB Shell: WRITE_SECURE_SETTINGS is no longer required by the Shizuku backend (Shizuku
+         manages its own elevation), but is retained for backward compatibility with root-mode
+         flows that may self-grant it via `pm grant`. Not dangerous-permission gated. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
-    <!-- Local network discovery (mDNS / NSD) for ADB wireless-debugging port discovery. -->
+    <!-- Local network discovery (mDNS / NSD) for LAN device discovery (independent of ADB). -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
@@ -99,6 +100,16 @@
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
             </intent-filter>
         </provider>
+
+        <!-- Shizuku: provides ADB-level shell access without root. The Shizuku app must be
+             installed and running, and the user must grant permission at runtime. -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <service
             android:name=".service.LxChatForegroundService"

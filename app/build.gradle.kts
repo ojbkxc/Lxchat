@@ -205,6 +205,8 @@ dependencies {
     implementation(libs.commons.compress)
     implementation(libs.zxing.core)
     implementation("com.alphacephei:vosk-android:0.3.47")
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     // Unit tests

@@ -1,5 +1,7 @@
 package com.lxseek.chat.ui.settings
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -10,14 +12,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
-import com.lxseek.chat.adb.AdbExtensionManager
 import com.lxseek.chat.adb.AdbLog
-import com.lxseek.chat.adb.LadbManager
 import com.lxseek.chat.adb.RootDetector
+import com.lxseek.chat.adb.ShizukuManager
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,43 +35,31 @@ fun SettingsAdbPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         rootAvailable = withContext(Dispatchers.IO) { RootDetector.isRootAvailable() }
     }
 
-    // Extension manager
-    val extensionManager = remember { AdbExtensionManager(context) }
-    var extensionState by remember { mutableStateOf<AdbExtensionManager.State>(AdbExtensionManager.State.NotDownloaded) }
-    var downloadError by remember { mutableStateOf<String?>(null) }
+    // Shizuku manager (only needed for non-root)
+    val shizukuManager = remember { ShizukuManager(context) }
 
-    // Initialize state from manager
-    LaunchedEffect(Unit) {
-        extensionState = if (extensionManager.isInstalled()) {
-            AdbExtensionManager.State.Installed
-        } else {
-            AdbExtensionManager.State.NotDownloaded
-        }
-        downloadError = extensionManager.lastError()
-    }
-
-    // LADB manager (only needed for non-root)
-    val ladbManager = remember { LadbManager.getInstance(context) }
-    val ladbRunning by ladbManager.running.collectAsState()
-    var isPaired by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { isPaired = ladbManager.isPaired() }
-
-    // Pairing inputs
-    var portInput by remember { mutableStateOf("") }
-    var codeInput by remember { mutableStateOf("") }
-    var pairing by remember { mutableStateOf(false) }
-    var pairResult by remember { mutableStateOf<String?>(null) }
+    // Shizuku status (recomputed on a refresh trigger so the UI reflects user actions)
+    var refreshTick by remember { mutableStateOf(0) }
+    val shizukuInstalled = remember(refreshTick) { shizukuManager.isShizukuInstalled() }
+    val shizukuRunning = remember(refreshTick) { shizukuManager.isShizukuRunning() }
+    val shizukuGranted = remember(refreshTick) { shizukuManager.isPermissionGranted() }
+    val shizukuReady = shizukuInstalled && shizukuRunning && shizukuGranted
 
     // Test result
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<String?>(null) }
 
-    // Reconnecting
-    var reconnecting by remember { mutableStateOf(false) }
-    var reconnectResult by remember { mutableStateOf<String?>(null) }
-
-    // Live pairing / shell diagnostic logs (visible in-app, no logcat required)
+    // Live diagnostic logs (visible in-app, no logcat required)
     val adbLogs by AdbLog.entries.collectAsState()
+
+    // Helper: open an Intent safely.
+    fun launchIntent(intent: Intent) {
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            AdbLog.log("SettingsAdbPage: startActivity failed — ${e.message}")
+        }
+    }
 
     CollapsingSettingsScaffold(
         title = stringResource(R.string.settings_adb_shell),
@@ -101,75 +88,6 @@ fun SettingsAdbPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             { Text(stringResource(R.string.adb_root_mode_active)) }
                         } else null,
                     )
-                }
-                // Extension status
-                add {
-                    when (val state = extensionState) {
-                        is AdbExtensionManager.State.NotDownloaded -> {
-                            SettingsItem(
-                                headlineContent = { Text(stringResource(R.string.adb_extension_not_installed)) },
-                                supportingContent = { Text("${stringResource(R.string.adb_download_extension)} (${AdbExtensionManager.DOWNLOAD_SIZE_HINT})") },
-                                leadingContent = { Icon(Icons.Default.Download, null, tint = MaterialTheme.colorScheme.primary) },
-                                trailingContent = {
-                                    TextButton(onClick = {
-                                        extensionState = AdbExtensionManager.State.Downloading(0)
-                                        downloadError = null
-                                        scope.launch(Dispatchers.IO) {
-                                            val ok = extensionManager.download { pct ->
-                                                extensionState = AdbExtensionManager.State.Downloading(pct)
-                                            }
-                                            if (ok) {
-                                                extensionState = AdbExtensionManager.State.Installed
-                                            } else {
-                                                extensionState = AdbExtensionManager.State.Failed(extensionManager.lastError() ?: "Download failed")
-                                                downloadError = extensionManager.lastError()
-                                            }
-                                        }
-                                    }) { Text(stringResource(R.string.adb_download)) }
-                                },
-                            )
-                        }
-                        is AdbExtensionManager.State.Downloading -> {
-                            SettingsItem(
-                                headlineContent = { Text(stringResource(R.string.adb_downloading, state.progress)) },
-                                leadingContent = { Icon(Icons.Default.Download, null, tint = MaterialTheme.colorScheme.primary) },
-                                trailingContent = {
-                                    LinearProgressIndicator(
-                                        progress = { state.progress / 100f },
-                                        modifier = Modifier.width(80.dp),
-                                    )
-                                },
-                            )
-                        }
-                        is AdbExtensionManager.State.Installed -> {
-                            SettingsItem(
-                                headlineContent = { Text(stringResource(R.string.adb_extension_installed)) },
-                                leadingContent = { Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary) },
-                                trailingContent = {
-                                    TextButton(
-                                        onClick = {
-                                            extensionManager.uninstall()
-                                            extensionState = AdbExtensionManager.State.NotDownloaded
-                                            isPaired = false
-                                        },
-                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                    ) { Text(stringResource(R.string.adb_remove)) }
-                                },
-                            )
-                        }
-                        is AdbExtensionManager.State.Failed -> {
-                            SettingsItem(
-                                headlineContent = { Text(stringResource(R.string.adb_download_failed)) },
-                                supportingContent = { Text(state.message, color = MaterialTheme.colorScheme.error) },
-                                leadingContent = { Icon(Icons.Default.Error, null, tint = MaterialTheme.colorScheme.error) },
-                                trailingContent = {
-                                    TextButton(onClick = {
-                                        extensionState = AdbExtensionManager.State.NotDownloaded
-                                    }) { Text(stringResource(R.string.cancel)) }
-                                },
-                            )
-                        }
-                    }
                 }
             })
 
@@ -210,139 +128,150 @@ fun SettingsAdbPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 })
             }
 
-            // ── Non-Root Path ───────────────────────────────
-            if (!rootAvailable && extensionState is AdbExtensionManager.State.Installed) {
-                if (!isPaired) {
-                    // Pairing UI
-                    SettingsGroup(title = stringResource(R.string.adb_pairing_title), items = buildList {
-                        add {
-                            SettingsIconContent(icon = Icons.Default.Info) {
-                                Text(
-                                    stringResource(R.string.adb_pairing_instructions),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                            }
+            // ── Shizuku (Non-Root) Path ────────────────────
+            if (!rootAvailable) {
+                SettingsGroup(title = stringResource(R.string.adb_shizuku), items = buildList {
+                    // Description
+                    add {
+                        SettingsIconContent(icon = Icons.Default.Info) {
+                            Text(
+                                stringResource(R.string.adb_shizuku_description),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                         }
-                        add {
-                            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                OutlinedTextField(
-                                    value = portInput,
-                                    onValueChange = { portInput = it.filter { c -> c.isDigit() } },
-                                    label = { Text(stringResource(R.string.adb_port)) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                OutlinedTextField(
-                                    value = codeInput,
-                                    onValueChange = { codeInput = it },
-                                    label = { Text(stringResource(R.string.adb_pairing_code)) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    visualTransformation = PasswordVisualTransformation(),
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Button(
-                                    enabled = !pairing && portInput.isNotBlank() && codeInput.isNotBlank(),
-                                    onClick = {
-                                        pairing = true
-                                        pairResult = null
-                                        scope.launch(Dispatchers.IO) {
-                                            try {
-                                                ladbManager.startPortDiscovery()
-                                                val ok = ladbManager.pair(portInput.trim(), codeInput.trim())
-                                                if (ok) {
-                                                    isPaired = true
-                                                    pairResult = "Paired successfully"
-                                                } else {
-                                                    pairResult = "Pairing failed — check port and code"
-                                                }
-                                            } catch (e: Exception) {
-                                                pairResult = "Error: ${e.message}"
-                                            }
-                                            pairing = false
-                                        }
+                    }
+                    // State-driven status row
+                    add {
+                        when {
+                            !shizukuInstalled -> {
+                                SettingsItem(
+                                    headlineContent = { Text(stringResource(R.string.adb_shizuku_not_installed)) },
+                                    supportingContent = { Text(ShizukuManager.SHIZUKU_PLAY_URL) },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Default.Download,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
                                     },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) { Text(if (pairing) stringResource(R.string.adb_pairing) else stringResource(R.string.adb_pair)) }
-                                pairResult?.let {
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(it, style = MaterialTheme.typography.bodySmall,
-                                        color = if (it.startsWith("Paired")) MaterialTheme.colorScheme.primary
-                                                else MaterialTheme.colorScheme.error)
-                                }
+                                    trailingContent = {
+                                        TextButton(onClick = {
+                                            launchIntent(
+                                                Intent(
+                                                    Intent.ACTION_VIEW,
+                                                    Uri.parse(ShizukuManager.SHIZUKU_PLAY_URL),
+                                                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            )
+                                        }) { Text(stringResource(R.string.adb_shizuku_download)) }
+                                    },
+                                )
                             }
-                        }
-                    })
-                } else {
-                    // Paired — connection info + reconnect
-                    SettingsGroup(title = stringResource(R.string.adb_connection), items = buildList {
-                        add {
-                            SettingsItem(
-                                headlineContent = { Text(stringResource(R.string.adb_paired)) },
-                                supportingContent = {
-                                    Column {
-                                        Text(if (ladbRunning == true) stringResource(R.string.adb_connected_running)
-                                             else stringResource(R.string.adb_connected_idle))
-                                        Text(stringResource(R.string.adb_auto_reconnect),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        reconnectResult?.let {
-                                            Spacer(Modifier.height(4.dp))
+                            !shizukuRunning -> {
+                                SettingsItem(
+                                    headlineContent = { Text(stringResource(R.string.adb_shizuku_not_running)) },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Default.PlayArrow,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                    trailingContent = {
+                                        TextButton(onClick = {
+                                            launchIntent(
+                                                context.packageManager.getLaunchIntentForPackage(
+                                                    ShizukuManager.SHIZUKU_PACKAGE
+                                                )?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                    ?: Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse(ShizukuManager.SHIZUKU_WEBSITE_URL),
+                                                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            )
+                                            // Give the user a moment to start the service, then re-check.
+                                            scope.launch {
+                                                kotlinx.coroutines.delay(1500)
+                                                refreshTick++
+                                            }
+                                        }) { Text(stringResource(R.string.adb_shizuku_open_app)) }
+                                    },
+                                )
+                            }
+                            !shizukuGranted -> {
+                                SettingsItem(
+                                    headlineContent = { Text(stringResource(R.string.adb_shizuku_not_authorized)) },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Default.Key,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                    trailingContent = {
+                                        TextButton(onClick = {
+                                            shizukuManager.requestPermission()
+                                            // Permission dialog is async; re-check after a short delay.
+                                            scope.launch {
+                                                kotlinx.coroutines.delay(1500)
+                                                refreshTick++
+                                            }
+                                        }) { Text(stringResource(R.string.adb_shizuku_authorize)) }
+                                    },
+                                )
+                            }
+                            else -> {
+                                // Ready
+                                SettingsItem(
+                                    headlineContent = { Text(stringResource(R.string.adb_shizuku_ready)) },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                    trailingContent = {
+                                        TextButton(enabled = !testing, onClick = {
+                                            testing = true
+                                            testResult = null
+                                            scope.launch(Dispatchers.IO) {
+                                                try {
+                                                    testResult = shizukuManager.executeCommand("id")
+                                                } catch (e: Exception) {
+                                                    testResult = "Error: ${e.message}"
+                                                }
+                                                testing = false
+                                            }
+                                        }) { Text(stringResource(R.string.adb_test)) }
+                                    },
+                                    supportingContent = {
+                                        testResult?.let {
                                             Text(it, style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
-                                    }
-                                },
-                                leadingContent = { Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary) },
-                                trailingContent = {
-                                    TextButton(enabled = !reconnecting, onClick = {
-                                        reconnecting = true
-                                        reconnectResult = null
-                                        scope.launch(Dispatchers.IO) {
-                                            try {
-                                                ladbManager.kill()
-                                                ladbManager.startPortDiscovery()
-                                                val ok = ladbManager.initServer()
-                                                reconnectResult = if (ok) "Reconnected" else "Reconnect failed"
-                                            } catch (e: Exception) {
-                                                reconnectResult = "Error: ${e.message}"
-                                            }
-                                            reconnecting = false
-                                        }
-                                    }) { Text(stringResource(R.string.adb_reconnect)) }
-                                },
-                            )
+                                    },
+                                )
+                            }
                         }
-                        add {
-                            SettingsItem(
-                                headlineContent = { Text(stringResource(R.string.adb_test)) },
-                                leadingContent = { Icon(Icons.Default.Terminal, null, tint = MaterialTheme.colorScheme.primary) },
-                                trailingContent = {
-                                    TextButton(enabled = !testing && ladbRunning == true, onClick = {
-                                        testing = true
-                                        testResult = null
-                                        scope.launch(Dispatchers.IO) {
-                                            try {
-                                                testResult = ladbManager.sendCommand("id")
-                                            } catch (e: Exception) {
-                                                testResult = "Error: ${e.message}"
-                                            }
-                                            testing = false
-                                        }
-                                    }) { Text(stringResource(R.string.adb_test)) }
-                                },
-                                supportingContent = {
-                                    testResult?.let {
-                                        Text(it, style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                },
-                            )
-                        }
-                    })
-                }
+                    }
+                    // Refresh action (lets the user re-check state after acting outside the app)
+                    add {
+                        SettingsItem(
+                            headlineContent = { Text(stringResource(R.string.adb_shizuku_refresh)) },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            trailingContent = {
+                                TextButton(onClick = { refreshTick++ }) {
+                                    Text(stringResource(R.string.adb_shizuku_refresh))
+                                }
+                            },
+                        )
+                    }
+                })
             }
 
             // ── Live Logs ──────────────────────────────────

@@ -1,6 +1,6 @@
 package com.lxseek.chat.tool
 
-import com.lxseek.chat.adb.LadbManager
+import com.lxseek.chat.adb.ShizukuManager
 
 import com.lxseek.chat.data.ShellDeviceConfig
 import com.lxseek.chat.util.ShellClient
@@ -16,16 +16,16 @@ import java.util.concurrent.TimeUnit
  *
  * Two modes:
  *  - **Root**: runs `su -c "cmd"` directly — zero configuration, no download needed.
- *  - **Wireless (LADB)**: pipes commands through a long-lived `adb shell` process
- *    managed by [LadbManager]. Requires the adb binary to be downloaded and the device
- *    paired once via wireless debugging.
+ *  - **Shizuku**: executes commands through [ShizukuManager] (Rikka Shizuku service).
+ *    Requires the Shizuku app to be installed, its service running, and runtime
+ *    permission granted. No wireless-debugging pairing or adb binary download needed.
  *
  * File operations (read/write/glob/grep) are implemented as shell commands on top of
  * [executeCommand], so both modes share the same code path.
  */
 internal class AdbShellBackend(
     private val rootAvailable: Boolean,
-    private val ladbManager: LadbManager?,
+    private val shizukuManager: ShizukuManager?,
 ) : Backend {
 
     override val device: ShellDeviceConfig? = null
@@ -41,21 +41,13 @@ internal class AdbShellBackend(
         return if (rootAvailable) {
             executeRoot(actualCmd, cmd, timeoutMs)
         } else {
-            executeLadb(actualCmd, cmd)
+            executeShizuku(actualCmd, cmd, timeoutMs)
         }
     }
 
     private fun executeRoot(actualCmd: String, cmd: String, timeoutMs: Int): String {
         return try {
-            // If the adb binary is installed, add its directory to PATH so `adb` commands work
-            // under root (the system PATH does not include the app's filesDir).
-            val adbDir = ladbManager?.let { mgr ->
-                if (mgr.isBinaryInstalled()) {
-                    java.io.File(mgr.getAdbPath()).parentFile?.absolutePath
-                } else null
-            }
-            val fullCmd = if (adbDir != null) "export PATH=\"\$PATH:$adbDir\"; $actualCmd" else actualCmd
-            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", fullCmd))
+            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", actualCmd))
             val waitOk = p.waitFor(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
             val output = p.inputStream.bufferedReader().use { it.readText() } +
                 p.errorStream.bufferedReader().use { it.readText() }
@@ -77,24 +69,45 @@ internal class AdbShellBackend(
         }
     }
 
-    private fun executeLadb(actualCmd: String, cmd: String): String {
-        val mgr = ladbManager ?: return jsonError(
-            "execute_shell_command", "ADB extension not installed",
+    private fun executeShizuku(actualCmd: String, cmd: String, timeoutMs: Int): String {
+        val mgr = shizukuManager ?: return jsonError(
+            "execute_shell_command", "Shizuku backend not configured",
             server = "ADB Shell", command = cmd,
         )
-        return if (mgr.isRunning()) {
-            val output = mgr.sendCommand(actualCmd)
-            com.lxseek.chat.adb.AdbLog.log("wireless> $cmd  → out=${output.trim().take(200)}")
+        if (!mgr.isShizukuInstalled()) {
+            return jsonError(
+                "execute_shell_command",
+                "Shizuku app not installed. Please install Shizuku from Google Play.",
+                server = "ADB Shell", command = cmd,
+            )
+        }
+        if (!mgr.isShizukuRunning()) {
+            return jsonError(
+                "execute_shell_command",
+                "Shizuku service not running. Please start Shizuku app.",
+                server = "ADB Shell", command = cmd,
+            )
+        }
+        if (!mgr.isPermissionGranted()) {
+            return jsonError(
+                "execute_shell_command",
+                "Shizuku permission not granted. Please authorize in Settings.",
+                server = "ADB Shell", command = cmd,
+            )
+        }
+        return try {
+            val output = mgr.executeCommand(actualCmd, timeoutMs)
+            com.lxseek.chat.adb.AdbLog.log("shizuku> $cmd  → out=${output.trim().take(200)}")
             buildJsonObject {
                 put("type", "execute_shell_command")
-                put("server", "ADB Shell (wireless)")
+                put("server", "ADB Shell (Shizuku)")
                 put("command", cmd)
                 put("exit_code", 0)
                 put("output", output)
             }.toString()
-        } else {
-            jsonError("execute_shell_command",
-                "ADB not connected. Please pair first or reconnect.",
+        } catch (e: Exception) {
+            com.lxseek.chat.adb.AdbLog.log("shizuku> $cmd  → exception=${e.javaClass.name}: ${e.message}")
+            jsonError("execute_shell_command", e.message ?: "Shizuku execution failed",
                 server = "ADB Shell", command = cmd)
         }
     }
@@ -180,7 +193,6 @@ internal class AdbShellBackend(
 
     override fun close() {
         // Root mode: nothing to close (each command is a standalone su -c process).
-        // LADB mode: the shell process is managed by LadbManager singleton; do not kill it
-        // here so subsequent commands can reuse the same connection.
+        // Shizuku mode: each command is a short-lived Process; nothing to keep alive.
     }
 }

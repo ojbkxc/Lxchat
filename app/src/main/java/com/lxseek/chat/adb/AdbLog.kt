@@ -7,11 +7,11 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 进程内 ADB Shell 诊断日志源（配对 / root 检测 / 命令执行共用）。
+ * 进程内 ADB Shell 诊断日志源（Shizuku / root 检测 / 命令执行共用）。
  *
- * 所有发生在 [LadbManager]、[RootDetector]、[AdbShellBackend] 关键路径的步骤都会写入这里，
- * 供 [com.lxseek.chat.ui.settings.SettingsAdbPage] 的"配对日志"区实时展示——用户无需抓 logcat
- * 即可看到无线配对 / root 检测的完整过程。容量有上限，超限丢弃最旧条目。
+ * 所有发生在 [ShizukuManager]、[RootDetector]、[AdbShellBackend] 关键路径的步骤都会写入这里，
+ * 供 [com.lxseek.chat.ui.settings.SettingsAdbPage] 的"执行日志"区实时展示——用户无需抓 logcat
+ * 即可看到 Shizuku 状态检查 / root 检测 / 命令执行的完整过程。容量有上限，超限丢弃最旧条目。
  */
 object AdbLog {
 
