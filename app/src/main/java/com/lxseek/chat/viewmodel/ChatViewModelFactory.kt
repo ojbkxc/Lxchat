@@ -46,6 +46,7 @@ class ChatViewModelFactory(
     private val mcpRegistry: McpRegistry,
     private val mcpToolProvider: McpToolProvider,
     private val androidControlToolProvider: AndroidAppControllerToolProvider,
+    private val gitToolProvider: com.lxseek.chat.tool.GitToolProvider? = null,
     private val imToolProvider: com.lxseek.chat.tool.ImToolProvider? = null,
     private val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider? = null,
     private val taskExecutionEngine: TaskExecutionEngine,
@@ -59,7 +60,7 @@ class ChatViewModelFactory(
                 autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
                 taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-                mcpRegistry, mcpToolProvider, androidControlToolProvider, imToolProvider, reminderToolProvider, taskExecutionEngine,
+                mcpRegistry, mcpToolProvider, androidControlToolProvider, gitToolProvider, imToolProvider, reminderToolProvider, taskExecutionEngine,
                 smartRouterFactory,
             ) as T
         }

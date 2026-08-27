@@ -194,6 +194,11 @@ class AppContainer(private val appContext: Context) {
         McpToolProvider(mcpRegistry)
     }
 
+    /** Read-only Git tools (status/log/diff/branches/remote) executed in the local sandbox. */
+    val gitToolProvider: com.lxseek.chat.tool.GitToolProvider by lazy {
+        com.lxseek.chat.tool.GitToolProvider(sandboxManagerFactory)
+    }
+
     /** Text-model device control: read the current app's UI tree and click/type in it. */
     val androidControlToolProvider: AndroidAppControllerToolProvider by lazy {
         AndroidAppControllerToolProvider(application)
@@ -343,6 +348,7 @@ class AppContainer(private val appContext: Context) {
             automationExecutionGate = automationExecutionGate,
             mcpToolProvider = mcpToolProvider,
             androidControlToolProvider = androidControlToolProvider,
+            gitToolProvider = gitToolProvider,
             imToolProvider = imToolProvider,
             reminderToolProvider = reminderToolProvider,
             generationRegistry = conversationStateRegistry,
@@ -431,8 +437,8 @@ class AppContainer(private val appContext: Context) {
             autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-            mcpRegistry, mcpToolProvider, androidControlToolProvider, imToolProvider,
-            reminderToolProvider, taskExecutionEngine, smartRouterFactory,
+            mcpRegistry, mcpToolProvider, androidControlToolProvider, gitToolProvider,
+            imToolProvider, reminderToolProvider, taskExecutionEngine, smartRouterFactory,
         )
 
     /** Factory for the workflow editor's dedicated view-model (kept out of ChatViewModel). */

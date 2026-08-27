@@ -69,6 +69,7 @@ class TaskExecutionEngine(
     shellConfirmation: ShellConfirmationController,
     mcpToolProvider: McpToolProvider,
     androidControlToolProvider: com.lxseek.chat.tool.AndroidAppControllerToolProvider,
+    gitToolProvider: com.lxseek.chat.tool.GitToolProvider? = null,
     imToolProvider: com.lxseek.chat.tool.ImToolProvider? = null,
     reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider? = null,
     private val generationRegistry: ConversationStateRegistry,
@@ -197,7 +198,7 @@ class TaskExecutionEngine(
         context = appContext,
         sandboxFactory = sandboxFactory,
         additionalToolProviders = listOfNotNull(
-            mcpToolProvider, androidControlToolProvider, imToolProvider, reminderToolProvider,
+            mcpToolProvider, androidControlToolProvider, gitToolProvider, imToolProvider, reminderToolProvider,
         ),
         smartRouterFactory = smartRouterFactory,
     ).also {
