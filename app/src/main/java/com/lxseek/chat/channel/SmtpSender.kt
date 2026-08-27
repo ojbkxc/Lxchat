@@ -45,7 +45,7 @@ class SmtpSender(
             if (security == Security.STARTTLS) {
                 writeLine(writer, "STARTTLS")
                 expect(reader, REPLY_GREETING)
-                val ssl = SSLSocketFactory.getDefault().createSocket(sock, host, port, true) as SSLSocket
+                val ssl = wrapStartTls(sock, host, port)
                 ssl.soTimeout = IO_TIMEOUT_MS
                 ssl.startHandshake()
                 sock = ssl
@@ -94,6 +94,24 @@ class SmtpSender(
     private fun helo(reader: BufferedReader, writer: OutputStream) {
         writeLine(writer, "EHLO ${Build.MODEL.replace(" ", "")}")
         expect(reader, REPLY_OK)
+    }
+
+    /**
+     * 对已连接的明文 socket 做 STARTTLS 升级（保持同一条 TCP 连接）。
+     *
+     * 部分 Kotlin 编译器对 `SSLSocketFactory.createSocket(Socket, String, Int, Boolean)`
+     * 重载解析会失败（候选集中缺失该签名），这里用反射调用，规避该问题。
+     */
+    private fun wrapStartTls(sock: Socket, host: String, port: Int): SSLSocket {
+        val factory = SSLSocketFactory.getDefault()
+        val method = SSLSocketFactory::class.java.getMethod(
+            "createSocket",
+            Socket::class.java,
+            String::class.java,
+            Int::class.javaPrimitiveType,
+            Boolean::class.javaPrimitiveType,
+        )
+        return method.invoke(factory, sock, host, port, true) as SSLSocket
     }
 
     private fun expect(reader: BufferedReader, expected: Int): String {

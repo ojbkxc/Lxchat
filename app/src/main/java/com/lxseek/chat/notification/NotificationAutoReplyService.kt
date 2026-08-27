@@ -269,7 +269,8 @@ class NotificationAutoReplyService : NotificationListenerService() {
                     DebugLog.d("NotifReply", "channel $channelId not configured, skip")
                     continue
                 }
-                when (val r = channel.send(mapping.userId, reply)) {
+                val r = channel.send(mapping.userId, reply)
+                when (r) {
                     is SendResult.Success -> DebugLog.d("NotifReply", "channel $channelId sent ok")
                     is SendResult.Failure -> DebugLog.w("NotifReply", "channel $channelId failed: ${r.reason}")
                 }
