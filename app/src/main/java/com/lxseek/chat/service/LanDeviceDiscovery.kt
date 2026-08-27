@@ -198,8 +198,10 @@ class LanDeviceDiscovery(private val context: Context) {
 
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
                 DebugLog.e(TAG, "onStartDiscoveryFailed: errorCode=$errorCode type=$serviceType")
+                // 探活失败意味着本 listener 从未被 NsdManager 成功注册，此时调用
+                // stopServiceDiscovery(listener) 会抛 IllegalArgumentException("listener not registered")
+                // 并导致崩溃（issue #6，Android 12）。正确做法是仅重置状态，让上层稍后重新尝试。
                 discoveryListener = null
-                safeStopDiscovery(this)
             }
 
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
