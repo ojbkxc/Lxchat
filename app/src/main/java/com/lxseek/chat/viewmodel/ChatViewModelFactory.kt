@@ -50,6 +50,7 @@ class ChatViewModelFactory(
     private val imToolProvider: com.lxseek.chat.tool.ImToolProvider? = null,
     private val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider? = null,
     private val subAgentToolProvider: com.lxseek.chat.tool.SubAgentToolProvider? = null,
+    private val deviceToolProvider: com.lxseek.chat.tool.DeviceToolProvider? = null,
     private val taskExecutionEngine: TaskExecutionEngine,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : ViewModelProvider.Factory {
@@ -61,7 +62,7 @@ class ChatViewModelFactory(
                 autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
                 taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-                mcpRegistry, mcpToolProvider, androidControlToolProvider, gitToolProvider, imToolProvider, reminderToolProvider, subAgentToolProvider, taskExecutionEngine,
+                mcpRegistry, mcpToolProvider, androidControlToolProvider, gitToolProvider, imToolProvider, reminderToolProvider, subAgentToolProvider, deviceToolProvider, taskExecutionEngine,
                 smartRouterFactory,
             ) as T
         }

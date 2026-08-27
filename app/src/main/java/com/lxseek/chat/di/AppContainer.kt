@@ -225,6 +225,11 @@ class AppContainer(private val appContext: Context) {
         AndroidAppControllerToolProvider(application)
     }
 
+    /** On-device status/control tools (battery, clipboard, sensors, apps, volume, etc.). */
+    val deviceToolProvider: com.lxseek.chat.tool.DeviceToolProvider by lazy {
+        com.lxseek.chat.tool.DeviceToolProvider(application)
+    }
+
     /** IM gateway bridge: watches persisted config and exposes the active [com.lxseek.chat.im.MessageChannel]. */
     val imGatewayStore: com.lxseek.chat.im.ImGatewayStore by lazy {
         com.lxseek.chat.im.ImGatewayStore(appContext)
@@ -392,6 +397,7 @@ class AppContainer(private val appContext: Context) {
             gitToolProvider = gitToolProvider,
             imToolProvider = imToolProvider,
             reminderToolProvider = reminderToolProvider,
+            deviceToolProvider = deviceToolProvider,
             generationRegistry = conversationStateRegistry,
             pauseConversationLoop = { conversationId -> loopManager.stopLoop(conversationId) },
             smartRouterFactory = smartRouterFactory,
@@ -490,7 +496,7 @@ class AppContainer(private val appContext: Context) {
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, mcpToolProvider, androidControlToolProvider, gitToolProvider,
-            imToolProvider, reminderToolProvider, subAgentToolProvider, taskExecutionEngine, smartRouterFactory,
+            imToolProvider, reminderToolProvider, subAgentToolProvider, deviceToolProvider, taskExecutionEngine, smartRouterFactory,
         )
 
     /** Factory for the workflow editor's dedicated view-model (kept out of ChatViewModel). */

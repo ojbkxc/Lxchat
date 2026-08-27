@@ -84,6 +84,7 @@ class ChatViewModel(
     private val imToolProvider: com.lxseek.chat.tool.ImToolProvider? = null,
     private val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider? = null,
     private val subAgentToolProvider: com.lxseek.chat.tool.SubAgentToolProvider? = null,
+    private val deviceToolProvider: com.lxseek.chat.tool.DeviceToolProvider? = null,
     private val taskExecutionEngine: com.lxseek.chat.automation.TaskExecutionEngine,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : AndroidViewModel(application) {
@@ -260,7 +261,7 @@ class ChatViewModel(
             context = appContext,
             sandboxFactory = sandboxFactory,
             additionalToolProviders = listOfNotNull(automationToolProvider, mcpToolProvider, androidControlToolProvider,
-                gitToolProvider, imToolProvider, reminderToolProvider, subAgentToolProvider, autoMemoryToolProvider), smartRouterFactory = smartRouterFactory,
+                gitToolProvider, imToolProvider, reminderToolProvider, subAgentToolProvider, deviceToolProvider, autoMemoryToolProvider), smartRouterFactory = smartRouterFactory,
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
             gm.onMessagePersisted = { messageId, text -> ragManager.indexMessageForRag(messageId, text) }
@@ -953,6 +954,7 @@ class ChatViewModel(
     fun stopSingleAsr() = voiceConversation.stopSingleAsr()
 
     fun regenerate(messageId: String): Boolean = generationController.regenerate(messageId)
+    fun resume(messageId: String): Boolean = generationController.resume(messageId)
 
     fun switchBranch(parentId: String?, currentMessageId: String, direction: Int) = selectionController.switchBranch(parentId, currentMessageId, direction)
 
