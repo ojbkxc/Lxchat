@@ -661,6 +661,9 @@ class WeixinChannel(
                 val text = WeixinIlinkApi.extractWeixinText(msg)
                 val msgId = WeixinIlinkApi.weixinMessageId(msg)
                 val fromUserId = msg["from_user_id"]?.strSafe()
+                // 提取发送者昵称（iLink from_user_nickname），用于自动建立 昵称→userId 映射，
+                // 让系统通知自动回复路径能根据通知标题找到 user_id，无需用户手动配置。
+                val fromNickname = WeixinIlinkApi.extractWeixinNickname(msg)
                 // P1-8: from_user_id == 自己 botId 时跳过（自回复防护第一道）
                 if (!selfBotId.isNullOrEmpty() && fromUserId == selfBotId) {
                     DebugLog.d("WeixinChannel", "applyUpdates: skip self-reply echo (from=botId)")
@@ -714,7 +717,7 @@ class WeixinChannel(
                     conversationId = fromUserId,
                     direction = ImMessageDirection.INCOMING,
                     text = combinedText.trim(),
-                    sender = fromUserId,
+                    sender = fromNickname ?: fromUserId,
                     timestampMs = timestampMs,
                     images = images,
                 )
@@ -725,7 +728,8 @@ class WeixinChannel(
                     if (lastMs < timestampMs) {
                         ImConversation(
                             id = fromUserId,
-                            title = existing?.title ?: fromUserId,
+                            // 优先用本条消息的昵称；其次沿用已有 title；最后 fallback 到 user_id。
+                            title = fromNickname ?: existing?.title ?: fromUserId,
                             platform = "wechat",
                             lastMessageAtMs = maxOf(lastMs, timestampMs),
                             unreadCount = (existing?.unreadCount ?: 0) + 1,

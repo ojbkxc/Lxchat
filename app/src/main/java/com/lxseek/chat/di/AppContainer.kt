@@ -223,6 +223,14 @@ class AppContainer(private val appContext: Context) {
         )
     }
 
+    /**
+     * 系统通知自动回复配置存储。进程级单例，供 ImPollingReceiver 自动写入
+     * 「昵称 → ContactMapping」映射，也供 NotificationAutoReplyService 读取。
+     */
+    val notificationReplyStore: com.lxseek.chat.notification.NotificationReplyStore by lazy {
+        com.lxseek.chat.notification.NotificationReplyStore(appContext)
+    }
+
     /** Closes the IM loop: polls inbound messages, triggers the agent, writes replies back. */
     val imPollingReceiver: com.lxseek.chat.im.ImPollingReceiver by lazy {
         com.lxseek.chat.im.ImPollingReceiver(
@@ -231,6 +239,7 @@ class AppContainer(private val appContext: Context) {
             conversationRepository = conversationRepository,
             store = imGatewayStore,
             scope = appScope,
+            notificationReplyStore = notificationReplyStore,
             onMessageHandled = { conversationId ->
                 // A real inbound message means the contact isn't idle; postpone a proactive greeting.
                 proactiveMessagingService.markActive(conversationId)

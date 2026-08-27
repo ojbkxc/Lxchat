@@ -4,6 +4,8 @@ import com.lxseek.chat.automation.TaskExecutionEngine
 import com.lxseek.chat.data.repository.ConversationRepository
 import com.lxseek.chat.im.weixin.WeixinChannel
 import com.lxseek.chat.im.weixin.WeixinCompanionChannel
+import com.lxseek.chat.notification.ContactMapping
+import com.lxseek.chat.notification.NotificationReplyStore
 import com.lxseek.chat.util.DebugLog
 import android.util.Log
 import kotlinx.coroutines.CancellationException
@@ -56,6 +58,13 @@ class ImPollingReceiver(
     /** 机器人命令处理器。非 null 时，以 `/` 开头的消息会交给它处理而不触发 AI 回复
      *  （`/steer` 例外，它会将补充指令作为用户消息发送）。 */
     private val commandProcessor: ImCommandProcessor? = null,
+    /**
+     * 系统通知自动回复配置存储。非 null 时，收到微信好友消息会自动把
+     * 「昵称 → ContactMapping(channelKey, userId)」写入其 contacts 映射，
+     * 让 NotificationAutoReplyService 能根据通知标题（昵称）找到 iLink user_id 发送回复，
+     * 无需用户手动配置。null 时跳过自动映射（如测试环境）。
+     */
+    private val notificationReplyStore: NotificationReplyStore? = null,
 ) {
     /** The single poll-loop job (covers all polling channels). */
     @Volatile
@@ -275,6 +284,38 @@ class ImPollingReceiver(
         // WxRecv: 区分「复用有效绑定」vs「重建失效绑定」，验证孤儿绑定自动重建是否生效。
         Log.e("WxRecv", "binding conv=${conversation.id} -> ${if (bindValid) "reuse=$existingBind" else "rebuilt=$lxchatConvId"}")
 
+        // 自动建立「昵称 → ContactMapping(channelKey, userId)」映射，供系统通知自动回复路径
+        // （NotificationAutoReplyService）使用。iLink getupdates 下发的 from_user_nickname
+        // 已被 WeixinChannel.applyUpdates 存入 ImConversation.title；此处把它与 from_user_id
+        // （conversation.id）一起写入 NotificationReplyStore.contacts，让系统通知能根据
+        // 通知标题（昵称）找到 iLink user_id 发送回复，无需用户手动配置。
+        // 仅微信渠道且有非空昵称（且昵称 ≠ user_id，避免无意义映射）时才写。
+        if (notificationReplyStore != null && channel is WeixinChannel) {
+            val nickname = conversation.title.trim()
+            if (nickname.isNotEmpty() && nickname != conversation.id) {
+                runCatching {
+                    notificationReplyStore.update { cfg ->
+                        val current = cfg.contacts[nickname]
+                        // 已有完全相同的映射则跳过写入，避免无谓 DataStore IO。
+                        if (current != null &&
+                            current.userId == conversation.id &&
+                            current.channelKey == channelKey
+                        ) {
+                            cfg
+                        } else {
+                            cfg.copy(
+                                contacts = cfg.contacts + (
+                                    nickname to ContactMapping(channelKey = channelKey, userId = conversation.id)
+                                )
+                            )
+                        }
+                    }
+                }.onFailure { e ->
+                    DebugLog.w("ImPolling", "auto-save contact mapping failed for $nickname: ${e.message}")
+                }
+            }
+        }
+
         // Reserve every inbound message id up front so a concurrent poll cannot re-handle it,
         // then merge the batch of new messages into one agent turn (fewer, more coherent replies
         // when a contact sends several lines in quick succession).
@@ -360,7 +401,20 @@ class ImPollingReceiver(
         }
         lastAiReplyAt[coolKey] = now
         try {
-            val reply = replyFromAgent(weixin, channelKey, conversation.id, lxchatConvId, merged)
+            // 最终验证：在调用 runOnce 前确认 Lxchat 会话仍真实存在。
+            // 虽然上方 bindValid 已校验过，但绑定校验到此处可能间隔较久（seen 去重、命令处理），
+            // 期间会话可能被用户手动删除或被并发清理。若不校验，runOnce 会以
+            // "Conversation not found" 失败，好友消息收得到但 AI 不回复。
+            // 校验失败时重新 bindConversation 重建绑定，确保持久化完成后再跑 agent。
+            val finalConvId = runCatching {
+                if (conversationRepository.getConversation(lxchatConvId) != null) {
+                    lxchatConvId
+                } else {
+                    DebugLog.w("ImPolling", "conv=$lxchatConvId vanished before runOnce, rebinding")
+                    bindConversation(channelKey, channel, conversation)
+                }
+            }.getOrDefault(lxchatConvId)
+            val reply = replyFromAgent(weixin, channelKey, conversation.id, finalConvId, merged)
             if (!reply.isNullOrBlank()) {
                 // Long replies are split into several short messages for readability.
                 segmentSender.send(channel, conversation.id, reply)

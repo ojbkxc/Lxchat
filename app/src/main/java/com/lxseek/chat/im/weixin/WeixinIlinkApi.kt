@@ -710,6 +710,26 @@ class WeixinIlinkApi(
             return if (parts.isEmpty()) null else parts.joinToString("\n")
         }
 
+        /**
+         * 提取入站消息的发送者昵称。
+         *
+         * iLink getupdates 响应里，msg 对象除 `from_user_id` 外，服务端通常还会下发
+         * `from_user_nickname`（好友的微信昵称）。部分协议版本可能把它放在
+         * `from_user_info.nickname` 嵌套对象里。两种格式都尝试，都没有则返回 null。
+         *
+         * 该昵称用于自动建立「昵称 → user_id」映射（见 ImPollingReceiver.feedInboundBatch），
+         * 让系统通知自动回复路径（NotificationAutoReplyService）能根据通知标题（昵称）
+         * 找到对应的 iLink user_id 发送回复，无需用户手动配置。
+         */
+        fun extractWeixinNickname(message: JsonObject): String? {
+            val direct = message["from_user_nickname"].str()?.trim()
+            if (!direct.isNullOrEmpty()) return direct
+            val info = message["from_user_info"].obj()
+            val nested = info?.get("nickname")?.str()?.trim()
+            if (!nested.isNullOrEmpty()) return nested
+            return null
+        }
+
         /** 获取消息 ID（优先 message_id，fallback client_id）。 */
         fun weixinMessageId(message: JsonObject): String? {
             // dsh-im uses String(message.message_id) which converts any type; we must handle
