@@ -12,19 +12,17 @@ import java.util.concurrent.TimeUnit
  * replaces the private `Shizuku.newProcess()` path (private since API 13.1.5).
  *
  * The class is instantiated reflectively by the Shizuku server using the fully
- * qualified class name from [rikka.shizuku.Shizuku.UserServiceArgs], so it MUST
- * stay public, expose a public no-arg constructor (plus a v13+ [Context]
- * constructor), (`R`obfuscation keep) and not be stripped by R8 — see
- * proguard-rules.pro. Note the process is not a normal Android app process, so
- * only plain Runtime/OS APIs are used here.
+ * qualified class name from [rikka.shizuku.Shizuku.UserServiceArgs]. The server
+ * first looks for a public `(Context)` constructor (v13+), then falls back to a
+ * public no-arg one; [@JvmOverloads] on the primary constructor provides both.
+ * The class must stay public and must not be stripped by R8 — see
+ * proguard-rules.pro. The process is not a normal Android app process, so only
+ * plain Runtime/OS APIs are used here.
  */
 @Keep
-class ShellUserService : IShellService.Stub() {
-
-    /** v13+ constructor; the Context is created with createPackageContextAsUser. */
-    @Keep
-    @Suppress("unused")
-    constructor(context: Context) : this()
+class ShellUserService @JvmOverloads constructor(
+    @Suppress("unused") context: Context? = null,
+) : IShellService.Stub() {
 
     /** Reserved by Shizuku: called when the user service is removed. */
     override fun destroy() {
