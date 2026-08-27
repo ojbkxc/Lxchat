@@ -1,9 +1,5 @@
 # Temporary exact caps for Kotlin sources that exceeded 999 physical lines on 2026-08-09.
 # Do not add new entries or raise a recorded count. Remove an entry once its file reaches 999.
-# MainActivity.kt grew to 1009 lines after adding defensive try-catch guards around
-# attachBaseContext/onCreate initialization to prevent silent startup crashes.
-app/src/main/java/com/lxseek/chat/MainActivity.kt=1009
 app/src/main/java/com/lxseek/chat/data/SettingsManager.kt=1005
-app/src/main/java/com/lxseek/chat/ui/chat/bottombar/ChatBottomBar.kt=1002
 # SettingsImGatewayPage.kt grew to 1023 lines after extracting BotSettingsPanel to its own file.
 app/src/main/java/com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt=1023
