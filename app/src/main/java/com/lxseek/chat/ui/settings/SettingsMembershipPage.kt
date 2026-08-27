@@ -73,6 +73,7 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val status by viewModel.membership.status.collectAsState()
     var codeInput by remember { mutableStateOf("") }
     var redeemResult by remember { mutableStateOf<RedemptionResult?>(null) }
+    var isRedeeming by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val paymentComingSoon = stringResource(R.string.membership_payment_coming_soon)
@@ -111,11 +112,14 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         redeemResult = null
                     },
                     result = redeemResult,
+                    isRedeeming = isRedeeming,
                     onRedeem = {
                         scope.launch {
+                            isRedeeming = true
                             val result = viewModel.membership.redeemCode(codeInput)
                             redeemResult = result
                             if (result is RedemptionResult.Valid) codeInput = ""
+                            isRedeeming = false
                         }
                     },
                 )
@@ -124,7 +128,9 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             if (status.tier == MembershipTier.Free || !status.isActive) {
                 item {
                     YipayUpgradeSection(
-                        onUpgrade = { Toast.makeText(context, paymentComingSoon, Toast.LENGTH_SHORT).show() },
+                        onUpgrade = { _ ->
+                            Toast.makeText(context, paymentComingSoon, Toast.LENGTH_SHORT).show()
+                        },
                     )
                 }
             }
@@ -225,11 +231,12 @@ private fun RedemptionCodeSection(
     code: String,
     onCodeChange: (String) -> Unit,
     result: RedemptionResult?,
+    isRedeeming: Boolean,
     onRedeem: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Text(
-            text = stringResource(R.string.membership_redeem_button),
+            text = stringResource(R.string.membership_redeem_section_title),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -244,7 +251,7 @@ private fun RedemptionCodeSection(
         Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = onRedeem,
-            enabled = code.isNotBlank(),
+            enabled = code.isNotBlank() && !isRedeeming,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(stringResource(R.string.membership_redeem_button))
@@ -292,7 +299,7 @@ private fun RedemptionResultFeedback(result: RedemptionResult) {
 // ── Section C: Yipay upgrade entry ────────────────────────────
 
 @Composable
-private fun YipayUpgradeSection(onUpgrade: () -> Unit) {
+private fun YipayUpgradeSection(onUpgrade: (MembershipTier) -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Text(
             text = stringResource(R.string.membership_upgrade_prompt),
@@ -301,7 +308,7 @@ private fun YipayUpgradeSection(onUpgrade: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Button(
-            onClick = onUpgrade,
+            onClick = { onUpgrade(MembershipTier.Premium) },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB300)),
         ) {
@@ -309,11 +316,11 @@ private fun YipayUpgradeSection(onUpgrade: () -> Unit) {
         }
         Spacer(modifier = Modifier.height(8.dp))
         Button(
-            onClick = onUpgrade,
+            onClick = { onUpgrade(MembershipTier.Pro) },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E57C2)),
         ) {
-            Text(stringResource(R.string.membership_upgrade_pro))
+            Text(stringResource(R.string.membership_upgrade_pro), color = Color.White)
         }
     }
 }
