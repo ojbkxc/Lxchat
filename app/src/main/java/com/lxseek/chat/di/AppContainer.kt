@@ -543,7 +543,9 @@ class AppContainer(private val appContext: Context) {
     }
 
     val redemptionCodeValidator: com.lxseek.chat.membership.RedemptionCodeValidator by lazy {
-        com.lxseek.chat.membership.RedemptionCodeValidator(REDEMPTION_HMAC_SECRET)
+        com.lxseek.chat.membership.RedemptionCodeValidator(
+            com.lxseek.chat.membership.RedemptionNativeBridge.getHmacSecret(),
+        )
     }
 
     // ── ViewModel Factory ─────────────────────────────────────
@@ -558,12 +560,6 @@ class AppContainer(private val appContext: Context) {
             membershipProvider, redemptionCodeValidator, smartRouterFactory,
         )
 
-    private companion object {
-        // 32-byte placeholder HMAC secret for redemption code signing.
-        // TODO: replace with BuildConfig field or native-layer key retrieval before production.
-        private val REDEMPTION_HMAC_SECRET: ByteArray =
-            "LxchatRedemptionHmacSecret2026DoNotShip".toByteArray(Charsets.UTF_8)
-    }
 
     /** Factory for the workflow editor's dedicated view-model (kept out of ChatViewModel). */
     fun workflowViewModelFactory(): androidx.lifecycle.ViewModelProvider.Factory =

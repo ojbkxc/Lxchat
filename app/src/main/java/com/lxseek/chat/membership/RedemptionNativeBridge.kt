@@ -35,4 +35,15 @@ object RedemptionNativeBridge {
      * @return one of [RESULT_VALID], [RESULT_INVALID], [RESULT_EXPIRED]
      */
     external fun validateCode(code: String, secretKey: ByteArray): Int
+
+    /**
+     * Retrieve the HMAC secret key from the native layer.
+     *
+     * The key is XOR-obfuscated inside `libredemption_native.so` and deobfuscated
+     * at runtime, so it never appears in plain text in the APK's Kotlin/Java code
+     * or in the .rodata section of the .so (resistant to `strings` and simple
+     * static analysis). Use this to supply [RedemptionCodeValidator] without
+     * hard-coding the key in Kotlin.
+     */
+    external fun getHmacSecret(): ByteArray
 }

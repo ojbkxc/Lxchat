@@ -46,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
+import com.lxseek.chat.membership.LocalMembershipProvider
 import com.lxseek.chat.membership.MembershipStatus
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.membership.RedemptionResult
@@ -196,8 +197,10 @@ private fun MembershipStatusCard(status: MembershipStatus) {
                 if (status.source.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     val sourceLabel = when (status.source) {
-                        "redemption_code" -> stringResource(R.string.membership_source_redemption)
-                        "yipay" -> stringResource(R.string.membership_source_yipay)
+                        LocalMembershipProvider.SOURCE_REDEMPTION_CODE ->
+                            stringResource(R.string.membership_source_redemption)
+                        LocalMembershipProvider.SOURCE_YIPAY ->
+                            stringResource(R.string.membership_source_yipay)
                         else -> "Source: ${status.source}"
                     }
                     Text(

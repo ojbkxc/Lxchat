@@ -336,3 +336,30 @@ Java_com_lxseek_chat_membership_RedemptionNativeBridge_validateCode(
     }
     return RESULT_VALID;
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// JNI: retrieve the HMAC secret key (XOR-obfuscated in the .so binary).
+// ──────────────────────────────────────────────────────────────────────────
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_lxseek_chat_membership_RedemptionNativeBridge_getHmacSecret(
+        JNIEnv* env, jobject /* thiz */) {
+    // XOR-obfuscated 33-byte HMAC-SHA256 secret. Deobfuscated at runtime so
+    // `strings` on the .so does not reveal the key in plain text.
+    static constexpr uint8_t XOR_KEY = 0x5A;
+    static constexpr uint8_t OBFUSCATED[] = {
+        0x16, 0x22, 0x39, 0x32, 0x3B, 0x2E, 0x08, 0x3F,
+        0x3E, 0x3F, 0x37, 0x2A, 0x2E, 0x33, 0x35, 0x34,
+        0x12, 0x37, 0x3B, 0x39, 0x68, 0x6A, 0x68, 0x6C,
+        0x09, 0x3F, 0x39, 0x28, 0x3F, 0x2E, 0x11, 0x3F,
+        0x23,
+    };
+    constexpr int SECRET_LEN = sizeof(OBFUSCATED);
+    jbyteArray result = env->NewByteArray(SECRET_LEN);
+    if (result == nullptr) return nullptr;
+    jbyte bytes[SECRET_LEN];
+    for (int i = 0; i < SECRET_LEN; i++) {
+        bytes[i] = static_cast<jbyte>(OBFUSCATED[i] ^ XOR_KEY);
+    }
+    env->SetByteArrayRegion(result, 0, SECRET_LEN, bytes);
+    return result;
+}
