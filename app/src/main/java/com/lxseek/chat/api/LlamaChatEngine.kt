@@ -24,11 +24,39 @@ class LlamaChatEngine(
 ) : Closeable {
     companion object {
         private const val TAG = "LlamaChatEngine"
+        private var libraryLoaded = false
 
         init {
+            // c++_shared is still bundled in the APK; the llama JNI wrapper
+            // (liblxchat_llama.so) is now loaded on demand via loadLibrary().
             System.loadLibrary("c++_shared")
-            System.loadLibrary("lxchat_llama")
         }
+
+        /**
+         * Dynamically load liblxchat_llama.so from an absolute filesystem path.
+         *
+         * Returns true if the library is already loaded or was loaded successfully.
+         * Returns false when [libraryPath] is null, the file does not exist, or the
+         * load fails with an UnsatisfiedLinkError. Callers (e.g. LocalProvider) should
+         * surface a user-facing "download the llama extension" prompt when this returns
+         * false.
+         */
+        fun loadLibrary(libraryPath: String?): Boolean {
+            if (libraryLoaded) return true
+            if (libraryPath == null) return false
+            val file = java.io.File(libraryPath)
+            if (!file.exists()) return false
+            return try {
+                System.load(libraryPath)
+                libraryLoaded = true
+                true
+            } catch (e: UnsatisfiedLinkError) {
+                DebugLog.e(TAG, "Failed to load llama library", e)
+                false
+            }
+        }
+
+        fun isLibraryAvailable(): Boolean = libraryLoaded
     }
 
     @Volatile
@@ -56,6 +84,10 @@ class LlamaChatEngine(
     fun isLoaded(): Boolean = nativeHandle != 0L
 
     fun load(): Boolean {
+        if (!libraryLoaded) {
+            DebugLog.e(TAG, "Native library not loaded; call LlamaChatEngine.loadLibrary(path) first")
+            return false
+        }
         if (!File(modelPath).exists()) {
             DebugLog.e(TAG, "Model file not found")
             return false

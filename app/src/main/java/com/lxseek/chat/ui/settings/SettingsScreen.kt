@@ -215,6 +215,7 @@ private data class SettingsCategory(
     @StringRes val descriptionRes: Int,
     val icon: ImageVector? = null,
     @DrawableRes val iconRes: Int? = null,
+    val requiresMembership: Boolean = false,
 )
 
 /** A searchable settings entry: [title] is the display name, [route] is the category key used by
@@ -224,6 +225,7 @@ data class SearchableSettingItem(
     val title: String,
     val route: String,
     val keywords: List<String>,
+    val requiresMembership: Boolean = false,
 )
 
 private data class SettingsGroupData(
@@ -269,9 +271,9 @@ private val settingsGroups = listOf(
         SettingsCategory("trigger", R.string.settings_trigger, R.string.settings_trigger_desc, Icons.Default.Bolt),
         SettingsCategory("sms_command", R.string.settings_sms_command, R.string.settings_sms_command_desc, Icons.Default.Sms),
         SettingsCategory("reply_channel", R.string.settings_reply_channel, R.string.settings_reply_channel_desc, Icons.Default.Send),
-        SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
-        SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
-        SettingsCategory("online_market", R.string.settings_online_market, R.string.settings_online_market_desc, Icons.Default.ShoppingCart),
+        SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension, requiresMembership = true),
+        SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store, requiresMembership = true),
+        SettingsCategory("online_market", R.string.settings_online_market, R.string.settings_online_market_desc, Icons.Default.ShoppingCart, requiresMembership = true),
         SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
@@ -302,6 +304,11 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
     val listState = rememberLazyListState()
     val isSyncingModels by viewModel.isSyncingModels.collectAsState()
     val fetchingModelsMessage = stringResource(R.string.snackbar_fetching_models)
+
+    // Membership status: non-members see membership-gated entries (plugins/market/online_market)
+    // grayed out and non-clickable.
+    val membershipStatus by viewModel.membership.status.collectAsState()
+    val hasMembership = membershipStatus.isActive
 
     LaunchedEffect(isSyncingModels) {
         if (isSyncingModels) {
@@ -383,6 +390,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                     add(stringResource(cat.descriptionRes))
                                     if (group.titleRes != null) add(stringResource(group.titleRes))
                                 },
+                                requiresMembership = cat.requiresMembership,
                             )
                         }
                     }
@@ -415,30 +423,33 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                 }
                             } else {
                                 items(matchedItems) { item ->
+                                    val itemEnabled = !item.requiresMembership || hasMembership
+                                    val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { selectedCategory = item.route; searchQuery = "" }
+                                            .clickable(enabled = itemEnabled) { selectedCategory = item.route; searchQuery = "" }
                                             .padding(horizontal = 16.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Search,
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
+                                            tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
                                             modifier = Modifier.size(24.dp),
                                         )
                                         Spacer(modifier = Modifier.width(16.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = item.title,
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                                color = if (itemEnabled) MaterialTheme.colorScheme.onSurface else disabledColor,
                                             )
                                         }
                                         Icon(
                                             Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                            tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
                                         )
                                     }
                                     HorizontalDivider(
@@ -464,10 +475,12 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                     }
                                     group.items.forEachIndexed { index, cat ->
                                         val isLastItem = index == group.items.lastIndex
+                                        val itemEnabled = !cat.requiresMembership || hasMembership
+                                        val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .clickable { selectedCategory = cat.key }
+                                                .clickable(enabled = itemEnabled) { selectedCategory = cat.key }
                                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
@@ -475,14 +488,14 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                 Icon(
                                                     painter = painterResource(cat.iconRes),
                                                     contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
                                                     modifier = Modifier.size(24.dp),
                                                 )
                                             } else {
                                                 Icon(
                                                     imageVector = checkNotNull(cat.icon),
                                                     contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
                                                     modifier = Modifier.size(24.dp),
                                                 )
                                             }
@@ -490,19 +503,20 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(
                                                     text = stringResource(cat.titleRes),
-                                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                                    color = if (itemEnabled) MaterialTheme.colorScheme.onSurface else disabledColor,
                                                 )
                                                 Spacer(modifier = Modifier.height(3.dp))
                                                 Text(
                                                     text = stringResource(cat.descriptionRes),
                                                     style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    color = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant else disabledColor
                                                 )
                                             }
                                             Icon(
                                                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                                 contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                                tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
                                             )
                                         }
                                         if (!isLastItem) {

@@ -7,11 +7,36 @@ import java.io.File
 
 object LlamaEngine {
     private const val TAG = "LlamaEngine"
+    private var libraryLoaded = false
 
     init {
+        // c++_shared is still bundled in the APK; the llama JNI wrapper
+        // (liblxchat_llama.so) is now loaded on demand via loadLibrary().
         System.loadLibrary("c++_shared")
-        System.loadLibrary("lxchat_llama")
     }
+
+    /**
+     * Dynamically load liblxchat_llama.so from an absolute filesystem path.
+     * Returns true if the library is already loaded or was loaded successfully.
+     * Returns false when [libraryPath] is null, the file does not exist, or the
+     * load fails with an UnsatisfiedLinkError.
+     */
+    fun loadLibrary(libraryPath: String?): Boolean {
+        if (libraryLoaded) return true
+        if (libraryPath == null) return false
+        val file = File(libraryPath)
+        if (!file.exists()) return false
+        return try {
+            System.load(libraryPath)
+            libraryLoaded = true
+            true
+        } catch (e: UnsatisfiedLinkError) {
+            DebugLog.e(TAG, "Failed to load llama library", e)
+            false
+        }
+    }
+
+    fun isLibraryAvailable(): Boolean = libraryLoaded
 
     private external fun nativeLoadModel(path: String): Long
     private external fun nativeFreeModel(handle: Long)
@@ -29,6 +54,10 @@ object LlamaEngine {
 
     fun computeEmbeddings(texts: List<String>, modelPath: String, beforeLoad: (() -> Unit)? = null): List<FloatArray?> {
         if (texts.isEmpty()) return emptyList()
+        if (!libraryLoaded) {
+            DebugLog.e(TAG, "Native library not loaded; call LlamaEngine.loadLibrary(path) first")
+            return texts.map { null }
+        }
         return runBlocking {
             LocalModelSerializer.mutex.withLock {
                 beforeLoad?.invoke()

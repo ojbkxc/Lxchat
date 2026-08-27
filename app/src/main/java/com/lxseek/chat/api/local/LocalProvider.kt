@@ -50,6 +50,16 @@ class LocalProvider(
             return@flow
         }
 
+        // The llama.cpp JNI wrapper is now a downloadable extension. If it has not
+        // been loaded yet, surface a clear prompt instead of a generic load failure.
+        if (!LlamaChatEngine.isLibraryAvailable()) {
+            emit(StreamEvent.Error(GenerationError.LocalModel(
+                "Local AI engine extension (liblxchat_llama.so) is not installed. " +
+                    "Please download the llama.cpp native library from Settings to enable on-device inference."
+            )))
+            return@flow
+        }
+
         val engine = ensureEngineLoaded(modelConfig)
         if (engine == null) {
             emit(StreamEvent.Error(GenerationError.LocalModel("Failed to load model: ${modelConfig.alias}")))

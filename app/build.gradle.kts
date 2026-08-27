@@ -50,7 +50,9 @@ android {
             cmake {
                 cppFlags += "-std=c++17"
                 arguments += listOf("-DANDROID_STL=c++_shared")
-                targets += listOf("lxchat_llama", "lxchat_proot", "redemption_native")
+                // liblxchat_llama.so is now a downloadable extension (see LlamaLibraryManager.kt),
+                // so it is excluded from the APK native build targets.
+                targets += listOf("lxchat_proot", "redemption_native")
             }
         }
     }
