@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 
 /** Owns the persisted IM gateway configs in its own encrypted DataStore, independent of the
- * core settings store. Kept separate so the legacy, already-999-line SettingsManager stays
+ * core settings store. Kept separate so the legacy, already-1499-line SettingsManager stays
  * untouched by IM. */
 internal val Context.imGatewayDataStore by preferencesDataStore(name = "im_gateway")
 

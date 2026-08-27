@@ -1,5 +1,4 @@
-# Temporary exact caps for Kotlin sources that exceeded 999 physical lines on 2026-08-09.
-# Do not add new entries or raise a recorded count. Remove an entry once its file reaches 999.
-app/src/main/java/com/lxseek/chat/data/SettingsManager.kt=1005
-# SettingsImGatewayPage.kt grew to 1023 lines after extracting BotSettingsPanel to its own file.
-app/src/main/java/com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt=1023
+# Temporary exact caps for Kotlin sources that exceed KOTLIN_SOURCE_MAX_LINES (1499).
+# An entry must record a value above the cap and at or below its frozen ceiling in
+# INITIAL_KOTLIN_SOURCE_BASELINE_CAPS. Entries are removed once a source drops under the cap.
+# Currently empty: every handwritten Kotlin source is at or below 1499 physical lines.

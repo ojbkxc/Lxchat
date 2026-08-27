@@ -37,7 +37,7 @@ data class WeixinMediaSpec(
 
 /**
  * 微信 iLink 媒体发送器：AES-128-ECB 加密 → getuploadurl → CDN 上传 → sendmessage。
- * 独立成文件以控制 [WeixinIlinkApi] 源码体积（verifyKotlinFileSize 999 行上限）。
+ * 独立成文件以控制 [WeixinIlinkApi] 源码体积（verifyKotlinFileSize 1499 行上限）。
  * 需要访问 [WeixinIlinkApi] 的 `internal` 成员：requestJson / baseInfoJson / client / urlEncode。
  */
 class WeixinMediaSender(private val api: WeixinIlinkApi) {

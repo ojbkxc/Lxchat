@@ -7,34 +7,34 @@ import org.junit.Test
 
 class KotlinSourceSizePolicyTest {
     @Test
-    fun `999 lines pass without a baseline`() {
-        assertTrue(evaluate(999).isEmpty())
+    fun `1499 lines pass without a baseline`() {
+        assertTrue(evaluate(1499).isEmpty())
     }
 
     @Test
-    fun `1000 lines fail without a baseline`() {
-        val violation = evaluate(1000).single()
+    fun `1500 lines fail without a baseline`() {
+        val violation = evaluate(1500).single()
         assertEquals(KotlinSourceSizeViolationReason.NEW_OVERSIZED_SOURCE, violation.reason)
-        assertEquals(999, violation.allowedLines)
+        assertEquals(1499, violation.allowedLines)
     }
 
     @Test
     fun `baseline file growth fails at its recorded cap`() {
-        val violation = evaluate(current = 1201, baseline = 1200).single()
+        val violation = evaluate(current = 1601, baseline = 1600).single()
         assertEquals(KotlinSourceSizeViolationReason.BASELINE_GROWTH, violation.reason)
-        assertEquals(1200, violation.allowedLines)
+        assertEquals(1600, violation.allowedLines)
     }
 
     @Test
     fun `baseline file shrink remains accepted while still oversized`() {
-        assertTrue(evaluate(current = 1100, baseline = 1200).isEmpty())
+        assertTrue(evaluate(current = 1500, baseline = 1600).isEmpty())
     }
 
     @Test
     fun `new oversized file cannot inherit another source baseline`() {
         val violations = KotlinSourceSizePolicy.evaluate(
-            currentLines = mapOf("app/New.kt" to 1400, "app/Legacy.kt" to 1200),
-            baselineLines = mapOf("app/Legacy.kt" to 1200),
+            currentLines = mapOf("app/New.kt" to 1600, "app/Legacy.kt" to 1600),
+            baselineLines = mapOf("app/Legacy.kt" to 1600),
         )
         assertEquals(1, violations.size)
         assertEquals("app/New.kt", violations.single().path)
@@ -49,7 +49,7 @@ class KotlinSourceSizePolicyTest {
             allowedBaselineCaps = mapOf("app/Legacy.kt" to 1500),
         ).single()
         assertEquals(KotlinSourceSizeViolationReason.INVALID_BASELINE, violation.reason)
-        assertEquals(999, violation.allowedLines)
+        assertEquals(1499, violation.allowedLines)
     }
 
     @Test

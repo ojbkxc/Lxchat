@@ -14,7 +14,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 private const val TTS_START_GRACE_MS = 5_000L
 
 /**
- * Extracted TTS playback helper — keeps ChatViewModel under the 999-line source-size cap.
+ * Extracted TTS playback helper — keeps ChatViewModel under the 1499-line source-size cap.
  * Called from both the manual toggle path and the auto-play-on-stream-commit path.
  */
 internal fun playTtsForMessageInternal(

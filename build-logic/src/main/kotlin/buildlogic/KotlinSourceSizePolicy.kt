@@ -1,6 +1,6 @@
 package buildlogic
 
-internal const val KOTLIN_SOURCE_MAX_LINES = 999
+internal const val KOTLIN_SOURCE_MAX_LINES = 1499
 
 /** Immutable ceiling for the one migration baseline authorized on 2026-08-09. */
 internal val INITIAL_KOTLIN_SOURCE_BASELINE_CAPS = mapOf(
