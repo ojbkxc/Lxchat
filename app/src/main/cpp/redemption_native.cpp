@@ -19,6 +19,7 @@
 // No external libraries are used; SHA-256 and HMAC are implemented inline.
 
 #include <jni.h>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -182,12 +183,12 @@ void hmacSha256(const uint8_t* key, size_t keyLen,
 // Base64 (RFC 4648) decoder. Returns false on invalid input.
 // ──────────────────────────────────────────────────────────────────────────
 bool base64Decode(const std::string& in, std::vector<uint8_t>& out) {
-    static const int8_t dec[256] = []() {
-        int8_t d[256];
-        std::memset(d, -1, sizeof(d));
+    static const std::array<int8_t, 256> dec = []() {
+        std::array<int8_t, 256> d;
+        d.fill(-1);
         const char* tbl = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         for (int i = 0; i < 64; ++i) d[(uint8_t)tbl[i]] = (int8_t)i;
-        return *reinterpret_cast<int8_t(*)[256]>(d);
+        return d;
     }();
     out.clear();
     out.reserve((in.size() / 4) * 3);
