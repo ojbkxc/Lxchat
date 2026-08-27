@@ -258,9 +258,8 @@ class ChatViewModel(
             providers = providerRegistry.all,
             context = appContext,
             sandboxFactory = sandboxFactory,
-            additionalToolProviders = listOfNotNull(
-                automationToolProvider, mcpToolProvider, androidControlToolProvider, gitToolProvider,
-                imToolProvider, reminderToolProvider,
+            additionalToolProviders = listOfNotNull(automationToolProvider, mcpToolProvider,
+                androidControlToolProvider, gitToolProvider, imToolProvider, reminderToolProvider,
             ), smartRouterFactory = smartRouterFactory,
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
