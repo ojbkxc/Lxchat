@@ -324,6 +324,9 @@ class ShellToolProvider(
         val args = parseToolArgs(arguments)
         val command = arg(args, "command")
         if (command.isBlank()) return jsonError("execute_shell_batch", "no_command")
+        CommandSafetyGuard.blockedReason(command)?.let {
+            return jsonError("execute_shell_batch", it, command = command)
+        }
         val rawTimeout = arg(args, "timeout_ms")
         if (rawTimeout.isBlank()) return jsonError(
             "execute_shell_batch", "timeout_ms is required", command = command,
