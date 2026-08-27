@@ -38,8 +38,10 @@ data class NotificationReplyConfig(
     val contacts: Map<String, ContactMapping> = emptyMap(),
     /** 对话系统提示词（空则用默认）。 */
     val promptHeader: String = "",
-    /** 同一好友两次自动回复的最小间隔（毫秒），防连发触发 AI 请求风暴。 */
-    val cooldownMs: Long = 30_000L,
+    /** 同一好友两次自动回复的最小间隔（毫秒），防连发触发 AI 请求风暴。默认 60 秒。 */
+    val cooldownMs: Long = 60_000L,
+    /** 指定自动回复使用的模型 id（`provider:model` 格式，空表示跟随默认模型）。 */
+    val modelId: String? = null,
 )
 
 /** 系统通知自动回复的配置持久化：用独立的 preferencesDataStore("notification_reply")。 */
@@ -98,6 +100,7 @@ private data class OldNotificationReplyConfig(
     val contacts: Map<String, String> = emptyMap(),
     val promptHeader: String = "",
     val cooldownMs: Long = 30_000L,
+    val modelId: String? = null,
 ) {
     fun migrate(): NotificationReplyConfig = NotificationReplyConfig(
         enabled = enabled,
@@ -105,5 +108,6 @@ private data class OldNotificationReplyConfig(
         contacts = contacts.mapValues { (_, userId) -> ContactMapping(channelKey = "", userId = userId) },
         promptHeader = promptHeader,
         cooldownMs = cooldownMs,
+        modelId = modelId,
     )
 }

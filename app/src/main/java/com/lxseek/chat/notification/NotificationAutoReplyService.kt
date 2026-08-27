@@ -80,9 +80,9 @@ class NotificationAutoReplyService : NotificationListenerService() {
 
             if (inCooldown(recipient.userId, cfg.cooldownMs)) return
 
-            val convId = ensureConversation()
+            val convId = ensureConversation(cfg.modelId)
             val prompt = buildPrompt(cfg.promptHeader, sbn.packageName, sender, content)
-            val reply = runAgent(convId, prompt)
+            val reply = runAgent(convId, prompt, cfg.modelId)
             if (reply.isNullOrBlank()) {
                 DebugLog.w("NotifReply", "AI returned empty reply for $sender")
                 return
@@ -134,12 +134,12 @@ class NotificationAutoReplyService : NotificationListenerService() {
     }
 
     /** 取得（或创建）专用于系统通知自动回复的 Lxchat 会话 id，跨重启复用。 */
-    private suspend fun ensureConversation(): String {
+    private suspend fun ensureConversation(modelId: String?): String {
         store.conversationId()?.takeIf { it.isNotBlank() }?.let { return it }
         val id = container.conversationRepository.createConversation(
             title = "系统通知自动回复",
             systemPromptId = null,
-            modelId = null,
+            modelId = modelId,
         )
         store.setConversationId(id)
         return id
@@ -159,10 +159,11 @@ class NotificationAutoReplyService : NotificationListenerService() {
         }
     }
 
-    private suspend fun runAgent(convId: String, prompt: String): String? {
+    private suspend fun runAgent(convId: String, prompt: String, modelId: String?): String? {
         val result = container.taskExecutionEngine.runOnce(
             conversationId = convId,
             userText = prompt,
+            modelId = modelId,
         )
         return when (result) {
             is TaskExecutionEngine.Result.Success -> result.text
