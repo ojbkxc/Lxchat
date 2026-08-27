@@ -187,7 +187,7 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
 
     override fun handles(name: String): Boolean = name.startsWith("device_")
 
-    override fun execute(
+    override suspend fun execute(
         name: String,
         arguments: String,
         ctx: GenerationContext,
@@ -422,7 +422,7 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
             buildJsonObject {
                 put("type", "device_read_sensor")
                 put("sensor", sensor.name)
-                put("values", buildJsonArray { valuesHolder.get().forEach { add(it) } })
+                put("values", buildJsonArray { valuesHolder.get().forEach { add(JsonPrimitive(it)) } })
             }.toString()
         } catch (e: SecurityException) {
             err("permission_denied", e.message)
