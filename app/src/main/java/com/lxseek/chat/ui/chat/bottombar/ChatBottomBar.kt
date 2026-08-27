@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.lxseek.chat.R
@@ -264,6 +265,56 @@ fun ChatBottomBar(
                 onFileContentClick = onFileContentClick,
                 onPdfPagesClick = onPdfPagesClick,
             )
+        }
+
+        val composerText = textFieldState.text.toString()
+        val slashSuggestions = if (
+            composerText.startsWith("/") &&
+            !composerText.contains("\n") &&
+            com.lxseek.chat.command.SlashCommands.findExact(composerText) == null
+        ) {
+            com.lxseek.chat.command.SlashCommands.filterByPrefix(composerText)
+        } else emptyList()
+        if (slashSuggestions.isNotEmpty()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = RoundedCornerShape(12.dp),
+                tonalElevation = 2.dp,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    slashSuggestions.forEach { command ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    textFieldState.edit {
+                                        replace(0, length, command.trigger)
+                                    }
+                                }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(
+                                command.trigger,
+                                style = ChatType.input,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                command.description,
+                                style = ChatType.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         TextField(

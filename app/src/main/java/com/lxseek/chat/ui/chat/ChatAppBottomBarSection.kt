@@ -155,11 +155,16 @@ internal fun ChatAppBottomBarSection(
                     ) {
                         ChatBottomBar(
                             onSendMessage = { text, attachments, onAccepted ->
-                                viewModel.sendMessage(
-                                    text = text,
-                                    attachments = attachments,
-                                    onAccepted = onAccepted,
-                                )
+                                if (com.lxseek.chat.command.SlashCommands.execute(text, viewModel)) {
+                                    onAccepted()
+                                    null
+                                } else {
+                                    viewModel.sendMessage(
+                                        text = text,
+                                        attachments = attachments,
+                                        onAccepted = onAccepted,
+                                    )
+                                }
                             },
                             onStopGeneration = {
                                 haptics.interrupt()
