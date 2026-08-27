@@ -45,7 +45,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.lxseek.chat.R
@@ -155,8 +154,6 @@ fun ChatBottomBar(
     onVoiceConversationToggle: () -> Unit = {},
     onSingleAsrToggle: () -> Unit = {},
     onStopSingleAsr: () -> Unit = {},
-    // Forwarded to ComposerSendButton so transient prompts (e.g. "select a model first")
-    // go through the ViewModel snackbar channel instead of a raw Toast.
     onToast: (String) -> Unit = {},
 ) {
     val allowSpatialTransitions = LocalLxChatMotionPolicy.current.allowSpatialTransitions
@@ -175,7 +172,6 @@ fun ChatBottomBar(
         topEnd = 12.dp,
     )
 
-    // Restore PDF dialog after viewer closes
     LaunchedEffect(fullScreenViewerUrls) {
         if (fullScreenViewerUrls == null && composer.pdfDialogHiddenForPreview && composer.pendingPdfUri != null) {
             composer.showPdfPageDialog = true
@@ -267,55 +263,12 @@ fun ChatBottomBar(
             )
         }
 
-        val composerText = textFieldState.text.toString()
-        val slashSuggestions = if (
-            composerText.startsWith("/") &&
-            !composerText.contains("\n") &&
-            com.lxseek.chat.command.SlashCommands.findExact(composerText) == null
-        ) {
-            com.lxseek.chat.command.SlashCommands.filterByPrefix(composerText)
-        } else emptyList()
-        if (slashSuggestions.isNotEmpty()) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = RoundedCornerShape(12.dp),
-                tonalElevation = 2.dp,
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    slashSuggestions.forEach { command ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    textFieldState.edit {
-                                        replace(0, length, command.trigger)
-                                    }
-                                }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Text(
-                                command.trigger,
-                                style = ChatType.input,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(
-                                command.description,
-                                style = ChatType.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        SlashCommandSuggestions(
+            text = textFieldState.text.toString(),
+            onPick = { trigger ->
+                textFieldState.edit { replace(0, length, trigger) }
+            },
+        )
 
         TextField(
             state = textFieldState,
@@ -516,14 +469,11 @@ fun ChatBottomBar(
                                 text = { Text(stringResource(R.string.models_no_models)) },
                                 onClick = {
                                     activeMenu = null
-                                    lastModelDismissTime = 0L // Reset to allow immediate re-open
+                                    lastModelDismissTime = 0L
                                 },
                                 enabled = false
                             )
                         } else {
-                            // Grouped by provider, then alphabetical. enabledModels is a Set whose
-                            // iteration order is insertion order (i.e. whenever each model was
-                            // enabled), which scrambles providers together in the picker.
                             val sortedModels = remember(enabledModels) {
                                 enabledModels.sortedWith(
                                     compareBy(
@@ -873,7 +823,6 @@ fun ChatBottomBar(
                                     Text(stringResource(R.string.advanced_settings))
                                 }
                             },
-                            // Unlike the toggle rows, this opens a dialog — collapse the menu first.
                             onClick = { activeMenu = null; onAdvancedClick() }
                         )
                     }
@@ -988,7 +937,6 @@ fun ChatBottomBar(
         )
     }
 
-    // Attachment rejection / camera failure dialog
     val rejectedMsg = composer.rejectedMessage
     if (rejectedMsg != null) {
         AlertDialog(
@@ -1032,7 +980,6 @@ fun ChatBottomBar(
         )
     }
 
-    // Video slice dialog
     val pendingVideo = composer.pendingVideoUri
     if (composer.showVideoSliceDialog && pendingVideo != null) {
         VideoSliceDialog(
