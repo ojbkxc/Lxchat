@@ -5,6 +5,7 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.data.McpServerConfig
 import com.lxseek.chat.mcp.McpProtocolClient
 import com.lxseek.chat.mcp.McpToolDescriptor
+import com.lxseek.chat.mcp.asObjectOrNull
 import com.lxseek.chat.mcp.publicMcpToolName
 import com.lxseek.chat.tool.RiskLevel
 import com.lxseek.chat.tool.ToolExecutionResult
