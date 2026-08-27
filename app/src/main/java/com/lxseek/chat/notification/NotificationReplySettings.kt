@@ -42,6 +42,10 @@ data class NotificationReplyConfig(
     val cooldownMs: Long = 60_000L,
     /** 指定自动回复使用的模型 id（`provider:model` 格式，空表示跟随默认模型）。 */
     val modelId: String? = null,
+    /** 关键词黑名单（一行一个正则表达式）。命中通知标题或内容任意一项则不回复。 */
+    val blacklist: String = "",
+    /** 仅在锁屏状态时自动回复（使用时不打扰）。 */
+    val onlyWhenLocked: Boolean = false,
 )
 
 /** 系统通知自动回复的配置持久化：用独立的 preferencesDataStore("notification_reply")。 */
@@ -101,6 +105,8 @@ private data class OldNotificationReplyConfig(
     val promptHeader: String = "",
     val cooldownMs: Long = 30_000L,
     val modelId: String? = null,
+    val blacklist: String = "",
+    val onlyWhenLocked: Boolean = false,
 ) {
     fun migrate(): NotificationReplyConfig = NotificationReplyConfig(
         enabled = enabled,
@@ -109,5 +115,7 @@ private data class OldNotificationReplyConfig(
         promptHeader = promptHeader,
         cooldownMs = cooldownMs,
         modelId = modelId,
+        blacklist = blacklist,
+        onlyWhenLocked = onlyWhenLocked,
     )
 }

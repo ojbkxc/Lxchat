@@ -265,6 +265,10 @@ private val settingsGroups = listOf(
         SettingsCategory("pet_overlay", R.string.settings_pet_overlay, R.string.settings_pet_overlay_desc, Icons.Default.Android),
         SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
         SettingsCategory("notification_reply", R.string.settings_notification_reply, R.string.settings_notification_reply_desc, Icons.Default.Notifications),
+        SettingsCategory("cron", R.string.settings_cron, R.string.settings_cron_desc, Icons.Default.Schedule),
+        SettingsCategory("trigger", R.string.settings_trigger, R.string.settings_trigger_desc, Icons.Default.Bolt),
+        SettingsCategory("sms_command", R.string.settings_sms_command, R.string.settings_sms_command_desc, Icons.Default.Sms),
+        SettingsCategory("reply_channel", R.string.settings_reply_channel, R.string.settings_reply_channel_desc, Icons.Default.Send),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
@@ -337,6 +341,10 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "runtime_status" -> SettingsRuntimeStatusPage(viewModel, onBack = { selectedCategory = null })
                 "im_gateway" -> SettingsImGatewayPage(viewModel, onBack = { selectedCategory = null })
                 "notification_reply" -> NotificationReplySettingsPage(viewModel, onBack = { selectedCategory = null })
+                "cron" -> CronSettingsPage(viewModel, onBack = { selectedCategory = null })
+                "trigger" -> TriggerSettingsPage(viewModel, onBack = { selectedCategory = null })
+                "sms_command" -> SmsCommandSettingsPage(viewModel, onBack = { selectedCategory = null })
+                "reply_channel" -> ReplyChannelSettingsPage(onBack = { selectedCategory = null })
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })
                 "language" -> SettingsLanguagePage(viewModel, onBack = { selectedCategory = null })
                 "titlegen" -> SettingsTitleGenPage(viewModel, onBack = { selectedCategory = null })

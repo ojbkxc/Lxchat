@@ -95,6 +95,8 @@ fun NotificationReplySettingsPage(
     var promptText by remember(config) { mutableStateOf(config.promptHeader) }
     var cooldownSeconds by remember(config) { mutableStateOf((config.cooldownMs / 1000).toInt()) }
     var modelId by remember(config) { mutableStateOf(config.modelId) }
+    var blacklistText by remember(config) { mutableStateOf(config.blacklist) }
+    var onlyWhenLocked by remember(config) { mutableStateOf(config.onlyWhenLocked) }
 
     // 手动添加联系人折叠区状态。
     var showManualAdd by remember { mutableStateOf(false) }
@@ -146,6 +148,8 @@ fun NotificationReplySettingsPage(
                     promptHeader = promptText.trim(),
                     cooldownMs = cooldownSeconds.toLong() * 1000,
                     modelId = modelId?.takeIf { id -> id.isNotBlank() },
+                    blacklist = blacklistText,
+                    onlyWhenLocked = onlyWhenLocked,
                 )
             }
             Toast.makeText(context, context.getString(R.string.notification_reply_saved), Toast.LENGTH_SHORT).show()
@@ -429,6 +433,58 @@ fun NotificationReplySettingsPage(
                 TextButton(onClick = { promptText = "" }) {
                     Text(stringResource(R.string.notification_reply_prompt_reset))
                 }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── 5.5 关键词黑名单卡片 ──
+        Card(colors = CardDefaults.cardColors()) {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    text = stringResource(R.string.notification_reply_blacklist),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = stringResource(R.string.notification_reply_blacklist_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = blacklistText,
+                    onValueChange = { blacklistText = it },
+                    minLines = 3,
+                    placeholder = {
+                        Text(stringResource(R.string.notification_reply_blacklist_placeholder))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── 5.6 仅锁屏回复卡片 ──
+        Card(colors = CardDefaults.cardColors()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.notification_reply_only_when_locked),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.notification_reply_only_when_locked_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = onlyWhenLocked, onCheckedChange = { onlyWhenLocked = it })
             }
         }
 

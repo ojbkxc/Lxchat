@@ -28,6 +28,11 @@
     <!-- Local network discovery (mDNS / NSD) for LAN device discovery (independent of ADB). -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- SMS command system: receive and read SMS to recognize smsf# commands. User-granted at runtime. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Condition trigger system: query network state for NETWORK_CHANGE rules. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Allows a visibility-safe preflight before using the platform capture contract. -->
     <queries>
@@ -208,6 +213,54 @@
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- SMS command system: listens for incoming SMS, recognizes smsf# commands and dispatches
+             them to SmsCommandExecutorService for local on-device execution (ADB Shell / AI / WiFi).
+             Inert until the user enables it in Settings → SMS 命令 and grants RECEIVE_SMS. -->
+        <receiver
+            android:name=".sms.SmsCommandReceiver"
+            android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Executes smsf# commands off the main thread. Internal only; started by SmsCommandReceiver. -->
+        <service
+            android:name=".sms.SmsCommandExecutorService"
+            android:exported="false" />
+
+        <!-- Condition trigger system: listens for battery changes and dispatches matching
+             TriggerRules (BATTERY_LOW / BATTERY_HIGH / CHARGING_START / CHARGING_STOP) to
+             TriggerExecutorService. Note: ACTION_BATTERY_CHANGED is a sticky protected broadcast;
+             on Android O+ this static registration won't fire, so the app also registers it
+             dynamically at startup (see AppContainer.startProcessServices). Kept here for older
+             devices and to satisfy the manifest contract. -->
+        <receiver
+            android:name=".trigger.BatteryTriggerReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BATTERY_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Condition trigger system: listens for connectivity changes and dispatches matching
+             NETWORK_CHANGE TriggerRules to TriggerExecutorService. CONNECTIVITY_CHANGE is
+             deprecated on N+ and not delivered to manifest receivers on O+; the app also
+             registers it dynamically at startup. -->
+        <receiver
+            android:name=".trigger.NetworkTriggerReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Executes triggered AI tasks off the main thread. Internal only; started by the
+             trigger receivers. -->
+        <service
+            android:name=".trigger.TriggerExecutorService"
+            android:exported="false" />
     </application>
 
 </manifest>

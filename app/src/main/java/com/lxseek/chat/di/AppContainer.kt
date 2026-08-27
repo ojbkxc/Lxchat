@@ -143,6 +143,27 @@ class AppContainer(private val appContext: Context) {
                 com.lxseek.chat.util.DebugLog.e("AppContainer", "Desktop pet startup restore failed", e)
             }
         }
+        // Condition trigger: dynamically register battery/network receivers. Android O+ no longer
+        // delivers implicit broadcasts (ACTION_BATTERY_CHANGED / CONNECTIVITY_CHANGE) to manifest
+        // receivers, so we register them here to keep the trigger system actually working. The
+        // receivers are inert while the trigger master toggle is off (they read the DataStore and
+        // bail out). Process-scoped — never unregistered.
+        try {
+            com.lxseek.chat.trigger.BatteryTriggerReceiver.registerDynamic(appContext)
+            com.lxseek.chat.trigger.NetworkTriggerReceiver.registerDynamic(appContext)
+        } catch (e: Throwable) {
+            com.lxseek.chat.util.DebugLog.e("AppContainer", "trigger receivers register failed", e)
+        }
+        // Cron scheduled tasks: scan all enabled CronTasks on startup and arm WorkManager chains.
+        // The scheduler self-heals on every tasks Flow emission (add/edit/delete/toggle), so this
+        // call only needs to happen once per process. Inert when no tasks are configured.
+        appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                cronScheduler.start()
+            } catch (e: Throwable) {
+                com.lxseek.chat.util.DebugLog.e("AppContainer", "cronScheduler.start failed", e)
+            }
+        }
     }
 
     val taskRepository: TaskRepository by lazy {
@@ -234,6 +255,26 @@ class AppContainer(private val appContext: Context) {
      */
     val notificationReplyStore: com.lxseek.chat.notification.NotificationReplyStore by lazy {
         com.lxseek.chat.notification.NotificationReplyStore(appContext)
+    }
+
+    /**
+     * Cron 定时任务持久化（DataStore）。进程级单例，供 [cronScheduler] / CronWorker / CronSettingsPage 共享。
+     * 用 lazy 确保首次访问时才创建 DataStore，避免在测试或无 Cron 功能的构建中初始化。
+     */
+    val cronTaskStore: com.lxseek.chat.cron.CronTaskStore by lazy {
+        com.lxseek.chat.cron.CronTaskStore(appContext)
+    }
+
+    /**
+     * Cron 调度器：监听 [cronTaskStore].tasks Flow，对 enabled 任务用 WorkManager 链式 OneTimeWorkRequest 调度。
+     * 在 [startProcessServices] 中启动；CronWorker 执行完后会调用 [com.lxseek.chat.cron.CronScheduler.reschedule] 排下一次。
+     */
+    val cronScheduler: com.lxseek.chat.cron.CronScheduler by lazy {
+        com.lxseek.chat.cron.CronScheduler(
+            appContext = appContext,
+            store = cronTaskStore,
+            scope = appScope,
+        )
     }
 
     /** Closes the IM loop: polls inbound messages, triggers the agent, writes replies back. */

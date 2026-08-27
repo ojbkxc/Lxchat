@@ -5,6 +5,13 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.lxseek.chat.LxChatApplication
 import com.lxseek.chat.automation.TaskExecutionEngine
+import com.lxseek.chat.channel.BarkChannel
+import com.lxseek.chat.channel.EmailChannel
+import com.lxseek.chat.channel.ReplyChannel
+import com.lxseek.chat.channel.ReplyChannelConfig
+import com.lxseek.chat.channel.ReplyChannelStore
+import com.lxseek.chat.channel.SendResult
+import com.lxseek.chat.channel.TelegramChannel
 import com.lxseek.chat.im.weixin.WeixinChannel
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +38,8 @@ class NotificationAutoReplyService : NotificationListenerService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val store by lazy { NotificationReplyStore(applicationContext) }
+    /** 多回复渠道配置（Telegram/Bark/Email），独立于 [store]。 */
+    private val channelStore by lazy { ReplyChannelStore(applicationContext) }
 
     private val container get() = (application as LxChatApplication).container
 
@@ -67,6 +76,17 @@ class NotificationAutoReplyService : NotificationListenerService() {
             val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
             val content = bigText.ifBlank { text }
             if (sender.isEmpty() && content.isEmpty()) return
+
+            // 关键词黑名单：命中通知标题或内容任意一项则不回复。
+            if (isBlacklisted(cfg.blacklist, sender, content)) {
+                DebugLog.d("NotifReply", "hit blacklist, skip: sender=$sender")
+                return
+            }
+
+            // 仅锁屏状态回复：使用手机时不打扰。
+            if (cfg.onlyWhenLocked && !isScreenLocked()) {
+                return
+            }
 
             val dedupKey = "${sbn.packageName}|${sbn.key}"
             if (isDuplicate(dedupKey)) return
@@ -106,6 +126,29 @@ class NotificationAutoReplyService : NotificationListenerService() {
         if (last != null && now - last < DEDUP_WINDOW_MS) return true
         handledNotifications[key] = now
         return false
+    }
+
+    /** 关键词黑名单匹配：一行一个正则，命中标题或内容任意一项返回 true。 */
+    private fun isBlacklisted(blacklist: String, title: String, text: String): Boolean {
+        if (blacklist.isBlank()) return false
+        for (line in blacklist.split("\n")) {
+            val keyword = line.trim()
+            if (keyword.isEmpty()) continue
+            try {
+                val regex = Regex(keyword)
+                if (regex.containsMatchIn(title) || regex.containsMatchIn(text)) return true
+            } catch (e: Exception) {
+                // 正则非法时降级为普通包含匹配
+                if (title.contains(keyword) || text.contains(keyword)) return true
+            }
+        }
+        return false
+    }
+
+    /** 判断屏幕是否锁定。 */
+    private fun isScreenLocked(): Boolean {
+        val keyguardManager = getSystemService(android.content.Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+        return keyguardManager.isKeyguardLocked
     }
 
     /** 昵称精确 → 忽略空白的宽匹配。命中任何一个即返回对应联系人映射。 */
@@ -198,6 +241,60 @@ class NotificationAutoReplyService : NotificationListenerService() {
         } else {
             DebugLog.d("NotifReply", "sent reply to ${mapping.userId}")
         }
+
+        // ── 额外通过其他渠道发送（Telegram/Bark/Email 等） ──
+        // 微信发送结果不阻断额外渠道：即使微信失败，仍尝试推送其他渠道，确保回复能以某种方式触达。
+        sendViaAdditionalChannels(mapping, reply)
+    }
+
+    /**
+     * 按 [ReplyChannelConfig.additionalChannels] 顺序逐个发送。任一渠道失败只记日志、不抛出，
+     * 不影响后续渠道。recipient 当前统一用 [ContactMapping.userId]（对 Telegram=chat_id、
+     * Email=邮箱地址、Bark=标题），具体语义由各渠道实现解释。
+     */
+    private suspend fun sendViaAdditionalChannels(mapping: ContactMapping, reply: String) {
+        val channelConfig = try {
+            channelStore.currentConfig()
+        } catch (e: Exception) {
+            DebugLog.w("NotifReply", "read channel config failed, skip additional channels: ${e.message}")
+            return
+        }
+        if (channelConfig.additionalChannels.isEmpty()) return
+        for (channelId in channelConfig.additionalChannels) {
+            try {
+                val channel = resolveChannel(channelId, channelConfig) ?: continue
+                if (!channel.isConfigured()) {
+                    DebugLog.d("NotifReply", "channel $channelId not configured, skip")
+                    continue
+                }
+                when (val r = channel.send(mapping.userId, reply)) {
+                    is SendResult.Success -> DebugLog.d("NotifReply", "channel $channelId sent ok")
+                    is SendResult.Failure -> DebugLog.w("NotifReply", "channel $channelId failed: ${r.reason}")
+                }
+            } catch (e: Exception) {
+                DebugLog.e("NotifReply", "channel $channelId error", e)
+            }
+        }
+    }
+
+    /** 根据 id 与配置构建对应渠道实例；未知 id 返回 null。 */
+    private fun resolveChannel(channelId: String, cfg: ReplyChannelConfig): ReplyChannel? = when (channelId) {
+        ReplyChannelConfig.CHANNEL_TELEGRAM -> TelegramChannel(
+            token = cfg.telegramBotToken,
+            baseUrl = cfg.telegramBaseUrl,
+        )
+        ReplyChannelConfig.CHANNEL_BARK -> BarkChannel(
+            serverUrl = cfg.barkServerUrl,
+            deviceKey = cfg.barkDeviceKey,
+        )
+        ReplyChannelConfig.CHANNEL_EMAIL -> EmailChannel(
+            provider = cfg.emailProvider,
+            apiKey = cfg.emailApiKey,
+            from = cfg.emailFrom,
+            mailgunDomain = cfg.emailMailgunDomain,
+            defaultTo = cfg.emailDefaultTo,
+        )
+        else -> null
     }
 
     private companion object {

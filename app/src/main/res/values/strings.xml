@@ -1342,6 +1342,11 @@
     <string name="notification_reply_prompt_placeholder">空则使用默认提示词：你正在代理我的微信账号做"系统通知自动回复"…</string>
     <string name="notification_reply_prompt_vars">支持变量：{app}（包名）、{sender}（发送者昵称）</string>
     <string name="notification_reply_prompt_reset">恢复默认</string>
+    <string name="notification_reply_blacklist">关键词黑名单</string>
+    <string name="notification_reply_blacklist_desc">一行一个正则表达式，命中通知标题或内容任意一项则不回复</string>
+    <string name="notification_reply_blacklist_placeholder">一行一个正则表达式，命中通知标题或内容则不回复&#10;例如：广告|推广|营销</string>
+    <string name="notification_reply_only_when_locked">仅锁屏时回复</string>
+    <string name="notification_reply_only_when_locked_desc">只在屏幕锁定时自动回复，使用手机时不打扰</string>
     <string name="notification_reply_cooldown">回复冷却（秒）</string>
     <string name="notification_reply_cooldown_desc">同一好友两次回复的最小间隔</string>
     <string name="notification_reply_model">回复模型</string>
@@ -1369,6 +1374,54 @@
     <string name="notification_reply_test_model_set">已选模型：%1$s</string>
     <string name="notification_reply_test_cooldown">冷却时间：%1$s 秒</string>
     <string name="notification_reply_test_sample_prompt">示例 prompt 预览：</string>
+
+    <!-- Cron scheduled tasks -->
+    <string name="settings_cron">Scheduled Tasks (Cron)</string>
+    <string name="settings_cron_desc">Run AI tasks on a cron schedule (e.g. daily weather summary)</string>
+    <string name="cron_intro_title">Cron Tasks</string>
+    <string name="cron_intro_desc">Use a 5-field cron expression (minute hour day month weekday) to run an AI prompt on a schedule. Each task runs in its own conversation so the agent can recall previous runs.</string>
+    <string name="cron_add_task">Add Task</string>
+    <string name="cron_edit_task">Edit Task</string>
+    <string name="cron_delete_task">Delete task</string>
+    <string name="cron_empty">No scheduled tasks yet. Tap \"Add Task\" to create one.</string>
+    <string name="cron_never_run">Never run yet</string>
+    <string name="cron_task_added">Task added</string>
+    <string name="cron_task_updated">Task updated</string>
+    <string name="cron_field_name">Name</string>
+    <string name="cron_field_expression">Cron expression</string>
+    <string name="cron_field_prompt">Prompt</string>
+    <string name="cron_field_prompt_hint">What should the AI do? e.g. Summarize today\'s weather</string>
+    <string name="cron_field_model">Model</string>
+    <string name="cron_model_follow_default">Follow default</string>
+    <string name="cron_expression_invalid">Invalid cron expression</string>
+    <string name="cron_expression_ok">Valid</string>
+    <string name="cron_next_run_preview">Next run: %1$s</string>
+
+    <!-- Reply channels: send AI replies via Telegram / Bark / Email in addition to WeChat. -->
+    <string name="settings_reply_channel">Reply Channels</string>
+    <string name="settings_reply_channel_desc">Send AI replies to Telegram / Bark / Email too</string>
+    <string name="reply_channel_saved">Saved</string>
+    <string name="reply_channel_telegram">Telegram</string>
+    <string name="reply_channel_telegram_desc">Push replies via Telegram Bot API</string>
+    <string name="reply_channel_telegram_token">Bot Token</string>
+    <string name="reply_channel_telegram_base_url">API Base URL</string>
+    <string name="reply_channel_telegram_base_url_hint">Leave blank for official https://api.telegram.org/</string>
+    <string name="reply_channel_bark">Bark</string>
+    <string name="reply_channel_bark_desc">Push replies as iOS Bark notifications</string>
+    <string name="reply_channel_bark_server">Server URL</string>
+    <string name="reply_channel_bark_server_hint">Leave blank for official https://api.day.app</string>
+    <string name="reply_channel_bark_device_key">Device Key</string>
+    <string name="reply_channel_email">Email</string>
+    <string name="reply_channel_email_desc">Send replies via HTTP API (Resend/SendGrid/Mailgun), no JavaMail</string>
+    <string name="reply_channel_email_provider">Provider</string>
+    <string name="reply_channel_email_api_key">API Key</string>
+    <string name="reply_channel_email_from">From</string>
+    <string name="reply_channel_email_mailgun_domain">Mailgun Domain</string>
+    <string name="reply_channel_email_default_to">Default Recipient</string>
+    <string name="reply_channel_email_default_to_hint">Used when the contact has no email address</string>
+    <string name="reply_channel_select">Channels to use when replying</string>
+    <string name="reply_channel_select_desc">Selected channels receive every AI reply in addition to WeChat</string>
+
     <string name="settings_group_im">IM</string>
     <string name="settings_group_connection">Connection</string>
     <string name="device_control_howto">The agent plans from the on-screen element tree and can open apps, read the UI and tap or type. Opening apps works without the bridge; click, tap and input need the accessibility bridge enabled below.</string>
@@ -1534,4 +1587,58 @@
     <string name="im_channel_settings_save">保存设置</string>
     <string name="im_channel_settings_saved">设置已保存</string>
     <string name="im_channel_settings_follow_default">跟随默认</string>
+
+    <!-- SMS command system: receive smsf# commands and execute locally on-device. -->
+    <string name="settings_sms_command">SMS Commands</string>
+    <string name="settings_sms_command_desc">Control phone via SMS smsf# commands</string>
+    <string name="sms_command_enabled">Enable SMS commands</string>
+    <string name="sms_command_enabled_desc">Listen for SMS starting with smsf# and execute locally (ADB Shell / AI / WiFi)</string>
+    <string name="sms_command_permission_granted">SMS permission granted</string>
+    <string name="sms_command_permission_denied">SMS permission not granted</string>
+    <string name="sms_command_permission_desc">RECEIVE_SMS is required to listen for commands</string>
+    <string name="sms_command_grant">Grant</string>
+    <string name="sms_command_whitelist">Allowed senders</string>
+    <string name="sms_command_whitelist_desc">Phone numbers allowed to send commands, one per line. Empty means allow all (use with caution).</string>
+    <string name="sms_command_whitelist_empty">Empty = allow all senders (use with caution)</string>
+    <string name="sms_command_whitelist_hint">Phone number</string>
+    <string name="sms_command_add">Add</string>
+    <string name="sms_command_remove">Remove</string>
+    <string name="sms_command_help">Command help</string>
+    <string name="sms_command_help_content">Format: smsf#function#action#param\n\nSupported:\n  smsf#shell#exec#&lt;cmd&gt;  Run ADB Shell command (root/Shizuku)\n  smsf#ai#chat#&lt;prompt&gt;   Ask AI to generate a reply\n  smsf#wifi#on            Turn WiFi on\n  smsf#wifi#off           Turn WiFi off\n  smsf#help               Show this help\n\nNotes:\n  - Commands run locally on-device, no network needed\n  - shell/wifi require root or Shizuku authorized\n  - Results are shown via local notification</string>
+    <string name="sms_command_saved">Settings saved</string>
+
+    <!-- Condition trigger system: listen for battery/network changes and trigger AI tasks. -->
+    <string name="settings_trigger">Condition Triggers</string>
+    <string name="settings_trigger_desc">Trigger AI tasks on battery / network events</string>
+    <string name="trigger_enabled">Enable condition triggers</string>
+    <string name="trigger_enabled_desc">Listen for battery / network changes and run matching rules</string>
+    <string name="trigger_presets">Presets</string>
+    <string name="trigger_presets_desc">One-tap to add common rules</string>
+    <string name="trigger_preset_battery_low">Battery low reminder</string>
+    <string name="trigger_preset_battery_low_prompt">My phone battery is low. Please give me a short, actionable reminder about saving power (e.g. close battery-hungry apps, reduce brightness, find a charger).</string>
+    <string name="trigger_preset_battery_high">Battery high enough</string>
+    <string name="trigger_preset_battery_high_prompt">My phone battery has reached a high level. Please give me a brief status note and suggest whether I can unplug the charger.</string>
+    <string name="trigger_preset_charging_start">Charging started</string>
+    <string name="trigger_preset_charging_start_prompt">My phone just started charging. Please give me a brief, friendly note about the charging session.</string>
+    <string name="trigger_preset_charging_stop">Charging stopped</string>
+    <string name="trigger_preset_charging_stop_prompt">My phone just stopped charging. Please give me a brief note about the current battery state.</string>
+    <string name="trigger_preset_network_change">Network changed</string>
+    <string name="trigger_preset_network_change_prompt">My phone network just changed. Please give me a brief note about what this might mean (e.g. switched between WiFi and mobile data).</string>
+    <string name="trigger_rules">Rules</string>
+    <string name="trigger_rules_desc">Each rule runs its prompt through AI when the condition is met</string>
+    <string name="trigger_rules_empty">No rules yet. Add one with the button below or pick a preset above.</string>
+    <string name="trigger_add_rule">Add rule</string>
+    <string name="trigger_delete_rule">Delete rule</string>
+    <string name="trigger_rule_added">Rule added</string>
+    <string name="trigger_field_name">Name</string>
+    <string name="trigger_field_type">Type</string>
+    <string name="trigger_field_threshold">Threshold (%)</string>
+    <string name="trigger_field_condition">Condition</string>
+    <string name="trigger_field_prompt">Prompt</string>
+    <string name="trigger_field_model">Model</string>
+    <string name="trigger_type_battery_low">Battery below threshold</string>
+    <string name="trigger_type_battery_high">Battery above threshold</string>
+    <string name="trigger_type_network_change">Network change</string>
+    <string name="trigger_type_charging_start">Charging started</string>
+    <string name="trigger_type_charging_stop">Charging stopped</string>
 </resources>

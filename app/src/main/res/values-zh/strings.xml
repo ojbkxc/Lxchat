@@ -1412,6 +1412,11 @@
     <string name="notification_reply_prompt_placeholder">空则使用默认提示词：你正在代理我的微信账号做"系统通知自动回复"…</string>
     <string name="notification_reply_prompt_vars">支持变量：{app}（包名）、{sender}（发送者昵称）</string>
     <string name="notification_reply_prompt_reset">恢复默认</string>
+    <string name="notification_reply_blacklist">关键词黑名单</string>
+    <string name="notification_reply_blacklist_desc">一行一个正则表达式，命中通知标题或内容任意一项则不回复</string>
+    <string name="notification_reply_blacklist_placeholder">一行一个正则表达式，命中通知标题或内容则不回复&#10;例如：广告|推广|营销</string>
+    <string name="notification_reply_only_when_locked">仅锁屏时回复</string>
+    <string name="notification_reply_only_when_locked_desc">只在屏幕锁定时自动回复，使用手机时不打扰</string>
     <string name="notification_reply_cooldown">回复冷却（秒）</string>
     <string name="notification_reply_cooldown_desc">同一好友两次回复的最小间隔</string>
     <string name="notification_reply_model">回复模型</string>
@@ -1439,4 +1444,105 @@
     <string name="notification_reply_test_model_set">已选模型：%1$s</string>
     <string name="notification_reply_test_cooldown">冷却时间：%1$s 秒</string>
     <string name="notification_reply_test_sample_prompt">示例 prompt 预览：</string>
+
+    <!-- 多回复渠道：除微信外，把 AI 回复推送到 Telegram / Bark / 邮箱。 -->
+    <string name="settings_reply_channel">回复渠道</string>
+    <string name="settings_reply_channel_desc">把 AI 回复同时发到 Telegram / Bark / 邮箱</string>
+    <string name="reply_channel_saved">已保存</string>
+    <string name="reply_channel_telegram">Telegram</string>
+    <string name="reply_channel_telegram_desc">通过 Telegram Bot API 推送回复</string>
+    <string name="reply_channel_telegram_token">Bot Token</string>
+    <string name="reply_channel_telegram_base_url">API Base URL</string>
+    <string name="reply_channel_telegram_base_url_hint">留空使用官方 https://api.telegram.org/</string>
+    <string name="reply_channel_bark">Bark</string>
+    <string name="reply_channel_bark_desc">把回复作为 iOS Bark 推送发出</string>
+    <string name="reply_channel_bark_server">服务器地址</string>
+    <string name="reply_channel_bark_server_hint">留空使用官方 https://api.day.app</string>
+    <string name="reply_channel_bark_device_key">Device Key</string>
+    <string name="reply_channel_email">邮箱</string>
+    <string name="reply_channel_email_desc">通过 HTTP API 发送邮件（Resend/SendGrid/Mailgun），不引入 JavaMail</string>
+    <string name="reply_channel_email_provider">服务商</string>
+    <string name="reply_channel_email_api_key">API Key</string>
+    <string name="reply_channel_email_from">发件人</string>
+    <string name="reply_channel_email_mailgun_domain">Mailgun 域名</string>
+    <string name="reply_channel_email_default_to">默认收件人</string>
+    <string name="reply_channel_email_default_to_hint">当联系人没有邮箱地址时使用</string>
+    <string name="reply_channel_select">回复时启用的渠道</string>
+    <string name="reply_channel_select_desc">选中的渠道会在微信之外同时收到每条 AI 回复</string>
+
+    <!-- SMS 命令系统：接收 smsf# 命令并在手机本地执行。 -->
+    <string name="settings_sms_command">SMS 命令</string>
+    <string name="settings_sms_command_desc">通过短信 smsf# 命令控制手机</string>
+    <string name="sms_command_enabled">启用 SMS 命令</string>
+    <string name="sms_command_enabled_desc">监听 smsf# 开头的短信并在本地执行（ADB Shell / AI / WiFi）</string>
+    <string name="sms_command_permission_granted">已授予短信权限</string>
+    <string name="sms_command_permission_denied">未授予短信权限</string>
+    <string name="sms_command_permission_desc">需要接收短信权限才能监听命令</string>
+    <string name="sms_command_grant">授予权限</string>
+    <string name="sms_command_whitelist">白名单号码</string>
+    <string name="sms_command_whitelist_desc">允许发送命令的号码，每行一个。空表示允许所有（慎用）。</string>
+    <string name="sms_command_whitelist_empty">空 = 允许所有号码（慎用）</string>
+    <string name="sms_command_whitelist_hint">手机号码</string>
+    <string name="sms_command_add">添加</string>
+    <string name="sms_command_remove">移除</string>
+    <string name="sms_command_help">命令帮助</string>
+    <string name="sms_command_help_content">格式：smsf#功能#动作#参数\n\n支持的命令：\n  smsf#shell#exec#&lt;命令&gt;  执行 ADB Shell 命令（root/Shizuku）\n  smsf#ai#chat#&lt;提示词&gt;   让 AI 生成回复\n  smsf#wifi#on            开启 WiFi\n  smsf#wifi#off           关闭 WiFi\n  smsf#help               显示本帮助\n\n说明：\n  - 命令在手机本地执行，不联网、不远程\n  - shell/wifi 需要 root 或 Shizuku 已授权\n  - 结果通过本地通知展示</string>
+    <string name="sms_command_saved">设置已保存</string>
+
+    <!-- Cron 定时任务 -->
+    <string name="settings_cron">定时任务（Cron）</string>
+    <string name="settings_cron_desc">用 Cron 表达式定时让 AI 执行任务（如每天早上发天气摘要）</string>
+    <string name="cron_intro_title">Cron 定时任务</string>
+    <string name="cron_intro_desc">用 5 字段 Cron 表达式（分 时 日 月 周）定时执行一段 AI 提示词。每个任务在独立会话中运行，AI 能记住历次执行的内容。</string>
+    <string name="cron_add_task">添加任务</string>
+    <string name="cron_edit_task">编辑任务</string>
+    <string name="cron_delete_task">删除任务</string>
+    <string name="cron_empty">还没有定时任务，点击「添加任务」创建一个。</string>
+    <string name="cron_never_run">尚未执行过</string>
+    <string name="cron_task_added">任务已添加</string>
+    <string name="cron_task_updated">任务已更新</string>
+    <string name="cron_field_name">名称</string>
+    <string name="cron_field_expression">Cron 表达式</string>
+    <string name="cron_field_prompt">提示词</string>
+    <string name="cron_field_prompt_hint">让 AI 做什么？例如：帮我查一下今天的天气并生成一段简短的早间摘要</string>
+    <string name="cron_field_model">模型</string>
+    <string name="cron_model_follow_default">跟随默认</string>
+    <string name="cron_expression_invalid">Cron 表达式无效</string>
+    <string name="cron_expression_ok">表达式有效</string>
+    <string name="cron_next_run_preview">下次执行：%1$s</string>
+
+    <!-- 条件触发系统：监听电池/网络变化，触发 AI 任务。 -->
+    <string name="settings_trigger">条件触发</string>
+    <string name="settings_trigger_desc">电量/网络/充电事件触发 AI 任务</string>
+    <string name="trigger_enabled">启用条件触发</string>
+    <string name="trigger_enabled_desc">监听电池/网络变化并执行匹配的规则</string>
+    <string name="trigger_presets">预设</string>
+    <string name="trigger_presets_desc">一键添加常用规则</string>
+    <string name="trigger_preset_battery_low">电量低提醒</string>
+    <string name="trigger_preset_battery_low_prompt">我的手机电量低了。请给我一条简短、可操作的省电提醒（例如关闭耗电应用、降低亮度、找充电器）。</string>
+    <string name="trigger_preset_battery_high">电量已充足</string>
+    <string name="trigger_preset_battery_high_prompt">我的手机电量已达到较高水平。请给我一段简短的状态说明，并建议是否可以拔掉充电器。</string>
+    <string name="trigger_preset_charging_start">开始充电</string>
+    <string name="trigger_preset_charging_start_prompt">我的手机刚开始充电。请给我一段简短、友好的充电提示。</string>
+    <string name="trigger_preset_charging_stop">停止充电</string>
+    <string name="trigger_preset_charging_stop_prompt">我的手机刚停止充电。请给我一段关于当前电量状态的简短说明。</string>
+    <string name="trigger_preset_network_change">网络变化</string>
+    <string name="trigger_preset_network_change_prompt">我的手机网络刚发生变化。请给我一段简短说明，提示这意味着什么（例如在 WiFi 和移动数据间切换）。</string>
+    <string name="trigger_rules">规则</string>
+    <string name="trigger_rules_desc">每条规则在条件满足时把提示词交给 AI 执行</string>
+    <string name="trigger_rules_empty">还没有规则。点击下方按钮添加，或从上方预设中选取。</string>
+    <string name="trigger_add_rule">添加规则</string>
+    <string name="trigger_delete_rule">删除规则</string>
+    <string name="trigger_rule_added">规则已添加</string>
+    <string name="trigger_field_name">名称</string>
+    <string name="trigger_field_type">类型</string>
+    <string name="trigger_field_threshold">阈值 (%)</string>
+    <string name="trigger_field_condition">条件</string>
+    <string name="trigger_field_prompt">提示词</string>
+    <string name="trigger_field_model">模型</string>
+    <string name="trigger_type_battery_low">电量低于阈值</string>
+    <string name="trigger_type_battery_high">电量高于阈值</string>
+    <string name="trigger_type_network_change">网络变化</string>
+    <string name="trigger_type_charging_start">开始充电</string>
+    <string name="trigger_type_charging_stop">停止充电</string>
 </resources>
