@@ -472,7 +472,6 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
             put("label", pm.getApplicationLabel(ai).toString())
             put("uid", ai.uid)
             put("targetSdk", ai.targetSdkVersion)
-            put("installLocation", ai.installLocation)
             put("sourceDir", ai.sourceDir)
             put("dataDir", ai.dataDir)
             put("category", ai.category)
