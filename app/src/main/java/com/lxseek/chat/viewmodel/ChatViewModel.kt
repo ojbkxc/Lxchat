@@ -1,5 +1,4 @@
 package com.lxseek.chat.viewmodel
-
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
@@ -88,7 +87,6 @@ class ChatViewModel(
     private val taskExecutionEngine: com.lxseek.chat.automation.TaskExecutionEngine,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : AndroidViewModel(application) {
-
     val settings: SettingsRepository = settingsRepository
 
     // Lightweight connectivity monitor used to pre-check before sending and to surface a
@@ -249,8 +247,7 @@ class ChatViewModel(
         // Provider map / model-list sync jobs now run on the process-scoped registry
         // (launched once in AppContainer), so they survive ViewModel recreation.
     }
-    // Per-conversation generation lifecycle (IO scope, job, slot, race-free stop/persist tokens)
-    // lives in [ConversationGenerationState], one per conversation via [generationRegistry].
+    // Per-conversation generation lifecycle lives in [ConversationGenerationState] via [generationRegistry].
     private val autoMemoryToolProvider by lazy { AutoMemoryToolProvider(AutoMemoryExtractor(memoryManager, settings, providerRegistry)) }
     private val generationManager by lazy {
         GenerationManager(
