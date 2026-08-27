@@ -272,6 +272,7 @@ private val settingsGroups = listOf(
         SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
         SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
         SettingsCategory("online_market", R.string.settings_online_market, R.string.settings_online_market_desc, Icons.Default.ShoppingCart),
+        SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
@@ -335,6 +336,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
                 "plugins" -> SettingsPluginsListPage(viewModel, onBack = { selectedCategory = null })
                 "market" -> SettingsMarketPage(viewModel, onBack = { selectedCategory = null })
+                "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null })
                 "online_market" -> SettingsPluginMarketPage(
                     viewModel,
                     onBack = { selectedCategory = null },

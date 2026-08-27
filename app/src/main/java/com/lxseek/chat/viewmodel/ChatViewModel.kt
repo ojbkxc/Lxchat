@@ -79,9 +79,14 @@ class ChatViewModel(
     val pluginHost: com.lxseek.chat.plugin.PluginHost,
     val pluginMarket: com.lxseek.chat.plugin.market.PluginMarket,
     private val taskExecutionEngine: com.lxseek.chat.automation.TaskExecutionEngine,
+    private val membershipProvider: com.lxseek.chat.membership.LocalMembershipProvider,
+    private val redemptionCodeValidator: com.lxseek.chat.membership.RedemptionCodeValidator,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : AndroidViewModel(application) {
     val settings: SettingsRepository = settingsRepository
+
+    /** Membership API: status flow + redemption + revoke. See [MembershipViewModelApi]. */
+    val membership = MembershipViewModelApi(membershipProvider, redemptionCodeValidator)
 
     // Lightweight connectivity monitor used to pre-check before sending and to surface a
     // snackbar when the device is offline. Registered lazily; callers use isOnline() / online.

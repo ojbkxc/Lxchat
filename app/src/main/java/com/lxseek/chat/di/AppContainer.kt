@@ -533,6 +533,19 @@ class AppContainer(private val appContext: Context) {
         AutoBackupManager(appContext, settingsManager, chatDao, memoryManager)
     }
 
+    // ── Membership ────────────────────────────────────────────
+    // Local offline membership provider (DataStore-backed) and the redemption code validator.
+    // The HMAC secret key is a placeholder constant; production builds should inject it via
+    // BuildConfig / native layer so it never ships in plain text in the APK.
+
+    val membershipProvider: com.lxseek.chat.membership.LocalMembershipProvider by lazy {
+        com.lxseek.chat.membership.LocalMembershipProvider(settingsManager)
+    }
+
+    val redemptionCodeValidator: com.lxseek.chat.membership.RedemptionCodeValidator by lazy {
+        com.lxseek.chat.membership.RedemptionCodeValidator(REDEMPTION_HMAC_SECRET)
+    }
+
     // ── ViewModel Factory ─────────────────────────────────────
 
     fun chatViewModelFactory(): ChatViewModelFactory =
@@ -541,8 +554,16 @@ class AppContainer(private val appContext: Context) {
             autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
             taskManager, loopManager, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-            mcpRegistry, pluginHost, pluginMarket, taskExecutionEngine, smartRouterFactory,
+            mcpRegistry, pluginHost, pluginMarket, taskExecutionEngine,
+            membershipProvider, redemptionCodeValidator, smartRouterFactory,
         )
+
+    private companion object {
+        // 32-byte placeholder HMAC secret for redemption code signing.
+        // TODO: replace with BuildConfig field or native-layer key retrieval before production.
+        private val REDEMPTION_HMAC_SECRET: ByteArray =
+            "LxchatRedemptionHmacSecret2026DoNotShip".toByteArray(Charsets.UTF_8)
+    }
 
     /** Factory for the workflow editor's dedicated view-model (kept out of ChatViewModel). */
     fun workflowViewModelFactory(): androidx.lifecycle.ViewModelProvider.Factory =

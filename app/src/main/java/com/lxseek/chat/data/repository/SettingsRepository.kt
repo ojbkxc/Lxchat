@@ -571,15 +571,15 @@ class SettingsRepository(
 
     // ── Plugin Market ─────────────────────────────────────────
     /** Raw JSON array of user-added market sources (parsed by the market service). */
-    val marketSourcesRaw: StateFlow<String> = hot(settingsManager.marketSourcesJson, "")
+    val marketSourcesRaw: StateFlow<String> = hot(settingsManager.market.sourcesJson, "")
     /** Raw JSON array of installed market plugins (parsed by the market service). */
-    val marketInstalledRaw: StateFlow<String> = hot(settingsManager.marketInstalledJson, "")
+    val marketInstalledRaw: StateFlow<String> = hot(settingsManager.market.installedJson, "")
 
-    fun saveMarketSources(json: String) = scope.launch { settingsManager.saveMarketSources(json) }
-    fun saveMarketInstalled(json: String) = scope.launch { settingsManager.saveMarketInstalled(json) }
+    fun saveMarketSources(json: String) = scope.launch { settingsManager.market.saveSources(json) }
+    fun saveMarketInstalled(json: String) = scope.launch { settingsManager.market.saveInstalled(json) }
 
-    suspend fun getMarketSourcesJson(): String = settingsManager.marketSourcesJson.first()
-    suspend fun getMarketInstalledJson(): String = settingsManager.marketInstalledJson.first()
+    suspend fun getMarketSourcesJson(): String = settingsManager.market.sourcesJson.first()
+    suspend fun getMarketInstalledJson(): String = settingsManager.market.installedJson.first()
 
     // ── Derived lookups ─────────────────────────────────────────
     /** Resolves the currently-active cleartext API key for [provider], or `null`. */

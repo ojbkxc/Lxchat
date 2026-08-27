@@ -44,6 +44,8 @@ class ChatViewModelFactory(
     private val pluginHost: PluginHost,
     private val pluginMarket: com.lxseek.chat.plugin.market.PluginMarket,
     private val taskExecutionEngine: TaskExecutionEngine,
+    private val membershipProvider: com.lxseek.chat.membership.LocalMembershipProvider,
+    private val redemptionCodeValidator: com.lxseek.chat.membership.RedemptionCodeValidator,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -55,7 +57,7 @@ class ChatViewModelFactory(
                 taskManager, loopManager, conversationExecutionCoordinator,
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
                 mcpRegistry, pluginHost, pluginMarket, taskExecutionEngine,
-                smartRouterFactory,
+                membershipProvider, redemptionCodeValidator, smartRouterFactory,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

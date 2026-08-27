@@ -60,10 +60,10 @@ class LocalMembershipProvider(
     override fun hasMembership(): Boolean = _status.value.isActive
 
     override suspend fun refresh() {
-        val tier = settingsManager.membershipTier.first()
-        val expiry = settingsManager.membershipExpiryTimestamp.first()
-        val source = settingsManager.membershipSource.first()
-        val persistedActive = settingsManager.membershipIsActive.first()
+        val tier = settingsManager.membership.tier.first()
+        val expiry = settingsManager.membership.expiryTimestamp.first()
+        val source = settingsManager.membership.source.first()
+        val persistedActive = settingsManager.membership.isActive.first()
         val effectiveActive = persistedActive && !isExpired(expiry)
         _status.value = MembershipStatus(
             tier = MembershipTier.parse(tier),
@@ -74,7 +74,7 @@ class LocalMembershipProvider(
         // If the persisted flag says active but the membership has actually expired,
         // reconcile the persisted state so future reads are consistent.
         if (persistedActive && !effectiveActive) {
-            settingsManager.saveMembershipStatus(
+            settingsManager.membership.saveStatus(
                 tier = tier,
                 expiryTimestamp = expiry,
                 source = source,
@@ -94,13 +94,13 @@ class LocalMembershipProvider(
     ) {
         val start = now()
         val expiry = start + durationDays.toLong() * MILLIS_PER_DAY
-        settingsManager.saveMembershipStatus(
+        settingsManager.membership.saveStatus(
             tier = tier.name,
             expiryTimestamp = expiry,
             source = SOURCE_REDEMPTION_CODE,
             isActive = true,
         )
-        settingsManager.addRedeemedNonce(nonce)
+        settingsManager.membership.addRedeemedNonce(nonce)
         refresh()
     }
 
@@ -114,7 +114,7 @@ class LocalMembershipProvider(
     ) {
         val start = now()
         val expiry = start + durationDays.toLong() * MILLIS_PER_DAY
-        settingsManager.saveMembershipStatus(
+        settingsManager.membership.saveStatus(
             tier = tier.name,
             expiryTimestamp = expiry,
             source = SOURCE_YIPAY,
@@ -125,13 +125,13 @@ class LocalMembershipProvider(
 
     /** Revoke membership and clear all persisted state. */
     suspend fun revoke() {
-        settingsManager.clearMembership()
+        settingsManager.membership.clear()
         refresh()
     }
 
     /** Access the redeemed-nonce set for replay protection checks. */
     suspend fun redeemedNonces(): Set<String> =
-        settingsManager.membershipRedeemedNonces.first()
+        settingsManager.membership.redeemedNonces.first()
 
     private fun isExpired(expiry: Long?): Boolean =
         expiry != null && now() >= expiry

@@ -1,0 +1,319 @@
+package com.lxseek.chat.ui.settings
+
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.lxseek.chat.R
+import com.lxseek.chat.membership.MembershipStatus
+import com.lxseek.chat.membership.MembershipTier
+import com.lxseek.chat.membership.RedemptionResult
+import com.lxseek.chat.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/**
+ * Membership settings page: status card + redemption code input + yipay upgrade entry.
+ *
+ * Three sections rendered in a [LazyColumn]:
+ *  - **Status card** — current tier (color-coded), expiry, source, or upgrade prompt for Free.
+ *  - **Redemption code** — text field + redeem button + result feedback.
+ *  - **Yipay upgrade** — Premium/Pro upgrade buttons (Free only); payment is server-gated so a
+ *    toast is shown for now.
+ *
+ * The page reads [ChatViewModel.membership] (a [com.lxseek.chat.viewmodel.MembershipViewModelApi])
+ * and never touches other ViewModel state.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
+    val status by viewModel.membership.status.collectAsState()
+    var codeInput by remember { mutableStateOf("") }
+    var redeemResult by remember { mutableStateOf<RedemptionResult?>(null) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val paymentComingSoon = stringResource(R.string.membership_payment_coming_soon)
+
+    BackHandler { onBack() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_membership)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null,
+                        )
+                    }
+                },
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item { MembershipStatusCard(status) }
+
+            item {
+                RedemptionCodeSection(
+                    code = codeInput,
+                    onCodeChange = {
+                        codeInput = it
+                        redeemResult = null
+                    },
+                    result = redeemResult,
+                    onRedeem = {
+                        scope.launch {
+                            val result = viewModel.membership.redeemCode(codeInput)
+                            redeemResult = result
+                            if (result is RedemptionResult.Valid) codeInput = ""
+                        }
+                    },
+                )
+            }
+
+            if (status.tier == MembershipTier.Free || !status.isActive) {
+                item {
+                    YipayUpgradeSection(
+                        onUpgrade = { Toast.makeText(context, paymentComingSoon, Toast.LENGTH_SHORT).show() },
+                    )
+                }
+            }
+
+            if (status.isActive) {
+                item {
+                    OutlinedButton(
+                        onClick = { scope.launch { viewModel.membership.revokeMembership() } },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                    ) {
+                        Text(stringResource(R.string.membership_revoke))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Section A: Status card ────────────────────────────────────
+
+@Composable
+private fun MembershipStatusCard(status: MembershipStatus) {
+    val tierColor = tierAccentColor(status.tier)
+    val tierLabel = when (status.tier) {
+        MembershipTier.Free -> stringResource(R.string.membership_status_free)
+        MembershipTier.Premium -> stringResource(R.string.membership_status_premium)
+        MembershipTier.Pro -> stringResource(R.string.membership_status_pro)
+    }
+    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (status.tier == MembershipTier.Free) Icons.Default.Star else Icons.Default.Verified,
+                    contentDescription = null,
+                    tint = tierColor,
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = tierLabel,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = tierColor,
+                )
+            }
+
+            if (status.isActive) {
+                status.expiryTimestamp?.let { expiry ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.membership_expiry, dateFormatter.format(Date(expiry))),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (status.source.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val sourceLabel = when (status.source) {
+                        "redemption_code" -> stringResource(R.string.membership_source_redemption)
+                        "yipay" -> stringResource(R.string.membership_source_yipay)
+                        else -> "Source: ${status.source}"
+                    }
+                    Text(
+                        text = sourceLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.membership_upgrade_prompt),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private fun tierAccentColor(tier: MembershipTier): Color = when (tier) {
+    MembershipTier.Free -> Color(0xFF9E9E9E) // gray
+    MembershipTier.Premium -> Color(0xFFFFB300) // gold/amber
+    MembershipTier.Pro -> Color(0xFF7E57C2) // deep purple
+}
+
+// ── Section B: Redemption code input ──────────────────────────
+
+@Composable
+private fun RedemptionCodeSection(
+    code: String,
+    onCodeChange: (String) -> Unit,
+    result: RedemptionResult?,
+    onRedeem: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = stringResource(R.string.membership_redeem_button),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = code,
+            onValueChange = onCodeChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(stringResource(R.string.membership_redeem_code_hint)) },
+            singleLine = true,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onRedeem,
+            enabled = code.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.membership_redeem_button))
+        }
+
+        result?.let { RedemptionResultFeedback(it) }
+    }
+}
+
+@Composable
+private fun RedemptionResultFeedback(result: RedemptionResult) {
+    Spacer(modifier = Modifier.height(12.dp))
+    when (result) {
+        is RedemptionResult.Valid -> {
+            Text(
+                text = stringResource(R.string.membership_redeem_success),
+                color = Color(0xFF2E7D32), // green
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        is RedemptionResult.Invalid -> {
+            Text(
+                text = stringResource(R.string.membership_redeem_invalid, result.reason),
+                color = Color(0xFFC62828), // red
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        RedemptionResult.Expired -> {
+            Text(
+                text = stringResource(R.string.membership_redeem_expired),
+                color = Color(0xFFC62828),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        RedemptionResult.AlreadyUsed -> {
+            Text(
+                text = stringResource(R.string.membership_redeem_already_used),
+                color = Color(0xFFC62828),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+// ── Section C: Yipay upgrade entry ────────────────────────────
+
+@Composable
+private fun YipayUpgradeSection(onUpgrade: () -> Unit) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = stringResource(R.string.membership_upgrade_prompt),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onUpgrade,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB300)),
+        ) {
+            Text(stringResource(R.string.membership_upgrade_premium), color = Color.Black)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onUpgrade,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E57C2)),
+        ) {
+            Text(stringResource(R.string.membership_upgrade_pro))
+        }
+    }
+}

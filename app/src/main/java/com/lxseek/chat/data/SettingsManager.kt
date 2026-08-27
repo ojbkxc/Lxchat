@@ -227,30 +227,22 @@ class SettingsManager(private val context: Context) {
 
     suspend fun saveProviderBaseUrl(provider: String, url: String) =
         modelPreferenceStore.saveProviderBaseUrl(provider, url)
-
     suspend fun saveProviderBaseUrls(urls: Map<String, String>) =
         modelPreferenceStore.saveProviderBaseUrls(urls)
-
     suspend fun saveCustomEndpointResolution(
         provider: String,
         resolution: CustomEndpointResolution?,
     ) = modelPreferenceStore.saveCustomEndpointResolution(provider, resolution)
-
     suspend fun renameCustomEndpointResolution(oldName: String, newName: String) =
         modelPreferenceStore.renameCustomEndpointResolution(oldName, newName)
-
     suspend fun saveSelectedModel(model: String) =
         modelPreferenceStore.saveSelectedModel(model)
-
     suspend fun saveAvailableModels(provider: String, models: List<String>) =
         modelPreferenceStore.saveAvailableModels(provider, models)
-
     suspend fun saveCustomModels(models: Set<String>) =
         modelPreferenceStore.saveCustomModels(models)
-
     suspend fun addCustomModel(modelId: String, alias: String) =
         modelPreferenceStore.addCustomModel(modelId, alias)
-
     suspend fun replaceCustomModel(
         oldModelId: String,
         newModelId: String?,
@@ -878,76 +870,8 @@ class SettingsManager(private val context: Context) {
     suspend fun saveLastModelsFetchFingerprint(fingerprint: String) =
         modelPreferenceStore.saveLastModelsFetchFingerprint(fingerprint)
 
-    // ── Membership (offline persistence) ──────────────────────
-    // Raw fields are exposed here so the membership module can assemble its own
-    // MembershipStatus snapshot without forcing the data module to depend on it.
-    val membershipTier: Flow<String> =
-        context.dataStore.data.map { it[MEMBERSHIP_TIER] ?: "Free" }
-    val membershipExpiryTimestamp: Flow<Long?> =
-        context.dataStore.data.map { it[MEMBERSHIP_EXPIRY_TIMESTAMP] }
-    val membershipSource: Flow<String> =
-        context.dataStore.data.map { it[MEMBERSHIP_SOURCE] ?: "" }
-    val membershipIsActive: Flow<Boolean> =
-        context.dataStore.data.map { it[MEMBERSHIP_IS_ACTIVE] ?: false }
-    val membershipRedeemedNonces: Flow<Set<String>> =
-        context.dataStore.data.map { it[MEMBERSHIP_REDEEMED_NONCES] ?: emptySet() }
-
-    /** Persist the full membership status snapshot atomically. */
-    suspend fun saveMembershipStatus(
-        tier: String,
-        expiryTimestamp: Long?,
-        source: String,
-        isActive: Boolean,
-    ) {
-        context.dataStore.edit { prefs ->
-            prefs[MEMBERSHIP_TIER] = tier
-            if (expiryTimestamp == null) {
-                prefs.remove(MEMBERSHIP_EXPIRY_TIMESTAMP)
-            } else {
-                prefs[MEMBERSHIP_EXPIRY_TIMESTAMP] = expiryTimestamp
-            }
-            prefs[MEMBERSHIP_SOURCE] = source
-            prefs[MEMBERSHIP_IS_ACTIVE] = isActive
-        }
-    }
-
-    /** Record a redeemed code nonce so it cannot be redeemed again. */
-    suspend fun addRedeemedNonce(nonce: String) {
-        if (nonce.isBlank()) return
-        context.dataStore.edit { prefs ->
-            val current = prefs[MEMBERSHIP_REDEEMED_NONCES] ?: emptySet()
-            prefs[MEMBERSHIP_REDEEMED_NONCES] = current + nonce
-        }
-    }
-
-    /** Clear all membership state (e.g. on sign-out or manual revoke). */
-    suspend fun clearMembership() {
-        context.dataStore.edit { prefs ->
-            prefs.remove(MEMBERSHIP_TIER)
-            prefs.remove(MEMBERSHIP_EXPIRY_TIMESTAMP)
-            prefs.remove(MEMBERSHIP_SOURCE)
-            prefs.remove(MEMBERSHIP_IS_ACTIVE)
-            prefs.remove(MEMBERSHIP_REDEEMED_NONCES)
-        }
-    }
-
-    // ── Plugin Market (offline persistence) ──────────────────
-    // Raw JSON is stored as-is and parsed by the market service; the data module
-    // deliberately stays unaware of market model shapes.
-    val marketSourcesJson: Flow<String> =
-        context.dataStore.data.map { it[MARKET_SOURCES_JSON] ?: "" }
-    val marketInstalledJson: Flow<String> =
-        context.dataStore.data.map { it[MARKET_INSTALLED_JSON] ?: "" }
-
-    /** Persist the whole market-sources JSON array. */
-    suspend fun saveMarketSources(json: String) {
-        context.dataStore.edit { it[MARKET_SOURCES_JSON] = json }
-    }
-
-    /** Persist the whole installed-plugins JSON array. */
-    suspend fun saveMarketInstalled(json: String) {
-        context.dataStore.edit { it[MARKET_INSTALLED_JSON] = json }
-    }
+    val membership = MembershipPreferences(context.dataStore)
+    val market = MarketPreferences(context.dataStore)
 
     /**
      * Clears only settings that are portable across devices. Secrets, conversation-scoped
