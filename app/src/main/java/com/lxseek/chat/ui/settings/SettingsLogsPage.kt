@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
+import com.lxseek.chat.adb.AdbLog
 import com.lxseek.chat.speech.VoskTranscriber
 import com.lxseek.chat.util.AppLog
 import com.lxseek.chat.util.CrashReporter
@@ -65,12 +66,14 @@ fun SettingsLogsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     var ttsLog by remember { mutableStateOf("") }
     var asrLog by remember { mutableStateOf("") }
     var voskDiag by remember { mutableStateOf("") }
+    var adbLog by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         while (true) {
             appLog = AppLog.getText()
             ttsLog = TtsManager.getLogText()
             asrLog = AppLog.getFilteredText(ASR_LOG_TAGS, 200)
             voskDiag = voskTranscriber.getDiagnosticText()
+            adbLog = AdbLog.entries.value.joinToString("\n")
             delay(3_000L)
         }
     }
@@ -152,29 +155,32 @@ fun SettingsLogsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         if (asrLog.isNotBlank()) append('\n').append(asrLog)
     }
 
+    // Consolidated voice log: TTS + ASR merged into one block.
+    val voiceLogText = buildString {
+        append("=== TTS ===\n")
+        append(ttsLog)
+        if (asrLogText.isNotBlank()) append('\n').append("\n=== ASR ===\n").append(asrLogText)
+    }
+
+    // Unified log: all app logs + ADB shell execution logs merged into one block.
+    val unifiedLogText = buildString {
+        append("=== ADB Shell ===\n")
+        append(adbLog.ifBlank { "(no ADB shell logs)" })
+        append('\n').append("\n=== App (All Modules) ===\n")
+        append(appLog)
+    }
+
     CollapsingSettingsScaffold(
         title = stringResource(R.string.settings_logs),
         onBack = onBack,
     ) {
         SettingsGroupColumn {
             SettingsLogBlock(
-                title = stringResource(R.string.logs_app_log_title),
-                text = appLog,
+                title = stringResource(R.string.logs_voice_log_title),
+                text = voiceLogText,
                 noLogText = stringResource(R.string.logs_no_logs),
-                onCopy = { copyText(context, viewModel, "App Log", appLog) },
-                onExport = { exportLog(context, viewModel, "=== App Log (All Modules) ===\n$appLog") },
-                onClear = {
-                    AppLog.clear()
-                    appLog = AppLog.getText()
-                },
-            )
-
-            SettingsLogBlock(
-                title = stringResource(R.string.logs_tts_log_title),
-                text = ttsLog,
-                noLogText = stringResource(R.string.logs_no_logs),
-                onCopy = { copyText(context, viewModel, "TTS Log", ttsLog) },
-                onExport = { exportLog(context, viewModel, ttsLog) },
+                onCopy = { copyText(context, viewModel, "Voice Log", voiceLogText) },
+                onExport = { exportLog(context, viewModel, voiceLogText) },
                 onClear = {
                     TtsManager.clearLog()
                     ttsLog = TtsManager.getLogText()
@@ -182,12 +188,17 @@ fun SettingsLogsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             )
 
             SettingsLogBlock(
-                title = stringResource(R.string.logs_asr_log_title),
-                text = asrLogText,
+                title = stringResource(R.string.logs_unified_log_title),
+                text = unifiedLogText,
                 noLogText = stringResource(R.string.logs_no_logs),
-                onCopy = { copyText(context, viewModel, "ASR Log", asrLogText) },
-                onExport = { exportLog(context, viewModel, asrLogText) },
-                onClear = null,
+                onCopy = { copyText(context, viewModel, "All Logs", unifiedLogText) },
+                onExport = { exportLog(context, viewModel, unifiedLogText) },
+                onClear = {
+                    AppLog.clear()
+                    AdbLog.clear()
+                    appLog = AppLog.getText()
+                    adbLog = ""
+                },
             )
         }
     }

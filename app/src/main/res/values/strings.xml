@@ -929,10 +929,12 @@
 
     <!-- Logs -->
     <string name="settings_logs">Logs</string>
-    <string name="settings_logs_desc">Unified app, TTS, and speech recognition logs</string>
+    <string name="settings_logs_desc">Consolidated voice (TTS + ASR) and unified (ADB shell + all app) logs</string>
     <string name="logs_app_log_title">App Log (All Modules)</string>
     <string name="logs_tts_log_title">TTS Log</string>
     <string name="logs_asr_log_title">ASR / Vosk Diagnostics</string>
+    <string name="logs_voice_log_title">Voice Log (TTS + ASR)</string>
+    <string name="logs_unified_log_title">All Logs (ADB Shell + App)</string>
     <string name="logs_copy">Copy</string>
     <string name="logs_export">Export</string>
     <string name="logs_no_logs">No logs recorded yet</string>
