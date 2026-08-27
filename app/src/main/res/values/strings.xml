@@ -206,6 +206,7 @@
     <string name="called_n_tools">Called %1$d tools</string>
     <string name="failed_to_generate">Failed to generate.</string>
     <string name="generation_stopped">Generation stopped</string>
+    <string name="continue_generating">Continue generating</string>
     <string name="import_invalid_gguf_title">Invalid GGUF File</string>
     <string name="import_invalid_gguf_desc">The selected file is not a valid GGUF model.</string>
     <string name="ok">OK</string>

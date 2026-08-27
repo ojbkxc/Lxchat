@@ -641,6 +641,11 @@ fun ChatApp(
                                     if (accepted) haptics.confirm()
                                     accepted
                                 },
+                                onResume = { id ->
+                                    val accepted = viewModel.resume(id)
+                                    if (accepted) haptics.confirm()
+                                    accepted
+                                },
                                 onFork = { id ->
                                     viewModel.forkConversationFrom(id)
                                 },

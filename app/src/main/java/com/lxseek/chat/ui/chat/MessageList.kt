@@ -138,7 +138,8 @@ internal fun MessageList(
     onEditMessage: suspend (String, String) -> Boolean = { _, _ -> false },
     onSwitchBranch: (String?, String, Int) -> Unit = { _, _, _ -> },
     onRegenerate: (String) -> Boolean = { false },
-    onFork: (String) -> Unit = {},
+    onResume: (String) -> Boolean = { false },
+    onFork: (String) -> Unit = { _ -> },
     onShare: (String) -> Unit = {},
     onDelete: (String) -> Unit = {},
     /**
@@ -775,6 +776,7 @@ internal fun MessageList(
                 }
             },
             onRegenerate = onRegenerate,
+            onResume = onResume,
             onFork = onFork,
             onShare = onShare,
             onDelete = onDelete,

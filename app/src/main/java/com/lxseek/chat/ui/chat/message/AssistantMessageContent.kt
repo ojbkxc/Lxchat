@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import com.lxseek.chat.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
 import androidx.compose.runtime.*
@@ -182,6 +183,7 @@ internal fun AssistantMessageContent(
     totalBranches: Int,
     onSwitchBranch: (Int) -> Unit,
     onRegenerate: (String) -> Boolean,
+    onResume: (String) -> Boolean = { false },
     onFork: () -> Unit,
     onShare: () -> Unit,
     onMediaClick: (List<String>, Int) -> Unit,
@@ -594,6 +596,22 @@ internal fun AssistantMessageContent(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.graphicsLayer { alpha = informationActionsAlpha },
+                                )
+                            }
+                        }
+                        if (message.status == MessageStatus.STOPPED) {
+                            IconButton(
+                                onClick = { onResume(message.id) },
+                                enabled = actionAvailability.terminalEnabled,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .graphicsLayer { alpha = terminalActionsAlpha },
+                            ) {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = stringResource(R.string.continue_generating),
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
                                 )
                             }
                         }

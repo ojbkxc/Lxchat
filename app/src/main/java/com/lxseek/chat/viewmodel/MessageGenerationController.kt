@@ -260,6 +260,21 @@ internal class MessageGenerationController(
             )
         },
     )
+    private val resumeService = ConversationResumeService(
+        conversations = convRepo,
+        executionCoordinator = executionCoordinator,
+        terminalSettlement = terminalSettlement,
+        boundRunGenerationLauncher = boundRunGenerationLauncher,
+        toUiMessage = { it.toUiChatMessage(appContext) },
+        isConversationOpen = { currentConversationId.value == it },
+        projectGraph = { _, committedMessages, selectedChildren, streamingMessage ->
+            renderStore.commitGraph(
+                committedMessages = committedMessages,
+                selectedChildren = selectedChildren,
+                streamingMessage = streamingMessage,
+            )
+        },
+    )
     private val branchMutationService = ConversationBranchMutationService(
         scope = viewModelScope,
         conversations = convRepo,
@@ -331,6 +346,29 @@ internal class MessageGenerationController(
             requestBuilder.resolveProviderKey(modelId) ?: return false
         return regenerationService.regenerate(
             ConversationRegenerationRequest(
+                conversationId = genId,
+                messageId = messageId,
+                modelId = modelId,
+                providerName = providerName,
+                activeKey = activeKey,
+                visiblePath = messages.value.toList(),
+            ),
+            state,
+        )
+    }
+
+    // ==================================
+    // resume
+    // ==================================
+
+    fun resume(messageId: String): Boolean {
+        val genId = currentConversationId.value ?: return false
+        val state = registry.getOrCreate(genId)
+        val modelId = currentActiveModel.value
+        val (providerName, activeKey) =
+            requestBuilder.resolveProviderKey(modelId) ?: return false
+        return resumeService.resume(
+            ConversationResumeRequest(
                 conversationId = genId,
                 messageId = messageId,
                 modelId = modelId,
