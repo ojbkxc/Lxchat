@@ -120,7 +120,8 @@ class GenerationRequestBuilder(
         resolvedUserPrepend: String?,
         resolvedUserPostpend: String?,
         effectiveSettings: ConversationSettings,
-        currentId: String
+        currentId: String,
+        hasMembership: Boolean = false,
     ): Pair<GenerationConfig, GenerationContext> = withContext(Dispatchers.Default) {
         val config = GenerationConfig(
             providerName = providerName,
@@ -187,7 +188,8 @@ class GenerationRequestBuilder(
             transcriptionProviderName = resolveTranscriptionProviderName(),
             transcriptionModelId = resolveTranscriptionModelId(),
             transcriptionApiKey = resolveTranscriptionApiKey(),
-            transcriptionBaseUrl = resolveTranscriptionBaseUrl()
+            transcriptionBaseUrl = resolveTranscriptionBaseUrl(),
+            hasMembership = hasMembership,
         )
         Pair(config, genCtx)
     }

@@ -104,7 +104,7 @@ class WebSearchToolProvider : ToolProvider {
         return listOf(
             ToolDefinition(function = ToolFunction(
                 name = "web_search",
-                description = "Search the web for current information. Use this to find facts, news, or data not in your training set.",
+                description = "Search the web for current information.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "query" to ToolProperty("string", "The search query to execute."),
@@ -115,7 +115,7 @@ class WebSearchToolProvider : ToolProvider {
             )),
             ToolDefinition(function = ToolFunction(
                 name = "web_fetch",
-                description = "Fetch and read the full text content of a web page. Use this after web_search when you need more detail from a specific page.",
+                description = "Fetch and read the full text of a web page.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "url" to ToolProperty("string", "The URL of the page to fetch."),
@@ -140,6 +140,16 @@ class WebSearchToolProvider : ToolProvider {
     }
 
     override fun handles(name: String): Boolean = name in setOf("web_search", "web_fetch")
+
+    override fun toolDescriptors(ctx: GenerationContext): List<ToolDescriptor> {
+        val summaries = mapOf(
+            "web_search" to "Search the web.",
+            "web_fetch" to "Fetch a web page.",
+        )
+        return super.toolDescriptors(ctx).map { d ->
+            d.copy(summary = summaries[d.definition.function.name] ?: d.summary)
+        }
+    }
 
     private fun executeWebSearch(arguments: String, ctx: GenerationContext): String {
         val argsStr = arguments.ifBlank { "{}" }

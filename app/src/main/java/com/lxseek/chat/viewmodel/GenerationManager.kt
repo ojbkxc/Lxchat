@@ -56,6 +56,8 @@ class GenerationManager(
      * API Key 轮换、速率限制、白名单等策略。null 表示不启用智能路由（向后兼容）。
      */
     private val smartRouterFactory: SmartModelRouterFactory? = null,
+    /** Process-scoped token usage tracker for cross-session cost analysis. Null = tracking disabled. */
+    private val tokenUsageTracker: com.lxseek.chat.metrics.TokenUsageTracker? = null,
 ) {
     var onMessagePersisted: ((messageId: String, text: String) -> Unit)? = null
 
@@ -526,6 +528,17 @@ class GenerationManager(
                     tokenUsageAccumulator.finishRequest()
                     totalTokenUsage = tokenUsageAccumulator.snapshot()
                     totalTokenCount = totalTokenUsage?.totalTokenCount ?: totalTokenCount
+                    // Record cross-session token usage for cost analysis.
+                    totalTokenUsage?.let { usage ->
+                        tokenUsageTracker?.record(
+                            provider = config.providerName,
+                            model = config.modelId,
+                            inputTokens = usage.inputTokenCount ?: 0,
+                            outputTokens = usage.outputTokenCount ?: 0,
+                            cachedTokens = usage.cachedInputTokenCount ?: 0,
+                            sessionId = conversationId,
+                        )
+                    }
                 }
             }
 

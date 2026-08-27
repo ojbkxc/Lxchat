@@ -73,8 +73,13 @@ data class GenerationContext(
     val toolTimeoutMs: Long = Constants.TOOL_EXECUTION_TIMEOUT_MS,
     /** The agent execution mode that controls tool registration and approval policy. */
     val agentMode: AgentMode = AgentMode.Agent,
-    /** Tool delivery tier: "core" (essential only), "extended" (+useful), "all" (+dangerous). Defaults to "all". */
-    val toolTier: String = "all",
+    /** Tool delivery tier: "core" (essential only), "extended" (+useful), "all" (+dangerous).
+     *  Defaults to "extended" to save tokens by not injecting dangerous tools unless explicitly requested. */
+    val toolTier: String = "extended",
+    /** True if the current user has an active membership. Non-members are blocked from
+     *  tools marked [com.lxseek.chat.tool.ToolDescriptor.requiresMembership] at both
+     *  disclosure (descriptor filtering) and execution (runtime check) layers. */
+    val hasMembership: Boolean = false,
 )
 
 /**

@@ -141,7 +141,7 @@ internal class GenerationToolExecutor private constructor(
     /** Build the flat tool-descriptor map once per context; used by filtering and approval. */
     private fun descriptors(context: GenerationContext): List<ToolDescriptor> {
         val descs = providers.flatMap { it.toolDescriptors(context) }
-        return descs.filterByAgentMode(context).filterByTier(context)
+        return descs.filterByAgentMode(context).filterByTier(context).filterByMembership(context)
     }
 
     /** Filter out tools whose risk level is not allowed by the current [AgentMode]. */
@@ -155,6 +155,12 @@ internal class GenerationToolExecutor private constructor(
         val allowedTiers = ToolTierPolicy.allowedTiers(context)
         if (allowedTiers.size == ToolTier.values().size) return this
         return filter { it.tier in allowedTiers }
+    }
+
+    /** Disclosure layer: hide membership-gated tools from non-members (saves tokens + UX). */
+    private fun List<ToolDescriptor>.filterByMembership(context: GenerationContext): List<ToolDescriptor> {
+        if (context.hasMembership) return this
+        return filter { !it.requiresMembership }
     }
 
     fun imageDefinitions(context: GenerationContext): List<ToolDefinition> =
@@ -233,6 +239,20 @@ internal class GenerationToolExecutor private constructor(
                 ?: return call.result(
                     ToolExecutionResult(text = "Unknown tool: ${call.name}", isError = true),
                 )
+
+            // ── Execution-layer membership gate ─────────────────────
+            // Anti-bypass: even if a non-member somehow invokes a membership tool,
+            // refuse execution here. The disclosure layer (filterByMembership) already
+            // hides these tools from the model, but this is the definitive runtime check.
+            val membershipDesc = ToolTierPolicy.descriptorMap(providers, call.context)[call.name]
+            if (membershipDesc?.requiresMembership == true && !call.context.hasMembership) {
+                return call.result(
+                    ToolExecutionResult(
+                        text = "This feature requires a membership subscription. Please upgrade to use it.",
+                        isError = true,
+                    ),
+                )
+            }
 
             // ── Approval dispatch ───────────────────────────────────
             // Look up metadata from the merged ToolDescriptor map (single source of truth).

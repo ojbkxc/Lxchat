@@ -72,7 +72,7 @@ class MemoryToolProvider(
                     ToolDefinition(
                         function = ToolFunction(
                             name = "edit_memory_file",
-                            description = "Edit, rename, or update the description of a file in the memory database. Use 'old_string' + 'new_string' for precise string replacement — the old_string must match exactly once in the file. Use 'content' for full rewrites (mutually exclusive with old_string). At least one of 'content', 'old_string', 'new_name', or 'description' must be provided.",
+                            description = "Edit, rename, or update a memory file. Use 'old_string'+'new_string' for precise replacement (must match once), or 'content' for full rewrite (mutually exclusive).",
                             parameters = ToolParameters(
                                 properties = mapOf(
                                     "name" to ToolProperty("string", "The current file name to edit."),
@@ -115,8 +115,8 @@ class MemoryToolProvider(
             tools.add(
                 ToolDefinition(
                     function = ToolFunction(
-                        name = "update_active_memory",
-                        description = "Update the active memory context. Modes: 'replace' (overwrite with 'content'), 'append' (add 'content' to end), 'prepend' (add 'content' to beginning), 'patch' (find 'old_string' exactly once and replace with 'new_string'). Default is replace.",
+                            name = "update_active_memory",
+                            description = "Update active memory. Modes: replace (default), append, prepend, or patch (old_string→new_string).",
                         parameters = ToolParameters(
                             properties = mapOf(
                                 "content" to ToolProperty("string", "The content to write (for replace/append/prepend modes)."),
@@ -261,5 +261,19 @@ class MemoryToolProvider(
         "create_memory_file", "edit_memory_file", "update_active_memory" -> RiskLevel.LowRisk
         "delete_memory_file" -> RiskLevel.HighRisk
         else -> RiskLevel.ReadOnly
+    }
+
+    override fun toolDescriptors(ctx: GenerationContext): List<ToolDescriptor> {
+        val summaries = mapOf(
+            "list_memory_files" to "List memory files.",
+            "read_memory_file" to "Read memory file(s).",
+            "create_memory_file" to "Create a memory file.",
+            "edit_memory_file" to "Edit/rename a memory file.",
+            "delete_memory_file" to "Delete a memory file.",
+            "update_active_memory" to "Update active memory.",
+        )
+        return super.toolDescriptors(ctx).map { d ->
+            d.copy(summary = summaries[d.definition.function.name] ?: d.summary)
+        }
     }
 }

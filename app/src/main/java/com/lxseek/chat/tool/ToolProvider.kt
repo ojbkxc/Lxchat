@@ -53,6 +53,10 @@ data class ToolDescriptor(
     val riskLevel: RiskLevel = RiskLevel.ReadOnly,
     val tier: ToolTier = ToolTier.Dangerous,
     val requiresApproval: Boolean = false,
+    /** True if this tool requires an active membership to be disclosed and executed. */
+    val requiresMembership: Boolean = false,
+    /** Compact summary for progressive disclosure (saves tokens). Null falls back to definition.description. */
+    val summary: String? = null,
 )
 
 /**

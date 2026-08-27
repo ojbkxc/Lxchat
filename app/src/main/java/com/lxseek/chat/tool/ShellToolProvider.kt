@@ -192,6 +192,31 @@ class ShellToolProvider(
         else -> false
     }
 
+    override fun toolDescriptors(ctx: GenerationContext): List<ToolDescriptor> {
+        val summaries = mapOf(
+            "list_shells" to "List shell servers.",
+            "execute_shell_command" to "Run a shell command.",
+            "execute_shell_batch" to "Run a command on multiple servers.",
+            "list_processes" to "List running processes.",
+            "kill_process" to "Signal a process by PID.",
+            "system_stats" to "System resource snapshot.",
+            "tail_follow" to "Read last N lines of a file.",
+            "list_shell_jobs" to "List background shell jobs.",
+            "get_shell_job" to "Get a shell job's status.",
+            "wait_for_job" to "Wait for a shell job to finish.",
+            "stop_shell_job" to "Stop a shell job.",
+            "file_read" to "Read a file.",
+            "file_write" to "Write a file.",
+            "file_edit" to "Edit a file.",
+            "file_glob" to "List files by glob.",
+            "file_grep" to "Search file contents.",
+            "view_image" to "View an image.",
+        )
+        return super.toolDescriptors(ctx).map { d ->
+            d.copy(summary = summaries[d.definition.function.name] ?: d.summary)
+        }
+    }
+
     // ── list_shells ────────────────────────────────────────
 
     private suspend fun listShells(ctx: GenerationContext): String {

@@ -71,19 +71,12 @@ class ChatViewModel(
     // App-scoped automation orchestrator (task CRUD + run-now).
     private val taskManager: com.lxseek.chat.automation.TaskManager,
     private val loopManager: com.lxseek.chat.automation.LoopManager,
-    private val automationToolProvider: com.lxseek.chat.tool.AutomationToolProvider,
     private val conversationExecutionCoordinator: com.lxseek.chat.automation.ConversationExecutionCoordinator,
     private val automationExecutionGate: com.lxseek.chat.automation.AutomationExecutionGate,
     private val generationRegistry: ConversationStateRegistry,
     private val shellConfirmation: ShellConfirmationController,
     private val mcpRegistry: com.lxseek.chat.mcp.McpRegistry,
-    private val mcpToolProvider: com.lxseek.chat.tool.McpToolProvider,
-    private val androidControlToolProvider: com.lxseek.chat.tool.AndroidAppControllerToolProvider,
-    private val gitToolProvider: com.lxseek.chat.tool.GitToolProvider? = null,
-    private val imToolProvider: com.lxseek.chat.tool.ImToolProvider? = null,
-    private val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider? = null,
-    private val subAgentToolProvider: com.lxseek.chat.tool.SubAgentToolProvider? = null,
-    private val deviceToolProvider: com.lxseek.chat.tool.DeviceToolProvider? = null,
+    val pluginHost: com.lxseek.chat.plugin.PluginHost,
     private val taskExecutionEngine: com.lxseek.chat.automation.TaskExecutionEngine,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : AndroidViewModel(application) {
@@ -257,8 +250,7 @@ class ChatViewModel(
             providers = providerRegistry.all,
             context = appContext,
             sandboxFactory = sandboxFactory,
-            additionalToolProviders = listOfNotNull(automationToolProvider, mcpToolProvider, androidControlToolProvider,
-                gitToolProvider, imToolProvider, reminderToolProvider, subAgentToolProvider, deviceToolProvider, autoMemoryToolProvider), smartRouterFactory = smartRouterFactory,
+            additionalToolProviders = pluginHost.toolProviders() + listOfNotNull(autoMemoryToolProvider), smartRouterFactory = smartRouterFactory,
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
             gm.onMessagePersisted = { messageId, text -> ragManager.indexMessageForRag(messageId, text) }

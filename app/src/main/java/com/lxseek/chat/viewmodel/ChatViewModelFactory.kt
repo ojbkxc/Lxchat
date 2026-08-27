@@ -11,16 +11,14 @@ import com.lxseek.chat.api.local.LocalProvider
 import com.lxseek.chat.automation.TaskExecutionEngine
 import com.lxseek.chat.automation.TaskManager
 import com.lxseek.chat.automation.LoopManager
-import com.lxseek.chat.automation.ConversationExecutionCoordinator
 import com.lxseek.chat.automation.AutomationExecutionGate
-import com.lxseek.chat.tool.AutomationToolProvider
-import com.lxseek.chat.tool.AndroidAppControllerToolProvider
-import com.lxseek.chat.tool.McpToolProvider
+import com.lxseek.chat.automation.ConversationExecutionCoordinator
 import com.lxseek.chat.mcp.McpRegistry
 import com.lxseek.chat.data.local.ChatDao
 import com.lxseek.chat.data.local.ChatDatabase
 import com.lxseek.chat.data.repository.ConversationRepository
 import com.lxseek.chat.data.repository.SettingsRepository
+import com.lxseek.chat.plugin.PluginHost
 import com.lxseek.chat.sandbox.SandboxManagerFactory
 
 class ChatViewModelFactory(
@@ -38,19 +36,12 @@ class ChatViewModelFactory(
     private val providerRegistry: ProviderRegistry,
     private val taskManager: TaskManager,
     private val loopManager: LoopManager,
-    private val automationToolProvider: AutomationToolProvider,
     private val conversationExecutionCoordinator: ConversationExecutionCoordinator,
     private val automationExecutionGate: AutomationExecutionGate,
     private val conversationStateRegistry: ConversationStateRegistry,
     private val shellConfirmationController: ShellConfirmationController,
     private val mcpRegistry: McpRegistry,
-    private val mcpToolProvider: McpToolProvider,
-    private val androidControlToolProvider: AndroidAppControllerToolProvider,
-    private val gitToolProvider: com.lxseek.chat.tool.GitToolProvider? = null,
-    private val imToolProvider: com.lxseek.chat.tool.ImToolProvider? = null,
-    private val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider? = null,
-    private val subAgentToolProvider: com.lxseek.chat.tool.SubAgentToolProvider? = null,
-    private val deviceToolProvider: com.lxseek.chat.tool.DeviceToolProvider? = null,
+    private val pluginHost: PluginHost,
     private val taskExecutionEngine: TaskExecutionEngine,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
 ) : ViewModelProvider.Factory {
@@ -60,9 +51,9 @@ class ChatViewModelFactory(
             return ChatViewModel(
                 application, database, chatDao, settingsManager, memoryManager, context, sandboxFactory,
                 autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
-                taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
+                taskManager, loopManager, conversationExecutionCoordinator,
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-                mcpRegistry, mcpToolProvider, androidControlToolProvider, gitToolProvider, imToolProvider, reminderToolProvider, subAgentToolProvider, deviceToolProvider, taskExecutionEngine,
+                mcpRegistry, pluginHost, taskExecutionEngine,
                 smartRouterFactory,
             ) as T
         }

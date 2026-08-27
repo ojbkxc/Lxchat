@@ -22,6 +22,10 @@ import com.lxseek.chat.tool.AutomationToolProvider
 import com.lxseek.chat.tool.AndroidAppControllerToolProvider
 import com.lxseek.chat.tool.McpToolProvider
 import com.lxseek.chat.mcp.McpRegistry
+import com.lxseek.chat.plugin.McpPlugin
+import com.lxseek.chat.plugin.NativeToolsPlugin
+import com.lxseek.chat.plugin.PluginContext
+import com.lxseek.chat.plugin.PluginHost
 import com.lxseek.chat.sandbox.SandboxManagerFactory
 import com.lxseek.chat.service.TaskWorker
 import com.lxseek.chat.viewmodel.ChatViewModel
@@ -185,6 +189,11 @@ class AppContainer(private val appContext: Context) {
     // LlamaEngine.modelMutex); [providerRegistry] holds the live provider map the
     // generation pipeline reads and runs the long-lived credential/model sync jobs.
 
+    /** Process-scoped token usage tracker for cost analysis and optimization. */
+    val tokenUsageTracker: com.lxseek.chat.metrics.TokenUsageTracker by lazy {
+        com.lxseek.chat.metrics.TokenUsageTracker()
+    }
+
     val localProvider: LocalProvider by lazy { LocalProvider(appContext, settingsRepository) }
 
     val providerRegistry: ProviderRegistry by lazy {
@@ -213,6 +222,34 @@ class AppContainer(private val appContext: Context) {
 
     val mcpToolProvider: McpToolProvider by lazy {
         McpToolProvider(mcpRegistry)
+    }
+
+    // ── Plugin Host ─────────────────────────────────────────
+    // 统一插件生态入口：既有 MCP 能力与原生工具集都被包装为 Plugin 注册进来。
+    // 生成管线消费 pluginHost.toolProviders() 聚合结果，后续会员门禁在此出口按
+    // manifest.requiresMembership 过滤即可，不侵入任何现有功能。
+
+    val pluginContext: PluginContext by lazy {
+        PluginContext(appContext, appScope, settingsRepository)
+    }
+
+    val pluginHost: PluginHost by lazy {
+        PluginHost(pluginContext).also { host ->
+            host.register(McpPlugin(mcpToolProvider))
+            host.register(
+                NativeToolsPlugin(
+                    listOfNotNull(
+                        automationToolProvider,
+                        androidControlToolProvider,
+                        gitToolProvider,
+                        imToolProvider,
+                        reminderToolProvider,
+                        subAgentToolProvider,
+                        deviceToolProvider,
+                    ),
+                ),
+            )
+        }
     }
 
     /** Read-only Git tools (status/log/diff/branches/remote) executed in the local sandbox. */
@@ -493,10 +530,9 @@ class AppContainer(private val appContext: Context) {
         ChatViewModelFactory(
             application, database, chatDao, settingsManager, memoryManager, appContext, sandboxManagerFactory,
             autoBackupManager, conversationRepository, settingsRepository, localProvider, providerRegistry,
-            taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
+            taskManager, loopManager, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-            mcpRegistry, mcpToolProvider, androidControlToolProvider, gitToolProvider,
-            imToolProvider, reminderToolProvider, subAgentToolProvider, deviceToolProvider, taskExecutionEngine, smartRouterFactory,
+            mcpRegistry, pluginHost, taskExecutionEngine, smartRouterFactory,
         )
 
     /** Factory for the workflow editor's dedicated view-model (kept out of ChatViewModel). */

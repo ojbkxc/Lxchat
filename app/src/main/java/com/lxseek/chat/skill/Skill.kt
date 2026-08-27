@@ -1,0 +1,44 @@
+package com.lxseek.chat.skill
+
+import kotlinx.serialization.Serializable
+
+/**
+ * Data model for a Skill, corresponding to the SKILL.md frontmatter format
+ * (Markdown + YAML frontmatter) used by cc-haha, Operit, and Claude Skills.
+ *
+ * Progressive disclosure: only [name] + [description] are injected into the
+ * model context as a directory entry. The full [body] is loaded on demand
+ * only when the skill is activated (called by the model), saving tokens.
+ *
+ * @property name         frontmatter: name — the skill identifier.
+ * @property description  frontmatter: description — one-line summary shown in
+ *                        the disclosure directory; the token-cheap entry.
+ * @property whenToUse    frontmatter: when_to_use — natural-language hint for
+ *                        when the model should pick this skill.
+ * @property allowedTools frontmatter: allowed-tools — the skill's self-imposed
+ *                        tool scope (a third gate form, orthogonal to membership).
+ * @property paths        frontmatter: paths — glob patterns for conditional
+ *                        activation; the skill is only exposed when the current
+ *                        file path matches one of these patterns (saves tokens).
+ * @property context      frontmatter: context — "inline" (default) or "fork"
+ *                        (sub-agent isolation with an independent token budget).
+ * @property model        frontmatter: model — a cheaper model to run this skill
+ *                        (saves cost).
+ * @property body         The Markdown body (skill content / prompt), loaded on demand.
+ * @property source       The file path or source identifier this skill was parsed from.
+ * @property requiresMembership True if an active membership is required to disclose
+ *                        and execute this skill. Orthogonal to [allowedTools].
+ */
+@Serializable
+data class Skill(
+    val name: String,
+    val description: String,
+    val whenToUse: String? = null,
+    val allowedTools: List<String> = emptyList(),
+    val paths: List<String> = emptyList(),
+    val context: String? = null,
+    val model: String? = null,
+    val body: String = "",
+    val source: String = "",
+    val requiresMembership: Boolean = false,
+)

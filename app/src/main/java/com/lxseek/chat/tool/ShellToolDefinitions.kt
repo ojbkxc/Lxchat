@@ -42,7 +42,7 @@ internal object ShellToolDefinitions {
             )))
             add(ToolDefinition(function = ToolFunction(
                 name = "execute_shell_command",
-                description = "Execute a shell command. Set background=true for a durable Conch job that survives client disconnects. Note: 'ADB Shell' provides direct device shell access — run commands directly, without 'adb shell' prefix.",
+                description = "Execute a shell command. Set background=true for a durable Conch job. For 'ADB Shell', run commands directly without 'adb shell' prefix.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "command" to ToolProperty("string", "The shell command to execute."),
@@ -56,7 +56,7 @@ internal object ShellToolDefinitions {
             )))
             add(ToolDefinition(function = ToolFunction(
                 name = "execute_shell_batch",
-                description = "Execute the same shell command on multiple servers in parallel and return aggregated results. Use this instead of multiple execute_shell_command calls when you need to run the same command across several servers (e.g. checking disk space on all nodes, rolling out a config change). Each server is gated by the same confirmation policy as execute_shell_command.",
+                description = "Execute the same shell command on multiple servers in parallel and return aggregated results.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "command" to ToolProperty("string", "The shell command to execute on all target servers."),
@@ -151,7 +151,7 @@ internal object ShellToolDefinitions {
                 )))
                 add(ToolDefinition(function = ToolFunction(
                     name = "wait_for_job",
-                    description = "Block until a durable Conch shell job finishes or timeout_ms elapses, then return its final output. Preferred over polling get_shell_job. If it returns timed_out=true the job is still running — call wait_for_job again to keep waiting.",
+                    description = "Block until a Conch job finishes or timeout_ms elapses, then return its final output. If timed_out=true, call again to keep waiting.",
                     parameters = ToolParameters(
                         properties = mapOf(
                             "job_id" to ToolProperty("string", "The Conch job id."),
