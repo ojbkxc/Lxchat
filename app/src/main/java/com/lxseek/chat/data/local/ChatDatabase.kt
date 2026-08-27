@@ -23,15 +23,17 @@ import com.lxseek.chat.data.local.migration.MIGRATION_22_23
         LoopEntity::class,
         WorkflowEntity::class,
         WorkflowStepEntity::class,
+        ChannelSendLogEntity::class,
     ],
     version = ChatDatabase.CURRENT_VERSION,
     exportSchema = true
 )@TypeConverters(MessageConverters::class)
 abstract class ChatDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
+    abstract fun channelSendLogDao(): ChannelSendLogDao
 
     companion object {
-        const val CURRENT_VERSION = 23
+        const val CURRENT_VERSION = 24
         const val DB_NAME = "lxchat_db"
 
         val ALL_MIGRATIONS = listOf(
@@ -167,6 +169,23 @@ abstract class ChatDatabase : RoomDatabase() {
             MIGRATION_20_21,
             MIGRATION_21_22,
             MIGRATION_22_23,
+            // v23 → v24 adds the additional-channel send log table.
+            object : Migration(23, 24) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS channel_send_log (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            channelId TEXT NOT NULL,
+                            recipient TEXT NOT NULL,
+                            ok INTEGER NOT NULL,
+                            error TEXT,
+                            sentAt INTEGER NOT NULL
+                        )
+                        """,
+                    )
+                }
+            },
         )
 
         fun getStoredVersion(context: Context): Int {

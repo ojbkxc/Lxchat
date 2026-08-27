@@ -37,10 +37,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.channel.ReplyChannelConfig
 import com.lxseek.chat.channel.ReplyChannelStore
+import com.lxseek.chat.channel.SmtpProviderPresets
+import com.lxseek.chat.channel.SmtpSender
 import kotlinx.coroutines.launch
 
 /**
@@ -54,11 +57,12 @@ import kotlinx.coroutines.launch
  * 页面布局：
  * 1. Telegram 卡片（开关 + Bot Token + Base URL）
  * 2. Bark 卡片（开关 + Server URL + Device Key）
- * 3. 邮箱卡片（开关 + Provider 下拉 + API Key + From + Mailgun 域名 + 默认收件人）
+ * 3. 邮箱卡片（开关 + 发件邮箱 + SMTP 服务器/端口/加密方式 + 授权码 + 默认收件人）
  * 4. 渠道选择卡片（勾选回复时启用哪些渠道）
  * 5. 保存按钮
  *
- * 邮件用 HTTP API（Resend/SendGrid/Mailgun），不引入 JavaMail，APK 体积零增量。
+ * 邮件用手写轻量 SMTP 客户端直连（[SmtpSender]），无需申请第三方发信 API key，
+ * 不引入 JavaMail，APK 体积零增量。填发件邮箱会自动带出常用邮箱的 SMTP 服务器。
  */
 @Composable
 fun ReplyChannelSettingsPage(
@@ -80,21 +84,38 @@ fun ReplyChannelSettingsPage(
     var barkDeviceKey by remember(config) { mutableStateOf(config.barkDeviceKey) }
 
     var emailEnabled by remember(config) { mutableStateOf(config.emailEnabled) }
-    var emailProvider by remember(config) { mutableStateOf(config.emailProvider) }
-    var emailApiKey by remember(config) { mutableStateOf(config.emailApiKey) }
     var emailFrom by remember(config) { mutableStateOf(config.emailFrom) }
-    var emailMailgunDomain by remember(config) { mutableStateOf(config.emailMailgunDomain) }
+    var emailPassword by remember(config) { mutableStateOf(config.emailPassword) }
+    var emailSmtpHost by remember(config) { mutableStateOf(config.emailSmtpHost) }
+    var emailSmtpPort by remember(config) { mutableStateOf(config.emailSmtpPort.toString()) }
+    var emailSmtpSecurity by remember(config) { mutableStateOf(config.emailSmtpSecurity) }
     var emailDefaultTo by remember(config) { mutableStateOf(config.emailDefaultTo) }
 
     // 渠道选择（additionalChannels）。
     val selectedChannels = remember(config) { config.additionalChannels.toMutableStateList() }
-    var emailProviderMenuExpanded by remember { mutableStateOf(false) }
+    var emailSecurityMenuExpanded by remember { mutableStateOf(false) }
 
     fun toggleChannel(id: String, on: Boolean) {
         if (on) {
             if (id !in selectedChannels) selectedChannels.add(id)
         } else {
             selectedChannels.remove(id)
+        }
+    }
+
+    /** 发件邮箱变化时，若 SMTP 服务器尚未填写，则从常见邮箱服务商预设自动带出。 */
+    fun onEmailFromChanged(value: String) {
+        emailFrom = value
+        if (emailSmtpHost.isBlank()) {
+            SmtpProviderPresets.suggestFor(value)?.let {
+                emailSmtpHost = it.host
+                emailSmtpPort = it.port.toString()
+                emailSmtpSecurity = when (it.security) {
+                    SmtpSender.Security.STARTTLS -> ReplyChannelConfig.SECURITY_STARTTLS
+                    SmtpSender.Security.NONE -> ReplyChannelConfig.SECURITY_NONE
+                    else -> ReplyChannelConfig.SECURITY_SSL
+                }
+            }
         }
     }
 
@@ -109,10 +130,11 @@ fun ReplyChannelSettingsPage(
                     barkServerUrl = barkServerUrl.trim(),
                     barkDeviceKey = barkDeviceKey.trim(),
                     emailEnabled = emailEnabled,
-                    emailProvider = emailProvider,
-                    emailApiKey = emailApiKey.trim(),
                     emailFrom = emailFrom.trim(),
-                    emailMailgunDomain = emailMailgunDomain.trim(),
+                    emailPassword = emailPassword,
+                    emailSmtpHost = emailSmtpHost.trim(),
+                    emailSmtpPort = emailSmtpPort.trim().toIntOrNull() ?: 465,
+                    emailSmtpSecurity = emailSmtpSecurity,
                     emailDefaultTo = emailDefaultTo.trim(),
                     additionalChannels = selectedChannels.toList(),
                 )
@@ -215,7 +237,7 @@ fun ReplyChannelSettingsPage(
 
         Spacer(Modifier.height(12.dp))
 
-        // ── 3. 邮箱卡片 ──
+        // ── 3. 邮箱卡片（SMTP 直连，填发件邮箱自动带出常用邮箱服务器） ──
         Card(colors = CardDefaults.cardColors()) {
             Column(Modifier.padding(16.dp)) {
                 Row(
@@ -237,61 +259,78 @@ fun ReplyChannelSettingsPage(
                 }
                 Spacer(Modifier.height(8.dp))
 
-                // Provider 下拉
-                Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = emailFrom,
+                    onValueChange = { onEmailFromChanged(it) },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.reply_channel_email_from)) },
+                    placeholder = { Text("xxx@qq.com") },
+                    supportingText = { Text(stringResource(R.string.reply_channel_email_from_hint)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = emailSmtpHost,
+                    onValueChange = { emailSmtpHost = it },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.reply_channel_email_smtp_host)) },
+                    placeholder = { Text("smtp.qq.com") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     OutlinedTextField(
-                        value = emailProvider,
-                        onValueChange = { /* 只读 */ },
-                        readOnly = true,
+                        value = emailSmtpPort,
+                        onValueChange = { emailSmtpPort = it.filter(Char::isDigit).take(5) },
                         singleLine = true,
-                        label = { Text(stringResource(R.string.reply_channel_email_provider)) },
-                        trailingIcon = {
-                            IconButton(onClick = { emailProviderMenuExpanded = true }) {
-                                Icon(Icons.Default.ExpandMore, contentDescription = null)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.reply_channel_email_smtp_port)) },
+                        placeholder = { Text("465") },
+                        modifier = Modifier.weight(1f),
                     )
-                    DropdownMenu(
-                        expanded = emailProviderMenuExpanded,
-                        onDismissRequest = { emailProviderMenuExpanded = false },
-                    ) {
-                        ReplyChannelConfig.EMAIL_PROVIDERS.forEach { p ->
-                            DropdownMenuItem(
-                                text = { Text(p) },
-                                onClick = { emailProvider = p; emailProviderMenuExpanded = false },
-                            )
+                    // 加密方式下拉
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = securityLabel(emailSmtpSecurity),
+                            onValueChange = { /* 只读 */ },
+                            readOnly = true,
+                            singleLine = true,
+                            label = { Text(stringResource(R.string.reply_channel_email_smtp_security)) },
+                            trailingIcon = {
+                                IconButton(onClick = { emailSecurityMenuExpanded = true }) {
+                                    Icon(Icons.Default.ExpandMore, contentDescription = null)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        DropdownMenu(
+                            expanded = emailSecurityMenuExpanded,
+                            onDismissRequest = { emailSecurityMenuExpanded = false },
+                        ) {
+                            ReplyChannelConfig.EMAIL_SECURITY_OPTIONS.forEach { s ->
+                                DropdownMenuItem(
+                                    text = { Text(securityLabel(s)) },
+                                    onClick = {
+                                        emailSmtpSecurity = s
+                                        emailSecurityMenuExpanded = false
+                                    },
+                                )
+                            }
                         }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = emailApiKey,
-                    onValueChange = { emailApiKey = it },
+                    value = emailPassword,
+                    onValueChange = { emailPassword = it },
                     singleLine = true,
-                    label = { Text(stringResource(R.string.reply_channel_email_api_key)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    label = { Text(stringResource(R.string.reply_channel_email_password)) },
+                    supportingText = { Text(stringResource(R.string.reply_channel_email_password_hint)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = emailFrom,
-                    onValueChange = { emailFrom = it },
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.reply_channel_email_from)) },
-                    placeholder = { Text("LxChat <noreply@example.com>") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (emailProvider == "mailgun") {
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = emailMailgunDomain,
-                        onValueChange = { emailMailgunDomain = it },
-                        singleLine = true,
-                        label = { Text(stringResource(R.string.reply_channel_email_mailgun_domain)) },
-                        placeholder = { Text("mg.example.com") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = emailDefaultTo,
@@ -367,4 +406,11 @@ private fun ChannelToggleRow(label: String, checked: Boolean, onCheckedChange: (
         Spacer(Modifier.width(8.dp))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
+}
+
+/** SMTP 加密方式 → 显示标签。 */
+private fun securityLabel(security: String): String = when (security) {
+    ReplyChannelConfig.SECURITY_STARTTLS -> "STARTTLS (587)"
+    ReplyChannelConfig.SECURITY_NONE -> "无加密"
+    else -> "SSL (465)"
 }

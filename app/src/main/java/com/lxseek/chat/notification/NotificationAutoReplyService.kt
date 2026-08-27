@@ -11,7 +11,9 @@ import com.lxseek.chat.channel.ReplyChannel
 import com.lxseek.chat.channel.ReplyChannelConfig
 import com.lxseek.chat.channel.ReplyChannelStore
 import com.lxseek.chat.channel.SendResult
+import com.lxseek.chat.channel.SmtpSender
 import com.lxseek.chat.channel.TelegramChannel
+import com.lxseek.chat.data.local.ChannelSendLogEntity
 import com.lxseek.chat.im.weixin.WeixinChannel
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
@@ -271,9 +273,29 @@ class NotificationAutoReplyService : NotificationListenerService() {
                     is SendResult.Success -> DebugLog.d("NotifReply", "channel $channelId sent ok")
                     is SendResult.Failure -> DebugLog.w("NotifReply", "channel $channelId failed: ${r.reason}")
                 }
+                logChannelSend(channelId, mapping.userId, r)
             } catch (e: Exception) {
                 DebugLog.e("NotifReply", "channel $channelId error", e)
             }
+        }
+    }
+
+    /** 渠道发送结果写入日志表（失败不影响主流程），顺带清理超过保留期的旧记录。 */
+    private suspend fun logChannelSend(channelId: String, recipient: String, r: SendResult) {
+        try {
+            val dao = container.database.channelSendLogDao()
+            dao.insert(
+                ChannelSendLogEntity(
+                    channelId = channelId,
+                    recipient = recipient,
+                    ok = r is SendResult.Success,
+                    error = (r as? SendResult.Failure)?.reason,
+                    sentAt = System.currentTimeMillis(),
+                ),
+            )
+            dao.prune(System.currentTimeMillis() - LOG_RETENTION_MS)
+        } catch (e: Exception) {
+            DebugLog.w("NotifReply", "write channel send log failed: ${e.message}")
         }
     }
 
@@ -288,10 +310,15 @@ class NotificationAutoReplyService : NotificationListenerService() {
             deviceKey = cfg.barkDeviceKey,
         )
         ReplyChannelConfig.CHANNEL_EMAIL -> EmailChannel(
-            provider = cfg.emailProvider,
-            apiKey = cfg.emailApiKey,
             from = cfg.emailFrom,
-            mailgunDomain = cfg.emailMailgunDomain,
+            password = cfg.emailPassword,
+            host = cfg.emailSmtpHost,
+            port = cfg.emailSmtpPort,
+            security = when (cfg.emailSmtpSecurity) {
+                ReplyChannelConfig.SECURITY_STARTTLS -> SmtpSender.Security.STARTTLS
+                ReplyChannelConfig.SECURITY_NONE -> SmtpSender.Security.NONE
+                else -> SmtpSender.Security.SSL
+            },
             defaultTo = cfg.emailDefaultTo,
         )
         else -> null
@@ -302,5 +329,7 @@ class NotificationAutoReplyService : NotificationListenerService() {
         const val DEDUP_WINDOW_MS = 5_000L
         // 单个消息注入 AI 的最大字符数，防止超长通知占满上下文。
         const val MAX_PROMPT_CHARS = 6_000
+        // 渠道发送日志保留时长（7 天）。
+        const val LOG_RETENTION_MS = 7L * 24 * 60 * 60 * 1000
     }
 }

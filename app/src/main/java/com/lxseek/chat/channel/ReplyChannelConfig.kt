@@ -40,17 +40,19 @@ data class ReplyChannelConfig(
     /** Bark device key。 */
     val barkDeviceKey: String = "",
 
-    // ── Email（HTTP API 方式，无 JavaMail 依赖） ─────────────
+    // ── Email（SMTP 直连，手写轻量 SMTP，无 JavaMail 依赖） ─────────
     /** 是否启用邮件渠道。 */
     val emailEnabled: Boolean = false,
-    /** 邮件服务商：`resend` / `sendgrid` / `mailgun`。 */
-    val emailProvider: String = "resend",
-    /** 邮件 API key。 */
-    val emailApiKey: String = "",
-    /** 发件人地址（部分服务商要求已验证域名）。 */
+    /** 发件邮箱（即 SMTP 登录用户名）。 */
     val emailFrom: String = "",
-    /** Mailgun 域名（仅 provider=mailgun 时使用）。 */
-    val emailMailgunDomain: String = "",
+    /** SMTP 授权码（QQ/163 等在客户端设置里生成，非登录密码）。 */
+    val emailPassword: String = "",
+    /** SMTP 服务器地址；填发件邮箱后可从预设自动带出。 */
+    val emailSmtpHost: String = "",
+    /** SMTP 端口。 */
+    val emailSmtpPort: Int = 465,
+    /** 加密方式：`ssl`（465）/ `starttls`（587）/ `none`。 */
+    val emailSmtpSecurity: String = SECURITY_SSL,
     /** 默认收件人（recipient 为空时兜底，避免通知回复里拿不到邮箱地址时无处可发）。 */
     val emailDefaultTo: String = "",
 
@@ -67,8 +69,11 @@ data class ReplyChannelConfig(
         const val CHANNEL_BARK = "bark"
         const val CHANNEL_EMAIL = "email"
 
-        /** 支持的邮件服务商列表（设置页下拉用）。 */
-        val EMAIL_PROVIDERS = listOf("resend", "sendgrid", "mailgun")
+        /** SMTP 加密方式取值。 */
+        const val SECURITY_SSL = "ssl"
+        const val SECURITY_STARTTLS = "starttls"
+        const val SECURITY_NONE = "none"
+        val EMAIL_SECURITY_OPTIONS = listOf(SECURITY_SSL, SECURITY_STARTTLS, SECURITY_NONE)
     }
 }
 
