@@ -291,10 +291,11 @@ class ImPollingReceiver(
         // 通知标题（昵称）找到 iLink user_id 发送回复，无需用户手动配置。
         // 仅微信渠道且有非空昵称（且昵称 ≠ user_id，避免无意义映射）时才写。
         if (notificationReplyStore != null && channel is WeixinChannel) {
+            val store = notificationReplyStore
             val nickname = conversation.title.trim()
             if (nickname.isNotEmpty() && nickname != conversation.id) {
                 runCatching {
-                    notificationReplyStore.update { cfg ->
+                    store.update { cfg ->
                         val current = cfg.contacts[nickname]
                         // 已有完全相同的映射则跳过写入，避免无谓 DataStore IO。
                         if (current != null &&

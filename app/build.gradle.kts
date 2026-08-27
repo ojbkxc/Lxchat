@@ -104,6 +104,8 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // AIDL is required by the Shizuku UserService (IShellService) interface.
+        aidl = true
     }
     // The app switches locales at runtime without Play Feature Delivery. Keep every
     // packaged translation available instead of letting App Bundles split languages.
