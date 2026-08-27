@@ -190,10 +190,11 @@ class WeixinChannel(
         enforceRateLimit()
 
         // P2-12: Retry transient failures (network-error, timeout) up to SEND_MAX_RETRIES times.
-        val contextToken = contextTokenStore[recipient]
-        DebugLog.d("WeixinChannel", "sendMessage: recipient=$recipient hasContextToken=${contextToken != null} textLen=${cappedText.length}")
+        // context_token is re-read on every attempt: a previous attempt may have refreshed it,
+        // and echoing a stale token to the server can cause the retry to be dropped.
         var lastError: Exception? = null
         for (attempt in 1..SEND_MAX_RETRIES) {
+            val contextToken = contextTokenStore[recipient]
             try {
                 Log.e("WxSend", "attempt $attempt: recipient=$recipient textLen=${cappedText.length} hasCtx=${contextToken != null}")
                 val newContextToken = api.sendText(baseUrl, config.token, recipient, cappedText, contextToken)

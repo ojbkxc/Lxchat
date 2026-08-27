@@ -61,9 +61,10 @@ class ShellUserService @JvmOverloads constructor(
 
             val finished = process.waitFor(20, TimeUnit.SECONDS)
             if (!finished) process.destroyForcibly()
-            val exit = if (finished) process.exitValue() else -1
+            // NOTE: return only the combined stdout+stderr. The caller (AdbShellBackend)
+            // treats this string as the raw command output (e.g. file read/write content),
+            // so we must NOT prepend any "exit=N" label here.
             buildString {
-                append("exit=").append(exit).append('\n')
                 if (out.isNotBlank()) append(out)
                 if (err.isNotBlank()) {
                     if (out.isNotBlank()) append('\n')
