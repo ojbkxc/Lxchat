@@ -399,6 +399,11 @@ class AppContainer(private val appContext: Context) {
         )
     }
 
+    /** Subagents reuse the one-shot Task machinery to run async delegated prompts. */
+    val subAgentManager: com.lxseek.chat.automation.SubAgentManager by lazy {
+        com.lxseek.chat.automation.SubAgentManager(taskManager)
+    }
+
     /** Foreground-only provider: headless automation cannot recursively create automation. */
     val automationToolProvider: AutomationToolProvider by lazy {
         AutomationToolProvider(taskManager, loopManager) {
@@ -409,6 +414,12 @@ class AppContainer(private val appContext: Context) {
     /** Turns natural-language reminder requests into persisted background Tasks. */
     val reminderToolProvider: com.lxseek.chat.tool.ReminderToolProvider by lazy {
         com.lxseek.chat.tool.ReminderToolProvider(taskManagerProvider = { taskManager }) {
+            settingsManager.automationToolsEnabled.first()
+        }
+    }
+
+    val subAgentToolProvider: com.lxseek.chat.tool.SubAgentToolProvider by lazy {
+        com.lxseek.chat.tool.SubAgentToolProvider(subAgentManager) {
             settingsManager.automationToolsEnabled.first()
         }
     }
@@ -438,7 +449,7 @@ class AppContainer(private val appContext: Context) {
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, mcpToolProvider, androidControlToolProvider, gitToolProvider,
-            imToolProvider, reminderToolProvider, taskExecutionEngine, smartRouterFactory,
+            imToolProvider, reminderToolProvider, subAgentToolProvider, taskExecutionEngine, smartRouterFactory,
         )
 
     /** Factory for the workflow editor's dedicated view-model (kept out of ChatViewModel). */
