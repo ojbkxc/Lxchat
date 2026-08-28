@@ -355,7 +355,7 @@ internal fun ChatDrawerContent(
                                             showMenu = true
                                         }
                                     ),
-                                color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Row(
@@ -369,7 +369,7 @@ internal fun ChatDrawerContent(
                                         modifier = Modifier.weight(1f),
                                         maxLines = 1,
                                         style = MaterialTheme.typography.bodyLarge,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Box(
@@ -387,7 +387,7 @@ internal fun ChatDrawerContent(
                                                 modifier = Modifier.size(18.dp),
                                                 strokeWidth = 2.dp,
                                                 color = if (isSelected) {
-                                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
                                                 } else {
                                                     MaterialTheme.colorScheme.primary
                                                 },

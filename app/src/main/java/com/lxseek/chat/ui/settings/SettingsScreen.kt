@@ -252,15 +252,20 @@ private val settingsGroups = listOf(
     )),
     SettingsGroupData(titleRes = R.string.settings_group_tools, items = listOf(
         SettingsCategory("websearch", R.string.settings_web_search, R.string.settings_web_search_desc, Icons.Default.Language),
-        SettingsCategory("search", R.string.search_title, R.string.search_desc, Icons.Default.Search),
-        SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Terminal),
-        SettingsCategory("adb_shell", R.string.settings_adb_shell, R.string.settings_adb_shell_desc, Icons.Default.Terminal),
         SettingsCategory(
             "mcp",
             R.string.mcp_title,
             R.string.mcp_desc,
             iconRes = R.drawable.ic_mcp,
         ),
+        SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
+        SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
+        SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
+    )),
+    SettingsGroupData(titleRes = R.string.settings_group_advanced, items = listOf(
+        SettingsCategory("search", R.string.search_title, R.string.search_desc, Icons.Default.Search),
+        SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Terminal),
+        SettingsCategory("adb_shell", R.string.settings_adb_shell, R.string.settings_adb_shell_desc, Icons.Default.Terminal),
         SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
         SettingsCategory("workflow", R.string.settings_workflow, R.string.settings_workflow_desc, Icons.Default.AccountTree),
         SettingsCategory("device_control", R.string.settings_device_control, R.string.settings_device_control_desc, Icons.Default.Android),
@@ -272,11 +277,7 @@ private val settingsGroups = listOf(
         SettingsCategory("trigger", R.string.settings_trigger, R.string.settings_trigger_desc, Icons.Default.Bolt),
         SettingsCategory("sms_command", R.string.settings_sms_command, R.string.settings_sms_command_desc, Icons.Default.Sms),
         SettingsCategory("reply_channel", R.string.settings_reply_channel, R.string.settings_reply_channel_desc, Icons.Default.Send),
-        SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
-        SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
         SettingsCategory("runtime_engines", R.string.settings_runtime_engines, R.string.settings_runtime_engines_desc, Icons.Default.Android),
-
-        SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),

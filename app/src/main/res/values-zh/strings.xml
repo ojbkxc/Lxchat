@@ -1169,6 +1169,7 @@
     <string name="settings_group_services">服务</string>
     <string name="settings_group_responses">回复</string>
     <string name="settings_group_tools">工具</string>
+    <string name="settings_group_advanced">高级功能</string>
     <string name="settings_group_about">关于</string>
     <string name="rating_category">评分</string>
 
