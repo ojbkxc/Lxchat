@@ -16,6 +16,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 
 /**
  * Text-model device control for the on-device apps (WeChat, Alipay, etc.).
@@ -82,16 +83,28 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 description = "Simulate the system home button." ,
                 parameters = ToolParameters(properties = emptyMap()),
             )),
+            ToolDefinition(function = ToolFunction(
+                name = "wechat_open_chat",
+                description = "Open WeChat and best-effort navigate to the chat with a contact by " +
+                    "searching their name. Requires the accessibility bridge. Each step (open search, " +
+                    "type contact, tap first result) reports whether it succeeded; any failure returns a " +
+                    "clear status so you can fall back to android_read_ui + android_click instead of giving up.",
+                parameters = ToolParameters(
+                    properties = mapOf("contact" to prop("string", "The contact name or remark (备注) to find, e.g. '张三'.")),
+                    required = listOf("contact"),
+                ),
+            )),
         )
     }
 
-    override fun handles(name: String): Boolean = name.startsWith("android_")
+    override fun handles(name: String): Boolean =
+        name.startsWith("android_") || name.startsWith("wechat_")
 
     override fun riskLevel(name: String): RiskLevel = when (name) {
         "android_accessibility_status", "android_read_ui", "android_known_apps" -> RiskLevel.ReadOnly
         "android_open_app", "android_go_back", "android_go_home" -> RiskLevel.LowRisk
         // Clicking/typing inside another app can cause real side effects (sending, posting).
-        "android_click", "android_input" -> RiskLevel.Moderate
+        "android_click", "android_input", "wechat_open_chat" -> RiskLevel.Moderate
         else -> RiskLevel.ReadOnly
     }
 
@@ -110,6 +123,7 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 "android_input" -> input(arguments)
                 "android_go_back" -> goBackJson()
                 "android_go_home" -> goHomeJson()
+                "wechat_open_chat" -> wechatOpenChat(arguments)
                 else -> err("unknown_tool", "Unknown android tool: $name")
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -241,6 +255,66 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         return buildJsonObject { put("type", "android_go_home"); put("status", if (ok) "ok" else "error") }.toString()
     }
 
+    /**
+     * 打开微信并尽力而为地搜到联系人、点进聊天窗口。每一步都返回结构化结果：
+     * 中途任一环节失败（搜索入口找不到/输入框定位失败/无匹配）都会给出明确 status 与 hint，
+     * 让 AI 回退到 android_read_ui + android_click 继续，而不是神秘失败。
+     */
+    private fun wechatOpenChat(arguments: String): String {
+        val contact = argString("contact", arguments)
+        if (contact.isNullOrBlank()) return err("no_contact", "Missing contact.")
+        // 1) 打开微信。
+        val openFailed = runCatching {
+            val launch = app.packageManager.getLaunchIntentForPackage(WECHAT_PACKAGE)
+                ?: error("no launcher intent")
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            app.startActivity(launch)
+        }.exceptionOrNull()
+        if (openFailed != null) {
+            return buildJsonObject {
+                put("type", "wechat_open_chat")
+                put("status", "open_failed")
+                put("contact", contact)
+                put("hint", "无法打开微信：${openFailed.message}")
+            }.toString()
+        }
+        val svc = service()
+        if (svc == null) {
+            return buildJsonObject {
+                put("type", "wechat_open_chat")
+                put("status", "accessibility_off")
+                put("contact", contact)
+                put("hint", "已打开微信，但无障碍桥未启用。启用后我才能帮你搜索并进入与「$contact」的聊天；现在只能用 android_read_ui 手工浏览。")
+            }.toString()
+        }
+        return wechatSearchOpen(svc, contact)
+    }
+
+    private fun wechatSearchOpen(svc: AndroidUiControllerService, contact: String): String {
+        // 先逐步执行并记录每一步结果，再统一构造 JSON（避免在 putJsonArray 内层访问外层 builder）。
+        val searchClicked = svc.clickByLabel("搜索") || svc.clickByLabel("Search")
+        val typed = searchClicked && svc.focusAndInput(contact, null)
+        val opened = typed && svc.clickByLabel(contact)
+        val (status, hint) = when {
+            !searchClicked -> "search_not_found" to
+                "未找到微信搜索入口（界面可能已变化）。请用 android_read_ui dump 后手工定位再继续。"
+            !typed -> "input_failed" to "未能定位搜索输入框。dump 界面确认焦点后重试。"
+            !opened -> "not_found" to "搜索后未匹配到「$contact」的可点击结果。dump 界面确认候选后手工点击。"
+            else -> "ok" to null
+        }
+        return buildJsonObject {
+            put("type", "wechat_open_chat")
+            put("contact", contact)
+            put("status", status)
+            hint?.let { put("hint", it) }
+            putJsonArray("steps") {
+                add(buildJsonObject { put("step", "打开搜索"); put("ok", searchClicked) })
+                add(buildJsonObject { put("step", "输入联系人"); put("ok", typed) })
+                add(buildJsonObject { put("step", "点开聊天"); put("ok", opened) })
+            }
+        }.toString()
+    }
+
     private fun argString(key: String, arguments: String): String? {
         val stripped = arguments.ifBlank { "{}" }
         return try {
@@ -265,6 +339,8 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
     }.toString()
 
     private companion object {
+        private const val WECHAT_PACKAGE = "com.tencent.mm"
+
         // (alias, display label, package id)
         val KNOWN_APPS = listOf(
             Triple("weixin", "微信", "com.tencent.mm"),

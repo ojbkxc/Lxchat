@@ -9,6 +9,7 @@ import com.lxseek.chat.im.ImMessage
 import com.lxseek.chat.im.ImSendResult
 import com.lxseek.chat.im.MessageChannel
 import com.lxseek.chat.im.MultiSegmentMessageSender
+import com.lxseek.chat.im.weixin.WeixinCompanionChannel
 import com.lxseek.chat.viewmodel.GenerationContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
@@ -19,6 +20,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 
 /**
  * Exposes instant-messaging to the agent through a [MessageChannel]. Reads the active channel
@@ -35,12 +37,23 @@ class ImToolProvider(
     override fun handles(name: String): Boolean = name in SUPPORTED_NAMES
 
     override fun riskLevel(name: String): RiskLevel = when (name) {
-        "im_status", "im_conversations", "im_receive" -> RiskLevel.ReadOnly
+        "im_status", "im_conversations", "im_receive", "wechat_capabilities" -> RiskLevel.ReadOnly
         "im_send", "im_send_multi" -> RiskLevel.Moderate
         else -> RiskLevel.ReadOnly
     }
 
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> = listOf(
+        ToolDefinition(
+            function = ToolFunction(
+                name = "wechat_capabilities",
+                description = "WeChat-specific capability self-check. When the active IM channel is a " +
+                    "WeChat iLink binding this reports which operations actually work (send text / image / " +
+                    "file / forward / typing / receive) and which are NOT confirmed (revoke, group management, " +
+                    "moments, payment). Call this before assuming you can perform a WeChat-only action; it " +
+                    "prevents blind attempts against unsupported operations.",
+                parameters = ToolParameters(properties = emptyMap()),
+            ),
+        ),
         ToolDefinition(
             function = ToolFunction(
                 name = "im_status",
@@ -132,6 +145,7 @@ class ImToolProvider(
     override suspend fun execute(name: String, arguments: String, ctx: GenerationContext): String {
         val channel = channelProvider()
         return when (name) {
+            "wechat_capabilities" -> wechatCapabilitiesResult(channel)
             "im_status" -> statusResult(channel)
             "im_conversations" -> conversationsResult(channel)
             "im_receive" -> receiveResult(channel, arguments)
@@ -142,6 +156,55 @@ class ImToolProvider(
     }
 
     // ── Tool implementations ──────────────────────────────────
+
+    /**
+     * 微信能力自检：当活动通道是 [WeixinCompanionChannel]（iLink 绑定）时，如实报告哪些操作
+     * 已被协议支持，哪些仍属"未确认"。绝不把撤回/群管理等写死为可用——它们需要在线协议探测
+     * 确认，本次只暴露"待确认"状态，供 AI 据此决策而不盲目尝试。
+     */
+    private fun wechatCapabilitiesResult(channel: MessageChannel?): String {
+        val isWechat = channel is WeixinCompanionChannel
+        val configured = channel?.isConfigured == true
+        val wechat = isWechat && configured
+        return buildJsonObject {
+            put("ok", true)
+            put("target", "wechat")
+            put("bound", wechat)
+            if (!isWechat) {
+                put("reason", "当前 IM 通道不是微信 iLink（或尚未注册）。扫码绑定微信后此表才成立。")
+            } else if (!configured) {
+                put("reason", "微信通道未启用/未配置/令牌失效。")
+            }
+            putJsonObject("capabilities") {
+                // W1-W4 + typing + receive：已实现的基线，直连官方 iLink。
+                cap(this, "send_text", wechat, "ilink", "发文本消息")
+                cap(this, "send_image", wechat, "ilink", "发图片（直链 /sendimage）")
+                cap(this, "send_file", wechat, "ilink", "发文件（直链 /sendfile）")
+                cap(this, "forward_media", wechat, "ilink", "转发已收到的媒体（/forward）")
+                cap(this, "send_typing", wechat, "ilink", "发送“正在输入”状态")
+                cap(this, "receive", wechat, "ilink", "长轮询接收消息")
+                // 未在协议中确认的能力：如实标注不支持（pending），不乐观写死。
+                cap(this, "revoke", false, null, "撤回消息：iLink 未确认支持，待协议探测")
+                cap(this, "group_manage", false, null, "好友备注/群管理/置顶：iLink 未确认支持")
+                cap(this, "moments", false, null, "朋友圈查看/发布/点赞：受限，需无障碍兜底")
+                cap(this, "payment", false, null, "收款码/支付：受限，安全敏感须审批")
+            }
+        }.toString()
+    }
+
+    private fun cap(
+        builder: kotlinx.serialization.json.JsonObjectBuilder,
+        name: String,
+        supported: Boolean,
+        mode: String?,
+        desc: String,
+    ) {
+        builder.putJsonObject(name) {
+            put("supported", supported)
+            mode?.let { put("mode", it) }
+            put("desc", desc)
+        }
+    }
 
     private fun statusResult(channel: MessageChannel?): String {
         if (channel == null) {
@@ -306,6 +369,7 @@ class ImToolProvider(
 
     private companion object {
         val SUPPORTED_NAMES = setOf(
+            "wechat_capabilities",
             "im_status",
             "im_conversations",
             "im_receive",
