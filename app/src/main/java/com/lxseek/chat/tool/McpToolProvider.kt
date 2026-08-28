@@ -116,7 +116,7 @@ class McpToolProvider(
         }
     }.getOrNull()
 
-    private fun renderResourceListings(server: String?): String {
+    private suspend fun renderResourceListings(server: String?): String {
         val listings = registry.listResources(server)
         val payload = if (listings.isEmpty()) {
             "No resources found. MCP servers may still provide tools even if they have no resources."
