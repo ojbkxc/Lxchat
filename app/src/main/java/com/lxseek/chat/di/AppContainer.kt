@@ -247,6 +247,7 @@ class AppContainer(private val appContext: Context) {
                         reminderToolProvider,
                         subAgentToolProvider,
                         deviceToolProvider,
+                        runtimeToolProvider,
                     ),
                 ),
             )
@@ -256,9 +257,25 @@ class AppContainer(private val appContext: Context) {
         }
     }
 
+    /** 运行时引擎编排器：下载/解压/启停/版本约束/进程空闲回收。 */
+    val runtimeEngineManager: com.lxseek.chat.runtime.RuntimeEngineManager by lazy {
+        com.lxseek.chat.runtime.RuntimeEngineManager(appContext, settingsRepository, appScope)
+    }
+
+    /** 运行时引擎的 AI 工具集（market_install / runtime_start / novel_inkos 等），常驻披露。 */
+    val runtimeToolProvider: com.lxseek.chat.runtime.RuntimeToolProvider by lazy {
+        runtimeEngineManager.toolProvider
+    }
+
     /** 插件市场服务：抓取目录、安装/卸载/启停市场插件，启动时离线恢复已装插件。 */
     val pluginMarket: com.lxseek.chat.plugin.market.PluginMarket by lazy {
-        com.lxseek.chat.plugin.market.PluginMarket(appContext, settingsRepository, pluginHost, appScope)
+        com.lxseek.chat.plugin.market.PluginMarket(
+            appContext,
+            settingsRepository,
+            pluginHost,
+            appScope,
+            runtimeEngineManager,
+        )
     }
 
     /** Read-only Git tools (status/log/diff/branches/remote) executed in the local sandbox. */

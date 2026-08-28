@@ -402,6 +402,7 @@ private fun KindBadge(kind: MarketPluginKind) {
         MarketPluginKind.SKILL -> stringResource(R.string.market_kind_skill)
         MarketPluginKind.MCP -> stringResource(R.string.market_kind_mcp)
         MarketPluginKind.TOOLPKG -> stringResource(R.string.market_kind_toolpkg)
+        MarketPluginKind.RUNTIME -> stringResource(R.string.market_kind_runtime)
     }
     Text(
         text = label,

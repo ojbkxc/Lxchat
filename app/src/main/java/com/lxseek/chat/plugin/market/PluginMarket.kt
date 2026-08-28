@@ -8,6 +8,7 @@ import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.plugin.Plugin
 import com.lxseek.chat.plugin.PluginHost
 import com.lxseek.chat.plugin.adapters.ToolPkgAdapter
+import com.lxseek.chat.runtime.RuntimeEngineManager
 import com.lxseek.chat.skill.Skill
 import com.lxseek.chat.tool.ToolProvider
 import com.lxseek.chat.util.DebugLog
@@ -40,6 +41,7 @@ class PluginMarket(
     private val settings: SettingsRepository,
     private val host: PluginHost,
     private val scope: CoroutineScope,
+    private val runtimeManager: RuntimeEngineManager? = null,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -62,6 +64,8 @@ class PluginMarket(
     val lastRefreshError: StateFlow<String?> = _lastRefreshError.asStateFlow()
 
     init {
+        // 把市场实例反向注入运行时编排器，供其在安装/查询时按 id 解析目录条目。
+        runtimeManager?.market = this
         scope.launch {
             settings.marketSourcesRaw.collect { raw ->
                 val decoded = decodeList<MarketSource>(raw)
@@ -132,8 +136,11 @@ class PluginMarket(
 
     // ── 安装 / 卸载 / 启停 ─────────────────────────────────────
 
-    /** 安装目录条目：拉取技能正文（SKILL）或建立连接配置（MCP），注册进宿主并持久化。 */
-    suspend fun install(meta: MarketPluginMeta) {
+    /**
+     * 安装目录条目：拉取技能正文（SKILL）、建立连接配置（MCP）、下载解压（TOOLPKG / RUNTIME），
+     * 注册进宿主并持久化。RUNTIME 可选指定版本，不传则按约束自动匹配最高兼容版本。
+     */
+    suspend fun install(meta: MarketPluginMeta, requestedVersion: String? = null) {
         if (_installations.value.any { it.pluginId == meta.id }) {
             throw IllegalArgumentException("该插件已安装")
         }
@@ -192,11 +199,51 @@ class PluginMarket(
                     localPath = localPath,
                 )
             }
+            MarketPluginKind.RUNTIME -> buildRuntimeInstallation(meta, requestedVersion)
         }
         host.register(buildPlugin(installation), initiallyEnabled = true)
         val updated = _installations.value + installation
         _installations.value = updated
         persistInstallations(updated)
+    }
+
+    /**
+     * 工具侧同步安装 RUNTIME 引擎（RuntimeToolProvider 的 market_install 走这里，非 suspend）。
+     * 前置检查重复安装；按约束选择版本后下载解压并注册宿主、持久化。
+     */
+    fun installRuntimeInternal(meta: MarketPluginMeta, requestedVersion: String? = null) {
+        if (_installations.value.any { it.pluginId == meta.id }) {
+            throw IllegalArgumentException("该插件已安装")
+        }
+        val installation = buildRuntimeInstallation(meta, requestedVersion)
+        host.register(buildPlugin(installation), initiallyEnabled = true)
+        val updated = _installations.value + installation
+        _installations.value = updated
+        persistInstallations(updated)
+    }
+
+    /** 解析 RUNTIME 条目为安装记录：委托运行时编排器安装（下载/解压/版本匹配）。 */
+    private fun buildRuntimeInstallation(
+        meta: MarketPluginMeta,
+        requestedVersion: String?,
+    ): MarketInstallation {
+        val rtm = runtimeManager
+            ?: throw IllegalStateException("运行时引擎模块未启用")
+        val result = rtm.installRuntime(meta, requestedVersion)
+        return MarketInstallation(
+            pluginId = meta.id,
+            sourceId = meta.sourceId,
+            name = meta.name,
+            version = result.version,
+            kind = meta.kind,
+            description = meta.description,
+            author = meta.author,
+            requiresMembership = meta.requiresMembership,
+            downloadUrl = meta.downloadUrl,
+            runtimeType = meta.runtimeType,
+            versions = meta.versions,
+            minVersion = meta.minVersion,
+        )
     }
 
     /** 卸载插件：从宿主移除、删除安装记录，并清理 ToolPkg 本地文件。 */
@@ -208,6 +255,10 @@ class PluginMarket(
         persistInstallations(updated)
         if (removed?.kind == MarketPluginKind.TOOLPKG && removed.localPath.isNotBlank()) {
             runCatching { File(removed.localPath).delete() }
+        }
+        // RUNTIME：先停进程，再删除本地引擎文件，不留残留。
+        if (removed?.kind == MarketPluginKind.RUNTIME) {
+            runCatching { runtimeManager?.uninstallRuntime(pluginId) }
         }
     }
 
@@ -343,6 +394,11 @@ class PluginMarket(
                 val file = File(installation.localPath)
                 return ToolPkgAdapter().adapt(file, installation.pluginId)
                     ?: throw IllegalStateException("ToolPkg 解析失败或本地文件缺失")
+            }
+            MarketPluginKind.RUNTIME -> {
+                val rtm = runtimeManager
+                    ?: throw IllegalStateException("运行时引擎模块未启用")
+                return rtm.buildRuntimePlugin(installation)
             }
         }
         return MarketPlugin(

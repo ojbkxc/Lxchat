@@ -941,6 +941,7 @@
     <string name="market_kind_skill">Skill</string>
     <string name="market_kind_mcp">MCP</string>
     <string name="market_kind_toolpkg">ToolPkg</string>
+    <string name="market_kind_runtime">Runtime</string>
     <string name="market_catalog_empty">No plugins found</string>
     <string name="market_installed_ok">Plugin installed</string>
     <string name="market_uninstalled_ok">Plugin uninstalled</string>

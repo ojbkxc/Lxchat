@@ -22,6 +22,9 @@ enum class MarketPluginKind {
 
     /** ToolPkg 插件：下载 .toolpkg ZIP，经 ToolPkgAdapter 解析为 Plugin。 */
     TOOLPKG,
+
+    /** 运行时引擎插件：下载原生运行时二进制（Node / Python / ffmpeg），供 AI 启停调用。 */
+    RUNTIME,
 }
 
 /**
@@ -72,6 +75,12 @@ data class MarketPluginMeta(
     val headers: Map<String, String> = emptyMap(),
     /** TOOLPKG 插件：.toolpkg ZIP 的下载地址。 */
     val downloadUrl: String? = null,
+    /** RUNTIME 插件：运行时类型标签（node / python / ffmpeg）。 */
+    val runtimeType: String? = null,
+    /** RUNTIME 插件：引擎提供的可用版本清单（downloadUrl 可含 {version} 占位符）。 */
+    val versions: List<String> = emptyList(),
+    /** RUNTIME 插件：引擎最低版本约束。 */
+    val minVersion: String? = null,
     val requiresMembership: Boolean = false,
     /** 合并目录时由市场服务填充：本条来自哪个源。 */
     val sourceId: String = "",
@@ -101,6 +110,12 @@ data class MarketInstallation(
     /** TOOLPKG 插件：下载源地址与本地落盘路径（离线恢复时凭 localPath 重建）。 */
     val downloadUrl: String = "",
     val localPath: String = "",
+    /** RUNTIME 插件：运行时类型标签（离线恢复时定位二进制）。 */
+    val runtimeType: String = "",
+    /** RUNTIME 插件：引擎可用版本清单。 */
+    val versions: List<String> = emptyList(),
+    /** RUNTIME 插件：引擎最低版本约束。 */
+    val minVersion: String? = null,
     val installedAt: Long = System.currentTimeMillis(),
     val enabled: Boolean = true,
 )
