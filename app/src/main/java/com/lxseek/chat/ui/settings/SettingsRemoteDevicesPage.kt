@@ -30,9 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lxseek.chat.R
 import com.lxseek.chat.data.PeerInfo
 import com.lxseek.chat.data.TrustResult
 import com.lxseek.chat.service.DiscoveredDevice
@@ -118,7 +120,7 @@ fun SettingsRemoteDevicesPage(
     val trustedPeerIds = remember(refreshTick) { trustedPeers.map { it.deviceId }.toSet() }
 
     CollapsingSettingsLazyScaffold(
-        title = "远程设备",
+        title = stringResource(R.string.settings_remote_devices_title),
         onBack = onBack,
         modifier = modifier,
     ) {
@@ -146,13 +148,13 @@ fun SettingsRemoteDevicesPage(
         item {
             Spacer(modifier = Modifier.height(16.dp))
             SectionHeader(
-                title = "已发现设备",
-                subtitle = "局域网内发现的其他 Lxchat 设备",
+                title = stringResource(R.string.settings_remote_discovered_title),
+                subtitle = stringResource(R.string.settings_remote_discovered_subtitle),
             )
         }
         if (discoveredDevices.isEmpty()) {
             item {
-                EmptyHint("暂未发现其他设备，请确保其他设备已开启发现功能且在同一局域网")
+                EmptyHint(stringResource(R.string.settings_remote_discovery_empty))
             }
         } else {
             items(discoveredDevices, key = { it.name }) { device ->
@@ -188,12 +190,12 @@ fun SettingsRemoteDevicesPage(
         item {
             Spacer(modifier = Modifier.height(16.dp))
             SectionHeader(
-                title = "已信任设备",
-                subtitle = "通过 TOFU 信任的对端设备",
+                title = stringResource(R.string.settings_remote_trusted_title),
+                subtitle = stringResource(R.string.settings_remote_trusted_subtitle),
             )
         }
         if (trustedPeers.isEmpty()) {
-            item { EmptyHint("暂无已信任设备") }
+            item { EmptyHint(stringResource(R.string.settings_remote_trusted_empty)) }
         } else {
             items(trustedPeers, key = { it.deviceId }) { peer ->
                 TrustedPeerItem(
@@ -238,17 +240,17 @@ private fun SelfDeviceCard(
             horizontalAlignment = Alignment.Start,
         ) {
             Text(
-                text = "本设备",
+                text = stringResource(R.string.settings_remote_self_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "设备名称：$deviceName",
+                text = stringResource(R.string.settings_remote_device_name, deviceName),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text = "设备 ID：${shortenId(deviceId)}",
+                text = stringResource(R.string.settings_remote_device_id, shortenId(deviceId)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -262,9 +264,9 @@ private fun SelfDeviceCard(
             Spacer(modifier = Modifier.height(12.dp))
             MetricCardRow(
                 metrics = listOf(
-                    "已发现" to discoveredCount.toString(),
-                    "已连接" to connectedCount.toString(),
-                    "已信任" to trustedCount.toString(),
+                    stringResource(R.string.settings_remote_metric_discovered) to discoveredCount.toString(),
+                    stringResource(R.string.settings_remote_metric_connected) to connectedCount.toString(),
+                    stringResource(R.string.settings_remote_metric_trusted) to trustedCount.toString(),
                 ),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -290,12 +292,12 @@ private fun DiscoveryToggle(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "设备发现",
+                    text = stringResource(R.string.settings_remote_discovery_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "开启后在局域网内发现其他 Lxchat 设备",
+                    text = stringResource(R.string.settings_remote_discovery_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -321,7 +323,7 @@ private fun DiscoveredDeviceItem(
 ) {
     val deviceId = device.metadata[LanDeviceDiscovery.KEY_DEVICE_ID]
     val protocols = device.metadata[LanDeviceDiscovery.KEY_PROTOCOLS]
-    val hostPort = device.host?.hostAddress?.let { "$it:${device.port}" } ?: "未知"
+    val hostPort = device.host?.hostAddress?.let { "$it:${device.port}" } ?: stringResource(R.string.settings_remote_unknown)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -352,14 +354,14 @@ private fun DiscoveredDeviceItem(
             )
             if (deviceId != null) {
                 Text(
-                    text = "ID：${shortenId(deviceId)}",
+                    text = stringResource(R.string.settings_remote_id, shortenId(deviceId)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (protocols != null) {
                 Text(
-                    text = "协议：$protocols",
+                    text = stringResource(R.string.settings_remote_protocol, protocols),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -369,9 +371,9 @@ private fun DiscoveredDeviceItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = onConnect) { Text("连接") }
+                TextButton(onClick = onConnect) { Text(stringResource(R.string.settings_remote_connect)) }
                 Spacer(modifier = Modifier.width(4.dp))
-                TextButton(onClick = onRemoveTrust) { Text("移除信任") }
+                TextButton(onClick = onRemoveTrust) { Text(stringResource(R.string.settings_remote_remove_trust)) }
             }
         }
     }
@@ -395,28 +397,28 @@ private fun TrustedPeerItem(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = peer.name.ifBlank { "未命名设备" },
+                    text = peer.name.ifBlank { stringResource(R.string.settings_remote_unnamed_device) },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                TextButton(onClick = onRemoveTrust) { Text("移除信任") }
+                TextButton(onClick = onRemoveTrust) { Text(stringResource(R.string.settings_remote_remove_trust)) }
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "ID：${shortenId(peer.deviceId)}",
+                text = stringResource(R.string.settings_remote_id, shortenId(peer.deviceId)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "首次信任：${formatTime(peer.firstSeenAt)}",
+                text = stringResource(R.string.settings_remote_first_trusted, formatTime(peer.firstSeenAt)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "最后活跃：${formatTime(peer.lastSeenAt)}",
+                text = stringResource(R.string.settings_remote_last_active, formatTime(peer.lastSeenAt)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -430,9 +432,9 @@ private fun TrustedPeerItem(
 @Composable
 private fun TrustStatusBadge(status: TrustResult) {
     val (text, color) = when (status) {
-        TrustResult.Trusted -> "✅ 已信任" to MaterialTheme.colorScheme.primary
-        TrustResult.New -> "🆕 新设备" to MaterialTheme.colorScheme.tertiary
-        TrustResult.Untrusted -> "⚠️ 不信任" to MaterialTheme.colorScheme.error
+        TrustResult.Trusted -> stringResource(R.string.settings_remote_badge_trusted) to MaterialTheme.colorScheme.primary
+        TrustResult.New -> stringResource(R.string.settings_remote_badge_new) to MaterialTheme.colorScheme.tertiary
+        TrustResult.Untrusted -> stringResource(R.string.settings_remote_badge_untrusted) to MaterialTheme.colorScheme.error
     }
     Surface(
         color = color.copy(alpha = 0.18f),
@@ -452,7 +454,8 @@ private fun TrustStatusBadge(status: TrustResult) {
 @Composable
 private fun ConnectionStatusBadge(connected: Boolean) {
     StatusBadge(
-        text = if (connected) "已连接" else "未连接",
+        text = if (connected) stringResource(R.string.settings_remote_status_connected)
+        else stringResource(R.string.settings_remote_status_disconnected),
         active = connected,
     )
 }
@@ -474,7 +477,7 @@ private fun PrivacyNarrativeCard() {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "隐私与安全",
+                    text = stringResource(R.string.settings_remote_privacy_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -482,23 +485,23 @@ private fun PrivacyNarrativeCard() {
             Spacer(modifier = Modifier.height(12.dp))
             PrivacyItem(
                 icon = "🔒",
-                title = "端到端加密",
-                desc = "设备间通信使用 Ed25519 密钥交换，数据加密传输",
+                title = stringResource(R.string.settings_remote_privacy_e2e_title),
+                desc = stringResource(R.string.settings_remote_privacy_e2e_desc),
             )
             PrivacyItem(
                 icon = "🤝",
-                title = "TOFU 信任模型",
-                desc = "首次连接时信任对端公钥（Trust On First Use），后续连接校验公钥一致性，防止 MITM",
+                title = stringResource(R.string.settings_remote_privacy_tofu_title),
+                desc = stringResource(R.string.settings_remote_privacy_tofu_desc),
             )
             PrivacyItem(
                 icon = "🏠",
-                title = "局域网直连",
-                desc = "设备发现与通信在局域网内直接进行，数据不经过任何第三方服务器",
+                title = stringResource(R.string.settings_remote_privacy_lan_title),
+                desc = stringResource(R.string.settings_remote_privacy_lan_desc),
             )
             PrivacyItem(
                 icon = "🔑",
-                title = "本地密钥",
-                desc = "设备密钥对在本地生成并存储，永不上传",
+                title = stringResource(R.string.settings_remote_privacy_key_title),
+                desc = stringResource(R.string.settings_remote_privacy_key_desc),
             )
         }
     }

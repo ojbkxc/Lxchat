@@ -48,11 +48,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.lxseek.chat.R
 import com.lxseek.chat.im.office.OfficeApprovalReply
 import com.lxseek.chat.im.office.OfficeApprovalRequest
 import com.lxseek.chat.im.office.OfficeConnectionState
@@ -149,7 +151,7 @@ fun SettingsOfficeConnectorPage(
     ) {
         SettingsGroupColumn {
             // ── 连接配置 ──────────────────────────────────────────────
-            SettingsGroup(title = "连接配置", items = listOf(
+            SettingsGroup(title = stringResource(R.string.settings_office_conn_config_group), items = listOf(
                 {
                     SettingsIconContent(icon = Icons.Default.Cloud) {
                         OutlinedTextField(
@@ -168,7 +170,7 @@ fun SettingsOfficeConnectorPage(
                             value = deviceToken,
                             onValueChange = { deviceToken = it },
                             label = { Text("Device Token") },
-                            placeholder = { Text("至少 32 位字符") },
+                            placeholder = { Text(stringResource(R.string.settings_office_token_placeholder)) },
                             singleLine = true,
                             visualTransformation = if (showToken)
                                 VisualTransformation.None else PasswordVisualTransformation(),
@@ -201,14 +203,14 @@ fun SettingsOfficeConnectorPage(
                             OutlinedTextField(
                                 value = maxConcurrency,
                                 onValueChange = { maxConcurrency = it.filter { c -> c.isDigit() } },
-                                label = { Text("最大并发") },
+                                label = { Text(stringResource(R.string.settings_office_max_concurrency)) },
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
                             )
                             OutlinedTextField(
                                 value = heartbeatSeconds,
                                 onValueChange = { heartbeatSeconds = it.filter { c -> c.isDigit() } },
-                                label = { Text("心跳间隔(秒)") },
+                                label = { Text(stringResource(R.string.settings_office_heartbeat_secs)) },
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
                             )
@@ -218,11 +220,11 @@ fun SettingsOfficeConnectorPage(
             ))
 
             // ── 工作区与预设 ──────────────────────────────────────────
-            SettingsGroup(title = "工作区与预设", items = listOf(
+            SettingsGroup(title = stringResource(R.string.settings_office_workspaces_group), items = listOf(
                 {
                     SettingsIconContent(icon = Icons.Default.Storage) {
                         Text(
-                            text = "工作区 alias（每行 `alias=绝对路径`）",
+                            text = stringResource(R.string.settings_office_workspaces_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
@@ -240,7 +242,7 @@ fun SettingsOfficeConnectorPage(
                 {
                     SettingsIconContent(icon = Icons.Default.WorkOutline) {
                         Text(
-                            text = "Instruction Preset alias（每行 `alias=预设文本`）",
+                            text = stringResource(R.string.settings_office_presets_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
@@ -248,7 +250,7 @@ fun SettingsOfficeConnectorPage(
                         OutlinedTextField(
                             value = presetsText,
                             onValueChange = { presetsText = it },
-                            placeholder = { Text("default=你是一个代码助手...") },
+                            placeholder = { Text(stringResource(R.string.settings_office_preset_sample)) },
                             minLines = 3,
                             maxLines = 6,
                             modifier = Modifier.fillMaxWidth(),
@@ -258,7 +260,7 @@ fun SettingsOfficeConnectorPage(
             ))
 
             // ── 连接状态与控制 ────────────────────────────────────────
-            SettingsGroup(title = "连接状态", items = listOf(
+            SettingsGroup(title = stringResource(R.string.settings_office_conn_status_group), items = listOf(
                 {
                     SettingsIconContent(icon = Icons.Default.Link) {
                         ConnectionStateIndicator(connectionStatus)
@@ -293,7 +295,7 @@ fun SettingsOfficeConnectorPage(
                                     Icon(Icons.Default.PlayArrow, contentDescription = null,
                                         modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text("连接")
+                                    Text(stringResource(R.string.settings_office_connect))
                                 }
                             } else {
                                 OutlinedButton(
@@ -309,7 +311,7 @@ fun SettingsOfficeConnectorPage(
                                     Icon(Icons.Default.Stop, contentDescription = null,
                                         modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text("断开")
+                                    Text(stringResource(R.string.settings_office_disconnect))
                                 }
                             }
                         }
@@ -319,7 +321,7 @@ fun SettingsOfficeConnectorPage(
 
             // ── 固定 Hook URL ────────────────────────────────────────
             if (hookUrls.isNotEmpty()) {
-                SettingsGroup(title = "固定 Hook URL", items = listOf(
+                SettingsGroup(title = stringResource(R.string.settings_office_hook_urls_group), items = listOf(
                     {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -356,15 +358,15 @@ fun SettingsOfficeConnectorPage(
 private fun ConnectionStateIndicator(status: OfficeConnectionStatus) {
     val (color, label) = when (status.state) {
         OfficeConnectionState.DISCONNECTED ->
-            MaterialTheme.colorScheme.outline to "未连接"
+            MaterialTheme.colorScheme.outline to stringResource(R.string.settings_office_status_disconnected)
         OfficeConnectionState.CONNECTING ->
-            MaterialTheme.colorScheme.tertiary to "连接中…"
+            MaterialTheme.colorScheme.tertiary to stringResource(R.string.settings_office_status_connecting)
         OfficeConnectionState.CONNECTED ->
-            MaterialTheme.colorScheme.primary to "已连接"
+            MaterialTheme.colorScheme.primary to stringResource(R.string.settings_office_status_connected)
         OfficeConnectionState.ERROR ->
-            MaterialTheme.colorScheme.error to "错误"
+            MaterialTheme.colorScheme.error to stringResource(R.string.settings_office_status_error)
         OfficeConnectionState.RECONNECTING ->
-            MaterialTheme.colorScheme.tertiary to "重连中…"
+            MaterialTheme.colorScheme.tertiary to stringResource(R.string.settings_office_status_reconnecting)
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (status.state == OfficeConnectionState.CONNECTING ||
@@ -399,7 +401,7 @@ private fun ConnectionStateIndicator(status: OfficeConnectionStatus) {
     if (status.connected) {
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "重连次数: ${status.reconnects} · 已提供任务: ${status.jobsOffered}",
+            text = stringResource(R.string.settings_office_reconnect_stats, status.reconnects, status.jobsOffered),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -422,7 +424,7 @@ private suspend fun connectToOffice(
     context: android.content.Context,
 ) {
     if (baseUrl.isBlank() || deviceToken.length < 32) {
-        Toast.makeText(context, "Base URL 和 Device Token（≥32位）必填", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.settings_office_validation_required), Toast.LENGTH_SHORT).show()
         return
     }
     val settings = OfficeConnectorSettings(
@@ -438,7 +440,7 @@ private suspend fun connectToOffice(
         store.save(settings, deviceToken)
     } catch (e: Exception) {
         DebugLog.e("OfficeSettings", "保存配置失败: ${e.message}", e)
-        Toast.makeText(context, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.settings_office_save_failed, e.message), Toast.LENGTH_SHORT).show()
         return
     }
     currentService?.stop()
@@ -450,7 +452,7 @@ private suspend fun connectToOffice(
     )
     onServiceChange(service)
     service.start()
-    Toast.makeText(context, "正在连接 AI Office…", Toast.LENGTH_SHORT).show()
+    Toast.makeText(context, context.getString(R.string.settings_office_connecting), Toast.LENGTH_SHORT).show()
 }
 
 /**

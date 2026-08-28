@@ -690,14 +690,14 @@ private fun GrokOAuthSettingsSection(
     }
 
     SettingsGroup(
-        title = "Grok 官方账号登录 (x.ai)",
+        title = stringResource(R.string.settings_grok_login_title),
         items = buildList {
             add {
                 SettingsItem(
                     headlineContent = {
                         Text(
-                            if (loggedIn) (email?.let { "已登录: $it" } ?: "已登录 Grok 官方账号")
-                            else "使用 X Premium+ / Grok 订阅账号登录",
+                            if (loggedIn) (email?.let { stringResource(R.string.settings_grok_logged_in_as, it) } ?: stringResource(R.string.settings_grok_logged_in))
+                            else stringResource(R.string.settings_grok_login_hint),
                             fontWeight = FontWeight.Medium,
                         )
                     },
@@ -747,19 +747,19 @@ private fun GrokOAuthSettingsSection(
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                        ) { Text("用 Grok 账号登录") }
+                        ) { Text(stringResource(R.string.settings_grok_login_button)) }
                     } else if (launchingNow) {
                         Button(
                             onClick = {},
                             enabled = false,
                             modifier = Modifier.weight(1f),
-                        ) { Text("等待浏览器授权…") }
+                        ) { Text(stringResource(R.string.settings_grok_waiting_auth)) }
                     } else {
                         TextButton(
                             onClick = { manager.logout() },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        ) { Text("退出登录") }
+                        ) { Text(stringResource(R.string.settings_grok_logout)) }
                     }
                 }
             }
@@ -767,9 +767,10 @@ private fun GrokOAuthSettingsSection(
     )
 }
 
+@Composable
 private fun accountStatusDescription(phase: GrokLoginPhase, loggedIn: Boolean): String = when {
-    phase == GrokLoginPhase.IN_PROGRESS -> "请在浏览器中完成 x.ai 账号授权,然后返回 LxChat。"
-    phase == GrokLoginPhase.FAILED -> "登录失败,可尝试重新登录。"
-    loggedIn -> "已绑定账号,可直接使用 Grok 模型;token 到期前会自动刷新。"
-    else -> "无需手动填写 API Key,登录后自动写入。"
+    phase == GrokLoginPhase.IN_PROGRESS -> stringResource(R.string.settings_grok_desc_auth)
+    phase == GrokLoginPhase.FAILED -> stringResource(R.string.settings_grok_desc_failed)
+    loggedIn -> stringResource(R.string.settings_grok_desc_bound)
+    else -> stringResource(R.string.settings_grok_desc_no_key)
 }

@@ -620,7 +620,8 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                     }
                                     val presetIdx = asrPresets.indexOfFirst { it.second == asrRemoteModel && it.third == asrRemoteBaseUrl }
                                     Text(
-                                        text = if (presetIdx >= 0) "模型: ${asrPresets[presetIdx].first}" else "自定义模型",
+                                        text = if (presetIdx >= 0) stringResource(R.string.asr_model_label, asrPresets[presetIdx].first)
+                                        else stringResource(R.string.asr_custom_model),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.primary,
                                     )
@@ -630,7 +631,7 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                         viewModel.settings.setAsrRemoteModel(p.second)
                                         viewModel.settings.setAsrRemoteBaseUrl(p.third)
                                     }) {
-                                        Text(if (presetIdx >= 0) "切换预设模型" else "选择预设模型")
+                                        Text(if (presetIdx >= 0) stringResource(R.string.asr_switch_preset) else stringResource(R.string.asr_select_preset))
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
                                     OutlinedTextField(

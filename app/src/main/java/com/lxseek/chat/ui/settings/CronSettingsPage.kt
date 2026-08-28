@@ -265,7 +265,7 @@ private fun CronTaskCard(
             ) {
                 Text(
                     text = if (task.lastRunAt > 0) {
-                        "上次执行：${dateFormat.format(Date(task.lastRunAt))}"
+                        stringResource(R.string.cron_last_run, dateFormat.format(Date(task.lastRunAt)))
                     } else {
                         stringResource(R.string.cron_never_run)
                     },
@@ -321,17 +321,15 @@ private fun CronTaskEditDialog(
     }
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
-    val presets = remember {
-        listOf(
-            "0 9 * * *" to "每天 9:00",
-            "0 8,12,18 * * *" to "每天 8/12/18 点",
-            "0 * * * *" to "每小时整点",
-            "*/30 * * * *" to "每 30 分钟",
-            "*/15 * * * *" to "每 15 分钟",
-            "0 0 * * 1" to "每周一 0:00",
-            "0 0 1 * *" to "每月 1 号 0:00",
-        )
-    }
+    val presets = listOf(
+        "0 9 * * *" to stringResource(R.string.cron_preset_daily_9),
+        "0 8,12,18 * * *" to stringResource(R.string.cron_preset_daily_8_12_18),
+        "0 * * * *" to stringResource(R.string.cron_preset_hourly),
+        "*/30 * * * *" to stringResource(R.string.cron_preset_30min),
+        "*/15 * * * *" to stringResource(R.string.cron_preset_15min),
+        "0 0 * * 1" to stringResource(R.string.cron_preset_monday_midnight),
+        "0 0 1 * *" to stringResource(R.string.cron_preset_monthly_1),
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,

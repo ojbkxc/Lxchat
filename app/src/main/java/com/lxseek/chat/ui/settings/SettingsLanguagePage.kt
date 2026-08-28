@@ -32,7 +32,7 @@ fun SettingsLanguagePage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val languages = listOf(
         LanguageOption("system", stringResource(R.string.language_system_default)),
         LanguageOption("en", "English"),
-        LanguageOption("zh", "简体中文")
+        LanguageOption("zh", stringResource(R.string.language_native_zh))
     )
 
     CollapsingSettingsScaffold(

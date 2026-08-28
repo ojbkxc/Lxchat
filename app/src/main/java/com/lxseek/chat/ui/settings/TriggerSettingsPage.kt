@@ -345,16 +345,17 @@ private fun RuleRow(
 }
 
 /** 把规则转成一行人类可读摘要。 */
+@Composable
 private fun ruleSummary(rule: TriggerRule): String {
     val typePart = when (rule.type) {
-        TriggerType.BATTERY_LOW -> "电量低于 ${rule.threshold}%"
-        TriggerType.BATTERY_HIGH -> "电量高于 ${rule.threshold}%"
-        TriggerType.NETWORK_CHANGE -> "网络变化"
-        TriggerType.CHARGING_START -> "开始充电"
-        TriggerType.CHARGING_STOP -> "停止充电"
+        TriggerType.BATTERY_LOW -> stringResource(R.string.trigger_rule_summary_battery_low, rule.threshold)
+        TriggerType.BATTERY_HIGH -> stringResource(R.string.trigger_rule_summary_battery_high, rule.threshold)
+        TriggerType.NETWORK_CHANGE -> stringResource(R.string.trigger_rule_summary_network)
+        TriggerType.CHARGING_START -> stringResource(R.string.trigger_rule_summary_charging_start)
+        TriggerType.CHARGING_STOP -> stringResource(R.string.trigger_rule_summary_charging_stop)
     }
     val cooldownSec = rule.cooldownMs / 1000
-    return "$typePart · 冷却 ${cooldownSec}s"
+    return stringResource(R.string.trigger_rule_summary_cooldown, typePart, cooldownSec)
 }
 
 /** 添加规则弹窗：名称、类型、阈值、条件、提示词、模型选择。 */

@@ -293,7 +293,7 @@ fun ReplyChannelSettingsPage(
                     // 加密方式下拉
                     Box(modifier = Modifier.weight(1f)) {
                         OutlinedTextField(
-                            value = securityLabel(emailSmtpSecurity),
+                            value = stringResource(securityLabel(emailSmtpSecurity)),
                             onValueChange = { /* 只读 */ },
                             readOnly = true,
                             singleLine = true,
@@ -408,9 +408,9 @@ private fun ChannelToggleRow(label: String, checked: Boolean, onCheckedChange: (
     }
 }
 
-/** SMTP 加密方式 → 显示标签。 */
-private fun securityLabel(security: String): String = when (security) {
-    ReplyChannelConfig.SECURITY_STARTTLS -> "STARTTLS (587)"
-    ReplyChannelConfig.SECURITY_NONE -> "无加密"
-    else -> "SSL (465)"
+/** SMTP 加密方式 → 显示标签资源 ID。 */
+private fun securityLabel(security: String): Int = when (security) {
+    ReplyChannelConfig.SECURITY_STARTTLS -> R.string.reply_channel_email_security_starttls
+    ReplyChannelConfig.SECURITY_NONE -> R.string.reply_channel_email_security_none
+    else -> R.string.reply_channel_email_security_ssl
 }
