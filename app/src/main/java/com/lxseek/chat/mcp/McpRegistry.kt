@@ -143,11 +143,16 @@ class McpRegistry(
                         runCatching { json.parseToJsonElement(text) }.getOrNull() ==
                         payload.structuredContent
                 }
+            // Guard oversized output against runaway token usage (mirrors cc-haha's
+            // mcpValidation.ts). Text and structured JSON are budget-checked separately
+            // so the model never receives a multi-megabyte payload.
+            val guardedText = McpOutputGuard.guard(contentText)
+            val guardedStructured = structured?.let { McpOutputGuard.guard(it).text }
             val resultText = buildString {
-                append(contentText)
-                if (!structured.isNullOrBlank()) {
+                append(guardedText.text)
+                if (!guardedStructured.isNullOrBlank()) {
                     if (isNotEmpty()) append("\n\n")
-                    append(structured)
+                    append(guardedStructured)
                 }
                 if (attachments.isNotEmpty()) {
                     if (isNotEmpty()) append("\n\n")
@@ -165,8 +170,8 @@ class McpRegistry(
             ToolExecutionResult(
                 text = resultText,
                 images = attachments,
-                structuredContent = structured,
-                displayText = displayText,
+                structuredContent = guardedStructured,
+                displayText = displayText?.let { McpOutputGuard.guard(it).text },
                 isError = payload.isError,
             )
         } catch (e: CancellationException) {

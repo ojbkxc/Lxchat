@@ -3,6 +3,7 @@ package com.lxseek.chat.plugin.market
 import android.content.Context
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.data.McpServerConfig
+import com.lxseek.chat.mcp.McpOutputGuard
 import com.lxseek.chat.mcp.McpProtocolClient
 import com.lxseek.chat.mcp.McpToolDescriptor
 import com.lxseek.chat.mcp.asObjectOrNull
@@ -131,11 +132,15 @@ class ScopedMcpToolProvider(
             val contentText = payload.textParts
                 .filter(String::isNotBlank)
                 .joinToString("\n\n")
+            // Guard oversized output against runaway token usage (mirrors cc-haha's
+            // mcpValidation.ts), same as McpRegistry.execute.
+            val guardedText = McpOutputGuard.guard(contentText)
+            val guardedStructured = structured?.let { McpOutputGuard.guard(it).text }
             val resultText = buildString {
-                append(contentText)
-                if (!structured.isNullOrBlank()) {
+                append(guardedText.text)
+                if (!guardedStructured.isNullOrBlank()) {
                     if (isNotEmpty()) append("\n\n")
-                    append(structured)
+                    append(guardedStructured)
                 }
                 if (attachments.isNotEmpty()) {
                     if (isNotEmpty()) append("\n\n")
@@ -152,7 +157,7 @@ class ScopedMcpToolProvider(
             ToolExecutionResult(
                 text = resultText,
                 images = attachments,
-                structuredContent = structured,
+                structuredContent = guardedStructured,
                 isError = payload.isError,
             ).text
         } catch (e: CancellationException) {
