@@ -231,6 +231,8 @@ class TaskExecutionEngine(
         systemPromptOverride: String? = null,
         foregroundServiceManagedExternally: Boolean = false,
         precondition: suspend () -> Boolean = { true },
+        /** 本地图片文件路径，作为真正的多模态 image 附件写入用户消息（如微信 IM 入站图片）。 */
+        imagePaths: List<String> = emptyList(),
     ): Result = automationExecutionGate.withExecution {
         executionCoordinator.withAutomationConversationLock(conversationId) {
             runOnceLocked(
@@ -240,6 +242,7 @@ class TaskExecutionEngine(
                 systemPromptOverride = systemPromptOverride,
                 foregroundServiceManagedExternally = foregroundServiceManagedExternally,
                 precondition = precondition,
+                imagePaths = imagePaths,
             )
         }
     }
@@ -256,6 +259,7 @@ class TaskExecutionEngine(
         systemPromptOverride: String? = null,
         foregroundServiceManagedExternally: Boolean = false,
         precondition: suspend () -> Boolean = { true },
+        imagePaths: List<String> = emptyList(),
     ): Result = runOnceLocked(
         conversationId = conversationId,
         userText = userText,
@@ -263,6 +267,7 @@ class TaskExecutionEngine(
         systemPromptOverride = systemPromptOverride,
         foregroundServiceManagedExternally = foregroundServiceManagedExternally,
         precondition = precondition,
+        imagePaths = imagePaths,
     )
 
     private suspend fun runOnceLocked(
@@ -272,6 +277,7 @@ class TaskExecutionEngine(
         systemPromptOverride: String?,
         foregroundServiceManagedExternally: Boolean,
         precondition: suspend () -> Boolean,
+        imagePaths: List<String>,
     ): Result {
         settings.awaitInitialLoad()
         providerRegistry.awaitInitialSync()
@@ -409,6 +415,7 @@ class TaskExecutionEngine(
                     userMessageId = userMessageId,
                     modelMessageId = modelMessageId,
                     userText = userText,
+                    images = imagePaths,
                     modelId = effectiveModelId,
                     userTimestamp = now,
                 ),

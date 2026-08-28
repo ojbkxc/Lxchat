@@ -9,6 +9,7 @@ import com.lxseek.chat.im.telegram.TelegramChannel
 import com.lxseek.chat.im.wecom.WecomChannel
 import com.lxseek.chat.im.weixin.WeixinChannel
 import com.lxseek.chat.im.whatsapp.WhatsappChannel
+import java.io.File
 
 /**
  * Builds a [MessageChannel] from an [ImGatewayConfig] according to its [ImGatewayConfig.platform].
@@ -39,7 +40,7 @@ object ImChannelFactory {
      * no gateway fallback applies. The returned channel may still report [MessageChannel.isConfigured]
      * false when its credentials are missing/invalid — callers should filter on that.
      */
-    fun create(config: ImGatewayConfig): MessageChannel? {
+    fun create(config: ImGatewayConfig, cacheDir: File): MessageChannel? {
         val platform = ImPlatform.of(config.platform)
         return when (platform) {
             // Native Telegram Bot API channel (long-poll).
@@ -48,7 +49,7 @@ object ImChannelFactory {
             // WeChat: iLink native channel when token is set (扫码绑定),
             // legacy HTTP gateway fallback when only baseUrl is configured.
             ImPlatform.WECHAT -> when {
-                config.token.isNotBlank() -> WeixinChannel(config)
+                config.token.isNotBlank() -> WeixinChannel(config, cacheDir)
                 config.baseUrl.isNotBlank() -> GatewayChannel(config)
                 else -> null
             }

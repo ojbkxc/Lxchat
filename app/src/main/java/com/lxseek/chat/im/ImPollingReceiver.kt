@@ -346,9 +346,13 @@ class ImPollingReceiver(
 
         // Merge the batch of new messages into one synthetic inbound message so the private
         // runOnce overload (which expects an ImMessage for id/timestamp tracking) can be reused.
-        // 每条消息的图片 URL 以 Markdown 链接形式附加到文本前，让支持视觉的模型识别图片，
-        // 不支持视觉的模型也能读到 URL 知道有图（见 buildPromptText）。
-        val merged = fresh.first().copy(text = fresh.joinToString("\n") { buildPromptText(it) })
+        // 远程图片 URL 以 Markdown 链接形式附加到文本前提示模型；本地图片文件路径
+        // （微信真多模态）随 images 保留，由 runOnce 作为真正的 image 附件喂给模型
+        // （参照 cc-haha adapters/wechat/index.ts 的 collectAttachments）。
+        val merged = fresh.first().copy(
+            text = fresh.joinToString("\n") { buildPromptText(it) },
+            images = fresh.flatMap { it.images }.distinct(),
+        )
 
         // ── 命令处理 ──────────────────────────────────────────
         // 以 '/' 开头的消息交给 ImCommandProcessor 处理；非命令走正常 AI 回复流程。
@@ -525,10 +529,20 @@ class ImPollingReceiver(
 
     private suspend fun runOnce(channelKey: String, lxchatConvId: String, message: ImMessage): String? {
         val config = configForChannel(channelKey)
+        // 本地图片文件路径 → 真正的多模态 image 附件（参照 cc-haha collectAttachments）；
+        // 远程 URL 已在 buildPromptText 以 Markdown 文本链接嵌入，不重复传递。
+        val imagePaths = message.images.filter { isLocalImagePath(it) }
+        // 纯图片、无文本时补默认提示，引导模型分析图片（对齐 DEFAULT_IMAGE_PROMPT）。
+        val effectiveText = when {
+            message.text.isNotBlank() -> message.text
+            imagePaths.isNotEmpty() -> DEFAULT_IMAGE_PROMPT
+            else -> ""
+        }
         val result = taskEngine.runOnce(
             conversationId = lxchatConvId,
-            userText = message.text,
+            userText = effectiveText,
             modelId = config?.autoReplyModel?.ifBlank { null },
+            imagePaths = imagePaths,
         )
         return when (result) {
             is TaskExecutionEngine.Result.Success -> result.text
@@ -544,22 +558,22 @@ class ImPollingReceiver(
     }
 
     /**
-     * 把 [message] 的图片 URL 和文本拼装成发给 AI 的提示文本。
+     * 把 [message] 的图片和文本拼装成发给 AI 的提示文本。
      *
-     * 图片以 Markdown 链接形式 `[图片N](url)` 列在文本前，便于支持视觉的模型识别；
-     * 不支持视觉的模型也会把 URL 当作普通文本读到，至少能告知用户图片存在。
-     * 没有图片时直接返回原始文本，零开销。空 URL 会被跳过。
+     * 只有远程图片 URL 会被嵌入为 Markdown 链接 `[图片N](url)` 供模型识别；
+     * 本地图片文件路径（微信真多模态附件）不嵌入文本，避免 base64/路径污染文本浪费 token，
+     * 它们会随 [ImMessage.images] 由 [runOnce] 作为真正的 image 附件喂给模型。
      *
-     * 格式示例（两张图 + 文本"看下这张"）：
+     * 格式示例（两张远程图 + 文本"看下这张"）：
      * ```
      * [图片1](https://.../a.jpg) [图片2](https://.../b.png) 看下这张
      * ```
-     * 仅有图片无文本时，附加默认提示 [DEFAULT_IMAGE_PROMPT] 引导模型分析图片。
      */
     private fun buildPromptText(message: ImMessage): String {
-        if (message.images.isEmpty()) return message.text
+        val remoteImageUrls = message.images.filter { isRemoteImageUrl(it) }
+        if (remoteImageUrls.isEmpty()) return message.text
         val imageMarkdown = buildString {
-            message.images.forEachIndexed { index, url ->
+            remoteImageUrls.forEachIndexed { index, url ->
                 if (url.isBlank()) return@forEachIndexed
                 if (isNotEmpty()) append(' ')
                 append("[图片").append(index + 1).append("](").append(url).append(')')
@@ -570,6 +584,20 @@ class ImPollingReceiver(
             message.text.isBlank() -> "$imageMarkdown $DEFAULT_IMAGE_PROMPT"
             else -> "$imageMarkdown ${message.text}"
         }
+    }
+
+    /** 远程图片 URL（http/https），以 Markdown 链接形式嵌入文本提示模型。 */
+    private fun isRemoteImageUrl(value: String): Boolean =
+        value.startsWith("http://", ignoreCase = true) || value.startsWith("https://", ignoreCase = true)
+
+    /** 本地图片文件路径（真多模态附件）：排除远程 URL 与 base64 data URI。 */
+    private fun isLocalImagePath(value: String): Boolean {
+        if (value.isBlank()) return false
+        if (isRemoteImageUrl(value)) return false
+        if (value.startsWith("data:", ignoreCase = true)) return false
+        return value.endsWith(".jpg", true) || value.endsWith(".jpeg", true) ||
+            value.endsWith(".png", true) || value.endsWith(".gif", true) ||
+            value.endsWith(".webp", true)
     }
 
     // ── 媒体发送命令执行 ──────────────────────────────────────────────────

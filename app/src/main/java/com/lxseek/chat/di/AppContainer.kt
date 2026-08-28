@@ -303,6 +303,7 @@ class AppContainer(private val appContext: Context) {
             multiConfig = imGatewayStore.multiConfig,
             legacyConfig = imGatewayStore.config,
             scope = appScope,
+            cacheDir = appContext.cacheDir,
         )
     }
 

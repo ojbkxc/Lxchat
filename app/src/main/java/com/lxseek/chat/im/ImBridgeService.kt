@@ -2,6 +2,7 @@ package com.lxseek.chat.im
 
 import com.lxseek.chat.im.weixin.WeixinChannel
 import com.lxseek.chat.util.DebugLog
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -31,6 +32,8 @@ class ImBridgeService(
     private val multiConfig: Flow<ImMultiGatewayConfig>,
     private val legacyConfig: Flow<ImGatewayConfig>,
     private val scope: CoroutineScope,
+    /** 应用缓存目录，供渠道写临时图片/文件（微信真多模态图片附件）。 */
+    private val cacheDir: File,
 ) {
     @Volatile
     private var activeChannels: Map<String, MessageChannel> = emptyMap()
@@ -57,7 +60,7 @@ class ImBridgeService(
         val result = LinkedHashMap<String, MessageChannel>()
         for (config in cfg.all) {
             if (!config.enabled) continue
-            val channel = ImChannelFactory.create(config) ?: continue
+            val channel = ImChannelFactory.create(config, cacheDir) ?: continue
             // P1-1: 接通 WeixinChannel.onTokenStale，-14 后暂停该渠道轮询等重新绑定
             // （参考 weixin-ClawBot-API bot.py:1511-1531 受控重登录）
             if (channel is WeixinChannel) {
@@ -115,7 +118,7 @@ class ImBridgeService(
             reuseWechat
         } else {
             try {
-                ImChannelFactory.create(config)
+                ImChannelFactory.create(config, cacheDir)
             } catch (e: Exception) {
                 DebugLog.e("ImBridge", "testConnection: factory create failed", e)
                 return ConnectionTestResult.Failure("无法创建渠道：${e.message ?: e.javaClass.simpleName}")

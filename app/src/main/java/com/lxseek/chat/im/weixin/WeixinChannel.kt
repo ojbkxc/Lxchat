@@ -22,6 +22,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.net.URI
 import java.net.URLDecoder
 import java.security.SecureRandom
@@ -70,6 +71,8 @@ interface WeixinCompanionChannel {
 class WeixinChannel(
     private val config: com.lxseek.chat.im.ImGatewayConfig,
     private val api: WeixinIlinkApi = WeixinIlinkApi(),
+    /** 应用缓存目录，用于把入站图片写成临时文件，作为真多模态附件喂给模型。 */
+    private val cacheDir: File = File(System.getProperty("java.io.tmpdir") ?: "."),
 ) : MessageChannel, WeixinCompanionChannel {
 
     override val channelId: String get() = "wechat"
@@ -503,7 +506,7 @@ class WeixinChannel(
                 contextTokenStore,
                 config.botId.takeIf { it.isNotBlank() },
                 ::isSelfReplyEcho,
-                { msg -> loadWeixinImageDataUris(msg) },
+                { msg -> loadWeixinImageFiles(msg) },
                 { msg -> loadWeixinFileText(msg) },
             )
         } catch (e: WeixinApiError) {
@@ -520,26 +523,29 @@ class WeixinChannel(
     }
 
     /**
-     * 把一条入站消息里的微信图片 下载 → AES-128-ECB 解密 → 压缩 → base64 data URI，
-     * 供 [com.lxseek.chat.im.ImPollingReceiver.buildPromptText] 以 Markdown 图片链接喂给视觉模型。
+     * 把一条入站消息里的微信图片 下载 → AES-128-ECB 解密 → 缩放压缩 → 写入缓存文件，
+     * 返回本地文件路径列表。文件路径随 [ImMessage.images] 进入 Lxchat 会话，
+     * 由 [com.lxseek.chat.im.ImPollingReceiver] 作为真正的多模态 image 附件喂给模型
+     * （参照 cc-haha adapters/wechat/index.ts collectAttachments：下载 → 校验 → 附件）。
      *
-     * 只保留图片、无文本的消息此前会被静默丢弃，接通后模型能看到图片。单张失败不影响其余图片和文本。
+     * 只保留图片、无文本的消息此前会被静默丢弃，接通后模型能直接看到图片。
+     * 单张失败不影响其余图片和文本。
      */
-    private suspend fun loadWeixinImageDataUris(message: JsonObject): List<String> {
+    private suspend fun loadWeixinImageFiles(message: JsonObject): List<String> {
         val refs = api.inboundImages(message)
         if (refs.isEmpty()) return emptyList()
-        val uris = ArrayList<String>(refs.size)
-        for (ref in refs) {
+        val paths = ArrayList<String>(refs.size)
+        refs.forEachIndexed { index, ref ->
             try {
                 val bytes = ref.load(MAX_IMAGE_DOWNLOAD_BYTES)
                 // 缓存原始解密字节，供 /forward 转发收到过的图片。
                 cacheInboundMedia(ref.name, bytes)
-                weixinImageDataUri(bytes)?.let { uris.add(it) }
+                writeImageFile(ref.name, bytes, index)?.let { paths.add(it) }
             } catch (e: Exception) {
                 DebugLog.w("WeixinChannel", "load image ${ref.name} failed: ${e.message}")
             }
         }
-        return uris
+        return paths
     }
 
     /**
@@ -594,17 +600,21 @@ class WeixinChannel(
         }
     }
 
-    /** 解密后的图片字节 → 缩放 + JPEG 压缩 → `data:image/jpeg;base64,xxx`；失败返回 null。 */
-    private fun weixinImageDataUri(bytes: ByteArray): String? = try {
+    /** 解密后的图片字节 → 缩放 + JPEG 压缩 → 写入缓存目录，返回绝对路径；失败返回 null。 */
+    private fun writeImageFile(name: String, bytes: ByteArray, index: Int): String? = try {
         if (bytes.isEmpty()) return null
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
         val scaled = downscaleToMax(bitmap, MAX_IMAGE_DIMENSION)
         val out = ByteArrayOutputStream()
         scaled.compress(Bitmap.CompressFormat.JPEG, IMAGE_JPEG_QUALITY, out)
-        val data = out.toByteArray()
-        "data:image/jpeg;base64," + android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP)
+        val dir = File(cacheDir, "im").apply { mkdirs() }
+        val safe = name.substringAfterLast('/').substringAfterLast('\\')
+            .replace(Regex("[^A-Za-z0-9._-]"), "_").take(64).ifBlank { "image" }
+        val file = File(dir, "im-$index-${System.currentTimeMillis()}-$safe.jpg")
+        file.writeBytes(out.toByteArray())
+        file.absolutePath
     } catch (e: Exception) {
-        DebugLog.w("WeixinChannel", "image → data uri failed: ${e.message}")
+        DebugLog.w("WeixinChannel", "image → cache file failed: ${e.message}")
         null
     }
 
