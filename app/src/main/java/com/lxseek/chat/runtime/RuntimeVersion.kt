@@ -15,7 +15,7 @@ data class Version private constructor(
     val major: Long,
     val minor: Long,
     val patch: Long,
-    val prerelease: List<Long>,
+    val prerelease: List<String>,
 ) : Comparable<Version> {
 
     override fun compareTo(other: Version): Int {
@@ -28,13 +28,21 @@ data class Version private constructor(
         return comparePrerelease(prerelease, other.prerelease)
     }
 
-    private fun comparePrerelease(a: List<Long>, b: List<Long>): Int {
+    private fun comparePrerelease(a: List<String>, b: List<String>): Int {
         // 有预发布版本 < 无预发布版本（正式版）。
         if (a.isEmpty() && b.isEmpty()) return 0
         if (a.isEmpty()) return 1
         if (b.isEmpty()) return -1
         for (i in 0 until minOf(a.size, b.size)) {
-            val c = a[i].compareTo(b[i])
+            val aNum = a[i].toLongOrNull()
+            val bNum = b[i].toLongOrNull()
+            // 数字段数值比较；数字段优先于非数字段（更接近正式版）；均非数字则字符串比较
+            val c = when {
+                aNum != null && bNum != null -> aNum.compareTo(bNum)
+                aNum != null -> 1
+                bNum != null -> -1
+                else -> a[i].compareTo(b[i])
+            }
             if (c != 0) return c
         }
         return a.size.compareTo(b.size)
@@ -62,12 +70,10 @@ data class Version private constructor(
             return Version(major, minor, patch, prerelease)
         }
 
-        private fun parsePrerelease(s: String): List<Long> {
+        private fun parsePrerelease(s: String): List<String> {
             if (s.isBlank()) return emptyList()
-            // 仅保留数字段；非数字段忽略（保守处理，统一视为 0）。
-            return s
-                .split('.')
-                .mapNotNull { it.toLongOrNull() }
+            // 保留所有段（含字母段如 rc1）；数字段数值比较，非数字段字符串比较
+            return s.split('.').filter { it.isNotBlank() }
         }
     }
 }

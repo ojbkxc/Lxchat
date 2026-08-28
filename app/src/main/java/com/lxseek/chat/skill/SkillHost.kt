@@ -26,8 +26,19 @@ class SkillHost {
     /** A registered skill plus its enable flag. */
     data class SkillInfo(val skill: Skill, val enabled: Boolean)
 
+    /** Per-skill usage statistics, used by the curator to spot skills nobody uses. */
+    data class SkillUsage(
+        val name: String,
+        val callCount: Int,
+        val firstSeenAt: Long,
+        val lastUsedAt: Long,
+    )
+
     private val registered = LinkedHashMap<String, Skill>()
     private val enabled = mutableMapOf<String, Boolean>()
+    private val callCount = mutableMapOf<String, Int>()
+    private val firstSeenAt = mutableMapOf<String, Long>()
+    private val lastUsedAt = mutableMapOf<String, Long>()
     private val _skills = MutableStateFlow<List<SkillInfo>>(emptyList())
 
     /** Observable snapshot of the registry (for settings UI). */
@@ -35,16 +46,25 @@ class SkillHost {
 
     /** Register a skill. A duplicate name overwrites the previous entry. */
     fun register(skill: Skill, enabled: Boolean = true) {
-        registered[skill.name] = skill
-        this.enabled[skill.name] = enabled
-        refresh()
+        synchronized(this) {
+            registered[skill.name] = skill
+            this.enabled[skill.name] = enabled
+            // Preserve usage history across re-registrations (e.g. app restart reload).
+            if (skill.name !in firstSeenAt) firstSeenAt[skill.name] = System.currentTimeMillis()
+            refresh()
+        }
     }
 
     /** Remove a skill by name. */
     fun unregister(name: String) {
-        registered.remove(name)
-        enabled.remove(name)
-        refresh()
+        synchronized(this) {
+            registered.remove(name)
+            enabled.remove(name)
+            callCount.remove(name)
+            firstSeenAt.remove(name)
+            lastUsedAt.remove(name)
+            refresh()
+        }
     }
 
     /** Toggle a skill on/off without removing it from the registry. */
@@ -56,6 +76,28 @@ class SkillHost {
 
     /** Look up a skill by name (regardless of enable state). */
     fun skill(name: String): Skill? = registered[name]
+
+    /** Record one successful invocation of a skill (drives curator + journey). */
+    fun recordUsage(name: String) {
+        synchronized(this) {
+            if (name !in registered) return
+            val now = System.currentTimeMillis()
+            callCount[name] = (callCount[name] ?: 0) + 1
+            lastUsedAt[name] = now
+        }
+    }
+
+    /** Snapshot of usage statistics for all registered skills (curator + journey data). */
+    fun usageSnapshot(): List<SkillUsage> = synchronized(this) {
+        registered.keys.map { name ->
+            SkillUsage(
+                name = name,
+                callCount = callCount[name] ?: 0,
+                firstSeenAt = firstSeenAt[name] ?: 0L,
+                lastUsedAt = lastUsedAt[name] ?: 0L,
+            )
+        }
+    }
 
     // ── Progressive disclosure ──────────────────────────────────────────────
 

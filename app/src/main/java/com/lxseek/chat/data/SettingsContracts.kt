@@ -52,6 +52,34 @@ data class McpServerConfig(
     val headers: Map<String, String> = emptyMap(),
     /** Raw MCP tool names disabled for this server. New tools stay enabled by default. */
     val disabledTools: Set<String> = emptySet(),
+    /** OAuth 2.0 (RFC 9728 + PKCE) settings for official remote MCP servers. */
+    val oauth: McpOAuthConfig = McpOAuthConfig(),
+)
+
+/** OAuth configuration for a single MCP server (official remote servers, e.g. GitHub, Slack). */
+@Serializable
+data class McpOAuthConfig(
+    /** True to use OAuth (PKCE) for this server instead of only static headers. */
+    val enabled: Boolean = false,
+    /** Pre-configured client_id. Blank = dynamic client registration (DCR). */
+    val clientId: String = "",
+    /** Override for authorization server metadata discovery (must be https). */
+    val authServerMetadataUrl: String = "",
+    /** Space-separated scopes. Blank = server-provided scopes. */
+    val scope: String = "",
+)
+
+/** OAuth token credentials for a single MCP server, stored separately from the (non-secret) config. */
+@Serializable
+data class McpOAuthTokens(
+    val serverId: String = "",
+    val accessToken: String = "",
+    val refreshToken: String = "",
+    /** Absolute epoch millis when the access token expires. */
+    val expiresAt: Long = 0L,
+    val scope: String = "",
+    val clientId: String = "",
+    val clientSecret: String = "",
 )
 
 @Serializable

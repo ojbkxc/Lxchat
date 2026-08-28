@@ -39,4 +39,10 @@
     <string name="mcp_refresh">重新连接</string>
     <string name="mcp_tools_count">工具（%1$d）</string>
     <string name="mcp_tool_no_description">无描述</string>
+    <string name="mcp_elicitation_title">请求</string>
+    <string name="mcp_elicitation_submit">提交</string>
+    <string name="mcp_elicitation_cancel">取消</string>
+    <string name="mcp_elicitation_open_url">打开</string>
+    <string name="mcp_elicitation_done">完成</string>
+    <string name="mcp_elicitation_no_fields">该服务器未提供任何表单字段。</string>
 </resources>

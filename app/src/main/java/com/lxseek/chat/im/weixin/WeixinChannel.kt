@@ -608,6 +608,9 @@ class WeixinChannel(
         val out = ByteArrayOutputStream()
         scaled.compress(Bitmap.CompressFormat.JPEG, IMAGE_JPEG_QUALITY, out)
         val dir = File(cacheDir, "im").apply { mkdirs() }
+        // 清理 24 小时前的缓存图片，避免长期运行积累大量临时文件。
+        val cutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        dir.listFiles()?.forEach { f -> if (f.lastModified() < cutoff) f.delete() }
         val safe = name.substringAfterLast('/').substringAfterLast('\\')
             .replace(Regex("[^A-Za-z0-9._-]"), "_").take(64).ifBlank { "image" }
         val file = File(dir, "im-$index-${System.currentTimeMillis()}-$safe.jpg")

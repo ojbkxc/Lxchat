@@ -39,4 +39,10 @@
     <string name="mcp_refresh">Reconnect</string>
     <string name="mcp_tools_count">Tools (%1$d)</string>
     <string name="mcp_tool_no_description">No description</string>
+    <string name="mcp_elicitation_title">Request</string>
+    <string name="mcp_elicitation_submit">Submit</string>
+    <string name="mcp_elicitation_cancel">Cancel</string>
+    <string name="mcp_elicitation_open_url">Open</string>
+    <string name="mcp_elicitation_done">Done</string>
+    <string name="mcp_elicitation_no_fields">This server did not provide any form fields.</string>
 </resources>

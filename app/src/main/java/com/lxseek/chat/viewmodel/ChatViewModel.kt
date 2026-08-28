@@ -373,6 +373,18 @@ class ChatViewModel(
     fun cancelAskUser() = generationManager.askUserController.cancel()
     val planState get() = generationManager.planStateHolder.plans
 
+    // ── MCP server → client elicitation ──────────────────────────────
+    /** Pending MCP elicitation prompt (form / URL) awaiting the user's answer (or null). */
+    val pendingElicitation: StateFlow<com.lxseek.chat.mcp.McpElicitationController.PendingElicitation?>
+        get() = mcpRegistry.elicitationPending
+
+    /** Called by the UI to resolve a pending MCP elicitation with the user's answer. */
+    fun resolveElicitation(result: com.lxseek.chat.mcp.McpElicitationResult) =
+        mcpRegistry.resolveElicitation(result)
+
+    /** Called by the UI to dismiss a pending MCP elicitation without answering. */
+    fun cancelElicitation() = mcpRegistry.cancelElicitation()
+
     // ── Tasks (automation) ────────────────────────────────────
     val tasks: StateFlow<List<com.lxseek.chat.data.local.TaskEntity>> get() = taskManager.tasks
     val runningTaskIds: StateFlow<Set<String>> get() = taskManager.runningTaskIds

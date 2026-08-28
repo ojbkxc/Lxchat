@@ -90,18 +90,14 @@ class RuntimeToolProvider(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            if (runCatching { args["engine_id"] }.isSuccess) {
-                error(args["engine_id"] ?: "runtime", "error", e.message ?: "执行失败")
-            } else {
-                errorJson("error", e.message ?: "执行失败")
-            }
+            error(args["engine_id"] ?: "runtime", "error", e.message ?: "执行失败")
         }
     }
 
     // ── 工具实现 ────────────────────────────────────────────
 
     /** 查市场 → 按 id 解析 meta → 下载安装（可指定 version，缺省按约束自动匹配）。Dangerous。 */
-    private fun install(args: Map<String, String>): String {
+    private suspend fun install(args: Map<String, String>): String {
         val engineId = requiredEngineId(args) ?: return errorJson("missing_engine_id", "缺少 engine_id")
         val meta = manager.resolveCatalogMeta(engineId)
             ?: return error(engineId, "engine_not_found", "市场目录中不存在引擎「$engineId」，可用 all_runtimes_status 查看")

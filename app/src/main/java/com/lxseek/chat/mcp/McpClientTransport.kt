@@ -52,6 +52,16 @@ internal interface McpClientTransport : AutoCloseable {
         callTimeoutMillis: Long,
     ): JsonObject?
 
+    /**
+     * Registers (or clears with null) the listener for server-initiated JSON-RPC requests
+     * (e.g. `elicitation/form`). Invoked on the transport read thread; implementations must
+     * return immediately (the listener dispatches work onto its own coroutine).
+     */
+    fun setServerRequestListener(listener: ((JsonObject) -> Unit)?)
+
+    /** Sends a JSON-RPC response (result or error) for a previously received server request. */
+    suspend fun sendServerResponse(envelope: JsonObject, callTimeoutMillis: Long)
+
     fun resetSession()
 }
 
@@ -199,9 +209,16 @@ private class StreamableHttpMcpTransport(
     @Volatile
     private var closed = false
 
+    @Volatile
+    private var serverRequestListener: ((JsonObject) -> Unit)? = null
+
     override suspend fun ensureReady(): Long {
         check(!closed) { "MCP transport is closed" }
         return sessionGeneration.get()
+    }
+
+    override fun setServerRequestListener(listener: ((JsonObject) -> Unit)?) {
+        serverRequestListener = listener
     }
 
     override suspend fun send(
@@ -237,12 +254,22 @@ private class StreamableHttpMcpTransport(
                 if (!expectResponse || response.code == 202) return@use null
                 val body = response.body ?: throw IOException("MCP response body is empty")
                 if (response.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
-                    parseFiniteSseResponse(body.source(), json)
+                    parseFiniteSseResponse(body.source(), json) { envelope ->
+                        serverRequestListener?.invoke(envelope)
+                    }
                 } else {
                     parseJsonRpcEnvelope(body.string(), json)
                 }
             }
         }
+    }
+
+    override suspend fun sendServerResponse(envelope: JsonObject, callTimeoutMillis: Long) {
+        send(
+            envelope = envelope,
+            expectResponse = false,
+            callTimeoutMillis = callTimeoutMillis,
+        )
     }
 
     override fun resetSession() {
@@ -312,7 +339,23 @@ private class LegacySseMcpTransport(
     private var connection: Connection? = null
     private var closed = false
 
+    @Volatile
+    private var serverRequestListener: ((JsonObject) -> Unit)? = null
+
     override suspend fun ensureReady(): Long = awaitReadyConnection().connection.generation
+
+    override fun setServerRequestListener(listener: ((JsonObject) -> Unit)?) {
+        serverRequestListener = listener
+    }
+
+    override suspend fun sendServerResponse(envelope: JsonObject, callTimeoutMillis: Long) {
+        val ready = awaitReadyConnection()
+        postEnvelope(
+            endpoint = ready.messageEndpoint,
+            envelope = envelope,
+            callTimeoutMillis = callTimeoutMillis,
+        )
+    }
 
     override suspend fun send(
         envelope: JsonObject,
@@ -492,7 +535,12 @@ private class LegacySseMcpTransport(
                 }.getOrElse { error ->
                     throw IOException("Invalid JSON-RPC message from MCP SSE stream", error)
                 }
-                if (envelope["result"] == null && envelope["error"] == null) return
+                // Server-initiated request (e.g. elicitation/form): has a method + id but no
+                // result/error. Dispatch to the listener and wait for the explicit response.
+                if (envelope["result"] == null && envelope["error"] == null && envelope["method"] != null) {
+                    serverRequestListener?.invoke(envelope)
+                    return
+                }
                 val id = (envelope["id"] as? JsonPrimitive)?.contentOrNull ?: return
                 val target = synchronized(stateLock) {
                     pendingResponses[id]
@@ -659,20 +707,34 @@ internal fun resolveLegacySseMessageEndpoint(
 private fun parseJsonRpcEnvelope(payload: String, json: Json): JsonObject =
     json.parseToJsonElement(payload).jsonObject
 
-private fun parseFiniteSseResponse(source: BufferedSource, json: Json): JsonObject {
+private fun parseFiniteSseResponse(
+    source: BufferedSource,
+    json: Json,
+    onServerRequest: (JsonObject) -> Unit = {},
+): JsonObject {
     val parser = McpSseEventParser()
+    fun inspect(parsed: JsonObject) {
+        // Server-initiated requests carry a method + id but no result/error.
+        if (parsed["result"] == null && parsed["error"] == null && parsed["method"] != null) {
+            onServerRequest(parsed)
+        }
+    }
     while (!source.exhausted()) {
         val event = parser.accept(source.readUtf8Line() ?: break) ?: continue
         val parsed = runCatching { parseJsonRpcEnvelope(event.data, json) }.getOrNull()
-        if (parsed != null && (parsed["result"] != null || parsed["error"] != null)) {
+            ?: continue
+        if (parsed["result"] != null || parsed["error"] != null) {
             return parsed
         }
+        inspect(parsed)
     }
     parser.finish()?.let { event ->
         val parsed = runCatching { parseJsonRpcEnvelope(event.data, json) }.getOrNull()
-        if (parsed != null && (parsed["result"] != null || parsed["error"] != null)) {
+            ?: return@let
+        if (parsed["result"] != null || parsed["error"] != null) {
             return parsed
         }
+        inspect(parsed)
     }
     throw IOException("MCP SSE stream ended before a JSON-RPC response")
 }

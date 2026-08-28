@@ -29,6 +29,7 @@ class RuntimeEngineManager(
     val processManager: RuntimeProcessManager = RuntimeProcessManager(context, scope)
 
     /** 由 AppContainer 在 [com.lxseek.chat.plugin.market.PluginMarket] 创建后注入。 */
+    @Volatile
     var market: com.lxseek.chat.plugin.market.PluginMarket? = null
 
     val toolProvider: RuntimeToolProvider by lazy { RuntimeToolProvider(this) }
@@ -209,7 +210,7 @@ class RuntimeEngineManager(
             "node" -> listOf(File(root, "node").absolutePath)
             "python" -> listOf(File(root, "python").absolutePath)
             "ffmpeg" -> listOf(File(root, "ffmpeg").absolutePath)
-            else -> emptyList()
+            else -> throw IllegalStateException("未知的引擎类型: ${manifest.type}，无法构建启动命令")
         }
     }
 

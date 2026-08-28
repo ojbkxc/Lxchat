@@ -19,7 +19,9 @@ class MemoryManager(context: Context) {
 
     data class MemoryFileInfo(
         val name: String,
-        val description: String = ""
+        val description: String = "",
+        /** Last modification time (epoch millis) of the underlying file, used for age_days. */
+        val modifiedAt: Long = 0L,
     )
 
     @Synchronized
@@ -93,8 +95,41 @@ class MemoryManager(context: Context) {
         val meta = loadMeta()
         return memoryDir.listFiles()
             ?.filter { it.extension == "md" }
-            ?.map { MemoryFileInfo(it.name, meta[it.name] ?: "") }
+            ?.map { MemoryFileInfo(it.name, meta[it.name] ?: "", it.lastModified()) }
             ?.sortedBy { it.name } ?: emptyList()
+    }
+
+    /**
+     * 精简记忆：删除「超过 [maxAgeDays] 天未被修改」且「重要性低于 [minImportance]」的记忆文件，
+     * 用于 Hermes 式 memory cleanup（配合年龄衰减，防止记忆库无限膨胀）。
+     *
+     * @param minImportance 0..60，与 [com.lxseek.chat.tool.MemoryScorer.score] 同刻度。
+     *                      传 -1 表示不过滤重要性，仅按年龄删除。
+     * @return 被删除的文件名列表（调用方负责记录 journey）。
+     */
+    @Synchronized
+    fun cleanupMemories(maxAgeDays: Int, minImportance: Int): List<String> {
+        val now = System.currentTimeMillis()
+        val ageMs = maxAgeDays.coerceAtLeast(0) * 86_400_000L
+        val removed = mutableListOf<String>()
+        memoryDir.listFiles()
+            ?.filter { it.extension == "md" && (now - it.lastModified()) >= ageMs }
+            ?.forEach { file ->
+                val name = file.name
+                val description = loadMeta()[name] ?: ""
+                if (minImportance < 0) {
+                    if (file.delete()) removed.add(name)
+                } else {
+                    val importance = com.lxseek.chat.tool.MemoryScorer.score(name, description, file.readText())
+                    if (importance < minImportance && file.delete()) removed.add(name)
+                }
+            }
+        if (removed.isNotEmpty()) {
+            val meta = loadMeta()
+            removed.forEach { meta.remove(it) }
+            saveMeta(meta)
+        }
+        return removed
     }
 
     @Synchronized

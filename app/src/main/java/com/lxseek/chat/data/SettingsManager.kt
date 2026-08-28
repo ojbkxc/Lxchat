@@ -197,6 +197,15 @@ class SettingsManager(private val context: Context) {
             emptyList()
         }
     }
+    val mcpOAuthTokens: Flow<Map<String, McpOAuthTokens>> = context.dataStore.data.map { pref ->
+        val jsonStr = com.lxseek.chat.util.SecretCrypto.decrypt(pref[MCP_OAUTH_TOKENS_JSON] ?: "{}")
+        try {
+            json.decodeFromString<Map<String, McpOAuthTokens>>(jsonStr)
+        } catch (e: Exception) {
+            DebugLog.e("SettingsManager", "Failed to decode MCP OAuth tokens", e)
+            emptyMap()
+        }
+    }
     val sandboxEnabled: Flow<Boolean> = context.dataStore.data.map { it[SANDBOX_ENABLED] ?: false }
     val sandboxSharedStorageEnabled: Flow<Boolean> =
         context.dataStore.data.map { it[SANDBOX_SHARED_STORAGE_ENABLED] ?: false }
@@ -794,6 +803,33 @@ class SettingsManager(private val context: Context) {
         context.dataStore.edit {
             it[MCP_SERVERS_JSON] =
                 com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(servers))
+        }
+    }
+
+    suspend fun saveMcpOAuthToken(token: McpOAuthTokens) {
+        context.dataStore.edit { pref ->
+            val current = runCatching {
+                json.decodeFromString<Map<String, McpOAuthTokens>>(
+                    com.lxseek.chat.util.SecretCrypto.decrypt(pref[MCP_OAUTH_TOKENS_JSON] ?: "{}"),
+                )
+            }.getOrDefault(emptyMap())
+            pref[MCP_OAUTH_TOKENS_JSON] = com.lxseek.chat.util.SecretCrypto.encrypt(
+                json.encodeToString(current + (token.serverId to token)),
+            )
+        }
+    }
+
+    suspend fun clearMcpOAuthToken(serverId: String) {
+        context.dataStore.edit { pref ->
+            val current = runCatching {
+                json.decodeFromString<Map<String, McpOAuthTokens>>(
+                    com.lxseek.chat.util.SecretCrypto.decrypt(pref[MCP_OAUTH_TOKENS_JSON] ?: "{}"),
+                )
+            }.getOrDefault(emptyMap())
+            if (serverId !in current) return@edit
+            pref[MCP_OAUTH_TOKENS_JSON] = com.lxseek.chat.util.SecretCrypto.encrypt(
+                json.encodeToString(current - serverId),
+            )
         }
     }
 

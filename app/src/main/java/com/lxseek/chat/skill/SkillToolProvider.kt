@@ -151,6 +151,8 @@ class SkillToolProvider(
             return errorJson("This skill requires a membership subscription. Please upgrade to use it.")
         }
 
+        skillHost.recordUsage(skillName)
+
         val input = parseInput(arguments)
         val paramValues = parseParameterValues(arguments, skill.parameters)
         val renderedBody = renderBody(skill, paramValues)

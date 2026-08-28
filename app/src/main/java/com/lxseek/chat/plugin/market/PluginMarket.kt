@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -56,6 +58,9 @@ class PluginMarket(
     private val _installations = MutableStateFlow<List<MarketInstallation>>(emptyList())
     /** 已安装插件记录列表。 */
     val installations: StateFlow<List<MarketInstallation>> = _installations.asStateFlow()
+
+    /** 保护安装/卸载的读改写，避免并发 lost-update。 */
+    private val installMutex = Mutex()
 
     private val _catalog = MutableStateFlow<List<MarketPluginMeta>>(emptyList())
     /** 合并后的在线目录（浏览列表）。 */
@@ -144,7 +149,7 @@ class PluginMarket(
      * 安装目录条目：拉取技能正文（SKILL）、建立连接配置（MCP）、下载解压（TOOLPKG / RUNTIME），
      * 注册进宿主并持久化。RUNTIME 可选指定版本，不传则按约束自动匹配最高兼容版本。
      */
-    suspend fun install(meta: MarketPluginMeta, requestedVersion: String? = null) {
+    suspend fun install(meta: MarketPluginMeta, requestedVersion: String? = null) = installMutex.withLock {
         if (_installations.value.any { it.pluginId == meta.id }) {
             throw IllegalArgumentException("该插件已安装")
         }
@@ -212,10 +217,11 @@ class PluginMarket(
     }
 
     /**
-     * 工具侧同步安装 RUNTIME 引擎（RuntimeToolProvider 的 market_install 走这里，非 suspend）。
+     * 工具侧同步安装 RUNTIME 引擎（RuntimeToolProvider 的 market_install 走这里）。
      * 前置检查重复安装；按约束选择版本后下载解压并注册宿主、持久化。
+     * 改为 suspend 以便用 [installMutex] 保护读改写；调用方均在协程上下文。
      */
-    fun installRuntimeInternal(meta: MarketPluginMeta, requestedVersion: String? = null) {
+    suspend fun installRuntimeInternal(meta: MarketPluginMeta, requestedVersion: String? = null) = installMutex.withLock {
         if (_installations.value.any { it.pluginId == meta.id }) {
             throw IllegalArgumentException("该插件已安装")
         }
@@ -251,7 +257,7 @@ class PluginMarket(
     }
 
     /** 卸载插件：从宿主移除、删除安装记录，并清理 ToolPkg 本地文件。 */
-    suspend fun uninstall(pluginId: String) {
+    suspend fun uninstall(pluginId: String) = installMutex.withLock {
         val removed = _installations.value.firstOrNull { it.pluginId == pluginId }
         host.unregister(pluginId)
         val updated = _installations.value.filterNot { it.pluginId == pluginId }
@@ -312,6 +318,9 @@ class PluginMarket(
     }
 
     fun removeSource(sourceId: String) {
+        // 内置源（CLAWHUB/SKILLHUB）不可删除：删除后重启恢复时 id 重新生成会导致 sourceId 断裂。
+        val target = _sources.value.firstOrNull { it.id == sourceId } ?: return
+        if (target.kind != MarketSourceKind.MARKET) return
         val updated = _sources.value.filterNot { it.id == sourceId }
         _sources.value = updated
         persistSources(updated)

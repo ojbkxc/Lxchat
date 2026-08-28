@@ -6,8 +6,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import java.io.IOException
 import java.net.URLEncoder
 
@@ -40,8 +40,8 @@ object BuiltinMarketSources {
 
     /** 两个内置市场源预设，仅在源列表中缺该 kind 时注入；用户可停用（不可删除）。 */
     val BUILTIN_SOURCES: List<MarketSource> = listOf(
-        MarketSource(name = "ClawHub 技能市场", indexUrl = "$BASE_CLAWHUB", kind = MarketSourceKind.CLAWHUB),
-        MarketSource(name = "SkillHub 技能市场", indexUrl = "$BASE_SKILLHUB", kind = MarketSourceKind.SKILLHUB),
+        MarketSource(id = "builtin-clawhub", name = "ClawHub 技能市场", indexUrl = "$BASE_CLAWHUB", kind = MarketSourceKind.CLAWHUB),
+        MarketSource(id = "builtin-skillhub", name = "SkillHub 技能市场", indexUrl = "$BASE_SKILLHUB", kind = MarketSourceKind.SKILLHUB),
     )
 
     // ── ClawHub ─────────────────────────────────────────────────
@@ -78,7 +78,10 @@ object BuiltinMarketSources {
     suspend fun fetchClawhubSkillBody(pluginId: String): String {
         val slug = slugAfterPrefix(pluginId, PREFIX_CLAWHUB)
         val url = "$BASE_CLAWHUB/api/v1/skills/${encode(slug)}"
-        val parsed = json.decodeFromString<ClawhubDetailResponse>(httpJson(url))
+        // 与 SkillHub 路径一致：404 等网络异常时返回空串，避免向上抛 IOException 中断安装。
+        val parsed = runCatching {
+            json.decodeFromString<ClawhubDetailResponse>(httpJson(url))
+        }.getOrNull() ?: return ""
         return parsed.skill?.description?.takeIf { it.isNotBlank() }
             ?: parsed.skill?.summary ?: ""
     }
@@ -188,7 +191,8 @@ object BuiltinMarketSources {
     /** 按顺序返回 obj 中第一个非空字符串字段值。 */
     private fun JsonObject.firstNonBlank(vararg keys: String): String? {
         for (key in keys) {
-            val text = this[key]?.jsonPrimitive?.contentOrNull
+            // 字段可能是 JsonObject/JsonArray，用 as? 安全转换避免 ClassCastException。
+            val text = (this[key] as? JsonPrimitive)?.contentOrNull
             if (!text.isNullOrBlank()) return text
         }
         return null

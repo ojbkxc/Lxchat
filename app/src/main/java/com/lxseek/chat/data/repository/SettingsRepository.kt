@@ -189,6 +189,8 @@ class SettingsRepository(
     val shellConfirmEnabled: StateFlow<Boolean> = hot(settingsManager.shellConfirmEnabled, true)
     val shellDevices: StateFlow<List<ShellDeviceConfig>> = hot(settingsManager.shellDevices, emptyList())
     val mcpServers: StateFlow<List<McpServerConfig>> = hot(settingsManager.mcpServers, emptyList())
+    val mcpOAuthTokens: StateFlow<Map<String, com.lxseek.chat.data.McpOAuthTokens>> =
+        hot(settingsManager.mcpOAuthTokens, emptyMap())
     val imGatewayConfig: StateFlow<com.lxseek.chat.im.ImGatewayConfig> =
         hot(imGatewayStore.config, com.lxseek.chat.im.ImGatewayConfig())
     val sandboxEnabled: StateFlow<Boolean> = hot(settingsManager.sandboxEnabled, false)
@@ -581,6 +583,10 @@ class SettingsRepository(
             mcpServers.value.map { if (it.id == server.id) server else it },
         )
     }
+    fun saveMcpOAuthToken(token: com.lxseek.chat.data.McpOAuthTokens) =
+        scope.launch { settingsManager.saveMcpOAuthToken(token) }
+    fun clearMcpOAuthToken(serverId: String) =
+        scope.launch { settingsManager.clearMcpOAuthToken(serverId) }
     fun saveImGatewayConfig(config: com.lxseek.chat.im.ImGatewayConfig) =
         scope.launch { imGatewayStore.save(config) }
 

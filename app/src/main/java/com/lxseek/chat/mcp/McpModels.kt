@@ -65,6 +65,42 @@ data class McpCallPayload(
     val isError: Boolean,
 )
 
+/** Server → client elicitation mode (MCP 2025-11-25 `elicitation` feature). */
+enum class McpElicitationMode { FORM, URL }
+
+/**
+ * A server → client elicitation request asking the user for input (RFC 2025-11-25),
+ * mirroring cc-haha's elicitationHandler. FORM requests a user-filled JSON object;
+ * URL asks the user to open a link (e.g. complete an out-of-band login) and confirm.
+ */
+data class McpElicitationRequest(
+    val serverId: String,
+    val serverName: String,
+    val mode: McpElicitationMode,
+    /** Human-readable prompt shown to the user. */
+    val message: String,
+    /** FORM mode: JSON schema describing the requested fields. */
+    val requestedSchema: JsonObject? = null,
+    /** URL mode: address to open in the user's browser. */
+    val url: String? = null,
+    /** URL mode: server identifier used to confirm completion. */
+    val elicitationId: String? = null,
+)
+
+/** The user's answer to an elicitation request. */
+data class McpElicitationResult(
+    /** One of [Accept], [Decline] or [Cancel]. */
+    val action: String,
+    /** FORM mode: user-filled values matching the requested schema. */
+    val content: JsonObject? = null,
+) {
+    companion object {
+        const val Accept = "accept"
+        const val Decline = "decline"
+        const val Cancel = "cancel"
+    }
+}
+
 internal fun publicMcpToolName(serverId: String, remoteName: String): String {
     val serverKey = serverId.filter(Char::isLetterOrDigit).take(10).ifBlank { "server" }
     val toolKey = remoteName

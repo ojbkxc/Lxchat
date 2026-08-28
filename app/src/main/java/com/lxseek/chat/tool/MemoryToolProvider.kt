@@ -4,6 +4,7 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
+import com.lxseek.chat.data.ActivityJournal
 import com.lxseek.chat.data.MemoryImportanceScorer
 import com.lxseek.chat.data.MemoryManager
 import com.lxseek.chat.util.DebugLog
@@ -21,6 +22,7 @@ import kotlinx.serialization.json.putJsonArray
 class MemoryToolProvider(
     private val memoryManager: MemoryManager,
     private val scorer: MemoryScorer = MemoryScorer,
+    private val journal: ActivityJournal? = null,
 ) : ToolProvider {
 
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> {
@@ -108,6 +110,19 @@ class MemoryToolProvider(
                                 required = listOf("name")
                             )
                         )
+                    ),
+                    ToolDefinition(
+                        function = ToolFunction(
+                            name = "cleanup_memories",
+                            description = "Trim stale memories: delete files not modified for max_age_days whose importance is below min_importance (0-60, higher = more important). Use this to keep the memory database compact. Destructive; requires approval.",
+                            parameters = ToolParameters(
+                                properties = mapOf(
+                                    "max_age_days" to ToolProperty("integer", "Delete files untouched for at least this many days. Default 30."),
+                                    "min_importance" to ToolProperty("integer", "Only delete files with importance below this threshold (0-60). Default 30. Pass -1 to ignore importance and delete by age alone.")
+                                ),
+                                required = emptyList()
+                            )
+                        )
                     )
                 )
             )
@@ -163,6 +178,7 @@ class MemoryToolProvider(
                         putJsonArray("files") {}
                     }.toString()
                 } else {
+                    val now = System.currentTimeMillis()
                     val ranked = scorer.rankOrdered(
                         files.map { MemoryScorer.Entry(it.name, it.description) }
                     )
@@ -174,6 +190,9 @@ class MemoryToolProvider(
                                 val category = MemoryImportanceScorer.parseCategory(f.description)
                                 val importance = MemoryImportanceScorer.parseScore(f.description)
                                     ?: (scorer.score(f.name, f.description, f.content) / 60.0)
+                                val info = files.firstOrNull { it.name == f.name }
+                                val modifiedAt = info?.modifiedAt ?: 0L
+                                val ageDays = if (modifiedAt > 0L) ((now - modifiedAt) / 86_400_000L).toInt() else -1
                                 add(
                                     buildJsonObject {
                                         put("name", f.name)
@@ -181,6 +200,13 @@ class MemoryToolProvider(
                                         put("priority", scorer.score(f.name, f.description, f.content))
                                         put("category", category.name.lowercase())
                                         put("importance", importance)
+                                        put("age_days", ageDays)
+                                        if (ageDays > 1) {
+                                            put(
+                                                "stale_warning",
+                                                "This memory is $ageDays days old; it is a point-in-time observation and may be outdated."
+                                            )
+                                        }
                                     }
                                 )
                             }
@@ -206,11 +232,15 @@ class MemoryToolProvider(
                 }
             }
 
-            "create_memory_file" -> memoryManager.createFile(
-                arg("name"),
-                arg("content"),
-                arg("description")
-            )
+            "create_memory_file" -> {
+                val result = memoryManager.createFile(
+                    arg("name"),
+                    arg("content"),
+                    arg("description")
+                )
+                journal?.record(ActivityJournal.Kind.MEMORY, "create_memory_file", arg("name"), result)
+                result
+            }
 
             "edit_memory_file" -> {
                 val editContent = arg("content").ifBlank { null }
@@ -226,7 +256,7 @@ class MemoryToolProvider(
                 } else if (editContent == null && oldStr == null && newName == null && desc == null) {
                     "Error: At least 'content', 'old_string', 'new_name', or 'description' must be provided."
                 } else {
-                    memoryManager.editFile(
+                    val result = memoryManager.editFile(
                         arg("name"),
                         editContent,
                         newName,
@@ -234,10 +264,46 @@ class MemoryToolProvider(
                         oldStr,
                         newStr
                     )
+                    journal?.record(ActivityJournal.Kind.MEMORY, "edit_memory_file", arg("name"), result)
+                    result
                 }
             }
 
-            "delete_memory_file" -> memoryManager.deleteFile(arg("name"))
+            "delete_memory_file" -> {
+                val name = arg("name")
+                val result = memoryManager.deleteFile(name)
+                journal?.record(ActivityJournal.Kind.MEMORY, "delete_memory_file", name, result)
+                result
+            }
+
+            "cleanup_memories" -> {
+                val maxAgeDays = (args["max_age_days"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 30
+                val minImportance = (args["min_importance"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 30
+                val removed = memoryManager.cleanupMemories(maxAgeDays, minImportance)
+                journal?.record(
+                    ActivityJournal.Kind.MEMORY,
+                    "cleanup_memories",
+                    "removed ${removed.size} stale memories (age>${maxAgeDays}d, importance<$minImportance)",
+                    removed.joinToString(", ").take(200),
+                )
+                if (removed.isEmpty()) {
+                    buildJsonObject {
+                        put("type", "cleanup_memories")
+                        put("status", "noop")
+                        put("note", "No memory files older than $maxAgeDays days with importance below $minImportance. Nothing deleted.")
+                    }.toString()
+                } else {
+                    buildJsonObject {
+                        put("type", "cleanup_memories")
+                        put("status", "deleted")
+                        put("removed_count", removed.size)
+                        putJsonArray("removed") {
+                            removed.forEach { add(JsonPrimitive(it)) }
+                        }
+                        put("note", "Report the removed files to the user.")
+                    }.toString()
+                }
+            }
 
             "update_active_memory" -> {
                 val mode = arg("mode").ifBlank { "replace" }
@@ -246,7 +312,9 @@ class MemoryToolProvider(
                 if (mode == "patch" && oldStr == null) {
                     "Error: 'old_string' is required for patch mode."
                 } else {
-                    memoryManager.updateActiveMemory(arg("content"), mode, oldStr, newStr)
+                    val result = memoryManager.updateActiveMemory(arg("content"), mode, oldStr, newStr)
+                    journal?.record(ActivityJournal.Kind.MEMORY, "update_active_memory", mode, result)
+                    result
                 }
             }
 
@@ -260,15 +328,24 @@ class MemoryToolProvider(
         "create_memory_file",
         "edit_memory_file",
         "delete_memory_file",
+        "cleanup_memories",
         "update_active_memory"
     )
 
     override fun riskLevel(name: String): RiskLevel = when (name) {
         "list_memory_files", "read_memory_file" -> RiskLevel.ReadOnly
         "create_memory_file", "edit_memory_file", "update_active_memory" -> RiskLevel.LowRisk
-        "delete_memory_file" -> RiskLevel.HighRisk
+        "delete_memory_file", "cleanup_memories" -> RiskLevel.HighRisk
         else -> RiskLevel.ReadOnly
     }
+
+    /** 写审批模式：创建/编辑/删除/精简记忆都需要用户确认（Hermes 式写审批）。 */
+    override fun requiresApprovalByDefault(name: String): Boolean = name in setOf(
+        "create_memory_file",
+        "edit_memory_file",
+        "delete_memory_file",
+        "cleanup_memories",
+    )
 
     override fun toolDescriptors(ctx: GenerationContext): List<ToolDescriptor> {
         val summaries = mapOf(
@@ -277,10 +354,14 @@ class MemoryToolProvider(
             "create_memory_file" to "Create a memory file.",
             "edit_memory_file" to "Edit/rename a memory file.",
             "delete_memory_file" to "Delete a memory file.",
+            "cleanup_memories" to "Trim stale memories.",
             "update_active_memory" to "Update active memory.",
         )
         return super.toolDescriptors(ctx).map { d ->
-            d.copy(summary = summaries[d.definition.function.name] ?: d.summary)
+            d.copy(
+                summary = summaries[d.definition.function.name] ?: d.summary,
+                requiresApproval = requiresApprovalByDefault(d.definition.function.name),
+            )
         }
     }
 }

@@ -96,6 +96,8 @@ class RuntimeProcessManager(
         idleJobs.remove(engineId)?.cancel()
         val ep = running.remove(engineId) ?: return false
         lastActivityTs.remove(engineId)
+        // 触发停止回调（如清理引擎文件）；stopEngine 经由 stop 间接覆盖
+        stopHandler?.invoke(engineId)
         return if (ep.process.isAlive) {
             ep.process.destroy()
             true
@@ -135,6 +137,8 @@ class RuntimeProcessManager(
         val cleanup: (java.lang.Thread) -> Unit = {
             running.remove(engineId)
             idleJobs.remove(engineId)?.cancel()
+            // 进程自然退出时也触发停止回调（清理引擎文件）
+            stopHandler?.invoke(engineId)
         }
         thread(isDaemon = true) {
             try {
@@ -168,7 +172,7 @@ suspend fun runProcessOnce(
     builder.redirectErrorStream(true)
     env.forEach { (k, v) -> builder.environment()[k] = v }
     val process = builder.start()
-    val output = java.lang.StringBuilder()
+    val output = StringBuffer()
     val reader = thread(isDaemon = true) {
         try {
             process.inputStream.bufferedReader().use { reader ->

@@ -120,7 +120,8 @@ class RuntimePackageManager(private val context: Context) {
                 if (entry.isDirectory) continue
                 val out = File(dest, entry.name)
                 val canonicalOut = try { out.canonicalFile } catch (e: Exception) { null } ?: continue
-                if (!canonicalOut.path.startsWith(canonicalDest.path)) continue // zip-slip guard
+                // 路径前缀比较：追加分隔符避免 /foo/bar 匹配 /foo/barbaz（zip-slip 防护）
+                if (canonicalDest != canonicalOut && !canonicalOut.path.startsWith(canonicalDest.path + File.separator)) continue
                 out.parentFile?.mkdirs()
                 zip.getInputStream(entry).use { input ->
                     FileOutputStream(out).use { output -> input.copyTo(output) }

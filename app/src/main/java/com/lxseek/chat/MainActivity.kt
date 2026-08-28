@@ -63,6 +63,7 @@ import com.lxseek.chat.data.local.ChatDatabase
 import com.lxseek.chat.ui.chat.ChatApp
 import com.lxseek.chat.ui.chat.FullScreenMediaViewer
 import com.lxseek.chat.ui.chat.AskUserQuestionPanel
+import com.lxseek.chat.ui.chat.McpElicitationPanel
 import com.lxseek.chat.ui.chat.message.ChatMarkdownCodeBlock
 import com.lxseek.chat.ui.onboarding.WelcomeScreen
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
@@ -520,6 +521,16 @@ fun MainNavigation(
             pending = pending,
             onConfirm = { answers -> viewModel.resolveAskUser(answers) },
             onCancel = { viewModel.cancelAskUser() },
+        )
+    }
+
+    // MCP server → client elicitation dialog (form / URL confirmation)
+    val pendingElicitation by viewModel.pendingElicitation.collectAsState()
+    pendingElicitation?.let { pending ->
+        McpElicitationPanel(
+            pending = pending,
+            onResolve = { result -> viewModel.resolveElicitation(result) },
+            onCancel = { viewModel.cancelElicitation() },
         )
     }
 

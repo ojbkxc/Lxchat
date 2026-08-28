@@ -2,6 +2,11 @@ package com.lxseek.chat.mcp
 
 import com.lxseek.chat.data.McpTransportType
 import com.lxseek.chat.util.Constants
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonArray
@@ -24,6 +29,9 @@ internal class McpProtocolClient(
     endpoint: String,
     customHeaders: Map<String, String>,
     transportType: McpTransportType,
+    private val serverId: String = "",
+    private val serverName: String = "",
+    private val elicitationHandler: McpElicitationHandler? = null,
 ) : AutoCloseable {
     companion object {
         private const val STREAMABLE_HTTP_PROTOCOL_VERSION = "2025-11-25"
@@ -49,9 +57,16 @@ internal class McpProtocolClient(
     )
     private val ids = AtomicLong(0)
     private val mutex = Mutex()
+    // Server-initiated requests (elicitation) are handled off the request lock on this scope so
+    // a long user interaction never blocks the tool-loop serialization mutex.
+    private val serverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var initialized = false
     private var initializedGeneration: Long? = null
+
+    init {
+        transport.setServerRequestListener { envelope -> handleServerRequest(envelope) }
+    }
 
     suspend fun listTools(): List<McpRemoteTool> = mutex.withLock {
         retryAfterSessionExpiry {
@@ -110,6 +125,7 @@ internal class McpProtocolClient(
     override fun close() {
         initialized = false
         initializedGeneration = null
+        serverScope.cancel()
         transport.close()
     }
 
@@ -126,7 +142,13 @@ internal class McpProtocolClient(
             method = "initialize",
             params = buildJsonObject {
                 put("protocolVersion", protocolVersion)
-                put("capabilities", buildJsonObject {})
+                put(
+                    "capabilities",
+                    buildJsonObject {
+                        // Server → client elicitation (forms / URL confirmation), MCP 2025-11-25.
+                        if (elicitationHandler != null) put("elicitation", true)
+                    },
+                )
                 put(
                     "clientInfo",
                     buildJsonObject {
@@ -242,5 +264,85 @@ internal class McpProtocolClient(
             isError = (result["isError"] as? JsonPrimitive)?.contentOrNull
                 ?.toBooleanStrictOrNull() == true,
         )
+    }
+
+    /**
+     * Invoked by the transport for server-initiated JSON-RPC requests (e.g. `elicitation/form`).
+     * Dispatches onto [serverScope] so the user interaction never blocks the tool loop, then
+     * posts the JSON-RPC response back to the server.
+     */
+    private fun handleServerRequest(envelope: JsonObject) {
+        val id = envelope["id"] ?: return
+        val method = (envelope["method"] as? JsonPrimitive)?.contentOrNull ?: return
+        val params = envelope["params"]?.asObjectOrNull() ?: buildJsonObject {}
+        serverScope.launch {
+            val outcome = runCatching { processServerRequest(method, params) }
+            val response = buildJsonObject {
+                put("jsonrpc", "2.0")
+                put("id", id)
+                if (outcome.isSuccess) {
+                    put("result", outcome.getOrThrow())
+                } else {
+                    put(
+                        "error",
+                        buildJsonObject {
+                            put("code", -32000)
+                            put(
+                                "message",
+                                outcome.exceptionOrNull()?.localizedMessage
+                                    ?: "Unhandled server request",
+                            )
+                        },
+                    )
+                }
+            }
+            runCatching {
+                transport.sendServerResponse(response, Constants.NETWORK_TOOL_TIMEOUT_MS)
+            }
+        }
+    }
+
+    private suspend fun processServerRequest(method: String, params: JsonObject): JsonObject {
+        val handler = elicitationHandler
+            ?: throw IOException("MCP server request '$method' is not supported")
+        return when (method) {
+            "elicitation/form" -> handleElicitationForm(params, handler)
+            "elicitation/url" -> handleElicitationUrl(params, handler)
+            else -> throw IOException("Unsupported MCP server request: $method")
+        }
+    }
+
+    private suspend fun handleElicitationForm(
+        params: JsonObject,
+        handler: McpElicitationHandler,
+    ): JsonObject {
+        val request = McpElicitationRequest(
+            serverId = serverId,
+            serverName = serverName,
+            mode = McpElicitationMode.FORM,
+            message = (params["message"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+            requestedSchema = params["requestedSchema"]?.asObjectOrNull(),
+        )
+        val result = handler.elicit(request)
+        return buildJsonObject {
+            put("action", result.action)
+            result.content?.let { put("content", it) }
+        }
+    }
+
+    private suspend fun handleElicitationUrl(
+        params: JsonObject,
+        handler: McpElicitationHandler,
+    ): JsonObject {
+        val request = McpElicitationRequest(
+            serverId = serverId,
+            serverName = serverName,
+            mode = McpElicitationMode.URL,
+            message = (params["message"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+            url = (params["url"] as? JsonPrimitive)?.contentOrNull,
+            elicitationId = (params["elicitationId"] as? JsonPrimitive)?.contentOrNull,
+        )
+        val result = handler.elicit(request)
+        return buildJsonObject { put("action", result.action) }
     }
 }

@@ -63,6 +63,9 @@ class McpRegistry(
     private val _snapshots = MutableStateFlow<Map<String, McpServerSnapshot>>(emptyMap())
     val snapshots: StateFlow<Map<String, McpServerSnapshot>> = _snapshots.asStateFlow()
 
+    /** Bridges server → client elicitation requests to the UI and back (MCP 2025-11-25). */
+    private val elicitationController = McpElicitationController()
+
     init {
         scope.launch {
             settings.mcpServers.collect(::reconcile)
@@ -89,6 +92,16 @@ class McpRegistry(
             replaceRuntimeLocked(current)
         }
     }
+
+    /** Pending server → client elicitation prompt awaiting a user answer (or null). */
+    val elicitationPending: StateFlow<McpElicitationController.PendingElicitation?>
+        get() = elicitationController.pending
+
+    /** Called by the UI to resolve a pending elicitation with the user's answer. */
+    fun resolveElicitation(result: McpElicitationResult) = elicitationController.resolve(result)
+
+    /** Called by the UI to cancel a pending elicitation. */
+    fun cancelElicitation() = elicitationController.cancel()
 
     suspend fun execute(publicName: String, arguments: String): ToolExecutionResult {
         val descriptor = descriptor(publicName)
@@ -204,6 +217,9 @@ class McpRegistry(
                     endpoint = normalizeEndpoint(config.url),
                     customHeaders = config.headers,
                     transportType = config.transport,
+                    serverId = config.id,
+                    serverName = config.name.ifBlank { config.url },
+                    elicitationHandler = elicitationController::elicit,
                 ),
             )
         } catch (e: IllegalArgumentException) {

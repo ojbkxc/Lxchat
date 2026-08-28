@@ -5,9 +5,11 @@ import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.automation.CronExpression
+import com.lxseek.chat.automation.CronHumanize
 import com.lxseek.chat.automation.LoopManager
 import com.lxseek.chat.automation.LoopPolicy
 import com.lxseek.chat.automation.TaskManager
+import com.lxseek.chat.data.ActivityJournal
 import com.lxseek.chat.data.local.LoopEntity
 import com.lxseek.chat.data.local.TaskEntity
 import com.lxseek.chat.viewmodel.GenerationContext
@@ -34,6 +36,7 @@ class AutomationToolProvider(
     private val taskManager: TaskManager,
     private val loopManager: LoopManager,
     private val isCurrentlyEnabled: suspend () -> Boolean = { true },
+    private val journal: ActivityJournal? = null,
 ) : ToolProvider {
 
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> {
@@ -141,9 +144,18 @@ class AutomationToolProvider(
         val model = args.string("model")?.trim()?.takeIf { it.isNotEmpty() }
 
         val task = taskManager.createTask(name, prompt, cron, model)
+        journal?.record(
+            ActivityJournal.Kind.TASK,
+            "create_task",
+            name,
+            "$cron ${model?.let { "($it)" } ?: "(default model)"}",
+        )
         return buildJsonObject {
             put("type", CREATE_TASK)
             put("task", task.toJson())
+            // Hermes 式确认摘要：把「什么时候跑」翻译成人话并附下次运行时间，
+            // 模型应原样展示给用户核对后再继续。
+            put("confirmation", CronHumanize.confirmationSummary(name, cron))
         }.toString()
     }
 
@@ -236,6 +248,8 @@ class AutomationToolProvider(
         put("prompt", prompt)
         modelId?.let { put("model", it) }
         put("cron", cronExpr)
+        // Hermes 式 human_schedule：把 cron 翻译成人话，方便列表与确认展示。
+        put("human_schedule", CronHumanize.describe(cronExpr))
         put("enabled", enabled)
         put("created_at", createdAt)
         lastRunAt?.let { put("last_run_at", it) }
