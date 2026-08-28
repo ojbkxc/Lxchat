@@ -311,7 +311,7 @@ fun ReplyChannelSettingsPage(
                         ) {
                             ReplyChannelConfig.EMAIL_SECURITY_OPTIONS.forEach { s ->
                                 DropdownMenuItem(
-                                    text = { Text(securityLabel(s)) },
+                                    text = { Text(stringResource(securityLabel(s))) },
                                     onClick = {
                                         emailSmtpSecurity = s
                                         emailSecurityMenuExpanded = false
