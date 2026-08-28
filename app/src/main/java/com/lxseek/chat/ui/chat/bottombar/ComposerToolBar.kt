@@ -245,6 +245,7 @@ internal fun ComposerToolBar(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ModelPickerMenu(
     isActive: Boolean,
@@ -358,6 +359,7 @@ private fun ModelPickerMenu(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ContextBudgetMenu(
     isActive: Boolean,
@@ -441,6 +443,7 @@ private fun ContextBudgetMenu(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ToolsMenu(
     isActive: Boolean,

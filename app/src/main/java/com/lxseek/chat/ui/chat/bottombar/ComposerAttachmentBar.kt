@@ -41,6 +41,7 @@ import com.lxseek.chat.R
  * Extracted from [ChatBottomBar] to isolate the attachment entry point from
  * the rest of the composer toolbar.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ComposerAttachmentMenu(
     onLaunchCamera: () -> Unit,
