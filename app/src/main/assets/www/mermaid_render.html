@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #diagram { width: 100%; padding: 8px 4px; }
+  #diagram svg { width: 100%; height: auto; max-width: 100%; display: block; }
+  .err { color: #e5484d; font-size: 13px; white-space: pre-wrap; padding: 8px 4px; font-family: monospace; line-height: 1.4; }
+  .loading { color: #8a8f98; font-size: 13px; padding: 8px 4px; }
+</style>
+<script src="mermaid.min.js"></script>
+</head>
+<body>
+<div id="diagram" class="mermaid">
+  <div class="loading">正在解析图表…</div>
+</div>
+<script>
+  window.__render = function (src) {
+    try {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'default',
+        securityLevel: 'loose',
+        flowchart: { htmlLabels: true, curve: 'basis' },
+        sequence: { useMaxWidth: true },
+        mindmap: { useMaxWidth: true }
+      });
+      var el = document.getElementById('diagram');
+      el.removeAttribute('data-processed');
+      el.innerHTML = '';
+      var id = 'm' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+      mermaid.render(id, src).then(function (res) {
+        el.innerHTML = (res && res.svg) ? res.svg : '';
+      }).catch(function (e) {
+        var msg = (e && e.message) ? e.message : ('' + e);
+        el.innerHTML = '<div class="err">图表渲染失败：\n' + msg + '</div>';
+      });
+    } catch (e) {
+      var msg = (e && e.message) ? e.message : ('' + e);
+      document.getElementById('diagram').innerHTML = '<div class="err">图表解析失败：\n' + msg + '</div>';
+    }
+  };
+</script>
+</body>
+</html>

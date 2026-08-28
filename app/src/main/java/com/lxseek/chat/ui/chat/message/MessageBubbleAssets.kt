@@ -662,6 +662,8 @@ private fun SearchHighlightedMarkdownHeading(
     )
 }
 
+private val ARTIFACT_LANGS = setOf("mermaid", "graph", "html", "artifact", "web", "svg")
+
 @Composable
 private fun SearchHighlightedMarkdownCode(
     model: MarkdownComponentModel,
@@ -703,6 +705,14 @@ private fun SearchHighlightedMarkdownCode(
         }
     }
     val block: @Composable (String, String?, TextStyle) -> Unit = { code, language, style ->
+        // Direct-render AI-produced artifacts (mermaid / html) once the block is complete and
+        // idle; keep raw code text while streaming or when a search highlight is active so the
+        // highlight/copy path never fights the rendered web content.
+        val lang = language?.lowercase()
+        if (fenced && !fadeThisNode && spec == null && lang in ARTIFACT_LANGS) {
+            MarkdownArtifactView(language = lang, code = code)
+            return@Composable
+        }
         SearchHighlightedMarkdownCodeText(
             code = code,
             language = language,
