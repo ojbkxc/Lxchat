@@ -47,6 +47,7 @@ class ChatViewModelFactory(
     private val membershipProvider: com.lxseek.chat.membership.LocalMembershipProvider,
     private val redemptionCodeValidator: com.lxseek.chat.membership.RedemptionCodeValidator,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
+    private val activityJournal: com.lxseek.chat.data.ActivityJournal? = null,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {

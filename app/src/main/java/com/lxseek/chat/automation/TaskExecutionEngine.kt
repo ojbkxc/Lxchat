@@ -78,6 +78,8 @@ class TaskExecutionEngine(
     private val pauseConversationLoop: suspend (String) -> Unit = {},
     /** 智能模型路由器工厂，注入到 GenerationManager 启用 Fallback/Key 轮换/速率限制等。 */
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
+    /** 成长记录（journey）日志，透传给 GenerationManager 以便工具调用留痕。 */
+    private val activityJournal: com.lxseek.chat.data.ActivityJournal? = null,
 ) {
     sealed interface Result {
         data class Success(val modelMessageId: String, val text: String) : Result
