@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class PluginHost(
     private val context: PluginContext,
+    /** 外部传入的 SkillHost。null 时内部自建。注入外部实例可让插件技能与
+     *  用户自建技能（UserSkillStore）共享同一个注册表，避免循环依赖。 */
+    externalSkillHost: SkillHost? = null,
 ) {
     data class PluginInfo(
         val manifest: PluginManifest,
@@ -41,7 +44,7 @@ class PluginHost(
     /** Aggregated skill host. Every enabled plugin's skills are registered here,
      *  enabling progressive disclosure + path-conditional activation across the
      *  whole plugin ecosystem. Exposed for the generation pipeline and settings UI. */
-    val skillHost: SkillHost = SkillHost()
+    val skillHost: SkillHost = externalSkillHost ?: SkillHost()
 
     fun register(plugin: Plugin, initiallyEnabled: Boolean = true) {
         val id = plugin.manifest.id

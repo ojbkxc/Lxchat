@@ -42,6 +42,12 @@ import com.lxseek.chat.api.router.FallbackChain
 import com.lxseek.chat.api.router.RouterConfig
 import com.lxseek.chat.api.router.SmartModelRouter
 import com.lxseek.chat.api.router.SmartModelRouterFactory
+import com.lxseek.chat.data.ActivityJournal
+import com.lxseek.chat.skill.SkillHost
+import com.lxseek.chat.skill.UserSkillStore
+import com.lxseek.chat.tool.JourneyToolProvider
+import com.lxseek.chat.tool.QualityToolProvider
+import com.lxseek.chat.tool.SkillLearnToolProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -78,6 +84,14 @@ class AppContainer(private val appContext: Context) {
     val memoryManager: MemoryManager by lazy { MemoryManager(appContext) }
     val database: ChatDatabase by lazy { ChatDatabase.build(appContext) }
     val chatDao: ChatDao by lazy { database.chatDao() }
+
+    // ── Hermes 式成长系统（journey / 技能学习 / 质量自检）────────────
+
+    /** 活动日志（journey 数据底座）：记录记忆/技能/任务/校验等成长事件。 */
+    val activityJournal: ActivityJournal by lazy { ActivityJournal(appContext) }
+
+    /** 用户自建技能持久化（filesDir/skills_user/），由 create_skill 写入、启动时加载。 */
+    val userSkillStore: UserSkillStore by lazy { UserSkillStore(appContext) }
 
     // ── Repositories ──────────────────────────────────────────
 
@@ -240,8 +254,12 @@ class AppContainer(private val appContext: Context) {
         PluginContext(appContext, appScope, settingsRepository)
     }
 
+    /** 共享技能注册表：插件技能、内置技能与用户自建技能（UserSkillStore）共用同一实例，
+     *  避免 pluginHost 与 skillLearnToolProvider 之间的循环 lazy 依赖。 */
+    val skillHost: SkillHost by lazy { SkillHost() }
+
     val pluginHost: PluginHost by lazy {
-        PluginHost(pluginContext).also { host ->
+        PluginHost(pluginContext, externalSkillHost = skillHost).also { host ->
             host.register(McpPlugin(mcpToolProvider))
             host.register(
                 NativeToolsPlugin(
@@ -254,13 +272,38 @@ class AppContainer(private val appContext: Context) {
                         subAgentToolProvider,
                         deviceToolProvider,
                         runtimeToolProvider,
+                        // Hermes 式成长系统：技能学习/Curator、journey、交付前自检。
+                        skillLearnToolProvider,
+                        journeyToolProvider,
+                        qualityToolProvider,
                     ),
                 ),
             )
             // Built-in skill templates: validate the plugin → skillHost → disclosure
             // wiring end-to-end. Skills land in host.skillHost on register.
             host.register(BuiltinSkillsPlugin())
+            // 用户自建技能（create_skill 沉淀）在启动时注册进 skillHost，随应用恢复。
+            runCatching {
+                userSkillStore.loadAll().forEach { skill ->
+                    skillHost.register(skill, enabled = true)
+                }
+            }
         }
+    }
+
+    /** 技能学习/维护：create/update/delete_skill + list/curate_skills（写操作需审批）。 */
+    val skillLearnToolProvider: SkillLearnToolProvider by lazy {
+        SkillLearnToolProvider(userSkillStore, skillHost, activityJournal)
+    }
+
+    /** 成长旅程：只读聚合活动日志，供模型了解自己的成长轨迹。 */
+    val journeyToolProvider: JourneyToolProvider by lazy {
+        JourneyToolProvider(activityJournal)
+    }
+
+    /** 交付前自检：verify_output。 */
+    val qualityToolProvider: QualityToolProvider by lazy {
+        QualityToolProvider(activityJournal)
     }
 
     /** 运行时引擎编排器：下载/解压/启停/版本约束/进程空闲回收。 */
@@ -471,6 +514,7 @@ class AppContainer(private val appContext: Context) {
             generationRegistry = conversationStateRegistry,
             pauseConversationLoop = { conversationId -> loopManager.stopLoop(conversationId) },
             smartRouterFactory = smartRouterFactory,
+            activityJournal = activityJournal,
         )
     }
 
@@ -523,7 +567,7 @@ class AppContainer(private val appContext: Context) {
 
     /** Foreground-only provider: headless automation cannot recursively create automation. */
     val automationToolProvider: AutomationToolProvider by lazy {
-        AutomationToolProvider(taskManager, loopManager) {
+        AutomationToolProvider(taskManager, loopManager, journal = activityJournal) {
             settingsManager.automationToolsEnabled.first()
         }
     }
@@ -582,6 +626,7 @@ class AppContainer(private val appContext: Context) {
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, pluginHost, pluginMarket, taskExecutionEngine,
             membershipProvider, redemptionCodeValidator, smartRouterFactory,
+            activityJournal,
         )
 
 

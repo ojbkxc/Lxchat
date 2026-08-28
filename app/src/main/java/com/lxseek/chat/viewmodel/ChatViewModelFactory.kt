@@ -58,6 +58,7 @@ class ChatViewModelFactory(
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
                 mcpRegistry, pluginHost, pluginMarket, taskExecutionEngine,
                 membershipProvider, redemptionCodeValidator, smartRouterFactory,
+                activityJournal,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

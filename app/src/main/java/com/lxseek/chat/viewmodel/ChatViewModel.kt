@@ -82,6 +82,8 @@ class ChatViewModel(
     private val membershipProvider: com.lxseek.chat.membership.LocalMembershipProvider,
     private val redemptionCodeValidator: com.lxseek.chat.membership.RedemptionCodeValidator,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
+    /** 成长活动日志（journey 数据源），透传给 MemoryToolProvider 记录记忆写操作。 */
+    private val activityJournal: com.lxseek.chat.data.ActivityJournal? = null,
 ) : AndroidViewModel(application) {
     val settings: SettingsRepository = settingsRepository
 
@@ -256,7 +258,9 @@ class ChatViewModel(
             providers = providerRegistry.all,
             context = appContext,
             sandboxFactory = sandboxFactory,
-            additionalToolProviders = pluginHost.toolProviders() + listOfNotNull(autoMemoryToolProvider), smartRouterFactory = smartRouterFactory,
+            additionalToolProviders = pluginHost.toolProviders() + listOfNotNull(autoMemoryToolProvider),
+            smartRouterFactory = smartRouterFactory,
+            activityJournal = activityJournal,
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
             gm.onMessagePersisted = { messageId, text -> ragManager.indexMessageForRag(messageId, text) }

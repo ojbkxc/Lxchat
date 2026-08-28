@@ -58,6 +58,8 @@ class GenerationManager(
     private val smartRouterFactory: SmartModelRouterFactory? = null,
     /** Process-scoped token usage tracker for cross-session cost analysis. Null = tracking disabled. */
     private val tokenUsageTracker: com.lxseek.chat.metrics.TokenUsageTracker? = null,
+    /** 成长活动日志（journey 数据源），转发给 MemoryToolProvider 记录记忆写操作。Null = 不记录。 */
+    private val activityJournal: com.lxseek.chat.data.ActivityJournal? = null,
 ) {
     var onMessagePersisted: ((messageId: String, text: String) -> Unit)? = null
 
@@ -93,6 +95,7 @@ class GenerationManager(
         askUserToolProvider = askUserToolProvider,
         planStateHolder = planStateHolder,
         actionTraceBus = ActionTraceBus,
+        activityJournal = activityJournal,
     )
     private val providerPassEffects = ProviderPassEffectExecutor()
     private val toolBatchEffects = GenerationToolBatchEffectExecutor(toolExecutor)

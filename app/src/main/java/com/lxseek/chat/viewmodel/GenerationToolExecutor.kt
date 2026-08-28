@@ -101,6 +101,8 @@ internal class GenerationToolExecutor private constructor(
             askUserToolProvider: AskUserToolProvider? = null,
             planStateHolder: PlanStateHolder? = null,
             actionTraceBus: ActionTraceBus? = null,
+            /** 成长活动日志（journey 数据源）；null 表示不记录记忆写操作。 */
+            activityJournal: com.lxseek.chat.data.ActivityJournal? = null,
         ): GenerationToolExecutor {
             val imageGenProvider = ImageGenToolProvider(app)
             val shellProvider = ShellToolProvider(
@@ -111,7 +113,7 @@ internal class GenerationToolExecutor private constructor(
                 provider.confirm = confirmShellCommand
             }
             val baseProviders = listOf(
-                MemoryToolProvider(memoryManager),
+                MemoryToolProvider(memoryManager, journal = activityJournal),
                 WebSearchToolProvider(),
                 RagToolProvider(conversations),
                 imageGenProvider,
