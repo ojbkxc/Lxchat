@@ -311,7 +311,11 @@ class SkillLearnToolProvider(
                             buildJsonObject {
                                 put("name", info.skill.name)
                                 put("calls", calls)
-                                put("days_since_used", if (daysSince == Int.MAX_VALUE) "never" else daysSince)
+                                if (daysSince == Int.MAX_VALUE) {
+                                    put("days_since_used", "never")
+                                } else {
+                                    put("days_since_used", daysSince)
+                                }
                                 put("user_created", store.isUserSkill(info.skill.name))
                                 put("description", info.skill.description.take(200))
                                 put("reason", buildString {

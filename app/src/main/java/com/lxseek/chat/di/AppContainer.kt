@@ -567,9 +567,12 @@ class AppContainer(private val appContext: Context) {
 
     /** Foreground-only provider: headless automation cannot recursively create automation. */
     val automationToolProvider: AutomationToolProvider by lazy {
-        AutomationToolProvider(taskManager, loopManager, journal = activityJournal) {
-            settingsManager.automationToolsEnabled.first()
-        }
+        AutomationToolProvider(
+            taskManager = taskManager,
+            loopManager = loopManager,
+            isCurrentlyEnabled = { settingsManager.automationToolsEnabled.first() },
+            journal = activityJournal,
+        )
     }
 
     /** Turns natural-language reminder requests into persisted background Tasks. */

@@ -84,7 +84,6 @@ private data class FormField(
     val options: List<String>,
 )
 
-@Composable
 private fun parseFields(request: McpElicitationRequest): List<FormField> {
     val schema = request.requestedSchema ?: buildJsonObject {}
     val properties = (schema["properties"] as? JsonObject) ?: buildJsonObject {}
