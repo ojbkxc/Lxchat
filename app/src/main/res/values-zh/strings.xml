@@ -1328,6 +1328,8 @@
     <string name="onboarding_skip">跳过</string>
     <string name="onboarding_continue">继续</string>
     <string name="onboarding_get_started">开始使用</string>
+    <string name="onboarding_start_now">立即开始</string>
+    <string name="onboarding_connect_ai">接入我的 AI</string>
     <string name="onboarding_api_key_hint">输入 API 密钥…</string>
     <string name="onboarding_ollama_hint">http://localhost:11434</string>
     <string name="onboarding_import_gguf">导入 GGUF 模型</string>

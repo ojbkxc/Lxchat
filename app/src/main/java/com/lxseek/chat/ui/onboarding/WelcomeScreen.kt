@@ -114,6 +114,7 @@ data class WelcomePage(
 )
 
 // Page indices
+private const val PAGE_WELCOME = 0
 private const val PAGE_PROVIDER = 2
 private const val PAGE_API_KEY = 3
 private const val PAGE_MODEL_CONFIG = 5
@@ -533,29 +534,54 @@ fun WelcomeScreen(
                 // Continue / Get Started
                 Box(Modifier.fillMaxWidth().padding(horizontal = 32.dp).padding(bottom = 48.dp).navigationBarsPadding().alpha(contentAlpha)) {
                     val last = pagerState.currentPage == pages.size - 1
-                    Button(onClick = {
-                        if (last) { exiting = true }
-                        else {
-                            // Credentials are saved by the page-leave effect (covers both
-                            // swipe and this button), so we only advance here.
-                            if (pagerState.currentPage == PAGE_PROVIDER && selectedProvider != null && selectedProvider != Constants.PROVIDER_LOCAL) apiKeyText = ""
+                    val isWelcome = pagerState.currentPage == PAGE_WELCOME
+                    if (isWelcome) {
+                        Button(onClick = { exiting = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), enabled = showContent, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+                            Text(stringResource(R.string.onboarding_start_now), modifier = Modifier.padding(vertical = 4.dp))
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        TextButton(onClick = {
                             scope.launch {
-                                val targetPage = pagerState.currentPage + 1
                                 if (motionPolicy.allowProgrammaticScrollMotion) {
                                     pagerState.animateScrollToPage(
-                                        targetPage,
+                                        PAGE_PROVIDER,
                                         animationSpec = tween<Float>(
                                             500,
                                             easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f),
                                         ),
                                     )
                                 } else {
-                                    pagerState.scrollToPage(targetPage)
+                                    pagerState.scrollToPage(PAGE_PROVIDER)
                                 }
                             }
+                        }, Modifier.fillMaxWidth(), enabled = showContent) {
+                            Text(stringResource(R.string.onboarding_connect_ai))
                         }
-                    }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), enabled = showContent, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
-                        Text(if (last) stringResource(R.string.onboarding_get_started) else stringResource(R.string.onboarding_continue), modifier = Modifier.padding(vertical = 4.dp))
+                    } else {
+                        Button(onClick = {
+                            if (last) { exiting = true }
+                            else {
+                                // Credentials are saved by the page-leave effect (covers both
+                                // swipe and this button), so we only advance here.
+                                if (pagerState.currentPage == PAGE_PROVIDER && selectedProvider != null && selectedProvider != Constants.PROVIDER_LOCAL) apiKeyText = ""
+                                scope.launch {
+                                    val targetPage = pagerState.currentPage + 1
+                                    if (motionPolicy.allowProgrammaticScrollMotion) {
+                                        pagerState.animateScrollToPage(
+                                            targetPage,
+                                            animationSpec = tween<Float>(
+                                                500,
+                                                easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f),
+                                            ),
+                                        )
+                                    } else {
+                                        pagerState.scrollToPage(targetPage)
+                                    }
+                                }
+                            }
+                        }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), enabled = showContent, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+                            Text(if (last) stringResource(R.string.onboarding_get_started) else stringResource(R.string.onboarding_continue), modifier = Modifier.padding(vertical = 4.dp))
+                        }
                     }
                 }
             }
