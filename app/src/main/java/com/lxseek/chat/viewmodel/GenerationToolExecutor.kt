@@ -14,6 +14,7 @@ import com.lxseek.chat.tool.ActionTraceToolProvider
 import com.lxseek.chat.tool.AgentMode
 import com.lxseek.chat.tool.AskUserToolProvider
 import com.lxseek.chat.tool.ImageGenToolProvider
+import com.lxseek.chat.tool.ImportedToolProvider
 import com.lxseek.chat.tool.MemoryToolProvider
 import com.lxseek.chat.tool.PlanHandler
 import com.lxseek.chat.tool.PlanStateHolder
@@ -21,6 +22,7 @@ import com.lxseek.chat.tool.PlanToolProvider
 import com.lxseek.chat.tool.RagToolProvider
 import com.lxseek.chat.tool.RiskLevel
 import com.lxseek.chat.tool.ShellToolProvider
+import com.lxseek.chat.tool.SpeakToolProvider
 import com.lxseek.chat.tool.ToolApprovalRequest
 import com.lxseek.chat.tool.ToolApprovalResult
 import com.lxseek.chat.tool.ToolExecutionEvent
@@ -118,6 +120,8 @@ internal class GenerationToolExecutor private constructor(
                 RagToolProvider(conversations),
                 imageGenProvider,
                 shellProvider,
+                SpeakToolProvider(app),
+                ImportedToolProvider(app),
             )
             val planProviders = buildList {
                 planToolProvider?.let { add(it) }
