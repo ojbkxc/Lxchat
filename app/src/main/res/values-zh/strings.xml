@@ -1634,6 +1634,8 @@
     <string name="pet_tip_done">完成啦</string>
     <string name="pet_tip_sad">出错了…</string>
     <string name="pet_tip_error">连接出错</string>
+    <string name="pet_tip_waiting">等待审批中…</string>
+    <string name="pet_needs_download">点击下载</string>
     <string name="settings_plugins">插件与技能</string>
     <string name="settings_plugins_desc">管理扩展、技能和市场</string>
 

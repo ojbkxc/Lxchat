@@ -1243,6 +1243,7 @@
     <string name="pet_tip_sad">Something went wrong</string>
     <string name="pet_tip_error">Connection error</string>
     <string name="pet_tip_waiting">Waiting…</string>
+    <string name="pet_needs_download">tap to download</string>
     <string name="settings_group_permissions">Permissions</string>
     <string name="settings_workflow">Workflows</string>
     <string name="settings_workflow_desc">Chain several generations, pausing between steps</string>

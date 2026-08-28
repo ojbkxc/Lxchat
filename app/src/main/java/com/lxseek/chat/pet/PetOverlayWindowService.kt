@@ -20,6 +20,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.lxseek.chat.MainActivity
 import com.lxseek.chat.R
+import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -173,16 +174,44 @@ class PetOverlayWindowService : Service() {
         }
     }
 
-    /** Decodes the WebP spritesheet for [character] from `assets/`. Returns null on failure. */
+    /**
+     * Decodes the WebP spritesheet for [character]. Loading priority:
+     * 1. Local cache (`filesDir/pets/<id>/spritesheet.webp`) — previously downloaded
+     * 2. Bundled asset ([PetCharacter.assetsPath]) — shipped in the APK (dada only)
+     * 3. Remote download ([PetCharacter.downloadUrl]) — downloaded then cached permanently
+     * Returns null on failure (caller falls back to Canvas bubble).
+     */
     private fun loadSpritesheet(character: PetCharacter): Bitmap? {
-        return try {
-            assets.open(character.assetsPath).use { stream ->
-                BitmapFactory.decodeStream(stream)
-            }
-        } catch (e: Exception) {
-            DebugLog.e(TAG, "Failed to load spritesheet: ${character.assetsPath}", e)
-            null
+        // 1. Try local cache (previously downloaded spritesheets).
+        val cacheFile = File(filesDir, "pets/${character.prefKey}/spritesheet.webp")
+        if (cacheFile.isFile) {
+            runCatching { BitmapFactory.decodeFile(cacheFile.absolutePath) }
+                .getOrNull()?.let { return it }
         }
+        // 2. Try bundled asset (dada is shipped in the APK).
+        if (character.assetsPath.isNotEmpty()) {
+            return try {
+                assets.open(character.assetsPath).use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            } catch (e: Exception) {
+                DebugLog.e(TAG, "Failed to load bundled spritesheet: ${character.assetsPath}", e)
+                null
+            }
+        }
+        // 3. Download from remote URL and cache permanently.
+        if (character.downloadUrl.isNotEmpty()) {
+            return try {
+                cacheFile.parentFile?.mkdirs()
+                HttpClient.downloadToFile(character.downloadUrl, cacheFile)
+                BitmapFactory.decodeFile(cacheFile.absolutePath)
+            } catch (e: Exception) {
+                DebugLog.e(TAG, "Failed to download spritesheet: ${character.downloadUrl}", e)
+                runCatching { cacheFile.delete() }
+                null
+            }
+        }
+        return null
     }
 
     private fun topMarginPx(): Int {

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.BrokenImage
@@ -458,6 +459,14 @@ private fun PetCharacterOption(
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
         )
+        // Show a "tap to download" hint for non-bundled pets (huhu/bubu/huihui).
+        if (!character.isBundled) {
+            Text(
+                text = stringResource(R.string.pet_needs_download),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+        }
     }
 }
 
