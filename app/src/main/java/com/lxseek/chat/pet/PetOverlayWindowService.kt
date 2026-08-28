@@ -164,7 +164,7 @@ class PetOverlayWindowService : Service() {
         scope.launch {
             val character = runCatching {
                 PetOverlayController.getCharacter(this@PetOverlayWindowService)
-            }.getOrDefault(PetCharacter.CLASSIC)
+            }.getOrDefault(PetCharacter.DADA)
             view.setCharacter(character)
             val sheet = if (character.hasSpritesheet) {
                 withContext(Dispatchers.IO) { loadSpritesheet(character) }

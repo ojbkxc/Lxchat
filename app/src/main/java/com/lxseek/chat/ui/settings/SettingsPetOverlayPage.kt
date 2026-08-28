@@ -180,13 +180,13 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        PetCharacter.values().forEachIndexed { index, character ->
+                        PetCharacter.selectableEntries.forEachIndexed { index, character ->
                             PetCharacterOption(
                                 character = character,
                                 selected = PetCharacter.fromKey(characterKey) == character,
                                 onClick = { setCharacter(character) },
                             )
-                            if (index < PetCharacter.values().lastIndex) {
+                            if (index < PetCharacter.selectableEntries.lastIndex) {
                                 Spacer(modifier = Modifier.width(4.dp))
                             }
                         }
@@ -411,15 +411,7 @@ private fun PetCharacterOption(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val context = LocalContext.current
-    // Resolve the preview drawable id for spritesheet characters (0 for CLASSIC or missing).
-    val previewResId = if (character.previewDrawableName.isNotEmpty()) {
-        remember(character) {
-            context.resources.getIdentifier(
-                character.previewDrawableName, "drawable", context.packageName,
-            )
-        }
-    } else 0
+    val previewResId = character.previewResId
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.clip(CircleShape).clickable(onClick = onClick),

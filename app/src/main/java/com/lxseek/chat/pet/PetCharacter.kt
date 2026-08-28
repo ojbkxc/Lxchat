@@ -1,11 +1,14 @@
 package com.lxseek.chat.pet
 
+import com.lxseek.chat.R
+
 /**
- * The built-in floating-pet sprites. [CLASSIC] is the legacy Canvas-drawn bubble kept as a
- * fallback when a spritesheet fails to load; the four cc-haha roles each reference a WebP
- * spritesheet in `assets/pets/<id>/spritesheet.webp` and a preview drawable used in settings.
+ * The built-in floating-pet sprites. [CLASSIC] is the legacy Canvas-drawn bubble kept as an
+ * internal fallback when a spritesheet fails to load; the four cc-haha roles each reference a
+ * WebP spritesheet in `assets/pets/<id>/spritesheet.webp` and a preview drawable used in settings.
  *
- * The persisted preference stores [prefKey]; unknown values fall back to [CLASSIC].
+ * The persisted preference stores [prefKey]; unknown values fall back to [DADA].
+ * Only spritesheet characters are shown in the settings picker (see [selectableEntries]).
  */
 enum class PetCharacter(
     val prefKey: String,
@@ -13,19 +16,24 @@ enum class PetCharacter(
     val assetsPath: String,
     /** Drawable resource name (without extension) for the settings preview, or empty for [CLASSIC]. */
     val previewDrawableName: String,
+    /** Drawable resource id for the settings preview, or 0 for [CLASSIC]. */
+    val previewResId: Int,
 ) {
-    CLASSIC("classic", "", ""),
-    DADA("dada-code", "pets/dada-code/spritesheet.webp", "pet_preview_dada"),
-    HUHU("huhu-plan", "pets/huhu-plan/spritesheet.webp", "pet_preview_huhu"),
-    BUBU("bubu-fix", "pets/bubu-fix/spritesheet.webp", "pet_preview_bubu"),
-    HUIHUI("huihui-build", "pets/huihui-build/spritesheet.webp", "pet_preview_huihui");
+    CLASSIC("classic", "", "", 0),
+    DADA("dada-code", "pets/dada-code/spritesheet.webp", "pet_preview_dada", R.drawable.pet_preview_dada),
+    HUHU("huhu-plan", "pets/huhu-plan/spritesheet.webp", "pet_preview_huhu", R.drawable.pet_preview_huhu),
+    BUBU("bubu-fix", "pets/bubu-fix/spritesheet.webp", "pet_preview_bubu", R.drawable.pet_preview_bubu),
+    HUIHUI("huihui-build", "pets/huihui-build/spritesheet.webp", "pet_preview_huihui", R.drawable.pet_preview_huihui);
 
     /** Whether this character has a real spritesheet asset (vs. the Canvas fallback). */
     val hasSpritesheet: Boolean get() = assetsPath.isNotEmpty()
 
     companion object {
+        /** Characters shown in the settings picker (excludes the internal [CLASSIC] fallback). */
+        val selectableEntries: List<PetCharacter> get() = entries.filter { it.hasSpritesheet }
+
         fun fromKey(key: String?): PetCharacter =
-            entries.firstOrNull { it.prefKey == key } ?: CLASSIC
+            entries.firstOrNull { it.prefKey == key } ?: DADA
     }
 }
 

@@ -176,7 +176,7 @@ class SettingsRepository(
     val petOverlayEnabled: StateFlow<Boolean> = hot(settingsManager.petOverlayEnabled, false)
     val petOverlayImagePath: StateFlow<String> = hot(settingsManager.petOverlayImagePath, "")
     val petOverlaySizeScale: StateFlow<Float> = hot(settingsManager.petOverlaySizeScale, 1.0f)
-    val petOverlayCharacter: StateFlow<String> = hot(settingsManager.petOverlayCharacter, PetCharacter.CLASSIC.prefKey)
+    val petOverlayCharacter: StateFlow<String> = hot(settingsManager.petOverlayCharacter, PetCharacter.DADA.prefKey)
     val petEmotionEnabled: StateFlow<Boolean> = hot(settingsManager.petEmotionEnabled, true)
     val exactExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.exactExecutionEnabled, false)
     val proxyEnabled: StateFlow<Boolean> = hot(settingsManager.proxyEnabled, false)
