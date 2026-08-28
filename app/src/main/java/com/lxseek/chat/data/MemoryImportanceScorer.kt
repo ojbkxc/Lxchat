@@ -1,7 +1,7 @@
 package com.lxseek.chat.data
 
 import kotlin.math.exp
-import kotlin.math.log
+import kotlin.math.ln
 import kotlin.math.max
 
 /**
@@ -72,7 +72,7 @@ object MemoryImportanceScorer {
         val typeWeight = memory.category.weight
         val daysSince = max(0.0, (now - memory.lastAccessTime) / MILLIS_PER_DAY)
         val decay = exp(-daysSince / DECAY_HALF_LIFE_DAYS)
-        val frequencyBoost = 1.0 + log(1.0 + memory.accessCount) * FREQUENCY_FACTOR
+        val frequencyBoost = 1.0 + ln(1.0 + memory.accessCount) * FREQUENCY_FACTOR
         return typeWeight * decay * frequencyBoost
     }
 
