@@ -125,6 +125,8 @@ fun ChatBottomBar(
     modifier: Modifier = Modifier,
     textFieldState: TextFieldState = rememberSaveable(saver = TextFieldState.Saver) { TextFieldState() },
     composerState: ChatComposerState = rememberChatComposerState(),
+    conversations: List<ConversationMention> = emptyList(),
+    onSwitchConversation: (String) -> Unit = {},
     focusRequester: FocusRequester = FocusRequester(),
     onInputFocusChanged: (Boolean) -> Unit = {},
     isExpanded: Boolean = false,
@@ -263,11 +265,13 @@ fun ChatBottomBar(
             )
         }
 
-        SlashCommandSuggestions(
+        ComposerSuggestions(
             text = textFieldState.text.toString(),
-            onPick = { trigger ->
-                textFieldState.edit { replace(0, length, trigger) }
+            conversations = conversations,
+            onCompleteText = { completed ->
+                textFieldState.edit { replace(0, length, completed) }
             },
+            onSwitchConversation = onSwitchConversation,
         )
 
         TextField(

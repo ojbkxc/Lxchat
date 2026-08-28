@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -20,6 +22,7 @@ import com.lxseek.chat.model.OpenAiServiceTiers
 import com.lxseek.chat.ui.chat.bottombar.CHAT_BOTTOM_BAR_OUTER_SHAPE
 import com.lxseek.chat.ui.chat.bottombar.ChatBottomBar
 import com.lxseek.chat.ui.chat.bottombar.ChatComposerState
+import com.lxseek.chat.ui.chat.bottombar.ConversationMention
 import com.lxseek.chat.ui.chat.bottombar.LoopStatusBackdrop
 import com.lxseek.chat.ui.common.LxChatHaptics
 import com.lxseek.chat.viewmodel.ChatViewModel
@@ -86,6 +89,7 @@ internal fun ChatAppBottomBarSection(
     onStopSingleAsr: () -> Unit = {},
 ) {
     val density = LocalDensity.current
+    val conversations by viewModel.conversations.collectAsState()
     val gradientTopPaddingPx = with(density) { 20.dp.toPx() }
     val gradientWidthPx = with(density) { 40.dp.toPx() }
     val bgColor = MaterialTheme.colorScheme.background
@@ -214,6 +218,8 @@ internal fun ChatAppBottomBarSection(
                             modifier = Modifier,
                             textFieldState = textFieldState,
                             composerState = composer,
+                            conversations = conversations.map { ConversationMention(it.id, it.title) },
+                            onSwitchConversation = { id -> viewModel.selectConversation(id) },
                             focusRequester = inputFocusRequester,
                             onInputFocusChanged = { focused ->
                                 scrollCoordinator.setComposerInputFocused(focused)
