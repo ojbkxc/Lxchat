@@ -671,6 +671,8 @@
     <!-- Appearance -->
     <string name="settings_appearance">Appearance</string>
     <string name="settings_appearance_desc">Theme, color scheme, and dynamic color</string>
+    <string name="companion_preview">Companion Look Preview</string>
+    <string name="companion_preview_desc">Explore the soft, organic companion design language</string>
     <string name="appearance_title">Appearance</string>
     <string name="appearance_interface">Interface</string>
     <string name="settings_app_name">App name</string>
@@ -951,7 +953,9 @@
     <string name="runtime_engine_status_installed">已装 %1$s</string>
     <string name="runtime_engine_status_running">运行中</string>
     <string name="runtime_engine_status_stopped">已停止</string>
+    <string name="runtime_engine_status_installing">安装中…</string>
     <string name="runtime_engine_action_install">安装</string>
+    <string name="runtime_engine_action_installing">安装中…</string>
     <string name="runtime_engine_action_start">启动</string>
     <string name="runtime_engine_action_stop">停止</string>
     <string name="runtime_engine_action_uninstall">卸载</string>
@@ -1236,6 +1240,7 @@
     <string name="pet_tip_done">Done</string>
     <string name="pet_tip_sad">Something went wrong</string>
     <string name="pet_tip_error">Connection error</string>
+    <string name="pet_tip_waiting">Waiting for approval…</string>
     <string name="settings_group_permissions">Permissions</string>
     <string name="settings_workflow">Workflows</string>
     <string name="settings_workflow_desc">Chain several generations, pausing between steps</string>

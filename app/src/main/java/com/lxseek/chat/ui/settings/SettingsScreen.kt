@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import com.lxseek.chat.R
+import com.lxseek.chat.ui.companion.CompanionDesignPreview
 import com.lxseek.chat.ui.settings.datacontrol.SettingsDataControlPage
 import com.lxseek.chat.viewmodel.ChatViewModel
 
@@ -290,6 +291,7 @@ private val settingsGroups = listOf(
     SettingsGroupData(titleRes = R.string.settings_group_appearance_language, items = listOf(
         SettingsCategory("appearance", R.string.settings_appearance, R.string.settings_appearance_desc, Icons.Default.Palette),
         SettingsCategory("language", R.string.language_title, R.string.language_desc, Icons.Default.Translate),
+        SettingsCategory("companion_preview", R.string.companion_preview, R.string.companion_preview_desc, Icons.Default.Palette),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_insights, items = listOf(
         SettingsCategory("statistics", R.string.settings_statistics, R.string.settings_statistics_desc, Icons.Default.BarChart),
@@ -392,6 +394,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "appearance" -> SettingsAppearancePage(viewModel, onBack = { selectedCategory = null })
                 "about" -> SettingsAboutPage(viewModel, onBack = { selectedCategory = null })
                 "logs" -> SettingsLogsPage(viewModel, onBack = { selectedCategory = null })
+                "companion_preview" -> CompanionDesignPreview(onBack = { selectedCategory = null })
                 else -> {
                     // Build searchable entries from every group so the search field can filter them.
                     val searchableItems = settingsGroups.flatMap { group ->

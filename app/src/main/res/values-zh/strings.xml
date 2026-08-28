@@ -708,6 +708,8 @@
     <!-- Appearance -->
     <string name="settings_appearance">外观</string>
     <string name="settings_appearance_desc">主题、配色方案和动态颜色</string>
+    <string name="companion_preview">伴生质感预览</string>
+    <string name="companion_preview_desc">体验柔软有机的伴生设计语言</string>
     <string name="appearance_title">外观</string>
     <string name="theme_mode">主题模式</string>
     <string name="theme_mode_light">浅色</string>
@@ -1630,6 +1632,7 @@
     <string name="pet_tip_done">完成啦</string>
     <string name="pet_tip_sad">出错了…</string>
     <string name="pet_tip_error">连接出错</string>
+    <string name="pet_tip_waiting">等待审批中…</string>
     <string name="settings_plugins">插件与技能</string>
     <string name="settings_plugins_desc">管理扩展、技能和市场</string>
 
