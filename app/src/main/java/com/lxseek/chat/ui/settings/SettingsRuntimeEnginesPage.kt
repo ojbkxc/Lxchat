@@ -155,6 +155,7 @@ private enum class EngineAction { Start, Stop, Install, Uninstall }
 
 private val KNOWN_ENGINES = listOf(
     RuntimeEngineType.NODE_INKOS,
+    RuntimeEngineType.PYTHON_WEB_NOVEL,
     "runtime-python",
     "runtime-ffmpeg",
 )

@@ -42,6 +42,21 @@
       "sourceUrl": "https://github.com/Narcooo/inkos"
     },
     {
+      "id": "runtime-python-webnovel",
+      "name": "webnovel-writer",
+      "version": "1.0.0",
+      "kind": "RUNTIME",
+      "author": "LxChat",
+      "description": "webnovel-writer (GPL-3.0) long-form novel consistency engine: init settings / plan volume & chapters / write / review / query persisted state. Requires runtime-python (auto-installs). Long-form consistency: fact settling to queryable state so hundreds of chapters keep settings, foreshadowing and timelines consistent.",
+      "homepage": "https://github.com/lingfengQAQ/webnovel-writer",
+      "runtimeType": "python-webnovel",
+      "versions": ["1.0.0"],
+      "minVersion": "1.0.0",
+      "downloadUrl": "https://raw.githubusercontent.com/ojbkxc/Lxchat/main/market/runtimes/python-webnovel/{version}/python-webnovel.toolpkg",
+      "license": "GPL-3.0",
+      "sourceUrl": "https://github.com/lingfengQAQ/webnovel-writer"
+    },
+    {
       "id": "hello-skill",
       "name": "Hello Skill",
       "version": "1.0.0",

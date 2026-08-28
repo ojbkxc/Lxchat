@@ -17,6 +17,9 @@ enum class RuntimeEngineType(val id: String) {
         /** @actalk/inkos 网文创作引擎（依赖 node:sqlite，要求 node >= 22.5）。 */
         const val NODE_INKOS = "runtime-node-inkos"
 
+        /** webnovel-writer 网文创作引擎（GPL-3.0，依赖 runtime-python，要求 python >= 3.10）。 */
+        const val PYTHON_WEB_NOVEL = "runtime-python-webnovel"
+
         private val BY_ID = entries.associateBy { it.id }
 
         fun fromId(id: String): RuntimeEngineType? = BY_ID[id]
@@ -38,6 +41,12 @@ data class RuntimeManifest(
     val startCommand: List<String> = emptyList(),
     /** 二进制来源与合规说明（如 nodejs-mobile 构建、来源仓库与版本）。 */
     val binarySource: String? = null,
+    /**
+     * 依赖的另一个已登记运行时引擎 id（如 "runtime-python"）。非空时：
+     * 本引擎包不含其二进制，启动前自动确保依赖引擎已安装（按需下载），并可用 `{depRoot}`
+     * 在 [startCommand] 中引用依赖引擎的安装根目录（如在其下取 python 可执行文件）。
+     */
+    val requiresEngine: String? = null,
     /** 许可证标识（如 AGPL-3.0）。 */
     val license: String? = null,
     /** 许可证/源码链接。 */

@@ -108,23 +108,46 @@ class RuntimeEngineManager(
         engineId: String,
         requestedVersion: String?,
         requirement: RuntimeRequirement?,
+        requirementOverride: RuntimeRequirement? = null,
     ): Map<String, String> {
         val installation = installationOf(engineId)
             ?: throw IllegalStateException("引擎 $engineId 未安装。请先调用 market_install 安装。")
         val version = installation.version
         val manifest = packageManager.readManifest(engineId, version)
             ?: throw IllegalStateException("引擎 $engineId 已安装但本地文件缺失，请重新安装")
-        // 启动前二次校验版本。
-        versionRequirementCheck(engineId, version, requirement)
+        // 启动前二次校验版本（优先技能约束覆盖，否则用 manifest 自身声明）。
+        versionRequirementCheck(engineId, version, requirementOverride ?: requirement)
+        // 依赖引擎：自动确保已安装，并解析其安装根目录（供 {depRoot} 引用原生命令环境）。
+        val depRoot = if (manifest.requiresEngine.isNullOrBlank()) {
+            null
+        } else {
+            ensureDependencyRoot(manifest.requiresEngine!!)?.absolutePath
+        }
         val root = packageManager.versionRoot(engineId, version)
-        val command = buildCommand(manifest, root.absolutePath)
-        val env = injectedEnv(engineId, manifest, version, root.absolutePath)
+        val command = buildCommand(manifest, root.absolutePath, depRoot)
+        val env = injectedEnv(engineId, manifest, version, root.absolutePath, depRoot)
         if (processManager.isRunning(engineId)) {
             processManager.touch(engineId)
             return env
         }
         processManager.start(engineId, command, env, root)
         return env
+    }
+
+    /**
+     * 确保依赖引擎（如 runtime-python）已安装，返回其安装根目录。未安装时自动从市场
+     * 目录解析 meta 并按需下载安装；目录中不存在则返回 null（调用方决定是否报错）。
+     */
+    suspend fun ensureDependencyRoot(requiresEngine: String): File? {
+        val existing = installationOf(requiresEngine)
+        if (existing != null) {
+            return packageManager.versionRoot(requiresEngine, existing.version)
+        }
+        val meta = resolveCatalogMeta(requiresEngine) ?: return null
+        val market = market ?: return null
+        if (runCatching { market.installRuntimeInternal(meta, null) }.isFailure) return null
+        val installation = installationOf(requiresEngine) ?: return null
+        return packageManager.versionRoot(requiresEngine, installation.version)
     }
 
     /** 停止引擎。 */
@@ -188,11 +211,18 @@ class RuntimeEngineManager(
 
     // ── 内部 ───────────────────────────────────────────────
 
-    private suspend fun injectedEnv(engineId: String, manifest: RuntimeManifest, version: String, root: String): Map<String, String> {
+    private suspend fun injectedEnv(engineId: String, manifest: RuntimeManifest, version: String, root: String, depRoot: String?): Map<String, String> {
         val env = mutableMapOf<String, String>()
         env["RUNTIME_ROOT"] = root
         env["RUNTIME_ENGINE"] = engineId
         env["RUNTIME_VERSION"] = version
+        if (!depRoot.isNullOrBlank()) {
+            env["RUNTIME_DEPENDENCY_ROOT"] = depRoot
+            // 简化脚本侧引用原生命令环境：注入 python 可执行路径。
+            if (manifest.type.lowercase() == "python-webnovel" || manifest.type.lowercase() == "webnovel") {
+                env["PYTHON_BIN"] = File(depRoot, "python").absolutePath
+            }
+        }
         env.putAll(buildModelEnv())
         // AGPL 合规声明随引擎包附带；此处向进程注入来源与许可证，便于引擎侧读取/展示。
         manifest.license?.let { env["RUNTIME_LICENSE"] = it }
@@ -200,10 +230,10 @@ class RuntimeEngineManager(
         return env
     }
 
-    private fun buildCommand(manifest: RuntimeManifest, root: String): List<String> {
+    private fun buildCommand(manifest: RuntimeManifest, root: String, depRoot: String? = null): List<String> {
         val template = manifest.startCommand
         if (template.isNotEmpty()) {
-            return template.map { it.replace("{root}", root) }
+            return template.map { it.replace("{root}", root).replace("{depRoot}", depRoot ?: "") }
         }
         // 兜底：按类型推断可执行入口。
         return when (manifest.type.lowercase()) {
@@ -265,6 +295,7 @@ class RuntimeEnginePlugin(
         /** 引擎展示名（含文献/来源附注）。 */
         fun engineDisplayName(engineId: String): String = when (engineId) {
             RuntimeEngineType.NODE_INKOS -> "Node + inkos"
+            RuntimeEngineType.PYTHON_WEB_NOVEL -> "webnovel-writer"
             "runtime-python" -> "Python"
             "runtime-ffmpeg" -> "ffmpeg"
             else -> engineId

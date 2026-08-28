@@ -1,0 +1,58 @@
+Compliance & Licensing
+======================
+
+This engine package ("webnovel writer for LxChat") is an independent integration and
+is provided under this notice:
+
+1. webnovel-writer (the upstream project)
+   ---------------------------------------------------------------------
+   Project : https://github.com/lingfengQAQ/webnovel-writer
+   License : GNU General Public License v3.0 (GPL-3.0)
+   Upstream source: https://github.com/lingfengQAQ/webnovel-writer
+
+   The upstream webnovel-writer source tree is bundled in this package UNMODIFIED
+   and is invoked purely as an independent external process (aggregation), NOT
+   merged into or linked statically with the LxChat codebase. Accordingly, using
+   this engine does not convert the MIT-licensed LxChat app into a GPL-licensed
+   work. The GPL obligations apply only to redistributions/modifications of the
+   upstream webnovel-writer code itself.
+
+   The full GPL-3.0 license text is available at:
+     https://www.gnu.org/licenses/gpl-3.0.html
+
+2. The adapter (scripts/adapter.py)
+   ---------------------------------------------------------------------
+   The thin adapter bridging LxChat and webnovel-writer is ORIGINAL code written
+   for LxChat and is licensed under the MIT license (see the LICENSE below / this
+   notice's MIT terms). It does not modify, embed, or inline GPL source; it only
+   launches the upstream CLI as a subprocess and exchanges structured JSON.
+
+3. Distribution of source
+   ---------------------------------------------------------------------
+   To comply with GPL-3.0 Section 5 (Conveying unmodified source), the upstream
+   webnovel-writer source for the version shipped in this package is made available
+   at the upstream repository (https://github.com/lingfengQAQ/webnovel-writer) and,
+   if you redistribute this engine package, the corresponding source must be offered
+   alongside or via the sourceUrl link above.
+
+=== MIT License (for the LxChat adapter code only) ===
+
+Copyright (c) 2026 LxChat
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

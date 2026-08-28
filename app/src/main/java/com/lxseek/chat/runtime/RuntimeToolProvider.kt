@@ -47,6 +47,7 @@ class RuntimeToolProvider(
         const val RUNTIME_STATUS = "runtime_status"
         const val EXEC = "runtime_exec"
         const val NOVEL_INKOS = "novel_inkos"
+        const val WEB_NOVEL = "webnovel"
         const val ALL = "all_runtimes_status"
     }
 
@@ -61,7 +62,7 @@ class RuntimeToolProvider(
 
     override fun riskLevel(name: String): RiskLevel = when (name) {
         Names.STATUS, Names.RUNTIME_STATUS, Names.ALL -> RiskLevel.ReadOnly
-        Names.EXEC, Names.NOVEL_INKOS -> RiskLevel.Moderate
+        Names.EXEC, Names.NOVEL_INKOS, Names.WEB_NOVEL -> RiskLevel.Moderate
         else -> RiskLevel.HighRisk
     }
 
@@ -84,6 +85,7 @@ class RuntimeToolProvider(
                 Names.RUNTIME_STATUS -> runtimeStatus(args)
                 Names.EXEC -> runtimeExec(args)
                 Names.NOVEL_INKOS -> novelInkos(args)
+                Names.WEB_NOVEL -> webNovel(args)
                 Names.ALL -> allStatus()
                 else -> error(name, "unknown_tool", "未知工具：$name")
             }
@@ -179,6 +181,7 @@ class RuntimeToolProvider(
     private fun allStatus(): String {
         val known = listOf(
             RuntimeEngineType.NODE_INKOS,
+            RuntimeEngineType.PYTHON_WEB_NOVEL,
             "runtime-python",
             "runtime-ffmpeg",
         )
@@ -275,6 +278,81 @@ class RuntimeToolProvider(
         }
     }
 
+    /**
+     * webnovel-writer 网文创作（GPL-3.0 引擎，依赖 runtime-python）：按 action 驱动适配器完成
+     * 初始化设定 / 规划卷纲 / 写章 / 一致性审查 / 状态查询。引擎未运行时自动拉起（并自动确保
+     * 依赖的 runtime-python 已装）。Extended。
+     *
+     * 参数：action = init|plan|write|review|query；params = 传给适配器的 JSON 字符串。
+     * 适配器会注入用户已配置的默认模型 Key（LCHAT_LLM_*），RAG 可降级（无 embedding 时不阻塞）。
+     */
+    private suspend fun webNovel(args: Map<String, String>): String {
+        val engineId = RuntimeEngineType.PYTHON_WEB_NOVEL
+        val action = (args["action"] ?: "").trim().lowercase()
+        if (action !in SUPPORTED_WEB_NOVEL_ACTIONS) {
+            return error(engineId, "bad_action", "未知 action「$action」，支持：init/plan/write/review/query")
+        }
+        val params = args["params"] ?: ""
+        val modelEnv = manager.buildModelEnv()
+        if (modelEnv["LCHAT_LLM_API_KEY"].isNullOrBlank() && action in LLM_REQUIRED_ACTIONS) {
+            return error(
+                engineId,
+                "model_not_configured",
+                "该 action 需要 LLM 模型 Key。请先在设置中配置默认模型服务（baseUrl/apiKey/model），之后即可实际创作。",
+            )
+        }
+        return try {
+            // 自动拉起引擎 + 依赖的 runtime-python，并强制版本满足 python >= 3.10 约束。
+            val envMap = manager.ensureStarted(
+                engineId,
+                null,
+                RuntimeRequirement(runtime = "python", minVersion = "3.10"),
+            )
+            val installation = manager.installationOf(engineId) ?: throw IllegalStateException("引擎未安装")
+            val root = manager.packageManager.versionRoot(engineId, installation.version)
+            val manifest = manager.packageManager.readManifest(engineId, installation.version)
+            val depRoot = manager.ensureDependencyRoot("runtime-python")
+                ?: throw IllegalStateException("依赖的 runtime-python 不可用")
+            val pythonBin = File(depRoot, "python").absolutePath
+            // 适配器入口：manifest.entry 指向 {root}/scripts/adapter.py。
+            val adapter = File(root, manifest?.entry ?: "scripts/adapter.py").absolutePath
+            val timeoutMs = (args["timeout_ms"]?.toLongOrNull() ?: 180_000L).coerceIn(10_000, 600_000)
+            val result = runProcessOnce(
+                listOf(pythonBin, "-X", "utf8", adapter, "--action", action, "--params", params),
+                envMap,
+                root,
+                timeoutMs,
+            )
+            // 适配器输出为 JSON；尽量透传。失败时给出可读信息。
+            buildJsonObject {
+                put("ok", result.isSuccess)
+                put("engine_id", engineId)
+                put("action", "webnovel_$action")
+                put("exit_code", result.exitCode)
+                if (result.timedOut) {
+                    put("timed_out", true)
+                    put("message", "创作仍在进行，可稍后 webnovel query 查询状态")
+                    if (result.output.isNotBlank()) put("output", result.output)
+                } else if (result.isSuccess) {
+                    parseWebNovelJson(result.output)?.let { put("result", it) }
+                        ?: put("output", result.output)
+                } else {
+                    put("message", "执行失败，退出码 ${result.exitCode}")
+                    if (result.output.isNotBlank()) put("output", result.output)
+                }
+            }.toString()
+        } catch (e: Exception) {
+            error(engineId, "webnovel_failed", e.message ?: "执行失败")
+        }
+    }
+
+    /** 尝试把适配器 stdout 解析为 JSON 对象。 */
+    private fun parseWebNovelJson(output: String): JsonObject? {
+        if (output.isBlank()) return null
+        return runCatching { json.parseToJsonElement(output) }
+            .getOrNull() as? JsonObject
+    }
+
     // ── 响应构造 ────────────────────────────────────────────
 
     private fun statusJson(st: RuntimeStatus): String = buildJsonObject {
@@ -323,7 +401,7 @@ class RuntimeToolProvider(
 
     private fun binaryName(engineId: String): String = when (engineId) {
         RuntimeEngineType.NODE_INKOS, "runtime-node" -> "node"
-        "runtime-python" -> "python"
+        RuntimeEngineType.PYTHON_WEB_NOVEL, "runtime-python" -> "python"
         "runtime-ffmpeg" -> "ffmpeg"
         else -> "node"
     }
@@ -332,8 +410,11 @@ class RuntimeToolProvider(
         val NAMES = setOf(
             Names.INSTALL, Names.UNINSTALL, Names.STATUS,
             Names.START, Names.STOP, Names.RUNTIME_STATUS,
-            Names.EXEC, Names.NOVEL_INKOS, Names.ALL,
+            Names.EXEC, Names.NOVEL_INKOS, Names.WEB_NOVEL, Names.ALL,
         )
+
+        val SUPPORTED_WEB_NOVEL_ACTIONS = setOf("init", "plan", "write", "review", "query")
+        val LLM_REQUIRED_ACTIONS = setOf("init", "plan", "write", "review")
 
         val descriptors: List<ToolDescriptor> = listOf(
             ToolDescriptor(
@@ -480,6 +561,25 @@ class RuntimeToolProvider(
                 riskLevel = RiskLevel.Moderate,
                 tier = ToolTier.Extended,
                 summary = "Write a novel chapter using the inkos engine.",
+            ),
+            ToolDescriptor(
+                definition = ToolDefinition(
+                    function = ToolFunction(
+                        name = Names.WEB_NOVEL,
+                        description = "用 webnovel-writer 网文创作引擎执行创作动作。action 支持 init（初始化设定）/plan（规划卷纲）/write（写章）/review（一致性审查）/query（查询状态）。引擎未运行时自动拉起并自动确保依赖的 runtime-python 已装。使用用户已配置的默认模型服务进行创作；未配置模型会返回错误。",
+                        parameters = ToolParameters(
+                            properties = mapOf(
+                                "action" to ToolProperty("string", "init | plan | write | review | query"),
+                                "params" to ToolProperty("string", "传给适配器的 JSON 字符串（如设定、卷号/章号、审查范围等）"),
+                                "timeout_ms" to ToolProperty("string", "可选，超时毫秒"),
+                            ),
+                            required = listOf("action"),
+                        ),
+                    ),
+                ),
+                riskLevel = RiskLevel.Moderate,
+                tier = ToolTier.Extended,
+                summary = "Drive the webnovel-writer engine (init/plan/write/review/query).",
             ),
             ToolDescriptor(
                 definition = ToolDefinition(

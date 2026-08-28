@@ -1,0 +1,17 @@
+{
+  "id": "runtime-python-webnovel",
+  "name": "webnovel-writer",
+  "type": "python-webnovel",
+  "version": "1.0.0",
+  "entry": "scripts/adapter.py",
+  "requiresEngine": "runtime-python",
+  "binarySource": "webnovel-writer (GPL-3.0) source tree run unmodified as an independent process on LxChat's runtime-python",
+  "license": "GPL-3.0",
+  "sourceUrl": "https://github.com/lingfengQAQ/webnovel-writer",
+  "homepage": "https://github.com/lingfengQAQ/webnovel-writer",
+  "versions": ["1.0.0"],
+  "minVersion": "1.0.0",
+  "runtimeRequirements": [
+    { "runtime": "python", "minVersion": "3.10" }
+  ]
+}
