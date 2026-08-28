@@ -274,6 +274,8 @@ class AppContainer(private val appContext: Context) {
                         runtimeToolProvider,
                         // 系统清理/优化：root-only，仅在模块二进制存在时披露。
                         systemCleanToolProvider,
+                        // 应用管理：root-only，按需调用 pm/am/cmd，无驻留服务。
+                        appManageToolProvider,
                         // Hermes 式成长系统：技能学习/Curator、journey、交付前自检。
                         skillLearnToolProvider,
                         journeyToolProvider,
@@ -311,6 +313,11 @@ class AppContainer(private val appContext: Context) {
     /** 系统清理/优化工具集：root-only，封装 root 清理模块 CLI，仅在二进制存在时披露。 */
     val systemCleanToolProvider: com.lxseek.chat.tool.SystemCleanToolProvider by lazy {
         com.lxseek.chat.tool.SystemCleanToolProvider()
+    }
+
+    /** 应用管理工具集：root-only，按需调用 pm/am/cmd，仅在 root 可用时披露。 */
+    val appManageToolProvider: com.lxseek.chat.tool.AppManageToolProvider by lazy {
+        com.lxseek.chat.tool.AppManageToolProvider()
     }
 
     /** 运行时引擎编排器：下载/解压/启停/版本约束/进程空闲回收。 */
