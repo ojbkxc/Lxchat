@@ -51,26 +51,70 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
             )),
             ToolDefinition(function = ToolFunction(
                 name = "android_read_ui",
-                description = "Dump the current screen's interactive elements (labels, buttons, input fields) from the accessibility node tree. Use this after opening an app or after any action to see what is on screen now.",
+                description = "Dump the current screen's interactive elements (labels, buttons, input fields) from the accessibility node tree, each with a stable index, clickable/editable flags and a center coordinate. Use this after opening an app or after any action to see what is on screen now. Prefer tapping by 'index' (unambiguous) over 'label' (can collide).",
                 parameters = ToolParameters(properties = emptyMap()),
             )),
             ToolDefinition(function = ToolFunction(
                 name = "android_click",
-                description = "Tap the visible element whose text or content-description contains the given label (for example the 'Send' button, a contact name, a menu row). Requires the accessibility bridge.",
+                description = "Tap an element. Provide exactly one target: 'index' (stable index from android_read_ui, most reliable), 'label' (text/content-description substring), or x/y screen coordinates. Index/coordinate avoid label collisions. Requires the accessibility bridge.",
                 parameters = ToolParameters(
-                    properties = mapOf("label" to prop("string", "Text shown on the element to tap, e.g. 'Send' or '搜索'.")),
-                    required = listOf("label"),
+                    properties = mapOf(
+                        "index" to prop("integer", "Optional stable element index from android_read_ui, e.g. 3."),
+                        "label" to prop("string", "Optional text shown on the element to tap, e.g. 'Send' or '搜索'."),
+                        "x" to prop("integer", "Optional screen x coordinate to tap."),
+                        "y" to prop("integer", "Optional screen y coordinate to tap."),
+                    ),
                 ),
             )),
             ToolDefinition(function = ToolFunction(
                 name = "android_input",
-                description = "Type text into an input field. If 'into' is given, tap that field first to focus it; otherwise types into the current focused/editable field. Set the text directly; no IME is needed.",
+                description = "Type text into an input field. If 'index' or 'into' is given, that field is tapped first to focus it; otherwise types into the current focused/editable field. Set the text directly; no IME is needed.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "text" to prop("string", "The text to type."),
+                        "index" to prop("integer", "Optional stable element index of the input field (from android_read_ui)."),
                         "into" to prop("string", "Optional label of the input field to focus first."),
                     ),
                     required = listOf("text"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "android_focus_clear_text",
+                description = "Clear the focused (or first editable) input field. Use this instead of backspacing when you want to replace existing content, since the cursor position is invisible to text models.",
+                parameters = ToolParameters(properties = emptyMap()),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "android_swipe",
+                description = "Scroll or swipe. Give a 'direction' (up/down/left/right, swipes ~1/3 of the screen from the center) to scroll a list, or give explicit x1/y1/x2/y2 coordinates. Optionally a 'duration_ms'. Requires the accessibility bridge.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "direction" to prop("string", "Optional 'up' | 'down' | 'left' | 'right' for a centered scroll."),
+                        "x1" to prop("integer", "Optional start x."),
+                        "y1" to prop("integer", "Optional start y."),
+                        "x2" to prop("integer", "Optional end x."),
+                        "y2" to prop("integer", "Optional end y."),
+                        "duration_ms" to prop("integer", "Optional swipe duration in ms (default 300)."),
+                    ),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "android_long_press",
+                description = "Long-press an element to open its context menu. Provide a 'label', an 'index' (from android_read_ui), or x/y coordinates. Requires the accessibility bridge.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "index" to prop("integer", "Optional stable element index from android_read_ui."),
+                        "label" to prop("string", "Optional element text/content-description to long-press."),
+                        "x" to prop("integer", "Optional screen x coordinate."),
+                        "y" to prop("integer", "Optional screen y coordinate."),
+                    ),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "android_press_key",
+                description = "Send a system navigation key: 'back', 'home', 'recents', 'notifications' or 'quick_settings'. (Arbitrary keyboard keys cannot be injected without root.)",
+                parameters = ToolParameters(
+                    properties = mapOf("key" to prop("string", "back | home | recents | notifications | quick_settings")),
+                    required = listOf("key"),
                 ),
             )),
             ToolDefinition(function = ToolFunction(
@@ -110,9 +154,10 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
 
     override fun riskLevel(name: String): RiskLevel = when (name) {
         "android_accessibility_status", "android_read_ui", "android_known_apps" -> RiskLevel.ReadOnly
-        "android_open_app", "android_go_back", "android_go_home" -> RiskLevel.LowRisk
-        // Clicking/typing inside another app can cause real side effects (sending, posting).
-        "android_click", "android_input", "wechat_open_chat", "android_screenshot" -> RiskLevel.Moderate
+        "android_open_app", "android_go_back", "android_go_home", "android_press_key" -> RiskLevel.LowRisk
+        // Clicking/typing/swiping inside another app can cause real side effects (sending, posting).
+        "android_click", "android_input", "android_focus_clear_text", "android_swipe",
+        "android_long_press", "wechat_open_chat", "android_screenshot" -> RiskLevel.Moderate
         else -> RiskLevel.ReadOnly
     }
 
@@ -129,6 +174,10 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 "android_open_app" -> openApp(arguments)
                 "android_click" -> click(arguments)
                 "android_input" -> input(arguments)
+                "android_focus_clear_text" -> focusClearTextJson()
+                "android_swipe" -> swipe(arguments)
+                "android_long_press" -> longPress(arguments)
+                "android_press_key" -> pressKey(arguments)
                 "android_go_back" -> goBackJson()
                 "android_go_home" -> goHomeJson()
                 "android_screenshot" -> screenshotJson()
@@ -168,6 +217,11 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         })
     }.toString()
 
+    /**
+     * Compact, indexed UI dump for text-only models: keeps actionable + labelled nodes, gives each a
+     * stable index, a short type, a single best "label" (text > contentDescription > trailing id segment),
+     * and the element's center coordinate so the model can act by index or by tapping coordinates.
+     */
     private fun readUiJson(): String = buildJsonObject {
         put("type", "android_ui_dump")
         val svc = service()
@@ -176,16 +230,21 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
             put("items", buildJsonArray { })
         } else {
             svc.activePackage()?.let { put("activePackage", it) }
+            put("note", "Tap precisely with android_click index=<i>. cx/cy is the element centre for coordinate taps.")
             put("items", buildJsonArray {
-                svc.dumpCurrentUi().forEach { n ->
+                svc.dumpCurrentUi().forEachIndexed { i, n ->
                     add(buildJsonObject {
-                        put("class", n.nodeClass)
-                        n.text?.let { put("text", it) }
-                        n.contentDescription?.let { put("contentDesc", it) }
-                        n.resourceId?.let { put("resourceId", it) }
+                        put("i", i)
+                        put("type", shortClassName(n.nodeClass))
+                        labelFor(n)?.let { put("label", it) }
+                        n.resourceId?.let { put("id", it.substringAfterLast('/')) }
                         put("clickable", n.clickable)
                         put("editable", n.editable)
-                        put("x", n.x); put("y", n.y); put("w", n.width); put("h", n.height)
+                        put("enabled", n.enabled)
+                        put("focused", n.focused)
+                        if (n.scrollable) put("scrollable", true)
+                        put("cx", n.x + n.width / 2)
+                        put("cy", n.y + n.height / 2)
                     })
                 }
             })
@@ -228,30 +287,172 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         }.toString()
     }
 
+    /** Tap by index, label, or x/y coordinates. Index/coordinate avoid label collisions. */
     private fun click(arguments: String): String {
-        val label = argString("label", arguments)
         val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
-        if (label.isNullOrBlank()) return err("no_label", "Missing label.")
-        val clicked = svc.clickByLabel(label)
+        val index = argInt("index", arguments)
+        val label = argString("label", arguments)
+        val x = argInt("x", arguments)
+        val y = argInt("y", arguments)
+        var ok: Boolean
+        var target: String
+        when {
+            index != null -> {
+                val node = indexedNode(svc, index)
+                    ?: return notFound("index", "No element at index $index. Re-run android_read_ui.")
+                ok = svc.clickAt(node.x + node.width / 2, node.y + node.height / 2)
+                target = "index=$index"
+            }
+            label != null -> {
+                ok = svc.clickByLabel(label)
+                target = "label=$label"
+            }
+            x != null && y != null -> {
+                ok = svc.clickAt(x, y)
+                target = "x=$x,y=$y"
+            }
+            else -> return err("no_target", "Provide one of: index, label, or x/y.")
+        }
         return buildJsonObject {
             put("type", "android_click")
-            put("status", if (clicked) "ok" else "not_found")
-            put("label", label)
-            if (!clicked) put("hint", "Element not found. Dump the UI with android_read_ui to see exact labels.")
+            put("status", if (ok) "ok" else "not_found")
+            put("target", target)
+            if (!ok) put("hint", "Element not found. Dump the UI with android_read_ui to see exact indices/labels.")
         }.toString()
     }
 
     private fun input(arguments: String): String {
         val text = argString("text", arguments)
         val into = argString("into", arguments)
+        val index = argInt("index", arguments)
         val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
         if (text.isNullOrBlank()) return err("no_text", "Missing text.")
-        val ok = svc.focusAndInput(text, into)
+        val ok = if (index != null) {
+            val node = indexedNode(svc, index)
+            if (node == null) return err("no_target", "No editable element at index $index. Re-run android_read_ui.")
+            // Focus the field first (click its centre), then type into the focused editable.
+            svc.clickAt(node.x + node.width / 2, node.y + node.height / 2) && svc.focusAndInput(text, null)
+        } else {
+            svc.focusAndInput(text, into)
+        }
         return buildJsonObject {
             put("type", "android_input")
             put("status", if (ok) "ok" else "error")
             if (!ok) put("hint", "No editable field found/focused. Dump UI and click the field first.")
         }.toString()
+    }
+
+    private fun focusClearTextJson(): String {
+        val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
+        val ok = svc.clearFocusedText()
+        return buildJsonObject {
+            put("type", "android_focus_clear_text")
+            put("status", if (ok) "ok" else "error")
+            if (!ok) put("hint", "No editable field found to clear.")
+        }.toString()
+    }
+
+    private fun swipe(arguments: String): String {
+        val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
+        val direction = argString("direction", arguments)
+        val x1 = argInt("x1", arguments); val y1 = argInt("y1", arguments)
+        val x2 = argInt("x2", arguments); val y2 = argInt("y2", arguments)
+        val duration = argInt("duration_ms", arguments)?.toLong() ?: 300L
+        val ok = if (!direction.isNullOrBlank()) {
+            svc.swipeDirection(direction)
+        } else if (x1 != null && y1 != null && x2 != null && y2 != null) {
+            svc.swipe(x1, y1, x2, y2, duration)
+        } else {
+            return err("no_swipe_target", "Provide 'direction', or x1/y1/x2/y2 coordinates.")
+        }
+        return buildJsonObject {
+            put("type", "android_swipe")
+            put("status", if (ok) "ok" else "error")
+            if (!ok) put("hint", "Swipe was rejected by the system.")
+        }.toString()
+    }
+
+    private fun longPress(arguments: String): String {
+        val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
+        val index = argInt("index", arguments)
+        val label = argString("label", arguments)
+        val x = argInt("x", arguments)
+        val y = argInt("y", arguments)
+        var ok: Boolean
+        var target: String
+        when {
+            index != null -> {
+                val node = indexedNode(svc, index)
+                    ?: return notFound("index", "No element at index $index. Re-run android_read_ui.")
+                ok = svc.longPressAt(node.x + node.width / 2, node.y + node.height / 2)
+                target = "index=$index"
+            }
+            label != null -> {
+                val node = labelNode(svc, label)
+                    ?: return notFound("label", "Element '$label' not found. Re-run android_read_ui.")
+                ok = svc.longPressAt(node.x + node.width / 2, node.y + node.height / 2)
+                target = "label=$label"
+            }
+            x != null && y != null -> {
+                ok = svc.longPressAt(x, y)
+                target = "x=$x,y=$y"
+            }
+            else -> return err("no_target", "Provide one of: index, label, or x/y.")
+        }
+        return buildJsonObject {
+            put("type", "android_long_press")
+            put("status", if (ok) "ok" else "error")
+            put("target", target)
+            if (!ok) put("hint", "Long-press was rejected by the system.")
+        }.toString()
+    }
+
+    private fun pressKey(arguments: String): String {
+        val key = argString("key", arguments)
+        val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
+        if (key.isNullOrBlank()) return err("no_key", "Missing key (back/home/recents/notifications/quick_settings).")
+        val ok = svc.pressGlobalKey(key)
+        return buildJsonObject {
+            put("type", "android_press_key")
+            put("status", if (ok) "ok" else "error")
+            put("key", key)
+            if (!ok) put("hint", "Unknown key or system rejected it.")
+        }.toString()
+    }
+
+    private fun notFound(target: String, hint: String): String = buildJsonObject {
+        put("type", "android_error")
+        put("error", "not_found")
+        put("target", target)
+        put("hint", hint)
+    }.toString()
+
+    /** Returns the snapshot at stable [index] by re-running the identical dump the UI used. */
+    private fun indexedNode(svc: AndroidUiControllerService, index: Int): AndroidUiControllerService.UiNodeSnapshot? {
+        val nodes = svc.dumpCurrentUi()
+        return nodes.getOrNull(index)
+    }
+
+    /** First node whose text or content-description contains [label]. */
+    private fun labelNode(svc: AndroidUiControllerService, label: String): AndroidUiControllerService.UiNodeSnapshot? =
+        svc.dumpCurrentUi().firstOrNull { n ->
+            (n.text?.contains(label, ignoreCase = true) == true) ||
+                (n.contentDescription?.contains(label, ignoreCase = true) == true)
+        }
+
+    /** Short class name (strip the package path), e.g. android.widget.Button -> Button. */
+    private fun shortClassName(nodeClass: String): String {
+        val trimmed = nodeClass.trim().ifBlank { return "Node" }
+        return trimmed.substringAfterLast('.').ifBlank { trimmed }
+    }
+
+    /** The single best human label to represent a node: text, else contentDescription, else null. */
+    private fun labelFor(n: AndroidUiControllerService.UiNodeSnapshot): String? {
+        val text = n.text?.takeIf { it.isNotBlank() }
+        if (text != null) return text
+        val desc = n.contentDescription?.takeIf { it.isNotBlank() }
+        if (desc != null) return desc
+        return null
     }
 
     private fun goBackJson(): String {
@@ -350,6 +551,16 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         return try {
             val el = Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]?.content
             el?.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun argInt(key: String, arguments: String): Int? {
+        return try {
+            val stripped = arguments.ifBlank { "{}" }
+            val el = Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]?.content ?: return null
+            el.trim().toIntOrNull()
         } catch (_: Exception) {
             null
         }

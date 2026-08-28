@@ -3,9 +3,17 @@ package com.lxseek.chat.androidcontrol
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
 import android.accessibilityservice.AccessibilityService.ScreenshotResult
+import android.accessibilityservice.GestureResultCallback
+import android.accessibilityservice.StrokeDescription
 import android.graphics.Bitmap
+import android.graphics.GestureDescription
+import android.graphics.Path
+import android.graphics.PathMeasure
+import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Display
 import android.view.accessibility.AccessibilityNodeInfo
 import java.io.File
@@ -53,6 +61,8 @@ class AndroidUiControllerService : AccessibilityService() {
         val editable: Boolean,
         val enabled: Boolean,
         val checked: Boolean,
+        val focused: Boolean,
+        val scrollable: Boolean,
         val packageName: String?,
         val x: Int,
         val y: Int,
@@ -119,6 +129,74 @@ class AndroidUiControllerService : AccessibilityService() {
         edit.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
         val bundle = Bundle().apply {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+        }
+        return edit.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, bundle)
+    }
+
+    /** Tap the visible point (x, y). Prefers clicking the containing clickable node so the app's
+     *  onClick semantics fire; falls back to a synthetic tap gesture at that coordinate. */
+    fun clickAt(x: Int, y: Int): Boolean = synchronized(lock) {
+        val root = rootInActiveWindow ?: return false
+        val node = clickableAt(root, x, y)
+        if (node != null) return node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        return dispatchGestureBlocking(tapGesture(x, y, 1L))
+    }
+
+    /** Long-press the visible point (x, y): node long-click when possible, else a gesture. */
+    fun longPressAt(x: Int, y: Int): Boolean = synchronized(lock) {
+        val root = rootInActiveWindow ?: return false
+        val node = clickableAt(root, x, y)
+        if (node != null && node.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)) return true
+        return dispatchGestureBlocking(tapGesture(x, y, 600L))
+    }
+
+    /** Swipe between two screen points over [durationMs]; used for scrolling lists and paging. */
+    fun swipe(fromX: Int, fromY: Int, toX: Int, toY: Int, durationMs: Long = 300L): Boolean = synchronized(lock) {
+        val path = Path().apply { moveTo(fromX.toFloat(), fromY.toFloat()); lineTo(toX.toFloat(), toY.toFloat()) }
+        val length = PathMeasure(path, false).length.toInt()
+        val desc = GestureDescription.Builder()
+            .addStroke(StrokeDescription(path, 0L, durationMs), length)
+            .build()
+        return dispatchGestureBlocking(desc)
+    }
+
+    /** Swipe a full directional gesture (up/down/left/right) across a third of the window. */
+    fun swipeDirection(direction: String): Boolean = synchronized(lock) {
+        val rect = windowRect() ?: return false
+        val cx = rect.centerX(); val cy = rect.centerY()
+        val dx = rect.width() / 3; val dy = rect.height() / 3
+        val (x1, y1, x2, y2) = when (direction.lowercase()) {
+            "up" -> Quad(cx, cy + dy, cx, cy - dy)
+            "down" -> Quad(cx, cy - dy, cx, cy + dy)
+            "left" -> Quad(cx + dx, cy, cx - dx, cy)
+            "right" -> Quad(cx - dx, cy, cx + dx, cy)
+            else -> return false
+        }
+        return swipe(x1, y1, x2, y2)
+    }
+
+    /** Perform a global/system visible action by name: back / home / recents / notifications / quick_settings. */
+    fun pressGlobalKey(key: String): Boolean = synchronized(lock) {
+        when (key.lowercase()) {
+            "back" -> performGlobalAction(GLOBAL_ACTION_BACK)
+            "home" -> performGlobalAction(GLOBAL_ACTION_HOME)
+            "recents" -> performGlobalAction(GLOBAL_ACTION_RECENTS)
+            "notifications" -> performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+            "quick_settings" -> performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+            else -> false
+        }
+    }
+
+    /** Clear the focused (or first) editable field. Text models can't see the cursor, so a
+     *  destructive backspace is unreliable — clearing the whole field is deterministic. */
+    fun clearFocusedText(): Boolean = synchronized(lock) {
+        val root = rootInActiveWindow ?: return false
+        val edit = findNode(root) { n -> n.isEditable && n.isFocused }
+            ?: findNode(root) { n -> n.isEditable }
+            ?: return false
+        edit.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        val bundle = Bundle().apply {
+            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "")
         }
         return edit.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, bundle)
     }
@@ -203,6 +281,8 @@ class AndroidUiControllerService : AccessibilityService() {
             editable = node.isEditable,
             enabled = node.isEnabled,
             checked = node.isChecked,
+            focused = node.isFocused,
+            scrollable = node.isScrollable,
             packageName = node.packageName?.toString(),
             x = rect.left,
             y = rect.top,
@@ -228,6 +308,63 @@ class AndroidUiControllerService : AccessibilityService() {
         }
         return null
     }
+
+    /** Returns the smallest (innermost) clickable node whose bounds contain (x, y), if any. */
+    private fun clickableAt(root: AccessibilityNodeInfo, x: Int, y: Int): AccessibilityNodeInfo? {
+        val stack = java.util.ArrayDeque<AccessibilityNodeInfo>()
+        stack.add(root)
+        var visited = 0
+        var best: AccessibilityNodeInfo? = null
+        var bestArea = Int.MAX_VALUE
+        while (stack.isNotEmpty() && visited < 512) {
+            val node = stack.poll() ?: break
+            visited++
+            val rect = Rect()
+            node.getBoundsInScreen(rect)
+            if (rect.contains(x, y)) {
+                if (node.isClickable) {
+                    val area = rect.width() * rect.height()
+                    if (area < bestArea) { bestArea = area; best = node }
+                }
+                for (i in 0 until node.childCount) {
+                    node.getChild(i)?.let { stack.add(it) }
+                }
+            }
+        }
+        return best
+    }
+
+    /** A single-stroke gesture at a point, [durationMs] long (1ms = tap, ~600ms = long press). */
+    private fun tapGesture(x: Int, y: Int, durationMs: Long): GestureDescription {
+        val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+        return GestureDescription.Builder()
+            .addStroke(StrokeDescription(path, 0L, durationMs))
+            .build()
+    }
+
+    /** Dispatches a gesture on the accessibility thread and blocks (≤2s) for the callback. */
+    private fun dispatchGestureBlocking(desc: GestureDescription): Boolean {
+        val latch = CountDownLatch(1)
+        val done = java.util.concurrent.atomic.AtomicReference<Boolean?>(null)
+        val handler = Handler(Looper.getMainLooper())
+        if (!dispatchGesture(desc, object : GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription?) { done.set(true); latch.countDown() }
+            override fun onCancelled(gestureDescription: GestureDescription?) { done.set(false); latch.countDown() }
+        }, handler)) return false
+        if (!latch.await(2, TimeUnit.SECONDS)) return false
+        return done.get() ?: false
+    }
+
+    /** Bounds of the active window's root node, used to derive gesture geometry. */
+    private fun windowRect(): Rect? = synchronized(lock) {
+        val root = rootInActiveWindow ?: return null
+        val rect = Rect()
+        root.getBoundsInScreen(rect)
+        rect
+    }
+
+    /** Tiny holder for a 4-int coordinate quadruple used by [swipeDirection]. */
+    private data class Quad(val x1: Int, val y1: Int, val x2: Int, val y2: Int)
 
     companion object {
         private val lock = Any()
