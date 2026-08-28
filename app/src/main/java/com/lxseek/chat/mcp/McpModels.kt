@@ -4,6 +4,7 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -63,6 +64,32 @@ data class McpCallPayload(
     val images: List<McpImagePayload>,
     val structuredContent: JsonElement?,
     val isError: Boolean,
+)
+
+/** A resource exposed by an MCP server (`resources/list`), mirroring cc-haha's ListMcpResourcesTool. */
+data class McpResource(
+    val uri: String,
+    val name: String,
+    val description: String = "",
+    val mimeType: String? = null,
+)
+
+/** One item of a `resources/read` result (text or base64 blob). */
+data class McpResourceContent(
+    val uri: String,
+    val mimeType: String? = null,
+    val text: String? = null,
+    val blob: String? = null,
+)
+
+/** Resource listing surfaced to the model, tagged with the owning server name. */
+@Serializable
+data class McpResourceListing(
+    val uri: String,
+    val name: String,
+    val description: String = "",
+    val mimeType: String? = null,
+    val server: String,
 )
 
 /** Server → client elicitation mode (MCP 2025-11-25 `elicitation` feature). */

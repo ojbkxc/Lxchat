@@ -1,5 +1,8 @@
 package com.lxseek.chat.mcp
 
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -10,6 +13,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class McpModelsTest {
+    @Test
+    fun resourceListingsRoundTripThroughJson() {
+        val json = Json { ignoreUnknownKeys = true }
+        val listings = listOf(
+            McpResourceListing(
+                uri = "file:///etc/hosts",
+                name = "hosts",
+                description = "System hosts file",
+                mimeType = "text/plain",
+                server = "fs",
+            ),
+            McpResourceListing(
+                uri = "log://today",
+                name = "today",
+                server = "logger",
+            ),
+        )
+
+        val encoded = json.encodeToString<List<McpResourceListing>>(listings)
+        val decoded = json.decodeFromString<List<McpResourceListing>>(encoded)
+
+        assertEquals(listings, decoded)
+    }
     @Test
     fun publicNamesAreStableBoundedAndCollisionResistant() {
         val first = publicMcpToolName("server-123", "read image")

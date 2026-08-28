@@ -3,6 +3,7 @@ package com.lxseek.chat.mcp
 import android.content.Context
 import com.lxseek.chat.data.McpServerConfig
 import com.lxseek.chat.data.repository.SettingsRepository
+import com.lxseek.chat.model.ToolImageAttachment
 import com.lxseek.chat.tool.ToolExecutionResult
 import com.lxseek.chat.tool.ToolImageStore
 import com.lxseek.chat.util.DebugLog
@@ -181,6 +182,96 @@ class McpRegistry(
             scheduleRetry(runtime)
             ToolExecutionResult(
                 text = "MCP tool '${descriptor.remote.name}' failed: ${userMessage(e)}",
+                isError = true,
+            )
+        }
+    }
+
+    /**
+     * List MCP resources across connected servers (optionally filtered by server name).
+     * A server that does not implement resources is skipped, mirroring cc-haha's
+     * ListMcpResourcesTool which isolates one server's failure from the rest.
+     */
+    suspend fun listResources(serverFilter: String?): List<McpResourceListing> {
+        val targets = synchronized(lock) { runtimes.values.toList() }
+        val listings = mutableListOf<McpResourceListing>()
+        for (runtime in targets) {
+            val serverName = runtime.config.name.ifBlank { runtime.config.url }
+            if (serverFilter != null && serverFilter != serverName) continue
+            if (snapshots.value[runtime.config.id]?.status != McpConnectionStatus.CONNECTED) continue
+            val resources = try {
+                runtime.client.listResources()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                continue
+            }
+            resources.forEach { resource ->
+                listings += McpResourceListing(
+                    uri = resource.uri,
+                    name = resource.name,
+                    description = resource.description,
+                    mimeType = resource.mimeType,
+                    server = serverName,
+                )
+            }
+        }
+        return listings
+    }
+
+    /**
+     * Read a single MCP resource by URI from the named server (`resources/read`). Text content
+     * is inlined; image blobs are persisted as multimodal attachments; other binary blobs are
+     * reported as not inlinable instead of dumping base64 into the model context.
+     */
+    suspend fun readResource(serverName: String, uri: String): ToolExecutionResult {
+        val runtime = synchronized(lock) {
+            runtimes.values.firstOrNull { it.config.name.ifBlank { it.config.url } == serverName }
+        } ?: return ToolExecutionResult("MCP server '$serverName' not found", isError = true)
+        if (snapshots.value[runtime.config.id]?.status != McpConnectionStatus.CONNECTED) {
+            return ToolExecutionResult("MCP server '$serverName' is not connected", isError = true)
+        }
+        return try {
+            val contents = runtime.client.readResource(uri)
+            val attachments = mutableListOf<ToolImageAttachment>()
+            val texts = mutableListOf<String>()
+            contents.forEach { content ->
+                val mimeType = content.mimeType.orEmpty()
+                when {
+                    !content.blob.isNullOrBlank() && mimeType.startsWith("image/") ->
+                        runCatching {
+                            imageStore.persistBase64(
+                                data = content.blob,
+                                mimeType = mimeType,
+                                filePrefix = "mcp-resource",
+                            )
+                        }.getOrNull()?.let(attachments::add)
+                    !content.text.isNullOrBlank() -> texts += content.text
+                    !content.blob.isNullOrBlank() -> texts +=
+                        "[Binary resource (${mimeType.ifBlank { "unknown" }}) is not inlined on this device.]"
+                }
+            }
+            val guardedText = McpOutputGuard.guard(texts.joinToString("\n\n"))
+            val resultText = buildString {
+                append(guardedText.text)
+                if (attachments.isNotEmpty()) {
+                    if (isNotEmpty()) append("\n\n")
+                    append(
+                        if (attachments.size == 1) {
+                            "[The resource contains one image. It is attached as visual context.]"
+                        } else {
+                            "[The resource contains ${attachments.size} images. They are attached as visual context.]"
+                        },
+                    )
+                }
+                if (isEmpty()) append("[MCP resource '$uri' returned no readable content]")
+            }
+            ToolExecutionResult(text = resultText, images = attachments)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            ToolExecutionResult(
+                text = "Failed to read MCP resource '$uri': ${userMessage(e)}",
                 isError = true,
             )
         }

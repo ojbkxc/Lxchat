@@ -122,6 +122,72 @@ internal class McpProtocolClient(
         }
     }
 
+    /**
+     * Enumerate resources exposed by this server (`resources/list`), paginating like tools.
+     * Servers that do not implement resources throw; callers treat that as "no resources".
+     */
+    suspend fun listResources(): List<McpResource> = mutex.withLock {
+        retryAfterSessionExpiry {
+            ensureInitializedLocked()
+            val resources = mutableListOf<McpResource>()
+            var cursor: String? = null
+            repeat(MAX_TOOL_PAGES) {
+                val params = if (cursor == null) {
+                    buildJsonObject {}
+                } else {
+                    buildJsonObject { put("cursor", cursor) }
+                }
+                val result = requestLocked("resources/list", params)
+                val page = result["resources"] as? JsonArray
+                    ?: throw IOException("MCP resources/list returned no resources array")
+                page.forEach { element ->
+                    val obj = element.asObjectOrNull() ?: return@forEach
+                    val uri = (obj["uri"] as? JsonPrimitive)?.contentOrNull
+                        ?.takeIf(String::isNotBlank)
+                        ?: return@forEach
+                    resources += McpResource(
+                        uri = uri,
+                        name = (obj["name"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+                        description = (obj["description"] as? JsonPrimitive)
+                            ?.contentOrNull
+                            .orEmpty(),
+                        mimeType = (obj["mimeType"] as? JsonPrimitive)?.contentOrNull,
+                    )
+                }
+                cursor = (result["nextCursor"] as? JsonPrimitive)
+                    ?.contentOrNull
+                    ?.takeIf(String::isNotBlank)
+                if (cursor == null) return@retryAfterSessionExpiry resources
+            }
+            throw IOException("MCP resources/list exceeded $MAX_TOOL_PAGES pages")
+        }
+    }
+
+    /**
+     * Read a single resource by URI (`resources/read`). Returned items may be text or base64
+     * blobs; callers decide how to inline/persist each one (mirrors cc-haha's ReadMcpResourceTool).
+     */
+    suspend fun readResource(uri: String): List<McpResourceContent> = mutex.withLock {
+        retryAfterSessionExpiry {
+            ensureInitializedLocked()
+            val result = requestLocked(
+                method = "resources/read",
+                params = buildJsonObject { put("uri", uri) },
+            )
+            val contents = mutableListOf<McpResourceContent>()
+            (result["contents"] as? JsonArray).orEmpty().forEach { element ->
+                val obj = element.asObjectOrNull() ?: return@forEach
+                contents += McpResourceContent(
+                    uri = (obj["uri"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+                    mimeType = (obj["mimeType"] as? JsonPrimitive)?.contentOrNull,
+                    text = (obj["text"] as? JsonPrimitive)?.contentOrNull,
+                    blob = (obj["blob"] as? JsonPrimitive)?.contentOrNull,
+                )
+            }
+            contents
+        }
+    }
+
     override fun close() {
         initialized = false
         initializedGeneration = null
@@ -147,6 +213,8 @@ internal class McpProtocolClient(
                     buildJsonObject {
                         // Server → client elicitation (forms / URL confirmation), MCP 2025-11-25.
                         if (elicitationHandler != null) put("elicitation", true)
+                        // Client consumes server resources (resources/list, resources/read).
+                        put("resources", buildJsonObject { put("listChanged", false) })
                     },
                 )
                 put(
