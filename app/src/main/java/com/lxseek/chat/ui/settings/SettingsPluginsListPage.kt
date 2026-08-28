@@ -48,6 +48,8 @@ fun SettingsPluginsListPage(
     onBack: () -> Unit,
 ) {
     val plugins by viewModel.pluginHost.plugins.collectAsState()
+    val membershipStatus by viewModel.membership.status.collectAsState()
+    val hasMembership = membershipStatus.isActive
 
     BackHandler { onBack() }
 
@@ -129,6 +131,7 @@ fun SettingsPluginsListPage(
                         Switch(
                             checked = pluginInfo.enabled,
                             onCheckedChange = { viewModel.pluginHost.setEnabled(manifest.id, it) },
+                            enabled = !manifest.requiresMembership || hasMembership,
                         )
                     }
                     HorizontalDivider(

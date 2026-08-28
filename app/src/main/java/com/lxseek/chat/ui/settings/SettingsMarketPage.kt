@@ -20,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.viewmodel.ChatViewModel
@@ -55,15 +57,19 @@ import com.lxseek.chat.viewmodel.ChatViewModel
 fun SettingsMarketPage(
     viewModel: ChatViewModel,
     onBack: () -> Unit,
+    onOpenOnlineMarket: () -> Unit,
 ) {
     val skills by viewModel.pluginHost.skillHost.skills.collectAsState()
     val plugins by viewModel.pluginHost.plugins.collectAsState()
+    val membershipStatus by viewModel.membership.status.collectAsState()
+    val hasMembership = membershipStatus.isActive
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf(
         stringResource(R.string.settings_market_tab_all),
         stringResource(R.string.settings_market_tab_skills),
         stringResource(R.string.settings_market_tab_plugins),
+        stringResource(R.string.settings_online_market),
     )
 
     BackHandler { onBack() }
@@ -99,14 +105,12 @@ fun SettingsMarketPage(
             }
 
             // Build the visible item set based on the selected tab.
+            val showOnline = selectedTab == 3
             val showSkills = selectedTab == 0 || selectedTab == 1
             val showPlugins = selectedTab == 0 || selectedTab == 2
 
-            val skillsCount = if (showSkills) skills.size else 0
-            val pluginsCount = if (showPlugins) plugins.size else 0
-            val isEmpty = skillsCount == 0 && pluginsCount == 0
-
-            if (isEmpty) {
+            if (showOnline) {
+                // Online Tab: prompt the user to open the online plugin market.
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -115,41 +119,68 @@ fun SettingsMarketPage(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = stringResource(R.string.settings_market_empty),
+                        text = stringResource(R.string.settings_online_market_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(onClick = onOpenOnlineMarket) {
+                        Text(stringResource(R.string.settings_online_market))
+                    }
                 }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    if (showSkills && skills.isNotEmpty()) {
-                        item(key = "section_skills") {
-                            SectionHeader(stringResource(R.string.settings_market_section_skills))
-                        }
-                        items(skills, key = { "skill_${it.skill.name}" }) { skillInfo ->
-                            val skill = skillInfo.skill
-                            MarketRow(
-                                name = skill.name,
-                                description = skill.description,
-                                requiresMembership = skill.requiresMembership,
-                                enabled = skillInfo.enabled,
-                                onToggle = { viewModel.pluginHost.skillHost.setEnabled(skill.name, it) },
-                            )
-                        }
+                val skillsCount = if (showSkills) skills.size else 0
+                val pluginsCount = if (showPlugins) plugins.size else 0
+                val isEmpty = skillsCount == 0 && pluginsCount == 0
+
+                if (isEmpty) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_market_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                    if (showPlugins && plugins.isNotEmpty()) {
-                        item(key = "section_plugins") {
-                            SectionHeader(stringResource(R.string.settings_market_section_plugins))
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        if (showSkills && skills.isNotEmpty()) {
+                            item(key = "section_skills") {
+                                SectionHeader(stringResource(R.string.settings_market_section_skills))
+                            }
+                            items(skills, key = { "skill_${it.skill.name}" }) { skillInfo ->
+                                val skill = skillInfo.skill
+                                MarketRow(
+                                    name = skill.name,
+                                    description = skill.description,
+                                    requiresMembership = skill.requiresMembership,
+                                    hasMembership = hasMembership,
+                                    enabled = skillInfo.enabled,
+                                    onToggle = { viewModel.pluginHost.skillHost.setEnabled(skill.name, it) },
+                                )
+                            }
                         }
-                        items(plugins, key = { "plugin_${it.manifest.id}" }) { pluginInfo ->
-                            val manifest = pluginInfo.manifest
-                            MarketRow(
-                                name = manifest.name,
-                                description = manifest.description,
-                                requiresMembership = manifest.requiresMembership,
-                                enabled = pluginInfo.enabled,
-                                onToggle = { viewModel.pluginHost.setEnabled(manifest.id, it) },
-                            )
+                        if (showPlugins && plugins.isNotEmpty()) {
+                            item(key = "section_plugins") {
+                                SectionHeader(stringResource(R.string.settings_market_section_plugins))
+                            }
+                            items(plugins, key = { "plugin_${it.manifest.id}" }) { pluginInfo ->
+                                val manifest = pluginInfo.manifest
+                                MarketRow(
+                                    name = manifest.name,
+                                    description = manifest.description,
+                                    requiresMembership = manifest.requiresMembership,
+                                    hasMembership = hasMembership,
+                                    enabled = pluginInfo.enabled,
+                                    onToggle = { viewModel.pluginHost.setEnabled(manifest.id, it) },
+                                )
+                            }
                         }
                     }
                 }
@@ -175,9 +206,16 @@ private fun MarketRow(
     name: String,
     description: String?,
     requiresMembership: Boolean,
+    hasMembership: Boolean,
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
 ) {
+    val switchEnabled = !requiresMembership || hasMembership
+    val nameColor = if (switchEnabled) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -189,6 +227,7 @@ private fun MarketRow(
                 Text(
                     text = name,
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = nameColor,
                 )
                 if (requiresMembership) {
                     Spacer(modifier = Modifier.width(8.dp))
@@ -212,6 +251,7 @@ private fun MarketRow(
         Switch(
             checked = enabled,
             onCheckedChange = onToggle,
+            enabled = switchEnabled,
         )
     }
     HorizontalDivider(

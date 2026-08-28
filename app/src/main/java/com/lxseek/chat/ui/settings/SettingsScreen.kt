@@ -271,9 +271,9 @@ private val settingsGroups = listOf(
         SettingsCategory("trigger", R.string.settings_trigger, R.string.settings_trigger_desc, Icons.Default.Bolt),
         SettingsCategory("sms_command", R.string.settings_sms_command, R.string.settings_sms_command_desc, Icons.Default.Sms),
         SettingsCategory("reply_channel", R.string.settings_reply_channel, R.string.settings_reply_channel_desc, Icons.Default.Send),
-        SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension, requiresMembership = true),
-        SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store, requiresMembership = true),
-        SettingsCategory("online_market", R.string.settings_online_market, R.string.settings_online_market_desc, Icons.Default.ShoppingCart, requiresMembership = true),
+        SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
+        SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
+
         SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
@@ -305,7 +305,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
     val isSyncingModels by viewModel.isSyncingModels.collectAsState()
     val fetchingModelsMessage = stringResource(R.string.snackbar_fetching_models)
 
-    // Membership status: non-members see membership-gated entries (plugins/market/online_market)
+    // Membership status: non-members see membership-gated entries (plugins/market)
     // grayed out and non-clickable.
     val membershipStatus by viewModel.membership.status.collectAsState()
     val hasMembership = membershipStatus.isActive
@@ -342,7 +342,11 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "adb_shell" -> SettingsAdbPage(viewModel, onBack = { selectedCategory = null })
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
                 "plugins" -> SettingsPluginsListPage(viewModel, onBack = { selectedCategory = null })
-                "market" -> SettingsMarketPage(viewModel, onBack = { selectedCategory = null })
+                "market" -> SettingsMarketPage(
+                    viewModel,
+                    onBack = { selectedCategory = null },
+                    onOpenOnlineMarket = { selectedCategory = "online_market" },
+                )
                 "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null })
                 "online_market" -> SettingsPluginMarketPage(
                     viewModel,
