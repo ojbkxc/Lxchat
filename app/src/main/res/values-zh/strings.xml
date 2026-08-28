@@ -14,6 +14,9 @@
     <string name="expand">展开</string>
     <string name="settings">设置</string>
     <string name="tools">工具</string>
+    <string name="tools_group_common">常用</string>
+    <string name="tools_group_advanced">高级功能</string>
+    <string name="search">搜索</string>
     <string name="code_execution">代码执行</string>
     <string name="google_search">Google 搜索</string>
     <string name="thinking">思考</string>

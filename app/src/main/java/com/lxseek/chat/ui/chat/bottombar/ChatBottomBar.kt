@@ -498,7 +498,7 @@ fun ChatBottomBar(
                                 onValueChange = { modelSearchQuery = it },
                                 placeholder = { Text(stringResource(R.string.models_search_hint)) },
                                 singleLine = true,
-                                leadingIcon = { Icon(Icons.Default.Search, "搜索", modifier = Modifier.size(18.dp)) },
+                                leadingIcon = { Icon(Icons.Default.Search, stringResource(R.string.search), modifier = Modifier.size(18.dp)) },
                                 trailingIcon = if (modelSearchQuery.isNotEmpty()) {
                                     { IconButton(onClick = { modelSearchQuery = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.models_clear_search)) } }
                                 } else null,
@@ -643,6 +643,64 @@ fun ChatBottomBar(
                         matchTextFieldWidth = false,
                         shape = RoundedCornerShape(12.dp)
                     ) {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                text = stringResource(R.string.tools_group_common),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(androidx.compose.ui.res.painterResource(id = com.lxseek.chat.R.drawable.neurology_24), stringResource(R.string.thinking), modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(stringResource(R.string.thinking))
+                                        Text(
+                                            text = thinkingControlShortLabel(
+                                                thinkingEnabled,
+                                                thinkingLevel,
+                                                thinkingBudgetEnabled,
+                                                thinkingBudgetTokens
+                                            ),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            },
+                            trailingIcon = {
+                                Switch(
+                                    checked = thinkingEnabled,
+                                    onCheckedChange = { onThinkingToggle(it) },
+                                    modifier = Modifier.scale(0.7f)
+                                )
+                            },
+                            onClick = {
+                                activeMenu = null
+                                showThinkingSheet = true
+                            }
+                        )
+                        if (showWebSearch) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Language, stringResource(R.string.web_search), modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(stringResource(R.string.web_search))
+                                    }
+                                },
+                                trailingIcon = {
+                                    Switch(
+                                        checked = webSearchEnabled,
+                                        onCheckedChange = { onWebSearchToggle(it) },
+                                        modifier = Modifier.scale(0.7f)
+                                    )
+                                },
+                                onClick = { onWebSearchToggle(!webSearchEnabled) }
+                            )
+                        }
                         DropdownMenuItem(
                             text = {
                                 Column {
@@ -661,6 +719,23 @@ fun ChatBottomBar(
                             }
                         )
                         HorizontalDivider()
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                text = stringResource(R.string.tools_group_advanced),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Tune, stringResource(R.string.advanced_settings), modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(stringResource(R.string.advanced_settings))
+                                }
+                            },
+                            onClick = { activeMenu = null; onAdvancedClick() }
+                        )
                         val isGemini = provider.equals("google", ignoreCase = true) && isModelValid
                         if (isGemini) {
                             DropdownMenuItem(
@@ -702,38 +777,6 @@ fun ChatBottomBar(
                                 onClick = { onGoogleSearchToggle(!googleSearchEnabled) }
                             )
                         }
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(androidx.compose.ui.res.painterResource(id = com.lxseek.chat.R.drawable.neurology_24), stringResource(R.string.thinking), modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(stringResource(R.string.thinking))
-                                        Text(
-                                            text = thinkingControlShortLabel(
-                                                thinkingEnabled,
-                                                thinkingLevel,
-                                                thinkingBudgetEnabled,
-                                                thinkingBudgetTokens
-                                            ),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            },
-                            trailingIcon = {
-                                Switch(
-                                    checked = thinkingEnabled,
-                                    onCheckedChange = { onThinkingToggle(it) },
-                                    modifier = Modifier.scale(0.7f)
-                                )
-                            },
-                            onClick = {
-                                activeMenu = null
-                                showThinkingSheet = true
-                            }
-                        )
                         if (openAiServiceTierAvailable && isModelValid) {
                             DropdownMenuItem(
                                 text = {
@@ -770,25 +813,6 @@ fun ChatBottomBar(
                                 },
                             )
                         }
-                        if (showWebSearch) {
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Language, stringResource(R.string.web_search), modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(stringResource(R.string.web_search))
-                                    }
-                                },
-                                trailingIcon = {
-                                    Switch(
-                                        checked = webSearchEnabled,
-                                        onCheckedChange = { onWebSearchToggle(it) },
-                                        modifier = Modifier.scale(0.7f)
-                                    )
-                                },
-                                onClick = { onWebSearchToggle(!webSearchEnabled) }
-                            )
-                        }
                         if (showShell) {
                             DropdownMenuItem(
                                 text = {
@@ -818,16 +842,6 @@ fun ChatBottomBar(
                             },
                             enabled = canCompact && !isCompacting,
                             onClick = { activeMenu = null; onCompactClick() },
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Tune, stringResource(R.string.advanced_settings), modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(stringResource(R.string.advanced_settings))
-                                }
-                            },
-                            onClick = { activeMenu = null; onAdvancedClick() }
                         )
                     }
                 }
