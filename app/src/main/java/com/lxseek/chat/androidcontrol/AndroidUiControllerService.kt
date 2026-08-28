@@ -5,7 +5,6 @@ import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
 import android.accessibilityservice.AccessibilityService.ScreenshotResult
 import android.accessibilityservice.GestureDescription
 import android.accessibilityservice.GestureDescription.StrokeDescription
-import android.accessibilityservice.GestureResultCallback
 import android.graphics.Bitmap
 import android.graphics.Path
 import android.graphics.Rect
@@ -345,7 +344,7 @@ class AndroidUiControllerService : AccessibilityService() {
         val latch = CountDownLatch(1)
         val done = java.util.concurrent.atomic.AtomicReference<Boolean?>(null)
         val handler = Handler(Looper.getMainLooper())
-        if (!dispatchGesture(desc, object : GestureResultCallback() {
+        if (!dispatchGesture(desc, object : AccessibilityService.GestureResultCallback() {
             override fun onCompleted(gestureDescription: GestureDescription?) { done.set(true); latch.countDown() }
             override fun onCancelled(gestureDescription: GestureDescription?) { done.set(false); latch.countDown() }
         }, handler)) return false
