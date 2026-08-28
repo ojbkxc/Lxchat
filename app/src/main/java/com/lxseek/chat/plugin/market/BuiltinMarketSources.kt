@@ -71,7 +71,7 @@ object BuiltinMarketSources {
         val parsed = json.decodeFromString<ClawhubListResponse>(body)
         val plugins = (parsed.items ?: emptyList())
             .filter { !it.slug.isNullOrBlank() }
-            .map { item -> ClawhubListItem.toMeta(item) }
+            .map { it.toMeta() }
         return MarketIndex(plugins = plugins)
     }
 
@@ -126,7 +126,7 @@ object BuiltinMarketSources {
         val parsed = json.decodeFromString<SkillhubEnvelope<SkillhubListData>>(httpJson(url))
         val plugins = (parsed.data?.skills ?: emptyList())
             .filter { !it.slug.isNullOrBlank() }
-            .map { item -> SkillhubListItem.toMeta(item) }
+            .map { it.toMeta() }
         return MarketIndex(plugins = plugins)
     }
 
@@ -155,7 +155,7 @@ object BuiltinMarketSources {
 
     private fun ClawhubListItem.toMeta(): MarketPluginMeta = MarketPluginMeta(
         id = "$PREFIX_CLAWHUB:$slug",
-        name = displayName ?: slug,
+        name = displayName ?: slug ?: "",
         version = "1.0.0",
         kind = MarketPluginKind.SKILL,
         description = summary ?: "",
@@ -165,7 +165,7 @@ object BuiltinMarketSources {
 
     private fun SkillhubListItem.toMeta(): MarketPluginMeta = MarketPluginMeta(
         id = "$PREFIX_SKILLHUB:$slug",
-        name = name ?: displayName ?: slug,
+        name = name ?: displayName ?: slug ?: "",
         version = version ?: "1.0.0",
         kind = MarketPluginKind.SKILL,
         description = description_zh ?: description ?: summary_zh ?: summary ?: "",
