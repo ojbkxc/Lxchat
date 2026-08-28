@@ -181,9 +181,9 @@ class MainActivity : ComponentActivity() {
             }
             setContent {
             val themeMode by settingsManager.themeMode.collectAsState(initial = "FOLLOW_DEVICE")
-            val colorSchemeName by settingsManager.colorScheme.collectAsState(initial = "DEFAULT")
+            val colorSchemeName by settingsManager.colorScheme.collectAsState(initial = "MINIMAL")
             val schemeStyleName by settingsManager.schemeStyle.collectAsState(initial = "TONAL_SPOT")
-            val dynamicColor by settingsManager.dynamicColor.collectAsState(initial = true)
+            val dynamicColor by settingsManager.dynamicColor.collectAsState(initial = false)
             val fontPreference by settingsManager.fontPreference.collectAsState(initial = "app_default")
             val customFontPath by settingsManager.customFontPath.collectAsState(initial = "")
             val appReduceMotion by settingsManager.reduceMotion.collectAsState(initial = false)
@@ -194,7 +194,7 @@ class MainActivity : ComponentActivity() {
             }
 
             val themeModeEnum = try { com.lxseek.chat.ui.theme.ThemeMode.valueOf(themeMode) } catch (_: Exception) { com.lxseek.chat.ui.theme.ThemeMode.FOLLOW_DEVICE }
-            val colorSchemePreset = try { com.lxseek.chat.ui.theme.ColorSchemePreset.valueOf(colorSchemeName) } catch (_: Exception) { com.lxseek.chat.ui.theme.ColorSchemePreset.MIDNIGHT }
+            val colorSchemePreset = try { com.lxseek.chat.ui.theme.ColorSchemePreset.valueOf(colorSchemeName) } catch (_: Exception) { com.lxseek.chat.ui.theme.ColorSchemePreset.MINIMAL }
             val schemeStyle = try { com.lxseek.chat.ui.theme.SchemeStyle.valueOf(schemeStyleName) } catch (_: Exception) { com.lxseek.chat.ui.theme.SchemeStyle.TONAL_SPOT }
 
             val systemDark = isSystemInDarkTheme()

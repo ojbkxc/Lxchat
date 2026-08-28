@@ -685,6 +685,7 @@
     <string name="theme_mode_amoled">AMOLED</string>
     <string name="theme_mode_follow_device">Follow Device</string>
     <string name="color_scheme">Color Scheme</string>
+    <string name="color_scheme_minimal">Minimal</string>
     <string name="color_scheme_midnight">Midnight</string>
     <string name="color_scheme_nordic">Nordic</string>
     <string name="color_scheme_forest">Forest</string>

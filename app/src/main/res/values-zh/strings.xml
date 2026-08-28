@@ -715,6 +715,7 @@
     <string name="theme_mode_amoled">AMOLED 纯黑</string>
     <string name="theme_mode_follow_device">跟随系统</string>
     <string name="color_scheme">配色方案</string>
+    <string name="color_scheme_minimal">极简</string>
     <string name="color_scheme_midnight">午夜</string>
     <string name="color_scheme_nordic">北欧</string>
     <string name="color_scheme_forest">森林</string>

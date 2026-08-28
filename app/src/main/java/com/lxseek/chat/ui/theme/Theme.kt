@@ -72,9 +72,9 @@ private fun typographyWithFont(family: FontFamily): Typography {
 @Composable
 fun LxChatTheme(
     themeMode: ThemeMode = ThemeMode.FOLLOW_DEVICE,
-    colorSchemePreset: ColorSchemePreset = ColorSchemePreset.MIDNIGHT,
+    colorSchemePreset: ColorSchemePreset = ColorSchemePreset.MINIMAL,
     schemeStyle: SchemeStyle = SchemeStyle.TONAL_SPOT,
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     fontPreference: String = "app_default",
     customFontPath: String = "",
     content: @Composable () -> Unit
