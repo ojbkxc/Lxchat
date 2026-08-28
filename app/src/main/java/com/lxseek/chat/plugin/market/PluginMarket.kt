@@ -45,6 +45,10 @@ class PluginMarket(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** 暴露运行时引擎编排器，供设置页/运行时管理 UI 访问状态与启停。 */
+    val runtimeEngineManager: RuntimeEngineManager?
+        get() = runtimeManager
+
     private val _sources = MutableStateFlow<List<MarketSource>>(emptyList())
     /** 用户添加的市场源列表。 */
     val sources: StateFlow<List<MarketSource>> = _sources.asStateFlow()

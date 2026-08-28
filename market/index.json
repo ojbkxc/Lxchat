@@ -3,6 +3,21 @@
   "generatedAt": 0,
   "plugins": [
     {
+      "id": "runtime-node-inkos",
+      "name": "Node + inkos",
+      "version": "22.5.0",
+      "kind": "RUNTIME",
+      "author": "LxChat",
+      "description": "Node.js (>=22.5, powers node:sqlite) bundled with the @actalk/inkos novel-writing engine (AGPL-3.0). Lets the assistant write long-form fiction chapters using your configured model key. Binary from nodejs-mobile android-arm64 build; inkos packaged unmodified as an independent process.",
+      "homepage": "https://github.com/Narcooo/inkos",
+      "runtimeType": "node",
+      "versions": ["20.19.0", "22.5.0", "24.0.0"],
+      "minVersion": "22.5.0",
+      "downloadUrl": "https://raw.githubusercontent.com/ojbkxc/Lxchat/main/market/runtimes/node-inkos/{version}/node-inkos.toolpkg",
+      "license": "AGPL-3.0",
+      "sourceUrl": "https://github.com/Narcooo/inkos"
+    },
+    {
       "id": "hello-skill",
       "name": "Hello Skill",
       "version": "1.0.0",

@@ -274,6 +274,7 @@ private val settingsGroups = listOf(
         SettingsCategory("reply_channel", R.string.settings_reply_channel, R.string.settings_reply_channel_desc, Icons.Default.Send),
         SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
         SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
+        SettingsCategory("runtime_engines", R.string.settings_runtime_engines, R.string.settings_runtime_engines_desc, Icons.Default.Android),
 
         SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
     )),
@@ -348,6 +349,10 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                     viewModel,
                     onBack = { selectedCategory = null },
                     onOpenOnlineMarket = { selectedCategory = "online_market" },
+                )
+                "runtime_engines" -> SettingsRuntimeEnginesPage(
+                    viewModel,
+                    onBack = { selectedCategory = null },
                 )
                 "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null })
                 "online_market" -> SettingsPluginMarketPage(
