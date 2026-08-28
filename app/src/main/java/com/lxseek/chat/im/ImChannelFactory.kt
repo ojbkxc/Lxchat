@@ -49,7 +49,7 @@ object ImChannelFactory {
             // WeChat: iLink native channel when token is set (扫码绑定),
             // legacy HTTP gateway fallback when only baseUrl is configured.
             ImPlatform.WECHAT -> when {
-                config.token.isNotBlank() -> WeixinChannel(config, cacheDir)
+                config.token.isNotBlank() -> WeixinChannel(config, cacheDir = cacheDir)
                 config.baseUrl.isNotBlank() -> GatewayChannel(config)
                 else -> null
             }
