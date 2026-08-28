@@ -131,6 +131,14 @@ class PluginMarket(
                     }
                 }
             }
+            // Merge built-in RUNTIME engine entries: external market sources today only carry
+            // SKILL entries, so without this the runtime engines page can never resolve a
+            // RUNTIME meta and the install button stays permanently disabled.
+            BuiltinMarketSources.fetchBuiltinRuntimeCatalog().plugins.forEach { meta ->
+                if (meta.id.isNotBlank() && meta.id !in merged) {
+                    merged[meta.id] = meta
+                }
+            }
             _catalog.value = merged.values.toList()
         } finally {
             _refreshing.value = false

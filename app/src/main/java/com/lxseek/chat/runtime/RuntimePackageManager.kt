@@ -45,6 +45,9 @@ class RuntimePackageManager(private val context: Context) {
      * 下载并安装引擎版本。compressUrl 可包含 `{version}` 占位符，会被替换为实际版本号。
      * 返回该版本的安装根目录。网络下载与解压均为阻塞操作，统一切到 [Dispatchers.IO]
      * 执行，避免在 UI 主线程同步联网触发 NetworkOnMainThreadException。
+     *
+     * 下载采用流式落盘（[HttpClient.downloadToFile]）而非 [HttpClient.getBytes]：引擎包可达
+     * 数百 MB，全量加载到 ByteArray 会 OOM；流式 copyTo 直接写文件，内存占用与包大小无关。
      */
     suspend fun install(engineId: String, version: String, compressUrl: String): File =
         withContext(Dispatchers.IO) {
@@ -54,12 +57,15 @@ class RuntimePackageManager(private val context: Context) {
                 return@withContext target
             }
             val url = compressUrl.replace("{version}", version)
-            val bytes = HttpClient.getBytes(url)
-                ?: throw IOException("引擎下载失败：HTTP 错误或连接中断")
-            if (bytes.isEmpty()) throw IOException("引擎下载内容为空")
             val tmp = File(context.filesDir, "runtimes/.downloads/${safeName(engineId)}-${safeName(version)}.zip")
             tmp.parentFile?.mkdirs()
-            tmp.writeBytes(bytes)
+            // 流式下载到临时文件：避免大包全量入内存导致 OOM。
+            try {
+                HttpClient.downloadToFile(url, tmp)
+            } catch (e: IOException) {
+                tmp.delete()
+                throw IOException("引擎下载失败：${e.message}", e)
+            }
             // 先校验包结构再落位：坏包不写入安装目录，并清理临时文件。
             target.mkdirs()
             try {

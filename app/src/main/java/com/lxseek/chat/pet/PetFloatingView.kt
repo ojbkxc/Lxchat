@@ -108,6 +108,9 @@ class PetFloatingView @JvmOverloads constructor(
     private var snapAnimator: ValueAnimator? = null
 
     @Volatile private var currentEmotion: PetEmotion = PetEmotion.IDLE
+    @Volatile private var currentTipText: String? = null
+    /** When non-null, the pet is being dragged and plays a directional run animation. */
+    @Volatile private var dragOverrideState: PetAnimation.State? = null
     private var emotionScope: CoroutineScope? = null
 
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
@@ -121,6 +124,14 @@ class PetFloatingView @JvmOverloads constructor(
                 if (emotion != currentEmotion) {
                     currentEmotion = emotion
                     animStartNanos = System.nanoTime() // reset so the new state starts at frame 0
+                    invalidate()
+                }
+            }
+        }
+        scope.launch {
+            PetEmotionController.tipText.collect { text ->
+                if (text != currentTipText) {
+                    currentTipText = text
                     invalidate()
                 }
             }
@@ -254,7 +265,7 @@ class PetFloatingView @JvmOverloads constructor(
 
     /** Resolves the current frame from [PetAnimation] and draws it from the atlas. */
     private fun drawSpritesheetFrame(canvas: Canvas, bitmap: Bitmap) {
-        val state = PetAnimation.stateForEmotion(currentEmotion)
+        val state = dragOverrideState ?: PetAnimation.stateForEmotion(currentEmotion)
         val elapsedMs = (System.nanoTime() - animStartNanos) / NANOS_PER_MS
         val tick = PetAnimation.playbackTickAtElapsedMs(state, elapsedMs)
         val f = tick.frame
@@ -297,12 +308,17 @@ class PetFloatingView @JvmOverloads constructor(
         }
     }
 
-    private fun tipText(): CharSequence? = when (currentEmotion) {
-        PetEmotion.THINKING -> context.getString(R.string.pet_tip_thinking)
-        PetEmotion.HAPPY -> context.getString(R.string.pet_tip_done)
-        PetEmotion.SAD -> context.getString(R.string.pet_tip_sad)
-        PetEmotion.ERROR -> context.getString(R.string.pet_tip_error)
-        PetEmotion.IDLE -> null
+    private fun tipText(): CharSequence? {
+        // Streaming text from the generation loop takes priority over emotion-based fixed text.
+        currentTipText?.let { return it }
+        return when (currentEmotion) {
+            PetEmotion.THINKING -> context.getString(R.string.pet_tip_thinking)
+            PetEmotion.HAPPY -> context.getString(R.string.pet_tip_done)
+            PetEmotion.SAD -> context.getString(R.string.pet_tip_sad)
+            PetEmotion.ERROR -> context.getString(R.string.pet_tip_error)
+            PetEmotion.WAITING -> context.getString(R.string.pet_tip_waiting)
+            PetEmotion.IDLE -> null
+        }
     }
 
     private fun drawTipBubble(canvas: Canvas) {
@@ -363,6 +379,10 @@ class PetFloatingView @JvmOverloads constructor(
             PetEmotion.ERROR -> {
                 drawFlatEyes(canvas, cx - eyeGap, cx + eyeGap, eyeY, eyeRadius)
                 drawFlatMouth(canvas, cx, cy, radius)
+            }
+            PetEmotion.WAITING -> {
+                drawEyes(canvas, cx - eyeGap, cx + eyeGap, eyeY, eyeRadius, pupilRadius, highlightRadius, highlightOffset, 0f)
+                drawOpenMouth(canvas, cx, cy, radius, small = true)
             }
             PetEmotion.IDLE -> {
                 drawEyes(canvas, cx - eyeGap, cx + eyeGap, eyeY, eyeRadius, pupilRadius, highlightRadius, highlightOffset, PUPIL_DROP_SCALE)
@@ -441,16 +461,31 @@ class PetFloatingView @JvmOverloads constructor(
                 downRawX = event.rawX; downRawY = event.rawY
                 downWindowX = params.x; downWindowY = params.y
                 wasDragging = false
+                dragOverrideState = null
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
                 val dx = (event.rawX - downRawX).toInt()
                 val dy = (event.rawY - downRawY).toInt()
                 if (!wasDragging && hypot(event.rawX - downRawX, event.rawY - downRawY) > DRAG_THRESHOLD_DP * resources.displayMetrics.density) wasDragging = true
-                if (wasDragging) { params.x = downWindowX + dx; params.y = downWindowY + dy; updateWindowLayout(params) }
+                if (wasDragging) {
+                    params.x = downWindowX + dx; params.y = downWindowY + dy; updateWindowLayout(params)
+                    // Directional run animation: right drag -> RUNNING_RIGHT, left drag -> RUNNING_LEFT.
+                    val newState = if (dx >= 0) PetAnimation.State.RUNNING_RIGHT else PetAnimation.State.RUNNING_LEFT
+                    if (newState != dragOverrideState) {
+                        dragOverrideState = newState
+                        animStartNanos = System.nanoTime()
+                        invalidate()
+                    }
+                }
                 return true
             }
             MotionEvent.ACTION_UP -> {
+                if (dragOverrideState != null) {
+                    dragOverrideState = null
+                    animStartNanos = System.nanoTime()
+                    invalidate()
+                }
                 if (!wasDragging) { launchApp(); return true }
                 snapToNearestEdge(params)
                 return true
@@ -468,7 +503,7 @@ class PetFloatingView @JvmOverloads constructor(
         if (custom != null && !custom.isRecycled) return isTransparentInBitmap(custom, x, y, bitmapDstRectF, 0, 0)
         val sheet = spritesheetBitmap
         if (sheet != null && !sheet.isRecycled) {
-            val state = PetAnimation.stateForEmotion(currentEmotion)
+            val state = dragOverrideState ?: PetAnimation.stateForEmotion(currentEmotion)
             val elapsedMs = (System.nanoTime() - animStartNanos) / NANOS_PER_MS
             val tick = PetAnimation.playbackTickAtElapsedMs(state, elapsedMs)
             val f = tick.frame

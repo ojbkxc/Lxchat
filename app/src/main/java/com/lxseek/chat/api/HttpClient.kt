@@ -487,4 +487,39 @@ object HttpClient {
             if (it.isSuccessful) it.body?.bytes() else null
         }
     }
+
+    /**
+     * Stream a GET response body directly to [dest] without buffering the whole payload in memory.
+     * Avoids OOM on large runtime engine archives (hundreds of MB) that [getBytes] would load fully.
+     *
+     * Throws [IOException] on HTTP failure or empty body so callers can surface a precise error
+     * message (HTTP code / empty content) instead of a generic null check.
+     *
+     * The response is closed automatically via [okhttp3.Response.use]; the destination file is
+     * left in place on success and may contain a partial write on failure (caller should clean up).
+     */
+    fun downloadToFile(
+        url: String,
+        dest: java.io.File,
+        headers: Map<String, String> = emptyMap(),
+        callTimeoutMillis: Long? = null,
+    ) {
+        guardCleartextCredentials(url, headers)
+        val requestBuilder = Request.Builder().url(url).get()
+        headers.forEach { (k, v) -> requestBuilder.addHeader(k, v) }
+        val response = newCall(requestBuilder.build(), callTimeoutMillis).execute()
+        response.use { resp ->
+            if (!resp.isSuccessful) {
+                throw IOException("HTTP ${resp.code}")
+            }
+            val body = resp.body
+                ?: throw IOException("引擎下载内容为空：响应无 body")
+            body.byteStream().use { input ->
+                dest.outputStream().use { output -> input.copyTo(output) }
+            }
+            if (dest.length() == 0L) {
+                throw IOException("引擎下载内容为空：落盘 0 字节")
+            }
+        }
+    }
 }

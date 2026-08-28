@@ -44,6 +44,65 @@ object BuiltinMarketSources {
         MarketSource(id = "builtin-skillhub", name = "SkillHub 技能市场", indexUrl = "$BASE_SKILLHUB", kind = MarketSourceKind.SKILLHUB),
     )
 
+    // ── Builtin RUNTIME engines ────────────────────────────────
+
+    /**
+     * Built-in RUNTIME engine catalog. External market sources only carry SKILL entries today,
+     * so without these built-in RUNTIME metas the install button on the runtime engines page
+     * stays disabled (catalog.firstOrNull { it.id == engineId } always returns null).
+     *
+     * Ids align with [com.lxseek.chat.runtime.RuntimeEngineType] constants so that
+     * `runtime-python-webnovel` etc. resolve to the same engine across market / runtime layers.
+     */
+    fun fetchBuiltinRuntimeCatalog(): MarketIndex = MarketIndex(
+        plugins = listOf(
+            MarketPluginMeta(
+                id = "runtime-node-inkos",
+                name = "Node + inkos",
+                version = "22.5.0",
+                kind = MarketPluginKind.RUNTIME,
+                description = "Node.js runtime with inkos for web novel writing",
+                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/node-v22.5.0/node-22.5.0-android-arm64.zip",
+                runtimeType = "node",
+                versions = listOf("22.5.0"),
+                minVersion = "22.5.0",
+            ),
+            MarketPluginMeta(
+                id = "runtime-python-webnovel",
+                name = "webnovel-writer",
+                version = "1.0.0",
+                kind = MarketPluginKind.RUNTIME,
+                description = "Python web novel writer engine (GPL-3.0)",
+                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/webnovel-v1.0.0/webnovel-1.0.0-android-arm64.zip",
+                runtimeType = "python-webnovel",
+                versions = listOf("1.0.0"),
+                minVersion = "1.0.0",
+            ),
+            MarketPluginMeta(
+                id = "runtime-python",
+                name = "Python",
+                version = "3.10.0",
+                kind = MarketPluginKind.RUNTIME,
+                description = "Python 3.10 runtime",
+                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/python-v3.10.0/python-3.10.0-android-arm64.zip",
+                runtimeType = "python",
+                versions = listOf("3.10.0"),
+                minVersion = "3.10.0",
+            ),
+            MarketPluginMeta(
+                id = "runtime-ffmpeg",
+                name = "ffmpeg",
+                version = "6.0.0",
+                kind = MarketPluginKind.RUNTIME,
+                description = "ffmpeg multimedia processing",
+                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/ffmpeg-v6.0.0/ffmpeg-6.0.0-android-arm64.zip",
+                runtimeType = "ffmpeg",
+                versions = listOf("6.0.0"),
+                minVersion = "6.0.0",
+            ),
+        ),
+    )
+
     // ── ClawHub ─────────────────────────────────────────────────
 
     @Serializable

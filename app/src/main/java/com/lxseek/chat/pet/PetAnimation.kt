@@ -257,6 +257,7 @@ object PetAnimation {
      * HAPPY     -> jumping  (completion burst)
      * SAD       -> failed
      * ERROR     -> failed
+     * WAITING   -> waiting  (tool approval / user input)
      */
     fun stateForEmotion(emotion: PetEmotion): State = when (emotion) {
         PetEmotion.IDLE -> State.IDLE
@@ -264,6 +265,7 @@ object PetAnimation {
         PetEmotion.HAPPY -> State.JUMPING
         PetEmotion.SAD -> State.FAILED
         PetEmotion.ERROR -> State.FAILED
+        PetEmotion.WAITING -> State.WAITING
     }
 
     // ---- look direction (rows 9-10) ----

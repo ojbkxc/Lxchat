@@ -11,9 +11,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Pet emotional states driving the floating bubble's face. Transient emotions
- * ([HAPPY], [SAD], [ERROR], [THINKING]) automatically fall back to [IDLE].
+ * ([HAPPY], [SAD], [ERROR], [THINKING], [WAITING]) automatically fall back to [IDLE].
  */
-enum class PetEmotion { IDLE, THINKING, HAPPY, SAD, ERROR }
+enum class PetEmotion { IDLE, THINKING, HAPPY, SAD, ERROR, WAITING }
 
 /**
  * Process-wide singleton that routes generation lifecycle signals to the pet overlay face.
@@ -26,6 +26,10 @@ object PetEmotionController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _emotion = MutableStateFlow(PetEmotion.IDLE)
     val emotion: StateFlow<PetEmotion> = _emotion
+
+    /** Live streaming text shown in the pet's speech bubble; null falls back to emotion-based text. */
+    private val _tipText = MutableStateFlow<String?>(null)
+    val tipText: StateFlow<String?> = _tipText
 
     /** Master switch backed by the user setting; when off, transient states are ignored. */
     @Volatile
@@ -46,6 +50,14 @@ object PetEmotionController {
                 delay(FALLBACK_DELAY_MS)
                 _emotion.value = PetEmotion.IDLE
             }
+        }
+    }
+
+    /** Updates the live streaming text shown in the pet's speech bubble. */
+    fun setTipText(text: String?) {
+        _tipText.value = text?.takeIf { it.isNotBlank() }?.let {
+            val normalized = it.replace(Regex("\\s+"), " ").trim()
+            if (normalized.length > 120) normalized.take(119).trimEnd() + "…" else normalized
         }
     }
 

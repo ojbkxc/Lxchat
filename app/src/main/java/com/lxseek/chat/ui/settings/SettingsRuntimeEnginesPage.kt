@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +42,7 @@ import com.lxseek.chat.R
 import com.lxseek.chat.runtime.RuntimeEngineType
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 /**
  * 「运行时引擎」设置管理页：展示 Node/pygon/ffmpeg 引擎的安装/运行状态，提供
@@ -56,6 +59,10 @@ fun SettingsRuntimeEnginesPage(
     val runtimeEngineManager = market.runtimeEngineManager
     val scope = rememberCoroutineScope()
     val catalog by market.catalog.collectAsState()
+
+    // Track which engine is currently being installed so the row can show a progress indicator
+    // and disable its install button. Null = no install in flight.
+    var installingEngine by remember { mutableStateOf<String?>(null) }
 
     // 强制刷新目录，确保 RUNTIME 引擎条目可安装。
     var refreshedOnce by remember { mutableStateOf(false) }
@@ -116,29 +123,35 @@ fun SettingsRuntimeEnginesPage(
                 known.forEach { engineId ->
                     val status = runtimeEngineManager.status(engineId)
                     val meta = catalog.firstOrNull { it.id == engineId }
+                    val isInstalling = installingEngine == engineId
                     EngineRow(
                         engineId = engineId,
                         installed = status.installed,
                         installedVersion = status.installedVersion,
                         running = status.running,
-                        canInstall = meta != null,
+                        canInstall = meta != null && !isInstalling,
+                        isInstalling = isInstalling,
                         onAction = { action ->
                             scope.launch {
                                 when (action) {
                                     EngineAction.Start -> {
                                         runCatching {
                                             runtimeEngineManager.ensureStarted(engineId, null, null)
-                                        }.onFailure { viewModel.emitSnackbar(it.message ?: "启动失败") }
+                                        }.onFailure { e -> viewModel.emitSnackbar(formatEngineError("启动", e)) }
                                     }
                                     EngineAction.Stop -> runtimeEngineManager.stop(engineId)
                                     EngineAction.Install -> {
+                                        installingEngine = engineId
                                         runCatching {
                                             market.installRuntimeInternal(meta!!)
-                                        }.onFailure { viewModel.emitSnackbar(it.message ?: "安装失败") }
+                                        }.onFailure { e ->
+                                            viewModel.emitSnackbar(formatEngineError("安装", e))
+                                        }
+                                        installingEngine = null
                                     }
                                     EngineAction.Uninstall -> {
                                         runCatching { market.uninstall(engineId) }
-                                            .onFailure { viewModel.emitSnackbar(it.message ?: "卸载失败") }
+                                            .onFailure { e -> viewModel.emitSnackbar(formatEngineError("卸载", e)) }
                                     }
                                 }
                             }
@@ -160,6 +173,20 @@ private val KNOWN_ENGINES = listOf(
     "runtime-ffmpeg",
 )
 
+/**
+ * Format an engine operation failure into a human-readable snackbar message, classifying by
+ * exception type so the user can tell network errors apart from install/state errors.
+ */
+private fun formatEngineError(op: String, e: Throwable): String {
+    val detail = when (e) {
+        is IOException -> "网络错误: ${e.message}"
+        is IllegalStateException -> "状态错误: ${e.message}"
+        is IllegalArgumentException -> "参数错误: ${e.message}"
+        else -> e.message ?: e::class.simpleName ?: "未知错误"
+    }
+    return "$op失败：$detail"
+}
+
 @Composable
 private fun EngineRow(
     engineId: String,
@@ -167,6 +194,7 @@ private fun EngineRow(
     installedVersion: String?,
     running: Boolean,
     canInstall: Boolean,
+    isInstalling: Boolean,
     onAction: (EngineAction) -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -181,6 +209,13 @@ private fun EngineRow(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
+                if (isInstalling) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
                 if (running) {
                     Text(
                         text = stringResource(R.string.runtime_engine_status_running),
@@ -191,6 +226,7 @@ private fun EngineRow(
             }
             Spacer(Modifier.height(4.dp))
             val stateText = when {
+                isInstalling -> stringResource(R.string.runtime_engine_status_installing)
                 installed && installedVersion != null ->
                     stringResource(R.string.runtime_engine_status_installed, installedVersion)
                 else -> stringResource(R.string.runtime_engine_status_not_installed)
@@ -227,7 +263,13 @@ private fun EngineRow(
                             onClick = { onAction(EngineAction.Install) },
                             enabled = canInstall,
                         ) {
-                            Text(stringResource(R.string.runtime_engine_action_install))
+                            Text(
+                                text = if (isInstalling) {
+                                    stringResource(R.string.runtime_engine_action_installing)
+                                } else {
+                                    stringResource(R.string.runtime_engine_action_install)
+                                },
+                            )
                         }
                     }
                 }
