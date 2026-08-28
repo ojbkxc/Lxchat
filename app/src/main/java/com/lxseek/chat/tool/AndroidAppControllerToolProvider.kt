@@ -84,6 +84,14 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 parameters = ToolParameters(properties = emptyMap()),
             )),
             ToolDefinition(function = ToolFunction(
+                name = "android_screenshot",
+                description = "Capture the current screen via the accessibility bridge (Android 11+) and " +
+                    "save a PNG to the app cache, returning its path. Best-effort: secure surfaces (banking, " +
+                    "some full-screen) can fail. Use this when a user needs proof of what is on screen or a " +
+                    "visual you cannot derive from the UI dump; otherwise prefer android_read_ui (cheaper).",
+                parameters = ToolParameters(properties = emptyMap()),
+            )),
+            ToolDefinition(function = ToolFunction(
                 name = "wechat_open_chat",
                 description = "Open WeChat and best-effort navigate to the chat with a contact by " +
                     "searching their name. Requires the accessibility bridge. Each step (open search, " +
@@ -104,7 +112,7 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         "android_accessibility_status", "android_read_ui", "android_known_apps" -> RiskLevel.ReadOnly
         "android_open_app", "android_go_back", "android_go_home" -> RiskLevel.LowRisk
         // Clicking/typing inside another app can cause real side effects (sending, posting).
-        "android_click", "android_input", "wechat_open_chat" -> RiskLevel.Moderate
+        "android_click", "android_input", "wechat_open_chat", "android_screenshot" -> RiskLevel.Moderate
         else -> RiskLevel.ReadOnly
     }
 
@@ -123,6 +131,7 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 "android_input" -> input(arguments)
                 "android_go_back" -> goBackJson()
                 "android_go_home" -> goHomeJson()
+                "android_screenshot" -> screenshotJson()
                 "wechat_open_chat" -> wechatOpenChat(arguments)
                 else -> err("unknown_tool", "Unknown android tool: $name")
             }
@@ -253,6 +262,27 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
     private fun goHomeJson(): String {
         val ok = service()?.goHome() == true
         return buildJsonObject { put("type", "android_go_home"); put("status", if (ok) "ok" else "error") }.toString()
+    }
+
+    private fun screenshotJson(): String {
+        val svc = service() ?: return err("accessibility_off", "Enable accessibility to capture the screen.")
+        return when (val out = svc.takeScreenshot(app.cacheDir)) {
+            is AndroidUiControllerService.ScreenshotOutcome.Success -> buildJsonObject {
+                put("type", "android_screenshot")
+                put("status", "ok")
+                put("path", out.path)
+            }.toString()
+            is AndroidUiControllerService.ScreenshotOutcome.Failure -> buildJsonObject {
+                put("type", "android_screenshot")
+                put("status", "error")
+                out.reason?.let { put("reason", it) }
+            }.toString()
+            AndroidUiControllerService.ScreenshotOutcome.NotSupported -> buildJsonObject {
+                put("type", "android_screenshot")
+                put("status", "not_supported")
+                put("reason", "Screenshot needs Android 11 (API 30)+.")
+            }.toString()
+        }
     }
 
     /**

@@ -462,7 +462,10 @@ class AppContainer(private val appContext: Context) {
 
     /** Lets the agent send/receive IM through the active gateway channel. */
     val imToolProvider: com.lxseek.chat.tool.ImToolProvider by lazy {
-        com.lxseek.chat.tool.ImToolProvider { imBridgeService.currentChannel() }
+        com.lxseek.chat.tool.ImToolProvider(
+            channelProvider = { imBridgeService.currentChannel() },
+            taskManagerProvider = { taskManager },
+        )
     }
 
     /** Lets native import quiesce Task/Loop generation without serializing ordinary executions. */

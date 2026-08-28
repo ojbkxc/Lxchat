@@ -34,6 +34,19 @@
     <!-- Condition trigger system: query network state for NETWORK_CHANGE rules. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- system_* tools (P2/P3): phone call / SMS / media read & save / SAF files / radio / brightness /
+         recording. All sensitive ones are runtime-granted with an in-app guidance page. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <!-- Brightness setting is a special app-op; user grants it on the SYSTEM_APPLICATIONS page. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
     <!-- Allows a visibility-safe preflight before using the platform capture contract. -->
     <queries>
         <intent>

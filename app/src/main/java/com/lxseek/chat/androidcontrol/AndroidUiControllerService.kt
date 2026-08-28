@@ -1,8 +1,19 @@
 package com.lxseek.chat.androidcontrol
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
+import android.accessibilityservice.AccessibilityService.ScreenshotResult
+import android.graphics.Bitmap
+import android.os.Build
 import android.os.Bundle
+import android.view.Display
 import android.view.accessibility.AccessibilityNodeInfo
+import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Accessibility bridge that lets a text-only LLM "see" and "touch" the currently focused app.
@@ -126,6 +137,58 @@ class AndroidUiControllerService : AccessibilityService() {
 
     fun isConnected(): Boolean = synchronized(lock) {
         rootInActiveWindow != null
+    }
+
+    /**
+     * Capture the current screen via [AccessibilityService.takeScreenshot] (front-window capture,
+     * API 30+) and write a PNG into [cacheDir]. Best-effort: secure surfaces return a failure and
+     * the screenshot is not guaranteed on all devices. Returns the saved path on success.
+     */
+    fun takeScreenshot(cacheDir: File): ScreenshotOutcome {
+        if (Build.VERSION.SDK_INT < 30) return ScreenshotOutcome.NotSupported
+        val latch = CountDownLatch(1)
+        val holder = AtomicReference<ScreenshotResult?>(null)
+        val executor: ExecutorService = Executors.newSingleThreadExecutor()
+        try {
+            takeScreenshot(
+                Display.DEFAULT_DISPLAY,
+                executor,
+                object : TakeScreenshotCallback {
+                    override fun onSuccess(screenshot: ScreenshotResult?) {
+                        holder.set(screenshot)
+                        latch.countDown()
+                    }
+
+                    override fun onFailure(errorCode: Int) {
+                        latch.countDown()
+                    }
+                },
+            )
+            if (!latch.await(5, TimeUnit.SECONDS)) return ScreenshotOutcome.Failure("takeScreenshot timed out")
+            val result = holder.get() ?: return ScreenshotOutcome.Failure("screenshot failed")
+            val buffer = result.hardwareBuffer
+            val bitmap = Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
+                ?: return ScreenshotOutcome.Failure("could not wrap screenshot buffer")
+            val software = bitmap.copy(Bitmap.Config.ARGB_8888, false)
+            val file = File(cacheDir, "screenshot_${System.currentTimeMillis()}.png")
+            file.outputStream().use { out ->
+                software.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            bitmap.recycle()
+            software.recycle()
+            buffer.close()
+            return ScreenshotOutcome.Success(file.absolutePath)
+        } catch (e: Exception) {
+            return ScreenshotOutcome.Failure(e.message)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    sealed class ScreenshotOutcome {
+        data class Success(val path: String) : ScreenshotOutcome()
+        data class Failure(val reason: String?) : ScreenshotOutcome()
+        object NotSupported : ScreenshotOutcome()
     }
 
     private fun snap(node: AccessibilityNodeInfo): UiNodeSnapshot {

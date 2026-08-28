@@ -32,6 +32,19 @@ import android.os.Vibrator
 import android.util.DisplayMetrics
 import android.view.Display
 import android.view.WindowManager
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.content.ContentUris
+import android.content.ContentValues
+import android.media.MediaMetadata
+import android.media.MediaRecorder
+import android.media.session.MediaSessionManager
+import android.net.Uri
+import android.provider.DocumentsContract
+import android.provider.MediaStore
+import android.provider.Settings
+import android.telephony.SmsManager
+import androidx.core.content.ContextCompat
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
@@ -70,7 +83,9 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
                 definition = def,
                 riskLevel = risk(name),
                 tier = tier(name),
-                requiresApproval = name == "device_flashlight" || name == "device_notify",
+                requiresApproval = name == "device_flashlight" || name == "device_notify" ||
+                    name == "device_call" || name == "device_sms" || name == "device_record" ||
+                    name == "device_saf_delete",
             )
         }
 
@@ -182,6 +197,110 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
                 ),
                 listOf("title", "body"),
             ),
+            // ── P2/P3 system-extension tools ─────────────────────────────
+            tool(
+                "device_call",
+                "Place a phone call to the given number. mode='dial' (default) just opens the dialer; " +
+                    "mode='call' dials immediately and requires the CALL_PHONE permission.",
+                mapOf(
+                    "number" to prop("string", "Phone number to dial/call, e.g. '13800138000'."),
+                    "mode" to prop("string", "'dial' (default) or 'call'."),
+                ),
+                listOf("number"),
+            ),
+            tool(
+                "device_sms",
+                "Send a text message to the given number. Requires the SEND_SMS permission. " +
+                    "Logs are masked; body is never persisted.",
+                mapOf(
+                    "number" to prop("string", "Recipient phone number."),
+                    "text" to prop("string", "SMS body text."),
+                ),
+                listOf("number", "text"),
+            ),
+            tool(
+                "device_media_read",
+                "Return a list of the most recent images on the device from the MediaStore (name, " +
+                    "size, date, mime, content uri). Useful to later open or forward a photo.",
+                mapOf("limit" to prop("integer", "How many recent images to return (1..100), default 20.")),
+                emptyList(),
+            ),
+            tool(
+                "device_media_save",
+                "Save a local image file (given an absolute source path) into the device gallery " +
+                    "under Pictures/LxChat. Requires storage write permission on Android 9 and below.",
+                mapOf(
+                    "sourcePath" to prop("string", "Absolute path of the image file to save."),
+                    "title" to prop("string", "Optional title; defaults to the source file name."),
+                ),
+                listOf("sourcePath"),
+            ),
+            tool(
+                "device_saf_list",
+                "List the children of a Storage Access Framework (SAF) document/tree uri. Returns " +
+                    "document id, display name, mime, size and isDirectory for each child.",
+                mapOf("uri" to prop("string", "A SAF tree/document uri previously granted by the user.")),
+                listOf("uri"),
+            ),
+            tool(
+                "device_saf_copy",
+                "Copy a SAF document to a target parent folder. Both uris must already be user-granted.",
+                mapOf(
+                    "source" to prop("string", "SAF document uri to copy."),
+                    "targetParent" to prop("string", "SAF tree/document uri of the destination folder."),
+                ),
+                listOf("source", "targetParent"),
+            ),
+            tool(
+                "device_saf_move",
+                "Move a SAF document to a target parent folder. Both uris must already be user-granted.",
+                mapOf(
+                    "source" to prop("string", "SAF document uri to move."),
+                    "sourceParent" to prop("string", "SAF uri of the current parent folder."),
+                    "targetParent" to prop("string", "SAF tree/document uri of the destination folder."),
+                ),
+                listOf("source", "sourceParent", "targetParent"),
+            ),
+            tool(
+                "device_saf_delete",
+                "Delete a SAF document. The document uri must already be user-granted.",
+                mapOf("uri" to prop("string", "SAF document uri to delete.")),
+                listOf("uri"),
+            ),
+            tool(
+                "device_radio",
+                "Toggle airplane mode / wifi / bluetooth on this device. Run as best-effort: the OS " +
+                    "often denies non-root apps (needs system permission), in which case a clear hint is " +
+                    "returned. Hotspot is not supported and reports so.",
+                mapOf(
+                    "target" to prop("string", "One of 'airplane', 'wifi', 'bluetooth', 'hotspot'."),
+                    "on" to prop("boolean", "true to enable, false to disable."),
+                ),
+                listOf("target"),
+            ),
+            tool(
+                "device_brightness",
+                "Set the device screen brightness. Requires the 'WRITE_SETTINGS' special access which "
+                    + "the user grants once; when missing, opens the grant page and returns a hint.",
+                mapOf("level" to prop("integer", "Brightness 0..255.")),
+                listOf("level"),
+            ),
+            tool(
+                "device_media",
+                "Query or control the active media sessions, best-effort. 'list' returns which media " +
+                    "sessions are active; 'pause'/'play' asks the active session to pause/play. Non-media " +
+                    "apps usually only see their own sessions, so this frequently returns empty; use " +
+                    "device_volume/device_set_volume for reliable media volume.",
+                mapOf("action" to prop("string", "'list', 'pause' or 'play'.")),
+                listOf("action"),
+            ),
+            tool(
+                "device_record",
+                "Record audio for the given duration and save an AAC file to the app cache. Requires " +
+                    "the RECORD_AUDIO permission and the app to be in the foreground.",
+                mapOf("durationSeconds" to prop("integer", "Seconds to record (1..60), default 10.")),
+                emptyList(),
+            ),
         )
     }
 
@@ -213,6 +332,18 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
                 "device_set_volume" -> setVolume(arguments)
                 "device_flashlight" -> flashlight(arguments)
                 "device_notify" -> notify(arguments)
+                "device_call" -> call(arguments)
+                "device_sms" -> sms(arguments)
+                "device_media_read" -> mediaRead(arguments)
+                "device_media_save" -> mediaSave(arguments)
+                "device_saf_list" -> safList(arguments)
+                "device_saf_copy" -> safCopy(arguments)
+                "device_saf_move" -> safMove(arguments)
+                "device_saf_delete" -> safDelete(arguments)
+                "device_radio" -> radio(arguments)
+                "device_brightness" -> brightness(arguments)
+                "device_media" -> media(arguments)
+                "device_record" -> record(arguments)
                 else -> err("unknown_tool", "Unknown device tool: $name")
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -588,6 +719,431 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
         return buildJsonObject { put("type", "device_notify"); put("status", "ok") }.toString()
     }
 
+    // ── P2/P3 system-extension tools ──────────────────────────
+
+    private fun hasPermission(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(app, permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun call(arguments: String): String {
+        val number = argString("number", arguments)?.trim()
+            ?: return err("no_number", "Missing number.")
+        val mode = argString("mode", arguments)?.trim()?.lowercase() ?: "dial"
+        val action = if (mode == "call") Intent.ACTION_CALL else Intent.ACTION_DIAL
+        if (action == Intent.ACTION_CALL && !hasPermission(Manifest.permission.CALL_PHONE)) {
+            return err("permission_denied", "Calling directly needs the CALL_PHONE permission; use mode='dial' instead.")
+        }
+        return try {
+            val intent = Intent(action, Uri.parse("tel:$number")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            app.startActivity(intent)
+            buildJsonObject {
+                put("type", "device_call")
+                put("status", if (action == Intent.ACTION_CALL) "calling" else "dialer_opened")
+                put("mode", if (action == Intent.ACTION_CALL) "call" else "dial")
+            }.toString()
+        } catch (e: Exception) {
+            err("launch_failed", "Could not launch dialer/call: ${e.message}")
+        }
+    }
+
+    private fun sms(arguments: String): String {
+        val number = argString("number", arguments)?.trim()
+            ?: return err("no_number", "Missing number.")
+        val text = argString("text", arguments)
+            ?: return err("no_text", "Missing text.")
+        if (!hasPermission(Manifest.permission.SEND_SMS)) {
+            return err("permission_denied", "Sending SMS needs the SEND_SMS permission.")
+        }
+        return try {
+            SmsManager.getDefault().sendTextMessage(number, null, text, null, null)
+            buildJsonObject { put("type", "device_sms"); put("status", "sent") }.toString()
+        } catch (e: SecurityException) {
+            err("permission_denied", "SEND_SMS permission missing or revoked: ${e.message}")
+        } catch (e: Exception) {
+            err("sms_failed", e.message)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun mediaReadPermission(): String =
+        if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES
+        else Manifest.permission.READ_EXTERNAL_STORAGE
+
+    private fun mediaRead(arguments: String): String {
+        val limit = (argInt("limit", arguments) ?: 20).coerceIn(1, 100)
+        val perm = mediaReadPermission()
+        if (!hasPermission(perm)) {
+            return err("permission_denied", "Reading gallery needs the $perm permission.")
+        }
+        val resolver = app.contentResolver
+        val uri = if (Build.VERSION.SDK_INT >= 29) {
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        } else {
+            @Suppress("DEPRECATION") MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Images.Media.DATE_ADDED,
+            MediaStore.Images.Media.SIZE,
+            MediaStore.Images.Media.MIME_TYPE,
+        )
+        return buildJsonObject {
+            put("type", "device_media_read")
+            resolver.query(uri, projection, null, null, "${MediaStore.Images.Media.DATE_ADDED} DESC")?.use { c ->
+                put("count", minOf(c.count, limit))
+                put("images", buildJsonArray {
+                    var taken = 0
+                    while (c.moveToNext() && taken < limit) {
+                        taken++
+                        val id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+                        add(buildJsonObject {
+                            put("name", c.getString(c.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)))
+                            put("sizeBytes", c.getLong(c.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)))
+                            put("dateAdded", c.getLong(c.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)))
+                            c.getString(c.getColumnIndexOrThrow(MediaStore.Images.Media.MIME_TYPE))?.let { put("mime", it) }
+                            put("uri", ContentUris.withAppendedId(uri, id).toString())
+                        })
+                    }
+                })
+            } ?: put("count", 0)
+        }.toString()
+    }
+
+    private fun mediaSave(arguments: String): String {
+        val sourcePath = argString("sourcePath", arguments)?.trim()
+            ?: return err("no_source", "Missing sourcePath.")
+        val title = argString("title", arguments)?.trim() ?: java.io.File(sourcePath).name
+        val src = java.io.File(sourcePath)
+        if (!src.exists() || !src.isFile) return err("not_found", "Source file not found: $sourcePath")
+        return try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                val values = ContentValues().apply {
+                    val name = title.ifBlank { src.name }
+                    put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/*")
+                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/LxChat")
+                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                }
+                val resolver = app.contentResolver
+                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: return err("insert_failed", "MediaStore insert failed.")
+                resolver.openOutputStream(uri)?.use { out -> src.inputStream().use { it.copyTo(out) } }
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+                buildJsonObject { put("type", "device_media_save"); put("status", "saved"); put("uri", uri.toString()) }.toString()
+            } else {
+                @Suppress("DEPRECATION")
+                val dir = java.io.File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "LxChat")
+                if (!dir.exists()) dir.mkdirs()
+                val dest = java.io.File(dir, title.ifBlank { src.name })
+                src.copyTo(dest, overwrite = true)
+                buildJsonObject { put("type", "device_media_save"); put("status", "saved"); put("path", dest.absolutePath) }.toString()
+            }
+        } catch (e: SecurityException) {
+            err("permission_denied", "Storage write not granted: ${e.message}")
+        } catch (e: Exception) {
+            err("save_failed", e.message)
+        }
+    }
+
+    // ── SAF file management helpers ───────────────────────────
+
+    private fun safChildrenUri(uri: Uri): Uri? = when {
+        DocumentsContract.isTreeUri(uri) ->
+            try {
+                DocumentsContract.buildChildDocumentsUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri))
+            } catch (_: Exception) { null }
+        DocumentsContract.isDocumentUri(app, uri) ->
+            try {
+                DocumentsContract.buildChildDocumentsUri(uri.authority, DocumentsContract.getDocumentId(uri))
+            } catch (_: Exception) { null }
+        else -> null
+    }
+
+    private fun safQueryDisplayName(resolver: android.content.ContentResolver, uri: Uri): String? {
+        val cols = arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE)
+        return resolver.query(uri, cols, null, null, null)?.use { c ->
+            if (!c.moveToFirst()) return@use null
+            c.getString(c.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
+        }
+    }
+
+    private fun safMime(resolver: android.content.ContentResolver, uri: Uri): String? {
+        val cols = arrayOf(DocumentsContract.Document.COLUMN_MIME_TYPE)
+        return resolver.query(uri, cols, null, null, null)?.use { c ->
+            if (!c.moveToFirst()) return@use null
+            c.getString(c.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE))
+        }
+    }
+
+    private fun safList(arguments: String): String {
+        val uriStr = argString("uri", arguments)?.trim()
+            ?: return err("no_uri", "Missing uri.")
+        val uri = Uri.parse(uriStr)
+        val resolver = app.contentResolver
+        val childrenUri = safChildrenUri(uri)
+            ?: return err("bad_uri", "uri must be a granted SAF tree or document uri with a grants provider.")
+        val projection = arrayOf(
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE,
+            DocumentsContract.Document.COLUMN_SIZE,
+        )
+        return try {
+            resolver.query(childrenUri, projection, null, null, null)?.use { c ->
+                buildJsonObject {
+                    put("type", "device_saf_list")
+                    put("count", c.count)
+                    put("children", buildJsonArray {
+                        while (c.moveToNext()) {
+                            val docId = c.getString(c.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
+                            val mime = c.getString(c.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE))
+                            add(buildJsonObject {
+                                put("documentId", docId)
+                                put("name", c.getString(c.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)))
+                                put("mime", mime)
+                                put("isDirectory", mime == DocumentsContract.Document.MIME_TYPE_DIR)
+                                val sizeIdx = c.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE)
+                                if (sizeIdx >= 0) put("sizeBytes", c.getLong(sizeIdx))
+                            })
+                        }
+                    })
+                }.toString()
+            } ?: err("empty", "No children (empty folder or not granted).")
+        } catch (e: SecurityException) {
+            err("permission_denied", "SAF uri not user-granted: ${e.message}")
+        } catch (e: java.io.FileNotFoundException) {
+            err("not_granted", "SAF uri not granted or invalid: ${e.message}")
+        }
+    }
+
+    private fun copyBytes(from: android.net.Uri?, to: android.net.Uri?): Boolean {
+        if (from == null || to == null) return false
+        val resolver = app.contentResolver
+        return try {
+            resolver.openInputStream(from)?.use { input ->
+                resolver.openOutputStream(to, "w")?.use { output -> input.copyTo(output) }
+            } != null
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun safCopy(arguments: String): String {
+        val source = argString("source", arguments)?.trim()?.let { Uri.parse(it) }
+            ?: return err("no_source", "Missing source.")
+        val targetParent = argString("targetParent", arguments)?.trim()?.let { Uri.parse(it) }
+            ?: return err("no_target", "Missing targetParent.")
+        val resolver = app.contentResolver
+        return try {
+            val name = safQueryDisplayName(resolver, source) ?: "copy_${System.currentTimeMillis()}"
+            val mime = safMime(resolver, source) ?: DocumentsContract.Document.MIME_TYPE_DIR
+            val dest = DocumentsContract.createDocument(resolver, targetParent, mime, name)
+                ?: return err("create_failed", "Could not create destination document.")
+            if (!copyBytes(source, dest)) return err("copy_failed", "Copy failed.")
+            buildJsonObject { put("type", "device_saf_copy"); put("status", "ok"); put("destination", dest.toString()) }.toString()
+        } catch (e: SecurityException) {
+            err("permission_denied", e.message)
+        } catch (e: Exception) {
+            err("copy_failed", e.message)
+        }
+    }
+
+    private fun safMove(arguments: String): String {
+        val source = argString("source", arguments)?.trim()?.let { Uri.parse(it) }
+            ?: return err("no_source", "Missing source.")
+        val sourceParent = argString("sourceParent", arguments)?.trim()?.let { Uri.parse(it) }
+            ?: source
+        val targetParent = argString("targetParent", arguments)?.trim()?.let { Uri.parse(it) }
+            ?: return err("no_target", "Missing targetParent.")
+        val resolver = app.contentResolver
+        return try {
+            // Prefer the platform moveDocument (API 24+), fall back to copy + delete.
+            val moved = if (Build.VERSION.SDK_INT >= 24) {
+                try {
+                    DocumentsContract.moveDocument(resolver, source, sourceParent, targetParent) != null
+                } catch (_: Exception) {
+                    false
+                }
+            } else false
+            val ok = if (moved) true else {
+                val name = safQueryDisplayName(resolver, source) ?: "moved_${System.currentTimeMillis()}"
+                val mime = safMime(resolver, source) ?: DocumentsContract.Document.MIME_TYPE_DIR
+                val dest = DocumentsContract.createDocument(resolver, targetParent, mime, name)
+                dest != null && copyBytes(source, dest) && deleteSaf(source)
+            }
+            if (!ok) return err("move_failed", "Move failed.")
+            buildJsonObject { put("type", "device_saf_move"); put("status", "ok") }.toString()
+        } catch (e: SecurityException) {
+            err("permission_denied", e.message)
+        } catch (e: Exception) {
+            err("move_failed", e.message)
+        }
+    }
+
+    private fun deleteSaf(uri: Uri): Boolean = try {
+        DocumentsContract.deleteDocument(app.contentResolver, uri)
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun safDelete(arguments: String): String {
+        val uri = argString("uri", arguments)?.trim()?.let { Uri.parse(it) }
+            ?: return err("no_uri", "Missing uri.")
+        return try {
+            if (!deleteSaf(uri)) return err("delete_failed", "Delete failed (uri may not be granted).")
+            buildJsonObject { put("type", "device_saf_delete"); put("status", "ok") }.toString()
+        } catch (e: SecurityException) {
+            err("permission_denied", e.message)
+        } catch (e: Exception) {
+            err("delete_failed", e.message)
+        }
+    }
+
+    // ── Radio / brightness / media / record ───────────────────
+
+    @Suppress("DEPRECATION")
+    private fun radio(arguments: String): String {
+        val target = argString("target", arguments)?.trim()?.lowercase()
+            ?: return err("no_target", "Missing target.")
+        val on = argString("on", arguments)?.toBooleanStrictOrNull() ?: false
+        return when (target) {
+            "wifi" -> {
+                val wm = app.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                if (!hasPermission(Manifest.permission.CHANGE_WIFI_STATE) && Build.VERSION.SDK_INT >= 29) {
+                    err("permission_denied", "WiFi toggling needs CHANGE_WIFI_STATE.")
+                } else {
+                    try {
+                        wm.isWifiEnabled = on
+                        buildJsonObject { put("type", "device_radio"); put("target", "wifi"); put("status", "ok"); put("on", on) }.toString()
+                    } catch (e: Exception) {
+                        err("radio_denied", "WiFi toggle rejected by OS: ${e.message}. Open a deep link instead.")
+                    }
+                }
+            }
+            "bluetooth" -> {
+                if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT) ||
+                    (Build.VERSION.SDK_INT < 33 && !hasPermission(Manifest.permission.BLUETOOTH_ADMIN))) {
+                    err("permission_denied", "Bluetooth toggling needs the necessary bluetooth permissions.")
+                } else {
+                    val adapter = try { BluetoothAdapter.getDefaultAdapter() } catch (_: SecurityException) { null }
+                    if (adapter == null) err("no_bluetooth", "No bluetooth adapter.")
+                    else try {
+                        if (on) adapter.enable() else adapter.disable()
+                        buildJsonObject { put("type", "device_radio"); put("target", "bluetooth"); put("status", "ok"); put("on", on) }.toString()
+                    } catch (e: Exception) {
+                        err("radio_denied", "Bluetooth toggle rejected: ${e.message}")
+                    }
+                }
+            }
+            "airplane" -> {
+                if (!Settings.System.canWrite(app)) {
+                    err("requires_write_settings", "Airplane mode toggle needs WRITE_SETTINGS special access.")
+                } else {
+                    try {
+                        Settings.System.putInt(app.contentResolver, Settings.System.AIRPLANE_MODE_ON, if (on) 1 else 0)
+                        val intent = Intent(Intent.ACTION_AIRPLANE_MODE_CHANGED).putExtra("state", on)
+                        app.sendBroadcast(intent)
+                        buildJsonObject { put("type", "device_radio"); put("target", "airplane"); put("status", "ok"); put("on", on) }.toString()
+                    } catch (e: Exception) {
+                        err("radio_denied", e.message)
+                    }
+                }
+            }
+            "hotspot" -> err("not_supported", "Hotspot toggle is not supported (requires system privileges).")
+            else -> err("bad_target", "target must be airplane|wifi|bluetooth|hotspot.")
+        }
+    }
+
+    private fun brightness(arguments: String): String {
+        val level = argInt("level", arguments)
+            ?: return err("invalid_level", "Missing level.")
+        if (!Settings.System.canWrite(app)) {
+            try {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                    Uri.parse("package:${app.packageName}"),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                app.startActivity(intent)
+            } catch (_: Exception) { }
+            return err("requires_write_settings", "Screen brightness needs WRITE_SETTINGS; grant page opened.")
+        }
+        return try {
+            val resolver = app.contentResolver
+            Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+            Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, level.coerceIn(0, 255))
+            buildJsonObject { put("type", "device_brightness"); put("status", "ok"); put("level", level.coerceIn(0, 255)) }.toString()
+        } catch (e: Exception) {
+            err("brightness_failed", e.message)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun media(arguments: String): String {
+        val action = argString("action", arguments)?.trim()?.lowercase() ?: "list"
+        val msm = app.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+        return try {
+            val sessions = msm.getActiveSessions(null) ?: emptyList()
+            val listed = sessions.map { s ->
+                buildJsonObject {
+                    put("package", s.packageName)
+                    put("active", s.isActive)
+                    s.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)?.let { put("title", it) }
+                    s.metadata?.getString(MediaMetadata.METADATA_KEY_MEDIA_ID)?.let { put("mediaId", it) }
+                }
+            }
+            when (action) {
+                "play" -> sessions.firstOrNull { it.isActive }?.controller?.transportControls?.play()
+                "pause" -> sessions.firstOrNull { it.isActive }?.controller?.transportControls?.pause()
+            }
+            buildJsonObject {
+                put("type", "device_media")
+                put("action", action)
+                put("sessions", buildJsonArray { listed.forEach { add(it) } })
+                put("note", "Only your own sessions are visible without a notification-listener grant.")
+            }.toString()
+        } catch (e: SecurityException) {
+            err("permission_denied", "Media sessions need notification-listener access on Android 11+: ${e.message}")
+        } catch (e: Exception) {
+            err("media_failed", e.message)
+        }
+    }
+
+    private fun record(arguments: String): String {
+        if (!hasPermission(Manifest.permission.RECORD_AUDIO)) {
+            return err("permission_denied", "Recording needs the RECORD_AUDIO permission.")
+        }
+        val duration = (argInt("durationSeconds", arguments) ?: 10).coerceIn(1, 60)
+        val out = java.io.File(app.cacheDir, "record_${System.currentTimeMillis()}.aac")
+        return try {
+            val recorder = MediaRecorder()
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            recorder.setAudioEncodingBitRate(128_000)
+            recorder.setAudioSamplingRate(44_100)
+            recorder.setOutputFile(out.absolutePath)
+            recorder.prepare()
+            recorder.start()
+            Thread.sleep(duration * 1000L)
+            recorder.stop()
+            recorder.reset()
+            recorder.release()
+            buildJsonObject {
+                put("type", "device_record")
+                put("status", "ok")
+                put("durationSeconds", duration)
+                put("path", out.absolutePath)
+                put("sizeBytes", if (out.exists()) out.length() else 0)
+            }.toString()
+        } catch (e: SecurityException) {
+            err("permission_denied", e.message)
+        } catch (e: Exception) {
+            err("record_failed", e.message)
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────
 
     private fun tool(
@@ -602,7 +1158,9 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
     ))
 
     private fun risk(name: String): RiskLevel = when (name) {
-        "device_clipboard_write", "device_vibrate", "device_set_volume", "device_flashlight", "device_notify" ->
+        "device_clipboard_write", "device_vibrate", "device_set_volume", "device_flashlight", "device_notify",
+        "device_call", "device_sms", "device_media_save", "device_saf_delete",
+        "device_radio", "device_brightness", "device_media", "device_record" ->
             RiskLevel.Moderate
         else -> RiskLevel.ReadOnly
     }
@@ -610,7 +1168,8 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
     private fun tier(name: String): ToolTier = when (name) {
         "device_info", "device_battery", "device_time", "device_screen", "device_storage",
         "device_memory", "device_network", "device_wifi", "device_sensors", "device_read_sensor",
-        "device_apps", "device_app_info", "device_clipboard_read", "device_volume" ->
+        "device_apps", "device_app_info", "device_clipboard_read", "device_volume", "device_media_read",
+        "device_saf_list" ->
             ToolTier.Extended
         else -> ToolTier.Dangerous
     }

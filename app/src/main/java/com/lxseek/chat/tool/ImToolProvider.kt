@@ -4,6 +4,7 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
+import com.lxseek.chat.automation.TaskManager
 import com.lxseek.chat.im.ImConversation
 import com.lxseek.chat.im.ImMessage
 import com.lxseek.chat.im.ImSendResult
@@ -30,6 +31,8 @@ import kotlinx.serialization.json.putJsonObject
  */
 class ImToolProvider(
     private val channelProvider: () -> MessageChannel?,
+    // Resolved lazily so AppContainer can avoid a create-order cycle; used by wechat_schedule_send (W5).
+    private val taskManagerProvider: (() -> TaskManager)? = null,
 ) : ToolProvider {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -38,7 +41,8 @@ class ImToolProvider(
 
     override fun riskLevel(name: String): RiskLevel = when (name) {
         "im_status", "im_conversations", "im_receive", "wechat_capabilities" -> RiskLevel.ReadOnly
-        "im_send", "im_send_multi" -> RiskLevel.Moderate
+        "im_send", "im_send_multi", "wechat_schedule_send", "wechat_revoke", "wechat_group_manage" ->
+            RiskLevel.Moderate
         else -> RiskLevel.ReadOnly
     }
 
@@ -140,6 +144,57 @@ class ImToolProvider(
                 ),
             ),
         ),
+        ToolDefinition(
+            function = ToolFunction(
+                name = "wechat_schedule_send",
+                description = "Schedule a WeChat message to be sent later (W5). Requires contact (name/remark) " +
+                    "and the message text, plus exactly one of: cron (a 5-field expression like '0 9 * * 1' for " +
+                    "a recurring send) or runAt (epoch milliseconds for a one-off send). The fire-time agent will " +
+                    "locate the contact via im_conversations and send the text with im_send; if the contact is not " +
+                    "found it reports that the send did not happen. Returns the created background Task.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "contact" to ToolProperty(type = "string", description = "WeChat contact name or remark (备注), e.g. '张三'."),
+                        "text" to ToolProperty(type = "string", description = "The message text to send."),
+                        "cron" to ToolProperty(type = "string", description = "Optional 5-field cron for recurring sends, e.g. '0 9 * * 1'."),
+                        "runAt" to ToolProperty(type = "integer", description = "Optional epoch milliseconds for a one-off send."),
+                    ),
+                    required = listOf("contact", "text"),
+                ),
+            ),
+        ),
+        ToolDefinition(
+            function = ToolFunction(
+                name = "wechat_revoke",
+                description = "Revoke a previously sent WeChat message. Honest capability reporting (W6): the " +
+                    "iLink protocol does not currently confirm a revoke endpoint, so this returns supported=false " +
+                    "unless the upstream adds it; the message is NOT actually retracted. Do not pretend success.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "conversationId" to ToolProperty(type = "string", description = "Conversation (contact/group) id."),
+                        "messageId" to ToolProperty(type = "string", description = "Id of the message to revoke."),
+                    ),
+                    required = listOf("conversationId", "messageId"),
+                ),
+            ),
+        ),
+        ToolDefinition(
+            function = ToolFunction(
+                name = "wechat_group_manage",
+                description = "Best-effort WeChat group/roster management (W7). Honest capability reporting: the " +
+                    "iLink protocol does not currently confirm these operations. action one of: pin (置顶聊天), " +
+                    "unpin, remark_friend (好友备注), group_rename. Returns supported=false with guidance when the " +
+                    "protocol lacks the endpoint, since silently failing is worse than telling the user to do it manually.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "action" to ToolProperty(type = "string", description = "pin | unpin | remark_friend | group_rename."),
+                        "target" to ToolProperty(type = "string", description = "Conversation id or contact to act on."),
+                        "name" to ToolProperty(type = "string", description = "New remark / group name when relevant."),
+                    ),
+                    required = listOf("action", "target"),
+                ),
+            ),
+        ),
     )
 
     override suspend fun execute(name: String, arguments: String, ctx: GenerationContext): String {
@@ -151,6 +206,9 @@ class ImToolProvider(
             "im_receive" -> receiveResult(channel, arguments)
             "im_send" -> sendResult(channel, arguments)
             "im_send_multi" -> sendMultiResult(channel, arguments)
+            "wechat_schedule_send" -> scheduleSendResult(channel, arguments)
+            "wechat_revoke" -> revokeResult(channel, arguments)
+            "wechat_group_manage" -> groupManageResult(channel, arguments)
             else -> errorJson("Unknown IM tool: $name")
         }
     }
@@ -329,6 +387,79 @@ class ImToolProvider(
         }.toString()
     }
 
+    // ── W5/W6/W7: schedule-send / revoke / group manage ─────
+
+    private suspend fun scheduleSendResult(channel: MessageChannel?, args: String): String {
+        val manager = taskManagerProvider ?: return buildJsonObject {
+            put("ok", false)
+            put("error", "scheduling is not available on this build")
+        }.toString()
+        val contact = argString(args, "contact").trim()
+        val text = argString(args, "text").trim()
+        if (contact.isBlank()) return errorJson("Missing required argument: contact")
+        if (text.isBlank()) return errorJson("Missing required argument: text")
+        val cron = argString(args, "cron").trim()
+        val runAt = argLong(args, "runAt")
+        if (cron.isBlank() && runAt == null) return errorJson("Must provide exactly one of cron or runAt")
+        if (cron.isNotBlank() && runAt != null) return errorJson("Provide only one of cron or runAt, not both")
+        val prompt = "WeChat 定时发送任务：给联系人「$contact」发送消息。\n消息内容：\n$text" +
+            "\n\n执行要求：先调用 im_conversations 找到联系人「$contact」的 conversationId，再调用 im_send " +
+            "发送整段消息原文；若找不到该联系人，则如实返回未发送及其原因，不要编造成功。"
+        val task = try {
+            manager().createTask(
+                name = "微信定时发送 · ${contact.take(12)}",
+                prompt = prompt,
+                cronExpr = cron,
+                modelId = null,
+                runAt = runAt,
+            )
+        } catch (e: Exception) {
+            return errorJson("schedule failed: ${e.message}")
+        }
+        return buildJsonObject {
+            put("ok", true)
+            put("tool", "wechat_schedule_send")
+            put("contact", contact)
+            put("task_id", task.id)
+            runAt?.let { put("run_at", it) }
+            if (cron.isNotBlank()) put("cron", cron)
+        }.toString()
+    }
+
+    private fun revokeResult(channel: MessageChannel?, args: String): String {
+        val conversationId = argString(args, "conversationId")
+        val messageId = argString(args, "messageId")
+        if (conversationId.isBlank()) return errorJson("Missing required argument: conversationId")
+        if (messageId.isBlank()) return errorJson("Missing required argument: messageId")
+        // 撤回属"未确认支持"：如实返回 supported=false，绝不伪装成功。
+        return buildJsonObject {
+            put("ok", false)
+            put("tool", "wechat_revoke")
+            put("supported", false)
+            put("reason", "iLink 协议当前未确认支持撤回消息，消息未被撤回。")
+            put("hint", "如需撤回，请由用户在微信 App 内手动撤回；不要告知用户已撤回。")
+        }.toString()
+    }
+
+    private fun groupManageResult(channel: MessageChannel?, args: String): String {
+        val action = argString(args, "action").trim().lowercase()
+        val target = argString(args, "target").trim()
+        if (action.isBlank()) return errorJson("Missing required argument: action")
+        if (target.isBlank()) return errorJson("Missing required argument: target")
+        if (action !in setOf("pin", "unpin", "remark_friend", "group_rename")) {
+            return errorJson("action must be pin|unpin|remark_friend|group_rename")
+        }
+        // 群/好友管理同样"未确认支持"：如实报告，未做任何改动。
+        return buildJsonObject {
+            put("ok", false)
+            put("tool", "wechat_group_manage")
+            put("supported", false)
+            put("action", action)
+            put("reason", "iLink 协议当前未确认支持此类群/好友管理操作，未执行任何改动。")
+            put("hint", "「$action」请在微信 App 内手动完成（聊天里长按可置顶/取消置顶，联系人详情页可改备注）。")
+        }.toString()
+    }
+
     // ── Helpers ──────────────────────────────────────────────
 
     private fun argString(args: String, key: String): String {
@@ -375,6 +506,9 @@ class ImToolProvider(
             "im_receive",
             "im_send",
             "im_send_multi",
+            "wechat_schedule_send",
+            "wechat_revoke",
+            "wechat_group_manage",
         )
     }
 }
