@@ -370,8 +370,17 @@ internal fun ChatDrawerContent(
                                     val titleText = conversation.title.ifBlank {
                                         stringResource(R.string.app_name)
                                     }
-                                    val firstChar = titleText.trim().firstOrNull()
-                                        ?.let { it.toString().uppercase() } ?: "•"
+                                    // Take a full code point so CJK chars render as-is and emoji
+                                    // (surrogate pairs) don't split into an unreadable half.
+                                    val firstGlyph = titleText.trim().firstOrNull()?.let {
+                                        if (it.isHighSurrogate() &&
+                                            titleText.indexOf(it) + 1 < titleText.length
+                                        ) {
+                                            "${it}${titleText[titleText.indexOf(it) + 1]}"
+                                        } else {
+                                            it.toString().uppercase()
+                                        }
+                                    } ?: "•"
                                     val avatarBg = if (isSelected) {
                                         MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.08f)
                                     } else {
@@ -389,7 +398,7 @@ internal fun ChatDrawerContent(
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Text(
-                                            text = firstChar,
+                                            text = firstGlyph,
                                             style = MaterialTheme.typography.labelLarge,
                                             fontWeight = FontWeight.SemiBold,
                                             color = avatarFg,
