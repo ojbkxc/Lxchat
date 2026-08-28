@@ -154,7 +154,7 @@ class AndroidUiControllerService : AccessibilityService() {
                 Display.DEFAULT_DISPLAY,
                 executor,
                 object : TakeScreenshotCallback {
-                    override fun onSuccess(screenshot: ScreenshotResult?) {
+                    override fun onSuccess(screenshot: ScreenshotResult) {
                         holder.set(screenshot)
                         latch.countDown()
                     }

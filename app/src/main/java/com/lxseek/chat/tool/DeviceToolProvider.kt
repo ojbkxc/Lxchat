@@ -1084,23 +1084,23 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
         val action = argString("action", arguments)?.trim()?.lowercase() ?: "list"
         val msm = app.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
         return try {
-            val sessions = msm.getActiveSessions(null) ?: emptyList()
-            val listed = sessions.map { s ->
+            val controllers = msm.getActiveSessions(null) ?: emptyList()
+            val sessions = controllers.map { c ->
                 buildJsonObject {
-                    put("package", s.packageName)
-                    put("active", s.isActive)
-                    s.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)?.let { put("title", it) }
-                    s.metadata?.getString(MediaMetadata.METADATA_KEY_MEDIA_ID)?.let { put("mediaId", it) }
+                    put("package", c.packageName)
+                    c.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)?.let { put("title", it) }
+                    c.metadata?.getString(MediaMetadata.METADATA_KEY_MEDIA_ID)?.let { put("mediaId", it) }
                 }
             }
+            val target = controllers.firstOrNull()
             when (action) {
-                "play" -> sessions.firstOrNull { it.isActive }?.controller?.transportControls?.play()
-                "pause" -> sessions.firstOrNull { it.isActive }?.controller?.transportControls?.pause()
+                "play" -> target?.transportControls?.play()
+                "pause" -> target?.transportControls?.pause()
             }
             buildJsonObject {
                 put("type", "device_media")
                 put("action", action)
-                put("sessions", buildJsonArray { listed.forEach { add(it) } })
+                put("sessions", buildJsonArray { sessions.forEach { add(it) } })
                 put("note", "Only your own sessions are visible without a notification-listener grant.")
             }.toString()
         } catch (e: SecurityException) {
