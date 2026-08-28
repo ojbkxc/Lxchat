@@ -514,7 +514,7 @@ internal fun CompactSegmentBlock(
                                     .padding(horizontal = 10.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    toolDisplayName(seg),
+                                    text = toolNameHeaderText(seg),
                                     style = ChatType.meta,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.SemiBold
@@ -539,6 +539,36 @@ internal fun CompactSegmentBlock(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Tool-card header shown in both the grouped and per-segment timelines: the (localized) tool name
+ * plus, once the call has finished, a trailing execution duration. `durationMs` is filled only at
+ * completion (see GenerationToolExecutor), so nothing flashes while the tool is still running.
+ */
+@Composable
+private fun toolNameHeaderText(seg: MessageSegment): String =
+    toolDisplayName(seg) + seg.durationMs
+        ?.takeIf { it > 0L }
+        ?.let { " \u00b7 " + formatShortDuration(it) }
+        .orEmpty()
+
+private fun formatShortDuration(ms: Long): String {
+    val seconds = ms / 1000
+    return when {
+        seconds < 1 -> "${ms}ms"
+        seconds < 60 -> "${seconds}s"
+        seconds < 3600 -> {
+            val m = seconds / 60
+            val s = seconds % 60
+            if (s == 0L) "${m}m" else "${m}m ${s}s"
+        }
+        else -> {
+            val h = seconds / 3600
+            val m = (seconds % 3600) / 60
+            if (m == 0L) "${h}h" else "${h}h ${m}m"
         }
     }
 }
@@ -759,7 +789,7 @@ private fun TimelineInfoSegmentCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = when (seg.type) {
-                        "tool" -> toolDisplayName(seg)
+                        "tool" -> toolNameHeaderText(seg)
                         "transcription" -> transcriptionLabel(detailSegments, detailIndex)
                         else -> stringResource(R.string.tool_thinking)
                     },
