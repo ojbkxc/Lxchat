@@ -1,9 +1,8 @@
 package com.lxseek.chat.data
 
 import android.content.Context
+import com.lxseek.chat.util.AppendWriter
 import com.lxseek.chat.util.DebugLog
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -38,24 +37,25 @@ class ActivityJournal(context: Context) {
     private val journalFile: File =
         File(context.filesDir, "activity_journal.jsonl")
 
+    private val writer = AppendWriter(journalFile)
+
     private val json = Json { ignoreUnknownKeys = true }
 
     /** 追加一条活动记录（后台线程写盘）。 */
-    suspend fun record(kind: String, action: String, detail: String = "", ref: String = "") =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                val entry = ActivityEntry(
-                    ts = System.currentTimeMillis(),
-                    kind = kind,
-                    action = action,
-                    detail = detail.take(500),
-                    ref = ref.take(200),
-                )
-                journalFile.appendText(json.encodeToString(entry) + "\n")
-            }.onFailure {
-                DebugLog.e("ActivityJournal", "Failed to record $kind/$action", it)
-            }
+    suspend fun record(kind: String, action: String, detail: String = "", ref: String = "") {
+        val entry = ActivityEntry(
+            ts = System.currentTimeMillis(),
+            kind = kind,
+            action = action,
+            detail = detail.take(500),
+            ref = ref.take(200),
+        )
+        try {
+            writer.writeLine(json.encodeToString(entry))
+        } catch (e: Exception) {
+            DebugLog.e("ActivityJournal", "Failed to record $kind/$action", e)
         }
+    }
 
     /** 最近 [limit] 条活动（按时间倒序）。 */
     fun recent(limit: Int = 50): List<ActivityEntry> =

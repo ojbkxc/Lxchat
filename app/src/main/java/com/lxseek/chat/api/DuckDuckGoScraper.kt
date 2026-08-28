@@ -1,5 +1,7 @@
 package com.lxseek.chat.api
 
+import com.lxseek.chat.util.InMemoryTtlCache
+import com.lxseek.chat.util.TtlCache
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -72,6 +74,12 @@ class DuckDuckGoScraper(
         private const val PAGE_SIZE = 10
         private const val MAX_PAGES = 5
 
+        /** Successful results are cached this long so repeated queries avoid hitting DDG again. */
+        private const val RESULT_TTL_MILLIS = 10 * 60 * 1000L
+
+        /** Shared TTL cache of successful searches (keyed by query + maxResults). */
+        private val cache: TtlCache<String, List<WebResult>> = InMemoryTtlCache()
+
         // -- parsing -----------------------------------------------------------------
 
         private val LINK_TAG_REGEX = Regex("""<a\s[^>]*class=['"]result-link['"][^>]*>""")
@@ -104,6 +112,9 @@ class DuckDuckGoScraper(
      * feedback to the LLM or user.
      */
     fun search(query: String, maxResults: Int = DEFAULT_MAX_RESULTS): SearchResponse {
+        val cacheKey = "$query|$maxResults"
+        cache.get(cacheKey)?.let { return SearchResponse.Success(it) }
+
         val allResults = mutableListOf<WebResult>()
         val seenUrls = mutableSetOf<String>()
         var offset = 0
@@ -164,6 +175,10 @@ class DuckDuckGoScraper(
                     }
                 }
             }
+        }
+
+        if (allResults.isNotEmpty()) {
+            cache.set(cacheKey, allResults.toList(), RESULT_TTL_MILLIS)
         }
 
         return if (allResults.isEmpty()) {
