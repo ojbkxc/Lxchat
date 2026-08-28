@@ -3,10 +3,10 @@ package com.lxseek.chat.androidcontrol
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
 import android.accessibilityservice.AccessibilityService.ScreenshotResult
+import android.accessibilityservice.GestureDescription
+import android.accessibilityservice.GestureDescription.StrokeDescription
 import android.accessibilityservice.GestureResultCallback
-import android.accessibilityservice.StrokeDescription
 import android.graphics.Bitmap
-import android.graphics.GestureDescription
 import android.graphics.Path
 import android.graphics.PathMeasure
 import android.graphics.Rect

@@ -1159,6 +1159,8 @@
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_start_now">Start now</string>
+    <string name="onboarding_connect_ai">Connect my AI</string>
     <string name="onboarding_api_key_hint">Enter your API key…</string>
     <string name="onboarding_ollama_hint">http://localhost:11434</string>
     <string name="onboarding_import_gguf">Import GGUF Model</string>
@@ -1237,6 +1239,7 @@
     <string name="pet_tip_done">Done</string>
     <string name="pet_tip_sad">Something went wrong</string>
     <string name="pet_tip_error">Connection error</string>
+    <string name="pet_tip_waiting">Waiting…</string>
     <string name="settings_group_permissions">Permissions</string>
     <string name="settings_workflow">Workflows</string>
     <string name="settings_workflow_desc">Chain several generations, pausing between steps</string>

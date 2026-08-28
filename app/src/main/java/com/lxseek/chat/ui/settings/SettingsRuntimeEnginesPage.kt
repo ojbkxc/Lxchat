@@ -184,7 +184,7 @@ private fun formatEngineError(op: String, e: Throwable): String {
         is IllegalArgumentException -> "参数错误: ${e.message}"
         else -> e.message ?: e::class.simpleName ?: "未知错误"
     }
-    return "$op失败：$detail"
+    return "${op}失败：$detail"
 }
 
 @Composable
