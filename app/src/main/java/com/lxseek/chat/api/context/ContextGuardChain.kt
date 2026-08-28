@@ -1,5 +1,6 @@
 package com.lxseek.chat.api.context
 
+import com.lxseek.chat.api.util.ContextTokenEstimator
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.ContextBudget
 
@@ -22,6 +23,9 @@ import com.lxseek.chat.model.ContextBudget
  *   → 第2层：ToolResultTrimmer.trim       （裁剪工具结果）
  *   → 第3层：TokenBudgetGuard.evaluate    （检查 token 预算）
  *   → 第4层：AutoSummarizer.plan + generate （如需，生成摘要）
+ *     │  ├─ SelectiveRetention.partition  （分离重要消息，摘要时跳过）
+ *     │  ├─ 动态 retainRecent 计算        （按 token 预算 30% 估算）
+ *     │  └─ 递归摘要（prefix 过长时分块摘要再合并）
  *   → 输出：GuardResult（处理后的消息 + 事件列表）
  * ```
  */
@@ -119,6 +123,18 @@ object ContextGuardChain {
     /**
      * 异步应用全部 4 层防护（含自动摘要）。
      *
+     * 第4层增强（选择性保留 + 递归摘要 + 动态 retainRecent）：
+     * 1. 选择性保留：用 [SelectiveRetention.partition] 分离重要消息（工具调用/用户决策/代码块/
+     *    已有摘要），只对可摘要消息应用 [AutoSummarizer.plan]，重要消息原样保留并按原始顺序重组；
+     * 2. 动态 retainRecent：根据 token 预算动态计算保留的最近消息数，保证至少 30% 预算留给最近消息；
+     * 3. 递归摘要：当可摘要前缀的估算 token 超过 [ContextGuardConfig.maxSummaryTokens] 时，
+     *    [AutoSummarizer.plan] 返回 chunks，通过 [SummaryGenerator.generateRecursive] 分块摘要再合并。
+     *
+     * 向后兼容：[ContextGuardConfig.enableSelectiveRetention] 默认 true 但行为是"分离后重组"，
+     *   无重要消息时等价于不分离；[ContextGuardConfig.maxSummaryTokens] 默认 2000 足够大，
+     *   短对话不会触发递归；[ContextGuardConfig.dynamicRetainRecent] 默认 true，但会与
+     *   [ContextGuardConfig.retainRecentMessages] 取合理值，短对话下结果一致。
+     *
      * @param messages 原始消息列表。
      * @param config 防护配置。
      * @param summaryGenerator 摘要生成器（第4层使用）；为 null 时跳过第4层。
@@ -140,14 +156,46 @@ object ContextGuardChain {
 
         if (!config.autoSummarizeEnabled) return syncResult
 
-        val plan = AutoSummarizer.plan(syncResult.messages, config.retainRecentMessages)
+        // ── 选择性保留：分离重要消息和可摘要消息 ──
+        val (important, summarizable) = if (config.enableSelectiveRetention) {
+            SelectiveRetention.partition(syncResult.messages)
+        } else {
+            emptyList<ChatMessage>() to syncResult.messages
+        }
+
+        // 可摘要消息为空（全部重要）时无需摘要
+        if (summarizable.isEmpty()) return syncResult
+
+        // ── 动态 retainRecent：根据 token 预算估算保留的最近消息数 ──
+        val retainRecent = if (config.dynamicRetainRecent) {
+            computeDynamicRetainRecent(summarizable, config)
+        } else {
+            config.retainRecentMessages
+        }
+
+        // ── 规划摘要（含递归摘要的 chunk 切分） ──
+        val plan = AutoSummarizer.plan(
+            messages = summarizable,
+            retainRecent = retainRecent,
+            maxSummaryTokens = config.maxSummaryTokens,
+        )
         if (plan !is SummaryPlan.Requested) return syncResult
 
         val summaryPrompt = config.summaryPrompt.ifBlank { AutoSummarizer.DEFAULT_SUMMARY_PROMPT }
-        val summaryText = try {
-            summaryGenerator.generate(plan.prefixToSummarize, summaryPrompt)
-        } catch (_: Exception) {
-            null
+
+        // ── 生成摘要：递归摘要（chunks 非空）或单次摘要 ──
+        val summaryText = if (plan.chunks != null) {
+            try {
+                summaryGenerator.generateRecursive(plan.chunks, summaryPrompt)
+            } catch (_: Exception) {
+                null
+            }
+        } else {
+            try {
+                summaryGenerator.generate(plan.prefixToSummarize, summaryPrompt)
+            } catch (_: Exception) {
+                null
+            }
         }
 
         if (summaryText.isNullOrBlank()) {
@@ -157,20 +205,61 @@ object ContextGuardChain {
         }
 
         val parentId = plan.prefixToSummarize.lastOrNull()?.id
-        val summarized = AutoSummarizer.assembleSummaryMessage(
+        val summarizedResult = AutoSummarizer.assembleSummaryMessage(
             summaryText = summaryText,
             parentId = parentId,
             suffixToRetain = plan.suffixToRetain,
         )
 
+        // ── 重组：重要消息原样保留，可摘要区域用摘要结果替换 ──
+        val finalMessages = if (config.enableSelectiveRetention && important.isNotEmpty()) {
+            SelectiveRetention.reassemble(
+                original = syncResult.messages,
+                important = important,
+                summarizedResult = summarizedResult,
+            )
+        } else {
+            summarizedResult
+        }
+
+        val summarizedCount = plan.prefixToSummarize.size
         return syncResult.copy(
-            messages = summarized,
+            messages = finalMessages,
             events = syncResult.events + GuardEvent.AutoSummaryApplied(
-                summarizedCount = plan.prefixToSummarize.size,
-                retainedCount = plan.suffixToRetain.size,
+                summarizedCount = summarizedCount,
+                retainedCount = plan.suffixToRetain.size + important.size,
                 summaryLength = summaryText.length,
             ),
         )
+    }
+
+    /**
+     * 动态计算 retainRecent：根据 token 预算估算保留的最近消息数。
+     *
+     * 规则：
+     * - 估算每条消息的平均 token 数；
+     * - retainRecent = max(4, (tokenBudget * 0.3) / avgTokensPerMessage)；
+     * - 保留至少 30% 的 token 预算给最近消息，且至少保留 4 条消息。
+     *
+     * @param messages 可摘要消息列表。
+     * @param config 防护配置。
+     * @return 动态计算的 retainRecent 值。
+     */
+    private fun computeDynamicRetainRecent(
+        messages: List<ChatMessage>,
+        config: ContextGuardConfig,
+    ): Int {
+        if (messages.isEmpty()) return config.retainRecentMessages
+        val tokenBudget = ContextBudget.normalize(config.tokenBudget)
+        val totalTokens = ContextTokenEstimator.estimate(messages)
+        if (totalTokens <= 0) return config.retainRecentMessages
+        val avgTokensPerMessage = totalTokens.toDouble() / messages.size
+        if (avgTokensPerMessage <= 0.0) return config.retainRecentMessages
+        // 保留 30% 的 token 预算给最近消息
+        val budgetForRecent = tokenBudget * 0.3
+        val dynamic = (budgetForRecent / avgTokensPerMessage).toInt()
+        // 至少保留 4 条，且不超过消息总数
+        return maxOf(4, dynamic).coerceAtMost(messages.size)
     }
 }
 
@@ -202,6 +291,29 @@ data class ContextGuardConfig(
     val retainRecentMessages: Int = AutoSummarizer.DEFAULT_RETAIN_RECENT,
     /** 第4层：摘要系统提示词。 */
     val summaryPrompt: String = AutoSummarizer.DEFAULT_SUMMARY_PROMPT,
+    /**
+     * 第4层：是否启用选择性保留（重要消息不摘要）。
+     *
+     * 默认 true。启用后用 [SelectiveRetention] 分离重要消息（工具调用/用户决策/代码块/已有摘要），
+     * 只对可摘要消息应用摘要，重要消息原样保留并按原始顺序重组。
+     * 无重要消息时行为与不启用一致（向后兼容）。
+     */
+    val enableSelectiveRetention: Boolean = true,
+    /**
+     * 第4层：递归摘要阈值（token 数）。
+     *
+     * 可摘要前缀的估算 token 超过此值时，切分为多个 chunk 分别摘要再合并。
+     * 默认 2000，短对话不会触发递归（向后兼容）。<= 0 关闭递归摘要。
+     */
+    val maxSummaryTokens: Int = AutoSummarizer.DEFAULT_MAX_SUMMARY_TOKENS,
+    /**
+     * 第4层：是否启用动态 retainRecent。
+     *
+     * 默认 true。启用后根据 token 预算动态计算保留的最近消息数
+     * （max(4, tokenBudget * 0.3 / avgTokensPerMessage)），保证至少 30% 预算留给最近消息。
+     * 关闭时使用固定的 [retainRecentMessages]。
+     */
+    val dynamicRetainRecent: Boolean = true,
 ) {
     companion object {
         /**
@@ -214,6 +326,36 @@ data class ContextGuardConfig(
 
         /** 完全关闭防护链的配置。 */
         val Off = ContextGuardConfig(disabled = true)
+    }
+}
+
+/**
+ * 选择性保留配置（语义分组，便于调用方按需构造）。
+ *
+ * 可通过 [ContextGuardConfig.copy] 配合此对象设置第4层的选择性保留参数，
+ * 也可直接在 [ContextGuardConfig] 构造时传入对应字段。
+ */
+data class SelectiveRetentionConfig(
+    /** 是否启用选择性保留（重要消息不摘要）。 */
+    val enableSelectiveRetention: Boolean = true,
+    /** 递归摘要阈值（token 数）。 */
+    val maxSummaryTokens: Int = AutoSummarizer.DEFAULT_MAX_SUMMARY_TOKENS,
+    /** 是否启用动态 retainRecent。 */
+    val dynamicRetainRecent: Boolean = true,
+) {
+    companion object {
+        /** 默认配置：全部启用。 */
+        val Default = SelectiveRetentionConfig()
+
+        /** 应用到 [ContextGuardConfig] 的便捷方法。 */
+        fun applyTo(
+            config: ContextGuardConfig,
+            selective: SelectiveRetentionConfig = Default,
+        ): ContextGuardConfig = config.copy(
+            enableSelectiveRetention = selective.enableSelectiveRetention,
+            maxSummaryTokens = selective.maxSummaryTokens,
+            dynamicRetainRecent = selective.dynamicRetainRecent,
+        )
     }
 }
 

@@ -93,6 +93,47 @@ class SkillHost {
         }
     }
 
+    // ── Skill composition (chaining) ─────────────────────────────────────────
+
+    /**
+     * Chain two skills so that [skillA]'s output is fed into [skillB]. Sets
+     * `chainedTo` on skill A to point at skill B. Returns false if either skill
+     * is not registered (the registry is left unchanged on failure). Self-chaining
+     * (A == B) is rejected to avoid trivial cycles.
+     *
+     * The link is observable via [resolveChain] and surfaces to the model as a
+     * `--- Next Skill ---` trailer in the executed body (see [SkillToolProvider]).
+     */
+    fun chain(skillA: String, skillB: String): Boolean {
+        if (skillA == skillB) return false
+        val a = registered[skillA] ?: return false
+        if (registered[skillB] == null) return false
+        registered[skillA] = a.copy(chainedTo = skillB)
+        refresh()
+        return true
+    }
+
+    /**
+     * Resolve the chain starting at [startSkill]: returns the ordered list of
+     * skills `[startSkill, next, next.next, ...]` following `chainedTo` links.
+     * Cycle-safe: a visited set stops traversal once a skill repeats, so a
+     * misconfigured cycle (A → B → A) returns `[A, B]` rather than looping forever.
+     * Returns an empty list when [startSkill] is not registered.
+     */
+    fun resolveChain(startSkill: String): List<Skill> {
+        val start = registered[startSkill] ?: return emptyList()
+        val result = mutableListOf<Skill>()
+        val visited = mutableSetOf<String>()
+        var current: Skill = start
+        while (current.name !in visited) {
+            visited.add(current.name)
+            result.add(current)
+            val nextName = current.chainedTo ?: break
+            current = registered[nextName] ?: break
+        }
+        return result
+    }
+
     /** Membership visibility check: members see everything; non-members skip gated skills. */
     private fun visibleByMembership(skill: Skill, hasMembership: Boolean): Boolean =
         hasMembership || !skill.requiresMembership

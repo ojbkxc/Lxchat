@@ -21,7 +21,7 @@ android {
         version = release(36)
     }
 
-    ndkVersion = "28.2.13676358"
+    ndkVersion = "29.0.14206865"
 
     // Version: prefer gradle properties (passed by CI from git tag) over hardcoded fallback.
     // LxChat is a fresh repo versioned from v1.0.0.

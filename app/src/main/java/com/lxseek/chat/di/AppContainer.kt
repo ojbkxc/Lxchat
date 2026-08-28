@@ -494,7 +494,7 @@ class AppContainer(private val appContext: Context) {
 
     /** Subagents reuse the one-shot Task machinery to run async delegated prompts. */
     val subAgentManager: com.lxseek.chat.automation.SubAgentManager by lazy {
-        com.lxseek.chat.automation.SubAgentManager(taskManager)
+        com.lxseek.chat.automation.SubAgentManager(taskManager, appScope)
     }
 
     /** Foreground-only provider: headless automation cannot recursively create automation. */

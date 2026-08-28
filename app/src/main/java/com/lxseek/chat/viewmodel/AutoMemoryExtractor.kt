@@ -3,6 +3,7 @@ package com.lxseek.chat.viewmodel
 import com.lxseek.chat.api.LocalModelSerializer
 import com.lxseek.chat.api.ProviderConfig
 import com.lxseek.chat.api.StreamEvent
+import com.lxseek.chat.data.MemoryImportanceScorer
 import com.lxseek.chat.data.MemoryManager
 import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.model.ChatMessage
@@ -55,21 +56,13 @@ class AutoMemoryExtractor(
         settings.awaitInitialLoad()
         providers.awaitInitialSync()
 
-        val prefixedModelId = settings.selectedModel.value.takeIf { it.isNotBlank() }
-            ?: return Result.Failure("No model selected for memory extraction")
-        val providerName = providers.providerForModel(prefixedModelId)
-        val activeKey = settings.awaitActiveKey(providerName)?.takeIf { it.isNotBlank() }
-            ?: settings.resolveActiveKey(providerName).orEmpty()
-        if (!providers.isConfigured(providerName, activeKey)) {
-            return Result.Failure("Provider not configured: $providerName")
-        }
-        val modelId = ModelId.parse(prefixedModelId).modelName
-        val provider = providers.getInstanceOrNull(providerName)
-            ?: return Result.Failure("Provider not registered: $providerName")
+        // 优先复用上下文压缩辅助模型（更便宜），未配置或不可用时回退到主聊天模型。
+        val resolved = resolveModel()
+            ?: return Result.Failure("No model available for memory extraction")
 
-        val extractConfig = buildConfig(systemPrompt = EXTRACTION_SYSTEM, activeKey, modelId, providerName)
+        val extractConfig = buildConfig(systemPrompt = EXTRACTION_SYSTEM, resolved.activeKey, resolved.modelId, resolved.providerName)
         val extractResponse = try {
-            runCompletion(provider, providerName, extractConfig, extractionUser(conversationText))
+            runCompletion(resolved.provider, resolved.providerName, extractConfig, extractionUser(conversationText))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -81,9 +74,9 @@ class AutoMemoryExtractor(
 
         val existing = existingMemories()
         val decisions = try {
-            val consolidateConfig = buildConfig(CONSOLIDATION_SYSTEM, activeKey, modelId, providerName)
+            val consolidateConfig = buildConfig(CONSOLIDATION_SYSTEM, resolved.activeKey, resolved.modelId, resolved.providerName)
             parseConsolidation(
-                runCompletion(provider, providerName, consolidateConfig, consolidationUser(facts, existing)),
+                runCompletion(resolved.provider, resolved.providerName, consolidateConfig, consolidationUser(facts, existing)),
                 existing,
             )
         } catch (e: CancellationException) {
@@ -97,6 +90,40 @@ class AutoMemoryExtractor(
 
         return applyDecisions(decisions, existing)
     }
+
+    /**
+     * 解析用于记忆提取/合并的模型。
+     *
+     * 优先使用上下文压缩辅助模型（[SettingsRepository.contextCompactModel]），未配置或不可用时
+     * 回退到主聊天模型（[SettingsRepository.selectedModel]）。辅助模型的 provider 可能与主模型
+     * 不同，因此 provider / apiKey / baseUrl 均按解析出的 provider 单独取用。
+     */
+    private suspend fun resolveModel(): ResolvedModel? {
+        val auxiliary = settings.contextCompactModel.value?.takeIf { it.isNotBlank() }
+        val primary = settings.selectedModel.value.takeIf { it.isNotBlank() }
+        val candidates = listOfNotNull(auxiliary, primary)
+        for (prefixedId in candidates) {
+            val providerName = providers.providerForModel(prefixedId)
+            val activeKey = settings.awaitActiveKey(providerName)?.takeIf { it.isNotBlank() }
+                ?: settings.resolveActiveKey(providerName).orEmpty()
+            if (!providers.isConfigured(providerName, activeKey)) continue
+            val provider = providers.getInstanceOrNull(providerName) ?: continue
+            return ResolvedModel(
+                provider = provider,
+                providerName = providerName,
+                activeKey = activeKey,
+                modelId = ModelId.parse(prefixedId).modelName,
+            )
+        }
+        return null
+    }
+
+    private data class ResolvedModel(
+        val provider: com.lxseek.chat.api.LlmProvider,
+        val providerName: String,
+        val activeKey: String,
+        val modelId: String,
+    )
 
     private fun buildConfig(systemPrompt: String, activeKey: String, modelId: String, providerName: String): ProviderConfig =
         ProviderConfig(
@@ -120,10 +147,13 @@ class AutoMemoryExtractor(
             )
         )
 
-    private fun consolidationUser(facts: List<String>, existing: List<ExistingMemory>): List<ChatMessage> {
+    private fun consolidationUser(facts: List<ExtractedFact>, existing: List<ExistingMemory>): List<ChatMessage> {
         val existingText = if (existing.isEmpty()) "No existing memories."
         else existing.joinToString("\n") { "${it.index}: ${it.text}" }
-        val factsText = facts.withIndex().joinToString("\n") { (i, f) -> "F${i + 1}: $f" }
+        // 每个 NEW fact 附带其分类标签，便于 LLM 在 ADD 时继承、在 UPDATE/DELETE 时考虑分类。
+        val factsText = facts.withIndex().joinToString("\n") { (i, f) ->
+            "F${i + 1} [${f.category.name.lowercase()}]: ${f.text}"
+        }
         return listOf(
             message(
                 "EXISTING MEMORIES:\n$existingText\n\nNEW FACTS TO INTEGRATE:\n$factsText\n\n" +
@@ -162,16 +192,31 @@ class AutoMemoryExtractor(
 
     // ── Parsing ──────────────────────────────────────────────────
 
-    private fun parseExtraction(raw: String): List<String> {
+    private data class ExtractedFact(
+        val text: String,
+        val category: MemoryImportanceScorer.Category,
+    )
+
+    private fun parseExtraction(raw: String): List<ExtractedFact> {
         val root = parseJsonObject(raw) ?: return emptyList()
         val arr = (root["memory"] as? JsonArray) ?: return emptyList()
         return arr.mapNotNull { el ->
-            val text = ((el as? JsonObject)?.get("text") as? JsonPrimitive)?.content?.trim().orEmpty()
-            text.takeIf { it.isNotEmpty() }
+            val obj = el as? JsonObject ?: return@mapNotNull null
+            val text = (obj["text"] as? JsonPrimitive)?.content?.trim().orEmpty()
+            if (text.isEmpty()) return@mapNotNull null
+            val category = MemoryImportanceScorer.Category.fromString(
+                (obj["category"] as? JsonPrimitive)?.content
+            )
+            ExtractedFact(text, category)
         }
     }
 
-    private data class Decision(val event: String, val id: String, val text: String)
+    private data class Decision(
+        val event: String,
+        val id: String,
+        val text: String,
+        val category: MemoryImportanceScorer.Category,
+    )
 
     private fun parseConsolidation(raw: String, existing: List<ExistingMemory>): List<Decision> {
         val root = parseJsonObject(raw) ?: return emptyList()
@@ -185,7 +230,10 @@ class AutoMemoryExtractor(
             val text = (obj["text"] as? JsonPrimitive)?.content?.trim().orEmpty()
             // An action on an unknown id is dropped: it can neither be applied nor trusted as ADD.
             if (event != "ADD" && id !in knownIndices) return@mapNotNull null
-            Decision(event, id, text)
+            val category = MemoryImportanceScorer.Category.fromString(
+                (obj["category"] as? JsonPrimitive)?.content
+            )
+            Decision(event, id, text, category)
         }
     }
 
@@ -201,22 +249,25 @@ class AutoMemoryExtractor(
 
     // ── Apply to MemoryManager ───────────────────────────────────
 
-    private class ExistingMemory(val index: String, val fileName: String, val text: String)
+    private class ExistingMemory(val index: String, val fileName: String, val text: String, val description: String)
 
     private fun existingMemories(): List<ExistingMemory> =
         memoryManager.listFiles().take(MAX_EXISTING_MEMORIES).mapIndexedNotNull { i, info ->
+            // 文件内容为空时回退到 description，但需剥离 [type:][score:] 标签，避免把元标签喂给 LLM。
             val body = runCatching { memoryManager.readFile(info.name) }.getOrDefault("")
-                .trim().ifBlank { info.description }
-            ExistingMemory("M${i + 1}", info.name, body.take(MAX_EXISTING_CHARS))
+                .trim().ifBlank { MemoryImportanceScorer.stripTags(info.description) }
+            ExistingMemory("M${i + 1}", info.name, body.take(MAX_EXISTING_CHARS), info.description)
         }
 
-    private fun applyAdd(facts: List<String>): Result {
+    private fun applyAdd(facts: List<ExtractedFact>): Result {
+        val now = System.currentTimeMillis()
         val taken = memoryManager.listFiles().map { it.name.removeSuffix(".md") }.toMutableSet()
         var added = 0
         for (fact in facts) {
-            if (fact.isBlank()) continue
+            if (fact.text.isBlank()) continue
             val name = nextFreeName(fact, taken)
-            if (runCatching { memoryManager.createFile(name, fact, fact) }.isSuccess) {
+            val description = encodeDescription(fact.category, now)
+            if (runCatching { memoryManager.createFile(name, fact.text, description) }.isSuccess) {
                 taken.add(name)
                 added++
             }
@@ -226,6 +277,7 @@ class AutoMemoryExtractor(
 
     private fun applyDecisions(decisions: List<Decision>, existing: List<ExistingMemory>): Result {
         val byIndex = existing.associateBy { it.index }
+        val now = System.currentTimeMillis()
         val taken = memoryManager.listFiles().map { it.name.removeSuffix(".md") }.toMutableSet()
         var added = 0
         var updated = 0
@@ -235,8 +287,10 @@ class AutoMemoryExtractor(
             when (d.event) {
                 "ADD" -> {
                     if (d.text.isBlank()) continue
-                    val name = nextFreeName(d.text, taken)
-                    if (runCatching { memoryManager.createFile(name, d.text, d.text) }.isSuccess) {
+                    val fact = ExtractedFact(d.text, d.category)
+                    val name = nextFreeName(fact, taken)
+                    val description = encodeDescription(d.category, now)
+                    if (runCatching { memoryManager.createFile(name, d.text, description) }.isSuccess) {
                         taken.add(name)
                         added++
                     }
@@ -244,7 +298,11 @@ class AutoMemoryExtractor(
                 "UPDATE" -> {
                     val target = byIndex[d.id] ?: continue
                     if (d.text.isBlank()) continue
-                    if (runCatching { memoryManager.editFile(target.fileName, content = d.text, description = d.text) }.isSuccess) {
+                    // 分类优先用决策给出的；若决策未指定（OTHER）则沿用原文件分类。
+                    val category = if (d.category != MemoryImportanceScorer.Category.OTHER) d.category
+                        else MemoryImportanceScorer.parseCategory(target.description)
+                    val description = encodeDescription(category, now)
+                    if (runCatching { memoryManager.editFile(target.fileName, content = d.text, description = description) }.isSuccess) {
                         updated++
                     }
                 }
@@ -260,18 +318,29 @@ class AutoMemoryExtractor(
         return Result.Success(added, updated, deleted, none)
     }
 
-    private fun nextFreeName(fact: String, taken: MutableSet<String>): String {
-        val slug = fact.take(24)
+    /** 把分类与初始评分编码为 description 标签前缀。 */
+    private fun encodeDescription(category: MemoryImportanceScorer.Category, now: Long): String {
+        val initialScore = MemoryImportanceScorer.score(
+            MemoryImportanceScorer.MemoryEntry(category, now, 0), now
+        )
+        return MemoryImportanceScorer.encodeDescription(category, initialScore)
+    }
+
+    private fun nextFreeName(fact: ExtractedFact, taken: MutableSet<String>): String {
+        // 文件名加分类前缀（如 pref-likes-coffee），便于人工浏览与按类检索。
+        val prefix = fact.category.filePrefix
+        val slug = fact.text.take(24)
             .replace(Regex("""[^\p{L}\p{N} _-]"""), "")
             .trim()
             .replace(Regex("""\s+"""), "-")
             .take(20)
             .ifBlank { "fact" }
+        val base = "$prefix-$slug"
         var i = 1
-        var candidate = slug
+        var candidate = base
         while (candidate in taken) {
             i++
-            candidate = "$slug-$i"
+            candidate = "$base-$i"
         }
         return candidate
     }
@@ -295,24 +364,28 @@ class AutoMemoryExtractor(
                 "4. Never combine multiple facts into one entry. " +
                 "5. Write facts in the SAME language the user used. " +
                 "6. Skip facts about the assistant, system internals, or transient chit-chat that is not durable. " +
-                "Respond with ONLY a JSON object in this exact shape: {\"memory\": [{\"text\": \"fact 1\"}, {\"text\": \"fact 2\"}]}"
+                "7. Classify each fact with a \"category\" field: one of preference, fact, event, skill, contact, other. " +
+                "Respond with ONLY a JSON object in this exact shape: " +
+                "{\"memory\": [{\"text\": \"fact 1\", \"category\": \"preference\"}, {\"text\": \"fact 2\", \"category\": \"fact\"}]}"
 
         // Source: mem0 DEFAULT_UPDATE_MEMORY_PROMPT (ADD/UPDATE/DELETE/NONE consolidation).
         private const val CONSOLIDATION_SYSTEM =
             "You are managing a memory store. You are given EXISTING memories (labeled M1, M2, ...) and a list of NEW " +
-                "facts (labeled F1, F2, ...). For every NEW fact, decide how the store should change so it stays current, " +
+                "facts (labeled F1, F2, ...). Each NEW fact carries its category in brackets (e.g. F1 [preference]); " +
+                "consider the category when deciding overlaps: facts of different categories rarely supersede each other. " +
+                "For every NEW fact, decide how the store should change so it stays current, " +
                 "free of duplicates, and free of contradictions. Output exactly one entry per new fact. " +
                 "Rules: " +
-                "ADD — the fact is genuinely new; no existing memory overlaps it. " +
+                "ADD — the fact is genuinely new; no existing memory overlaps it; include its \"category\". " +
                 "UPDATE — the fact supersedes/refines an existing memory; set id to that memory's label (Mx), and " +
-                "\"old_memory\" to the original text being replaced. " +
+                "\"old_memory\" to the original text being replaced; set \"category\" to the refined category. " +
                 "DELETE — an existing memory is now false, obsolete, or contradicted; set id to its label and " +
                 "\"old_memory\" to its current text. " +
                 "NONE — the fact is already covered by an existing memory, or is irrelevant/junk; change nothing. " +
                 "If one new fact replaces several existing memories, emit multiple UPDATE entries with the same text " +
                 "and different ids. " +
                 "Respond with ONLY a JSON object in this exact shape: " +
-                "{\"memory\": [{\"id\": \"M1\", \"text\": \"fact\", \"event\": \"UPDATE\", \"old_memory\": \"old\"}, " +
-                "{\"id\": \"\", \"text\": \"fact\", \"event\": \"ADD\", \"old_memory\": \"\"}]}"
+                "{\"memory\": [{\"id\": \"M1\", \"text\": \"fact\", \"event\": \"UPDATE\", \"category\": \"preference\", \"old_memory\": \"old\"}, " +
+                "{\"id\": \"\", \"text\": \"fact\", \"event\": \"ADD\", \"category\": \"fact\", \"old_memory\": \"\"}]}"
     }
 }

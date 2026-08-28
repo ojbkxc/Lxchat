@@ -194,6 +194,14 @@ class TaskManager(
         taskRepository.getAllTasksSnapshot().forEach { cancelExecutions(it.id) }
     }
 
+    /**
+     * 取消某 Task 当前正在运行的手动执行与排队中的调度执行，但不删除任务本身。
+     * 供外部（如 SubAgentManager 的超时机制）调用，是 [cancelExecutions] 的公开入口。
+     */
+    suspend fun cancelTask(taskId: String) {
+        cancelExecutions(taskId)
+    }
+
     fun refreshSchedulingAfterImport() = refreshScheduling()
 
     suspend fun deleteTask(id: String) {

@@ -3,6 +3,33 @@ package com.lxseek.chat.skill
 import kotlinx.serialization.Serializable
 
 /**
+ * A typed parameter for a [Skill], declared in SKILL.md frontmatter under the
+ * `parameters` block. Each parameter is surfaced to the model as a JSON Schema
+ * property on the `skill_<name>` tool, so the model can pass structured arguments
+ * instead of free-form text.
+ *
+ * Supported [type] values: `"string"`, `"int"`, `"bool"`, `"enum"`. For
+ * `"enum"`, [enumValues] lists the allowed options. [default] is the fallback
+ * used when the model omits the parameter.
+ *
+ * @property name        Parameter key (becomes the JSON Schema property name).
+ * @property type        One of `"string"`, `"int"`, `"bool"`, `"enum"`.
+ * @property description Human-readable hint shown to the model.
+ * @property required    Whether the model must supply this parameter.
+ * @property default     Default value applied when the parameter is omitted.
+ * @property enumValues  Allowed values when [type] == `"enum"` (ignored otherwise).
+ */
+@Serializable
+data class SkillParameter(
+    val name: String,
+    val type: String,
+    val description: String,
+    val required: Boolean = false,
+    val default: String? = null,
+    val enumValues: List<String> = emptyList(),
+)
+
+/**
  * Data model for a Skill, corresponding to the SKILL.md frontmatter format
  * (Markdown + YAML frontmatter) used by cc-haha, Operit, and Claude Skills.
  *
@@ -28,6 +55,12 @@ import kotlinx.serialization.Serializable
  * @property source       The file path or source identifier this skill was parsed from.
  * @property requiresMembership True if an active membership is required to disclose
  *                        and execute this skill. Orthogonal to [allowedTools].
+ * @property parameters   Typed parameters declared in frontmatter; surfaced to the
+ *                        model as the `skill_<name>` tool's JSON Schema. Empty by
+ *                        default, so legacy skills without parameters are unchanged.
+ * @property chainedTo    frontmatter: chained_to — name of another skill whose
+ *                        input is this skill's output (skill composition). null
+ *                        by default for backward compatibility.
  */
 @Serializable
 data class Skill(
@@ -41,4 +74,6 @@ data class Skill(
     val body: String = "",
     val source: String = "",
     val requiresMembership: Boolean = false,
+    val parameters: List<SkillParameter> = emptyList(),
+    val chainedTo: String? = null,
 )

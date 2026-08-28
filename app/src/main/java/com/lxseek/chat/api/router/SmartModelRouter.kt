@@ -35,6 +35,10 @@ fun interface ApiKeySource {
  * @param maxConcurrentPerProvider 按 Provider 名的最大并发请求数；未列出的 Provider 不限并发
  * @param enableFallback 是否启用故障转移（false 时仅尝试主模型）
  * @param enableKeyRotation 是否启用 API Key 轮换（false 时使用原始 config 中的 Key）
+ * @param enableComplexityRouting 是否启用复杂度智能路由（false 时行为完全不变，向后兼容）。
+ *   开启后仅在无 fallback 快速路径中按任务复杂度选择模型，避免与 fallback 逻辑冲突
+ * @param simpleTaskModel 简单任务用的小模型 ID（null/空 = 未配置，走启发式匹配）
+ * @param complexTaskModel 复杂任务用的大模型 ID（null/空 = 未配置，走启发式匹配）
  */
 data class RouterConfig(
     val allowlist: ModelAllowlist = ModelAllowlist.PERMISSIVE,
@@ -42,6 +46,9 @@ data class RouterConfig(
     val maxConcurrentPerProvider: Map<String, Int> = emptyMap(),
     val enableFallback: Boolean = true,
     val enableKeyRotation: Boolean = true,
+    val enableComplexityRouting: Boolean = false,
+    val simpleTaskModel: String? = null,
+    val complexTaskModel: String? = null,
 ) {
     companion object {
         /** 全部禁用的默认配置：路由器退化为直接转发，保持向后兼容。 */
@@ -51,6 +58,9 @@ data class RouterConfig(
             maxConcurrentPerProvider = emptyMap(),
             enableFallback = false,
             enableKeyRotation = false,
+            enableComplexityRouting = false,
+            simpleTaskModel = null,
+            complexTaskModel = null,
         )
     }
 }
@@ -88,6 +98,12 @@ class SmartModelRouter(
     private val apiKeySource: ApiKeySource? = null,
 ) : LlmProvider by delegate {
 
+    /** 复杂度路由器：按任务复杂度选择小/大模型，配置来自 [routerConfig]。 */
+    private val complexityRouter = ComplexityRouter(
+        simpleTaskModel = routerConfig.simpleTaskModel,
+        complexTaskModel = routerConfig.complexTaskModel,
+    )
+
     /**
      * 路由一次生成请求。
      *
@@ -109,10 +125,12 @@ class SmartModelRouter(
 
         // ── 无 fallback 快速路径：直接流式转发，不缓冲 ──
         // 避免缓冲整个响应导致首 token 延迟；仅应用白名单/Key 轮换/速率限制/并发限制。
+        // 复杂度智能路由仅在此路径应用，避免与 fallback 缓冲路径冲突。
         if (!hasFallback) {
+            val effectiveModelId = routeByComplexity(messages, config.modelId)
             streamDirect(
                 provider = delegate,
-                modelId = config.modelId,
+                modelId = effectiveModelId,
                 apiKeyOverride = null,
                 baseUrlOverride = null,
                 messages = messages,
@@ -197,6 +215,30 @@ class SmartModelRouter(
 
         // 所有条目耗尽
         lastError?.let { emit(StreamEvent.Error(it)) }
+    }
+
+    /**
+     * 按任务复杂度路由模型（仅在 [RouterConfig.enableComplexityRouting] 开启时生效）。
+     *
+     * 用 [TaskComplexityEstimator] 评估消息复杂度，再用 [complexityRouter] 选择模型。
+     * 关闭时直接返回 [primaryModel]，行为完全不变（向后兼容）。
+     *
+     * @param messages 聊天消息列表
+     * @param primaryModel 当前主模型 ID
+     * @return 实际使用的模型 ID
+     */
+    private fun routeByComplexity(messages: List<ChatMessage>, primaryModel: String): String {
+        if (!routerConfig.enableComplexityRouting) return primaryModel
+        val complexity = TaskComplexityEstimator.estimate(messages)
+        val routed = complexityRouter.routeFor(complexity, primaryModel)
+        val effective = routed ?: primaryModel
+        DebugLog.i(
+            "SmartRouter",
+            "复杂度路由: 复杂度=$complexity(weight=${complexity.weight}), " +
+                "主模型=$primaryModel, 选中=$effective" +
+                if (routed == null) "(未切换)" else "",
+        )
+        return effective
     }
 
     /**

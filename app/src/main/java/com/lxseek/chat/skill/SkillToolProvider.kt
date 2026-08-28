@@ -60,13 +60,8 @@ class SkillToolProvider(
                         name = toolName,
                         description = skill.description,
                         parameters = ToolParameters(
-                            properties = mapOf(
-                                "input" to ToolProperty(
-                                    "string",
-                                    "Optional natural-language input or context for the skill.",
-                                ),
-                            ),
-                            required = emptyList(),
+                            properties = buildToolProperties(skill),
+                            required = buildRequiredParams(skill),
                         ),
                     ),
                 ),
@@ -78,6 +73,59 @@ class SkillToolProvider(
             )
         }
     }
+
+    /**
+     * Build the JSON Schema properties for a skill tool. Always includes the legacy
+     * `input` string property (free-form context, backward compatibility) plus one
+     * property per declared [SkillParameter].
+     */
+    private fun buildToolProperties(skill: Skill): Map<String, ToolProperty> {
+        val props = LinkedHashMap<String, ToolProperty>()
+        props["input"] = ToolProperty(
+            "string",
+            "Optional natural-language input or context for the skill.",
+        )
+        for (param in skill.parameters) {
+            props[param.name] = ToolProperty(
+                type = mapParamTypeToJson(param.type),
+                description = buildParamDescription(param),
+            )
+        }
+        return props
+    }
+
+    /** Map a [SkillParameter.type] to a JSON Schema type. Unknown types default to string. */
+    private fun mapParamTypeToJson(type: String): String = when (type.lowercase()) {
+        "int" -> "integer"
+        "bool" -> "boolean"
+        "string", "enum" -> "string"
+        else -> "string"
+    }
+
+    /**
+     * Build the human-readable description for a parameter. For enum types the
+     * allowed values are appended (since [ToolProperty] has no native enum field),
+     * and a default value is noted when present.
+     */
+    private fun buildParamDescription(param: SkillParameter): String {
+        val sb = StringBuilder(param.description)
+        if (param.type.lowercase() == "enum" && param.enumValues.isNotEmpty()) {
+            if (sb.isNotEmpty()) sb.append(' ')
+            sb.append("One of: ").append(param.enumValues.joinToString(", "))
+        }
+        if (param.default != null) {
+            if (sb.isNotEmpty()) sb.append(' ')
+            sb.append("(default: ").append(param.default).append(")")
+        }
+        return sb.toString()
+    }
+
+    /** Required parameter names (those flagged required and with a non-empty name). */
+    private fun buildRequiredParams(skill: Skill): List<String> =
+        skill.parameters.asSequence()
+            .filter { it.required && it.name.isNotEmpty() }
+            .map { it.name }
+            .toList()
 
     override fun handles(name: String): Boolean =
         name.startsWith(PREFIX) && skillHost.skill(skillNameFromTool(name)) != null
@@ -104,6 +152,8 @@ class SkillToolProvider(
         }
 
         val input = parseInput(arguments)
+        val paramValues = parseParameterValues(arguments, skill.parameters)
+        val renderedBody = renderBody(skill, paramValues)
         return buildJsonObject {
             put("type", "skill")
             put("name", skill.name)
@@ -113,8 +163,64 @@ class SkillToolProvider(
             if (skill.context != null) put("context", skill.context)
             if (skill.model != null) put("model", skill.model)
             if (input != null) put("input", input)
-            put("body", skill.body)
+            if (paramValues.isNotEmpty()) {
+                put("parameters", buildJsonObject {
+                    paramValues.forEach { (k, v) -> put(k, v) }
+                })
+            }
+            if (skill.chainedTo != null) put("chained_to", skill.chainedTo)
+            put("body", renderedBody)
         }.toString()
+    }
+
+    /**
+     * Parse declared parameter values from the tool arguments. For each declared
+     * [SkillParameter], takes the value supplied by the model, falling back to the
+     * parameter's `default` when omitted. Returns an empty map when the skill has
+     * no parameters (legacy skills), preserving backward compatibility.
+     */
+    private fun parseParameterValues(arguments: String, params: List<SkillParameter>): Map<String, String> {
+        if (params.isEmpty()) return emptyMap()
+        val obj: JsonObject = runCatching {
+            Json.parseToJsonElement(arguments.ifBlank { "{}" }).jsonObject
+        }.getOrNull() ?: return emptyMap()
+
+        val result = LinkedHashMap<String, String>()
+        for (param in params) {
+            if (param.name.isEmpty()) continue
+            val raw = runCatching { obj[param.name]?.jsonPrimitive?.contentOrNull }.getOrNull()
+            val value = raw ?: param.default
+            if (value != null) result[param.name] = value
+        }
+        return result
+    }
+
+    /**
+     * Render the final body returned to the model. When the skill has parameters,
+     * a `--- Parameters ---` block is prepended with the resolved key/value pairs.
+     * When the skill is chained to another skill (`chainedTo`), a `--- Next Skill ---`
+     * trailer is appended instructing the model to invoke the next skill with the
+     * result. When neither applies, the body is returned unchanged (backward compat).
+     */
+    private fun renderBody(skill: Skill, paramValues: Map<String, String>): String {
+        if (paramValues.isEmpty() && skill.chainedTo == null) return skill.body
+
+        val sb = StringBuilder()
+        if (paramValues.isNotEmpty()) {
+            sb.append("--- Parameters ---\n")
+            paramValues.forEach { (k, v) ->
+                sb.append(k).append(": ").append(v).append('\n')
+            }
+            sb.append('\n')
+        }
+        sb.append(skill.body)
+        if (skill.chainedTo != null) {
+            sb.append("\n\n--- Next Skill ---\n")
+            sb.append("After completing this skill, invoke skill_")
+            sb.append(skill.chainedTo)
+            sb.append(" with the result.\n")
+        }
+        return sb.toString()
     }
 
     private fun parseInput(arguments: String): String? =

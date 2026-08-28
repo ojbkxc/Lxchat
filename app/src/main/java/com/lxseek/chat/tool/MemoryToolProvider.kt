@@ -4,6 +4,7 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
+import com.lxseek.chat.data.MemoryImportanceScorer
 import com.lxseek.chat.data.MemoryManager
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.viewmodel.GenerationContext
@@ -169,11 +170,17 @@ class MemoryToolProvider(
                         put("type", "list_memory_files")
                         putJsonArray("files") {
                             ranked.forEach { f ->
+                                // 从 description 标签解析分类与初始评分，向后兼容旧记忆。
+                                val category = MemoryImportanceScorer.parseCategory(f.description)
+                                val importance = MemoryImportanceScorer.parseScore(f.description)
+                                    ?: (scorer.score(f.name, f.description, f.content) / 60.0)
                                 add(
                                     buildJsonObject {
                                         put("name", f.name)
                                         put("description", f.description)
                                         put("priority", scorer.score(f.name, f.description, f.content))
+                                        put("category", category.name.lowercase())
+                                        put("importance", importance)
                                     }
                                 )
                             }
