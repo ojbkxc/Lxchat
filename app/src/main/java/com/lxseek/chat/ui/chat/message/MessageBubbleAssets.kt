@@ -711,18 +711,18 @@ private fun SearchHighlightedMarkdownCode(
         val lang = language?.lowercase()
         if (lang != null && lang in ARTIFACT_LANGS && fenced && !fadeThisNode && spec == null) {
             MarkdownArtifactView(language = lang, code = code)
-            return@block
+        } else {
+            SearchHighlightedMarkdownCodeText(
+                code = code,
+                language = language,
+                style = style,
+                spec = spec,
+                sourceMatches = sourceMatches,
+                highlightColor = highlightColor,
+                activeHighlightColor = activeHighlightColor,
+                fadeEnabled = fadeThisNode,
+            )
         }
-        SearchHighlightedMarkdownCodeText(
-            code = code,
-            language = language,
-            style = style,
-            spec = spec,
-            sourceMatches = sourceMatches,
-            highlightColor = highlightColor,
-            activeHighlightColor = activeHighlightColor,
-            fadeEnabled = fadeThisNode,
-        )
     }
     if (fenced) {
         MarkdownCodeFence(model.content, model.node, model.typography.code, block)
