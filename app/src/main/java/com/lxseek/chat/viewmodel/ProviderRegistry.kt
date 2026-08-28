@@ -10,6 +10,7 @@ import com.lxseek.chat.api.ollama.OllamaProvider
 import com.lxseek.chat.api.openai.CustomOpenAiProvider
 import com.lxseek.chat.api.openai.DeepSeekProvider
 import com.lxseek.chat.api.openai.GroqProvider
+import com.lxseek.chat.api.openai.GrokXProvider
 import com.lxseek.chat.api.openai.OpenAiProvider
 import com.lxseek.chat.api.openai.OpenRouterProvider
 import com.lxseek.chat.api.openai.QwenProvider
@@ -119,6 +120,7 @@ class ProviderRegistry(
         Constants.PROVIDER_DEEPSEEK to DeepSeekProvider(),
         Constants.PROVIDER_QWEN to QwenProvider(),
         Constants.PROVIDER_GROQ to GroqProvider(),
+        Constants.PROVIDER_GROK to GrokXProvider(),
         Constants.PROVIDER_OLLAMA to OllamaProvider(),
         Constants.PROVIDER_OPEN_ROUTER to OpenRouterProvider(),
         Constants.PROVIDER_LOCAL to localProvider

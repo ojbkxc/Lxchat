@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import android.content.Intent
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -36,9 +37,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
+import com.lxseek.chat.LxChatApplication
 import com.lxseek.chat.data.ApiKeyEntry
 import com.lxseek.chat.data.CustomProviderNamePolicy
 import com.lxseek.chat.data.LocalChatModelConfig
+import com.lxseek.chat.grok.GrokLoginPhase
+import com.lxseek.chat.grok.GrokXOAuthManager
 import com.lxseek.chat.ui.components.CustomEndpointProtocolSelector
 import com.lxseek.chat.ui.components.clearFocusOnTap
 import com.lxseek.chat.util.Constants
@@ -366,6 +370,25 @@ fun SettingsProviderDetailPage(
                 )
             }
 
+            // Grok 官方账号登录(x.ai)。产出的 access token 自动写入 [Constants.PROVIDER_GROK] 的 API Key。
+            if (!isLocal && currentName == Constants.PROVIDER_GROK) {
+                val grokManager = (context.applicationContext as? LxChatApplication)?.container?.grokXOAuthManager
+                if (grokManager != null) {
+                    GrokOAuthSettingsSection(
+                        manager = grokManager,
+                        openBrowser = { uri ->
+                            try {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                )
+                            } catch (e: Exception) {
+                                DebugLog.e("GrokOAuth", "open browser failed", e)
+                            }
+                        },
+                    )
+                }
+            }
+
             // API Keys (non-Local)
             if (!isLocal) {
                 val providerKeys = apiKeys.filter { it.provider == currentName }
@@ -635,4 +658,118 @@ fun SettingsProviderDetailPage(
     if (showDeleteProvider) {
         AlertDialog(containerColor = MaterialTheme.colorScheme.surfaceContainer, onDismissRequest = { showDeleteProvider = false }, title = { Text(stringResource(R.string.custom_provider_delete_title), fontWeight = FontWeight.Bold) }, text = { Text(stringResource(R.string.custom_provider_delete_text, currentName)) }, confirmButton = { TextButton(onClick = { viewModel.deleteCustomProvider(currentName); showDeleteProvider = false; onBack() }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.provider_delete)) } }, dismissButton = { TextButton(onClick = { showDeleteProvider = false }) { Text(stringResource(R.string.cancel)) } })
     }
+}
+
+/** x.ai Grok 官方账号登录卡片:登录 / 状态展示 / 登出 / 失败提示。 */
+@Composable
+private fun GrokOAuthSettingsSection(
+    manager: GrokXOAuthManager,
+    openBrowser: (android.net.Uri) -> Unit,
+) {
+    val loginState by manager.loginState.collectAsState()
+    val phase = loginState.phase
+    val email = manager.currentEmail()
+    val loggedIn = manager.isLoggedIn() || phase == GrokLoginPhase.SUCCESS
+    val scope = rememberCoroutineScope()
+    var launchingNow by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(phase) {
+        when (phase) {
+            GrokLoginPhase.IN_PROGRESS -> launchingNow = true
+            GrokLoginPhase.SUCCESS -> {
+                launchingNow = false
+                showError = null
+            }
+            GrokLoginPhase.FAILED -> {
+                launchingNow = false
+                showError = loginState.message
+            }
+            GrokLoginPhase.IDLE -> { /* 初始态 */ }
+        }
+    }
+
+    SettingsGroup(
+        title = "Grok 官方账号登录 (x.ai)",
+        items = buildList {
+            add {
+                SettingsItem(
+                    headlineContent = {
+                        Text(
+                            if (loggedIn) (email?.let { "已登录: $it" } ?: "已登录 Grok 官方账号")
+                            else "使用 X Premium+ / Grok 订阅账号登录",
+                            fontWeight = FontWeight.Medium,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            accountStatusDescription(phase, loggedIn),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        )
+                    },
+                    leadingContent = {
+                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            if (launchingNow) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text(
+                                    "ꭥ",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = if (loggedIn) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                )
+                            }
+                        }
+                    },
+                )
+                showError?.let { err ->
+                    add {
+                        Text(
+                            err,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+            }
+            add {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (!loggedIn && !launchingNow) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val uri = manager.startLogin()
+                                    if (uri != null) openBrowser(uri)
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) { Text("用 Grok 账号登录") }
+                    } else if (launchingNow) {
+                        Button(
+                            onClick = {},
+                            enabled = false,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("等待浏览器授权…") }
+                    } else {
+                        TextButton(
+                            onClick = { manager.logout() },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        ) { Text("退出登录") }
+                    }
+                }
+            }
+        },
+    )
+}
+
+private fun accountStatusDescription(phase: GrokLoginPhase, loggedIn: Boolean): String = when {
+    phase == GrokLoginPhase.IN_PROGRESS -> "请在浏览器中完成 x.ai 账号授权,然后返回 LxChat。"
+    phase == GrokLoginPhase.FAILED -> "登录失败,可尝试重新登录。"
+    loggedIn -> "已绑定账号,可直接使用 Grok 模型;token 到期前会自动刷新。"
+    else -> "无需手动填写 API Key,登录后自动写入。"
 }

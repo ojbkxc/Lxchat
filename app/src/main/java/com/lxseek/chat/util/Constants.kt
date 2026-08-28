@@ -62,6 +62,8 @@ object Constants {
     const val PROVIDER_DEEPSEEK = "DeepSeek"
     const val PROVIDER_QWEN = "Qwen"
     const val PROVIDER_GROQ = "Groq"
+    /** x.ai 官方 Grok 账号登录(账号登录产出的 access token 直接作为 OpenAI 兼容 API Key 使用) */
+    const val PROVIDER_GROK = "xAI Grok"
     const val PROVIDER_OPEN_ROUTER = "Open Router"
     const val PROVIDER_UNKNOWN = "Unknown"
     /** Placeholder model ID used as StateFlow/DataStore cold-start fallback and
