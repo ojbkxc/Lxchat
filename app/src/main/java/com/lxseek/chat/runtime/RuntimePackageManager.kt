@@ -2,6 +2,8 @@ package com.lxseek.chat.runtime
 
 import android.content.Context
 import com.lxseek.chat.api.HttpClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -41,39 +43,41 @@ class RuntimePackageManager(private val context: Context) {
 
     /**
      * 下载并安装引擎版本。compressUrl 可包含 `{version}` 占位符，会被替换为实际版本号。
-     * 返回该版本的安装根目录。
+     * 返回该版本的安装根目录。网络下载与解压均为阻塞操作，统一切到 [Dispatchers.IO]
+     * 执行，避免在 UI 主线程同步联网触发 NetworkOnMainThreadException。
      */
-    fun install(engineId: String, version: String, compressUrl: String): File {
-        val target = versionRoot(engineId, version)
-        if (target.isDirectory && target.resolve("manifest.json").isFile) {
-            // 已存在则幂等返回。
-            return target
+    suspend fun install(engineId: String, version: String, compressUrl: String): File =
+        withContext(Dispatchers.IO) {
+            val target = versionRoot(engineId, version)
+            if (target.isDirectory && target.resolve("manifest.json").isFile) {
+                // 已存在则幂等返回。
+                return@withContext target
+            }
+            val url = compressUrl.replace("{version}", version)
+            val bytes = HttpClient.getBytes(url)
+                ?: throw IOException("引擎下载失败：HTTP 错误或连接中断")
+            if (bytes.isEmpty()) throw IOException("引擎下载内容为空")
+            val tmp = File(context.filesDir, "runtimes/.downloads/${safeName(engineId)}-${safeName(version)}.zip")
+            tmp.parentFile?.mkdirs()
+            tmp.writeBytes(bytes)
+            // 先校验包结构再落位：坏包不写入安装目录，并清理临时文件。
+            target.mkdirs()
+            try {
+                unzip(tmp, target)
+            } catch (e: Exception) {
+                target.deleteRecursively()
+                tmp.delete()
+                throw IOException("引擎包结构无效或解压失败：${e.message}", e)
+            } finally {
+                tmp.delete()
+            }
+            if (target.resolve("manifest.json").isFile != true) {
+                target.deleteRecursively()
+                throw IOException("引擎包缺失 manifest.json")
+            }
+            makeExecutable(target)
+            return@withContext target
         }
-        val url = compressUrl.replace("{version}", version)
-        val bytes = HttpClient.getBytes(url)
-            ?: throw IOException("引擎下载失败：HTTP 错误或连接中断")
-        if (bytes.isEmpty()) throw IOException("引擎下载内容为空")
-        val tmp = File(context.filesDir, "runtimes/.downloads/${safeName(engineId)}-${safeName(version)}.zip")
-        tmp.parentFile?.mkdirs()
-        tmp.writeBytes(bytes)
-        // 先校验包结构再落位：坏包不写入安装目录，并清理临时文件。
-        target.mkdirs()
-        try {
-            unzip(tmp, target)
-        } catch (e: Exception) {
-            target.deleteRecursively()
-            tmp.delete()
-            throw IOException("引擎包结构无效或解压失败：${e.message}", e)
-        } finally {
-            tmp.delete()
-        }
-        if (target.resolve("manifest.json").isFile != true) {
-            target.deleteRecursively()
-            throw IOException("引擎包缺失 manifest.json")
-        }
-        makeExecutable(target)
-        return target
-    }
 
     /** 读取并解析引擎 manifest；缺失或损坏返回 null。 */
     fun readManifest(engineId: String, version: String): RuntimeManifest? {

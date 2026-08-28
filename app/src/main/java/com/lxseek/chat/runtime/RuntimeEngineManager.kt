@@ -46,8 +46,9 @@ class RuntimeEngineManager(
     /**
      * 安装指定引擎。version 为空时按约束自动匹配（取候选清单中满足引擎 min_version 与本机
      * 已装版本之外的最高兼容版本，优先最高）；低于约束的版本会被拒绝并说明原因。
+     * 下载/解压为阻塞操作，交由 [RuntimePackageManager.install] 切到 IO 线程执行。
      */
-    fun installRuntime(meta: MarketPluginMeta, requestedVersion: String?): InstallResult {
+    suspend fun installRuntime(meta: MarketPluginMeta, requestedVersion: String?): InstallResult {
         val engineId = meta.id
         // 自动匹配：在 meta.versions（缺省为 [meta.version]）中选择满足 meta.minVersion 的最高版本。
         val min = Version.parse(meta.minVersion)

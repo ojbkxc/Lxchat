@@ -233,7 +233,7 @@ class PluginMarket(
     }
 
     /** 解析 RUNTIME 条目为安装记录：委托运行时编排器安装（下载/解压/版本匹配）。 */
-    private fun buildRuntimeInstallation(
+    private suspend fun buildRuntimeInstallation(
         meta: MarketPluginMeta,
         requestedVersion: String?,
     ): MarketInstallation {

@@ -141,10 +141,21 @@ class ToolPkgAdapter {
                                 description = tool.description ?: tool.name,
                                 parameters = ToolParameters(
                                     properties = tool.parameters.associate { param ->
-                                        param.name to ToolProperty(
-                                            type = param.type,
-                                            description = param.description ?: param.name,
-                                        )
+                                        param.name to if (param.type == "array") {
+                                            ToolProperty(
+                                                type = param.type,
+                                                description = param.description ?: param.name,
+                                                items = ToolProperty(
+                                                    type = "object",
+                                                    description = "Array element.",
+                                                ),
+                                            )
+                                        } else {
+                                            ToolProperty(
+                                                type = param.type,
+                                                description = param.description ?: param.name,
+                                            )
+                                        }
                                     },
                                     required = tool.parameters.filter { it.required }.map { it.name },
                                 ),
