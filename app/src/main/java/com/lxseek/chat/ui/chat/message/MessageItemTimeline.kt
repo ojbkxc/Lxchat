@@ -347,6 +347,7 @@ internal fun CompactSegmentBlock(
     Surface(
         tonalElevation = 0.dp,
         shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 8.dp + topPaddingExtra, bottom = mergedBottomPadding + bottomPaddingExtra)
@@ -762,6 +763,7 @@ private fun TimelineInfoSegmentCard(
     Surface(
         tonalElevation = 0.dp,
         shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp + topPaddingExtra, bottom = 6.dp)
