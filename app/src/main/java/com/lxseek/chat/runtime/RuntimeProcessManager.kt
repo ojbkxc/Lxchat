@@ -171,11 +171,11 @@ suspend fun runProcessOnce(
     val output = java.lang.StringBuilder()
     val reader = thread(isDaemon = true) {
         try {
-            process.inputStream.bufferedReader().use { line ->
-                var l = line
+            process.inputStream.bufferedReader().use { reader ->
+                var l = reader.readLine()
                 while (l != null) {
                     output.append(l).append('\n')
-                    l = line.readLine()
+                    l = reader.readLine()
                 }
             }
         } catch (_: Exception) { /* 进程退出后流关闭 */ }

@@ -240,7 +240,7 @@ class RuntimeEngineManager(
 class RuntimeEnginePlugin(
     private val engineId: String,
     private val version: String,
-    private val manifest: RuntimeManifest,
+    private val runtimeManifest: RuntimeManifest,
     private val processManager: RuntimeProcessManager,
 ) : Plugin {
     override val manifest: PluginManifest = PluginManifest(
@@ -248,7 +248,7 @@ class RuntimeEnginePlugin(
         name = engineDisplayName(engineId),
         version = version,
         category = PluginCategory.External,
-        description = "运行时引擎：${manifest.type}${manifest.binarySource?.let { "（$it）" }.orEmpty()}",
+        description = "运行时引擎：${runtimeManifest.type}${runtimeManifest.binarySource?.let { "（$it）" }.orEmpty()}",
         builtIn = false,
     )
 

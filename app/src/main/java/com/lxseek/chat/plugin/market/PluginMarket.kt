@@ -239,8 +239,8 @@ class PluginMarket(
             description = meta.description,
             author = meta.author,
             requiresMembership = meta.requiresMembership,
-            downloadUrl = meta.downloadUrl,
-            runtimeType = meta.runtimeType,
+            downloadUrl = meta.downloadUrl.orEmpty(),
+            runtimeType = meta.runtimeType.orEmpty(),
             versions = meta.versions,
             minVersion = meta.minVersion,
         )
