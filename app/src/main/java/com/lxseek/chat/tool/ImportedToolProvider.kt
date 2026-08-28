@@ -90,9 +90,16 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
                     description = t.description.ifBlank { "Imported HTTP tool." },
                     parameters = ToolParameters(
                         properties = t.parameters.mapValues { (_, s) ->
-                            if (s.type == "array") ToolProperty("array", s.description)
-                            else ToolProperty(s.type, s.description)
-                        },
+                        if (s.type == "array") {
+                            ToolProperty(
+                                "array",
+                                s.description,
+                                items = ToolProperty("object", "Array element."),
+                            )
+                        } else {
+                            ToolProperty(s.type, s.description)
+                        }
+                    },
                         required = t.required,
                     ),
                 )),
@@ -112,7 +119,16 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
             name = DEPLOY,
             description = "Register or update zero-code tools for later use by writing them to app storage. Pass a JSON 'tools' array. Each item supports kind 'http' (name, description, url, method, headers, json_body, parameters, required) or 'intent' (name, description, intent_action, intent_data, intent_package, parameters, required). 'url' must be http/https. Deployed tools become callable, using '{param}' placeholders for arguments.",
             parameters = ToolParameters(
-                properties = mapOf("tools" to ToolProperty("array", "Array of tool definitions to register.")),
+                properties = mapOf(
+                    "tools" to ToolProperty(
+                        type = "array",
+                        description = "Array of tool definitions to register.",
+                        items = ToolProperty(
+                            type = "object",
+                            description = "A single imported tool definition.",
+                        ),
+                    ),
+                ),
                 required = listOf("tools"),
             ),
         )),
