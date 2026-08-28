@@ -276,6 +276,9 @@ class AppContainer(private val appContext: Context) {
                         systemCleanToolProvider,
                         // 应用管理：root-only，按需调用 pm/am/cmd，无驻留服务。
                         appManageToolProvider,
+                        // 残留/重复文件维护：root-only，封装 CorpseFinder/AppCleaner/Swiper/Deduplicator
+                        // 式扫描与清理（已卸载应用残留、可消耗缓存、旧文件、重复文件）。
+                        residualToolProvider,
                         // Hermes 式成长系统：技能学习/Curator、journey、交付前自检。
                         skillLearnToolProvider,
                         journeyToolProvider,
@@ -318,6 +321,11 @@ class AppContainer(private val appContext: Context) {
     /** 应用管理工具集：root-only，按需调用 pm/am/cmd，仅在 root 可用时披露。 */
     val appManageToolProvider: com.lxseek.chat.tool.AppManageToolProvider by lazy {
         com.lxseek.chat.tool.AppManageToolProvider()
+    }
+
+    /** 残留/重复文件维护工具集：root 用户获全部能力；普通用户默认可维护应用自身目录，授予 All-files-access 后扩展至 /sdcard。 */
+    val residualToolProvider: com.lxseek.chat.tool.ResidualToolProvider by lazy {
+        com.lxseek.chat.tool.ResidualToolProvider(appContext)
     }
 
     /** 运行时引擎编排器：下载/解压/启停/版本约束/进程空闲回收。 */
