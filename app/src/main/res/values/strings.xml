@@ -1311,6 +1311,16 @@
     <string name="proxy_password">Password (optional)</string>
     <string name="proxy_bypass">Bypass List</string>
     <string name="proxy_bypass_desc">Hosts and CIDR ranges that connect directly, one per line</string>
+    <string name="settings_dns">DNS Protection</string>
+    <string name="settings_dns_desc">Resolve selected hosts over encrypted DNS (DoH)</string>
+    <string name="dns_mode">Protection mode</string>
+    <string name="dns_mode_off">Off</string>
+    <string name="dns_mode_selective">Selective</string>
+    <string name="dns_mode_all">All</string>
+    <string name="dns_primary_url">Primary DoH server</string>
+    <string name="dns_fallback_url">Fallback DoH server</string>
+    <string name="dns_whitelist">Protected hosts</string>
+    <string name="dns_whitelist_desc">Hosts resolved via encrypted DoH, one per line. Supports *.suffix wildcards.</string>
     <string name="default_service_tier">Default Service Tier</string>
     <string name="openai_service_tier_title">Service tier</string>
     <string name="openai_service_tier_desc">Controls latency and processing priority for OpenAI-protocol requests.</string>

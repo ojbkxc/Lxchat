@@ -1401,6 +1401,16 @@
     <string name="proxy_password">密码(可选)</string>
     <string name="proxy_bypass">直连列表</string>
     <string name="proxy_bypass_desc">直接连接、不经过代理的主机和 CIDR 网段,每行一个</string>
+    <string name="settings_dns">DNS 加密保护</string>
+    <string name="settings_dns_desc">对选定的域名通过 DoH 加密解析</string>
+    <string name="dns_mode">保护模式</string>
+    <string name="dns_mode_off">关闭</string>
+    <string name="dns_mode_selective">白名单</string>
+    <string name="dns_mode_all">全部</string>
+    <string name="dns_primary_url">主 DoH 服务器</string>
+    <string name="dns_fallback_url">备用 DoH 服务器</string>
+    <string name="dns_whitelist">受保护域名</string>
+    <string name="dns_whitelist_desc">通过 DoH 加密解析的域名,每行一个,支持 *.后缀 通配</string>
     <string name="default_service_tier">默认服务层级</string>
     <string name="openai_service_tier_title">服务层级</string>
     <string name="openai_service_tier_desc">控制 OpenAI 协议请求的延迟和处理优先级。</string>

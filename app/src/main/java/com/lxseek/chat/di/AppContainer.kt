@@ -107,6 +107,8 @@ class AppContainer(private val appContext: Context) {
      * scheduler, IM, proactive messaging) must not cascade-cancel the others.
      */
     fun startProcessServices() {
+        // Install the encrypted-DNS resolver into HttpClient (inert while the mode is off).
+        encryptedDns
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 conversationRepository.ensureRunRecovery()
@@ -192,6 +194,31 @@ class AppContainer(private val appContext: Context) {
 
     val settingsRepository: SettingsRepository by lazy {
         SettingsRepository(settingsManager, appScope, imGatewayStore)
+    }
+
+    /**
+     * Encrypted DNS (DoH) protection, wired into [com.lxseek.chat.api.HttpClient] so every OkHttp
+     * call resolves selected hostnames over an encrypted upstream. Inert while the mode is "off"
+     * (the default), and always fail-open + circuit-broken to the system resolver — so it can
+     * never be slower or break connectivity versus today. Live config is pushed in by collecting
+     * the settings StateFlows below.
+     */
+    val encryptedDns: com.lxseek.chat.api.EncryptedDns by lazy {
+        com.lxseek.chat.api.EncryptedDns().also { dns ->
+            appScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+                settingsRepository.dnsMode.collect { dns.mode = it }
+            }
+            appScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+                settingsRepository.dnsPrimaryUrl.collect { dns.primaryUrl = it }
+            }
+            appScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+                settingsRepository.dnsFallbackUrl.collect { dns.fallbackUrl = it }
+            }
+            appScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+                settingsRepository.dnsWhitelist.collect { dns.whitelist = it }
+            }
+            com.lxseek.chat.api.HttpClient.setDns(dns)
+        }
     }
 
     /** One process-wide confirmation queue shared by Chat, Task, and Loop generation. */

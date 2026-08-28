@@ -280,6 +280,7 @@ private val settingsGroups = listOf(
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
+        SettingsCategory("dns", R.string.settings_dns, R.string.settings_dns_desc, Icons.Default.Dns),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_memory_data, items = listOf(
         SettingsCategory("memory", R.string.settings_memory, R.string.settings_memory_desc, Icons.Default.Description),
@@ -380,6 +381,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "sms_command" -> SmsCommandSettingsPage(viewModel, onBack = { selectedCategory = null })
                 "reply_channel" -> ReplyChannelSettingsPage(onBack = { selectedCategory = null })
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })
+                "dns" -> SettingsDnsPage(viewModel, onBack = { selectedCategory = null })
                 "language" -> SettingsLanguagePage(viewModel, onBack = { selectedCategory = null })
                 "titlegen" -> SettingsTitleGenPage(viewModel, onBack = { selectedCategory = null })
                 "transcription" -> SettingsTranscriptionPage(viewModel, onBack = { selectedCategory = null })

@@ -186,6 +186,10 @@ class SettingsRepository(
     val proxyUsername: StateFlow<String> = hot(settingsManager.proxyUsername, "")
     val proxyPassword: StateFlow<String> = hot(settingsManager.proxyPassword, "")
     val proxyBypass: StateFlow<String> = hot(settingsManager.proxyBypass, com.lxseek.chat.data.SettingsManager.DEFAULT_PROXY_BYPASS)
+    val dnsMode: StateFlow<String> = hot(settingsManager.dnsMode, com.lxseek.chat.data.SettingsManager.DNS_MODE_OFF)
+    val dnsPrimaryUrl: StateFlow<String> = hot(settingsManager.dnsPrimaryUrl, com.lxseek.chat.data.SettingsManager.DEFAULT_DNS_PRIMARY)
+    val dnsFallbackUrl: StateFlow<String> = hot(settingsManager.dnsFallbackUrl, com.lxseek.chat.data.SettingsManager.DEFAULT_DNS_FALLBACK)
+    val dnsWhitelist: StateFlow<Set<String>> = hot(settingsManager.dnsWhitelist, com.lxseek.chat.data.SettingsManager.DEFAULT_DNS_WHITELIST)
     val shellConfirmEnabled: StateFlow<Boolean> = hot(settingsManager.shellConfirmEnabled, true)
     val shellDevices: StateFlow<List<ShellDeviceConfig>> = hot(settingsManager.shellDevices, emptyList())
     val mcpServers: StateFlow<List<McpServerConfig>> = hot(settingsManager.mcpServers, emptyList())
@@ -514,6 +518,10 @@ class SettingsRepository(
     fun setProxyUsername(user: String) = scope.launch { settingsManager.saveProxyUsername(user) }
     fun setProxyPassword(pass: String) = scope.launch { settingsManager.saveProxyPassword(pass) }
     fun setProxyBypass(bypass: String) = scope.launch { settingsManager.saveProxyBypass(bypass) }
+    fun setDnsMode(mode: String) = scope.launch { settingsManager.saveDnsMode(mode) }
+    fun setDnsPrimaryUrl(url: String) = scope.launch { settingsManager.saveDnsPrimaryUrl(url) }
+    fun setDnsFallbackUrl(url: String) = scope.launch { settingsManager.saveDnsFallbackUrl(url) }
+    fun setDnsWhitelist(whitelist: Set<String>) = scope.launch { settingsManager.saveDnsWhitelist(whitelist) }
     fun setSandboxEnabled(enabled: Boolean) = scope.launch { settingsManager.saveSandboxEnabled(enabled) }
     fun setSandboxSharedStorageEnabled(enabled: Boolean) =
         scope.launch { settingsManager.saveSandboxSharedStorageEnabled(enabled) }

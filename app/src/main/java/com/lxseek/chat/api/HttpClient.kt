@@ -2,6 +2,7 @@ package com.lxseek.chat.api
 
 import okhttp3.MediaType.Companion.toMediaType
 import com.lxseek.chat.util.DebugLog
+import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Call
 import okhttp3.EventListener
@@ -212,7 +213,23 @@ object HttpClient {
         .writeTimeout(30, TimeUnit.SECONDS)
         .proxySelector(proxySelector)
         .proxyAuthenticator(proxyAuthenticator)
+        .dns(encryptedDnsResolver())
         .build()
+
+    /** Custom DNS resolver installed by the app (e.g. [EncryptedDns]), or the system resolver.
+     *  Read live at every lookup so enabling/changing DNS protection takes effect without a rebuild. */
+    @Volatile private var dnsResolver: Dns? = null
+
+    /** Set (or clear, with null) the custom DNS resolver used by every OkHttp call. */
+    fun setDns(resolver: Dns?) {
+        dnsResolver = resolver
+    }
+
+    /** Wraps the mutable [dnsResolver] in the fixed [Dns] the client was built with. */
+    private fun encryptedDnsResolver(): Dns = object : Dns {
+        override fun lookup(hostname: String): List<java.net.InetAddress> =
+            (dnsResolver ?: Dns.SYSTEM).lookup(hostname)
+    }
 
     /** Every currently-live streaming handle in the process. Per-conversation scopes additionally
      * index their own handles for targeted Stop; this global set remains the process-shutdown

@@ -28,6 +28,17 @@ class SettingsManager(private val context: Context) {
         const val DEFAULT_PROXY_PORT = "7890"
         const val DEFAULT_PROXY_BYPASS =
             "localhost\n127.0.0.1\n10.0.0.0/8\n172.16.0.0/12\n192.168.0.0/16\n::1"
+
+        // ── Encrypted DNS (DoH) ─────────────────────────────
+        const val DNS_MODE_OFF = "off"
+        const val DNS_MODE_SELECTIVE = "selective"
+        const val DNS_MODE_ALL = "all"
+        const val DEFAULT_DNS_PRIMARY = "https://dns.alidns.com/dns-query"
+        const val DEFAULT_DNS_FALLBACK = "https://cloudflare-dns.com/dns-query"
+        val DEFAULT_DNS_WHITELIST = setOf(
+            "*.workers.dev", "*.pages.dev", "*.cloudflare.com",
+            "api.openai.com", "*.openai.com",
+        )
     }
 
     val selectedModel: Flow<String> = modelPreferenceStore.selectedModel
@@ -182,6 +193,10 @@ class SettingsManager(private val context: Context) {
     val proxyUsername: Flow<String> = context.dataStore.data.map { it[PROXY_USERNAME] ?: "" }
     val proxyPassword: Flow<String> = context.dataStore.data.map { it[PROXY_PASSWORD] ?: "" }
     val proxyBypass: Flow<String> = context.dataStore.data.map { it[PROXY_BYPASS] ?: DEFAULT_PROXY_BYPASS }
+    val dnsMode: Flow<String> = context.dataStore.data.map { it[DNS_MODE] ?: DNS_MODE_OFF }
+    val dnsPrimaryUrl: Flow<String> = context.dataStore.data.map { it[DNS_PRIMARY_URL] ?: DEFAULT_DNS_PRIMARY }
+    val dnsFallbackUrl: Flow<String> = context.dataStore.data.map { it[DNS_FALLBACK_URL] ?: DEFAULT_DNS_FALLBACK }
+    val dnsWhitelist: Flow<Set<String>> = context.dataStore.data.map { it[DNS_WHITELIST] ?: DEFAULT_DNS_WHITELIST }
     // Confirm before the model runs state-changing commands on remote shell servers. Default on.
     val shellConfirmEnabled: Flow<Boolean> = context.dataStore.data.map { it[SHELL_CONFIRM_ENABLED] ?: true }
     val shellDevices: Flow<List<ShellDeviceConfig>> = context.dataStore.data.map { pref ->
@@ -790,6 +805,10 @@ class SettingsManager(private val context: Context) {
     suspend fun saveProxyUsername(user: String) { context.dataStore.edit { it[PROXY_USERNAME] = user } }
     suspend fun saveProxyPassword(pass: String) { context.dataStore.edit { it[PROXY_PASSWORD] = pass } }
     suspend fun saveProxyBypass(bypass: String) { context.dataStore.edit { it[PROXY_BYPASS] = bypass } }
+    suspend fun saveDnsMode(mode: String) { context.dataStore.edit { it[DNS_MODE] = mode } }
+    suspend fun saveDnsPrimaryUrl(url: String) { context.dataStore.edit { it[DNS_PRIMARY_URL] = url } }
+    suspend fun saveDnsFallbackUrl(url: String) { context.dataStore.edit { it[DNS_FALLBACK_URL] = url } }
+    suspend fun saveDnsWhitelist(whitelist: Set<String>) { context.dataStore.edit { it[DNS_WHITELIST] = whitelist } }
 
     suspend fun saveShellConfirmEnabled(enabled: Boolean) {
         context.dataStore.edit { it[SHELL_CONFIRM_ENABLED] = enabled }
@@ -1037,6 +1056,10 @@ class SettingsManager(private val context: Context) {
             prefs.remove(PROXY_PORT)
             prefs.remove(PROXY_USERNAME)
             prefs.remove(PROXY_BYPASS)
+            prefs.remove(DNS_MODE)
+            prefs.remove(DNS_PRIMARY_URL)
+            prefs.remove(DNS_FALLBACK_URL)
+            prefs.remove(DNS_WHITELIST)
             prefs.remove(SHELL_CONFIRM_ENABLED)
             prefs.remove(THEME_MODE)
             prefs.remove(COLOR_SCHEME)
