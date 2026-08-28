@@ -93,6 +93,9 @@ fun SettingsPluginMarketPage(
     var urlDraft by remember { mutableStateOf("") }
     var headerDrafts by remember { mutableStateOf<List<MarketHeaderDraft>>(emptyList()) }
 
+    // ── Sources sub-page navigation (merged from SettingsMarketSourcesPage) ──
+    var showSources by remember { mutableStateOf(false) }
+
     val installedIds = remember(installations) { installations.map { it.pluginId }.toSet() }
 
     // 首次进入自动拉取目录。
@@ -100,7 +103,16 @@ fun SettingsPluginMarketPage(
         if (sources.isEmpty() || catalog.isEmpty()) market.refreshCatalog()
     }
 
-    BackHandler { onBack() }
+    BackHandler(enabled = showSources) { showSources = false }
+    BackHandler(enabled = !showSources) { onBack() }
+
+    if (showSources) {
+        MarketSourcesSection(
+            viewModel = viewModel,
+            onBack = { showSources = false },
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -115,7 +127,7 @@ fun SettingsPluginMarketPage(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onOpenSources) {
+                    IconButton(onClick = { showSources = true }) {
                         Icon(
                             imageVector = Icons.Default.List,
                             contentDescription = stringResource(R.string.market_sources),
@@ -192,7 +204,7 @@ fun SettingsPluginMarketPage(
                             title = stringResource(R.string.market_no_sources_title),
                             hint = stringResource(R.string.market_no_sources_hint),
                             actionLabel = stringResource(R.string.market_add_source),
-                            onAction = onOpenSources,
+                            onAction = { showSources = true },
                         )
                     }
                 }

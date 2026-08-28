@@ -150,9 +150,10 @@ fun CollapsingSettingsScaffold(
 }
 
 /**
- * ChatGPT-style settings page scaffold for **LazyColumn** sub-pages (dynamic lists). Same flat top
- * bar as [CollapsingSettingsScaffold]; provide list content via [content]. The "Collapsing" name is
- * kept for call-site compatibility (see [CollapsingSettingsScaffold]).
+ * LazyColumn variant of [CollapsingSettingsScaffold]. Use this when the page contains
+ * a large or dynamic list of items (e.g., IM gateway platform bindings, plugin lists)
+ * to avoid measuring all children upfront. For static pages with a fixed number of
+ * [SettingsGroup] blocks, prefer [CollapsingSettingsScaffold] instead.
  */
 @Composable
 fun CollapsingSettingsLazyScaffold(

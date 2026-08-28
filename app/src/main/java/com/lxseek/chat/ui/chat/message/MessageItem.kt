@@ -199,7 +199,7 @@ internal fun MessageItem(
             .onSizeChanged {
                 onHeightChanged(it.height)
             }
-            .padding(vertical = 6.dp)
+            .padding(vertical = 8.dp)
             .then(entranceModifier),
         verticalAlignment = Alignment.Top,
     ) {

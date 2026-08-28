@@ -639,6 +639,12 @@ fun NotificationReplySettingsPage(
                 Text(stringResource(android.R.string.ok))
             }
         }
+
+        // ── SMS Command Section (merged from SmsCommandSettingsPage) ──
+        SmsCommandSection(viewModel)
+
+        // ── Reply Channel Section (merged from ReplyChannelSettingsPage) ──
+        ReplyChannelSection()
     }
 }
 

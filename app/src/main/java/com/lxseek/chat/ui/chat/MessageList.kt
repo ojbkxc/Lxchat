@@ -84,24 +84,6 @@ import kotlinx.coroutines.isActive
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private data class RunProjectionMessageKey(
-    val id: String,
-    val parentId: String?,
-    val participant: Participant,
-    val timestamp: Long,
-    val runId: String?,
-    val runSequence: Long?,
-)
-
-private fun ChatMessage.toRunProjectionKey(): RunProjectionMessageKey =
-    RunProjectionMessageKey(
-        id = id,
-        parentId = parentId,
-        participant = participant,
-        timestamp = timestamp,
-        runId = runId,
-        runSequence = runSequence,
-    )
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -110,7 +92,7 @@ internal fun MessageList(
     allMessages: StableMessageList = StableMessageList(),
     conversationId: String? = null,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(8.dp),
+    contentPadding: PaddingValues = PaddingValues(12.dp),
     state: LazyListState = rememberLazyListState(),
     userScrollEnabled: Boolean = true,
     isLoading: Boolean = false,

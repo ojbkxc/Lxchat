@@ -47,58 +47,90 @@ object BuiltinMarketSources {
     // ── Builtin RUNTIME engines ────────────────────────────────
 
     /**
-     * Built-in RUNTIME engine catalog. External market sources only carry SKILL entries today,
-     * so without these built-in RUNTIME metas the install button on the runtime engines page
-     * stays disabled (catalog.firstOrNull { it.id == engineId } always returns null).
+     * Built-in RUNTIME engine catalog: the only true runtime engines are Node.js, Python and
+     * ffmpeg. External market sources only carry SKILL entries today, so without these built-in
+     * RUNTIME metas the install button on the runtime engines page stays disabled
+     * (catalog.firstOrNull { it.id == engineId } always returns null).
      *
-     * Ids align with [com.lxseek.chat.runtime.RuntimeEngineType] constants so that
-     * `runtime-python-webnovel` etc. resolve to the same engine across market / runtime layers.
+     * webnovel-writer and inkos are NOT independent runtimes — they are script applications that
+     * depend on the Python / Node.js runtimes and are exposed as SKILL entries via
+     * [fetchBuiltinSkillCatalog] instead. Their tool invocations still resolve engine ids via
+     * [com.lxseek.chat.runtime.RuntimeEngineType] constants (NODE_INKOS / PYTHON_WEB_NOVEL).
      */
     fun fetchBuiltinRuntimeCatalog(): MarketIndex = MarketIndex(
         plugins = listOf(
             MarketPluginMeta(
-                id = "runtime-node-inkos",
-                name = "Node + inkos",
-                version = "22.5.0",
+                id = "runtime-node",
+                name = "Node.js",
+                version = "7.7.2",
                 kind = MarketPluginKind.RUNTIME,
-                description = "Node.js runtime with inkos for web novel writing",
-                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/node-v22.5.0/node-22.5.0-android-arm64.zip",
+                description = "Node.js runtime",
+                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/node-v7.7.2/node-7.7.2-android-arm64.zip",
                 runtimeType = "node",
-                versions = listOf("22.5.0"),
-                minVersion = "22.5.0",
+                versions = listOf("7.7.2"),
+                minVersion = "7.7.2",
+            ),
+            MarketPluginMeta(
+                id = "runtime-python",
+                name = "Python",
+                version = "3.11.0",
+                kind = MarketPluginKind.RUNTIME,
+                description = "Python 3.11 runtime",
+                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/python-v3.11.0/python-3.11.0-android-arm64.zip",
+                runtimeType = "python",
+                versions = listOf("3.11.0"),
+                minVersion = "3.11.0",
+            ),
+            MarketPluginMeta(
+                id = "runtime-ffmpeg",
+                name = "ffmpeg",
+                version = "9.0.0",
+                kind = MarketPluginKind.RUNTIME,
+                description = "ffmpeg multimedia processing",
+                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/ffmpeg-v9.0.0/ffmpeg-9.0.0-android-arm64.zip",
+                runtimeType = "ffmpeg",
+                versions = listOf("9.0.0"),
+                minVersion = "9.0.0",
+            ),
+        ),
+    )
+
+    // ── Builtin SKILL plugins (webnovel-writer / inkos) ────────
+
+    /**
+     * Built-in SKILL catalog for webnovel-writer and inkos. Both are script applications that
+     * depend on the Python / Node.js runtimes rather than being standalone runtime engines, so
+     * they are classified as SKILL plugins and installed from the skill market instead of the
+     * runtime engines page.
+     *
+     * Ids are kept aligned with [com.lxseek.chat.runtime.RuntimeEngineType] constants
+     * (NODE_INKOS / PYTHON_WEB_NOVEL) so that the existing tool invocation logic in
+     * RuntimeToolProvider (novelInkos / webNovel) keeps resolving them via ensureStarted.
+     * downloadUrl is retained for the future SKILL package download flow.
+     */
+    fun fetchBuiltinSkillCatalog(): MarketIndex = MarketIndex(
+        plugins = listOf(
+            MarketPluginMeta(
+                id = "runtime-node-inkos",
+                name = "inkos",
+                version = "7.7.2",
+                kind = MarketPluginKind.SKILL,
+                description = "inkos web novel writing skill (requires Node.js runtime >= 22.5)",
+                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/node-v7.7.2/node-7.7.2-android-arm64.zip",
+                runtimeType = "node",
+                versions = listOf("7.7.2"),
+                minVersion = "7.7.2",
             ),
             MarketPluginMeta(
                 id = "runtime-python-webnovel",
                 name = "webnovel-writer",
                 version = "1.0.0",
-                kind = MarketPluginKind.RUNTIME,
-                description = "Python web novel writer engine (GPL-3.0)",
+                kind = MarketPluginKind.SKILL,
+                description = "webnovel-writer web novel writing skill (GPL-3.0, requires Python runtime >= 3.10)",
                 downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/webnovel-v1.0.0/webnovel-1.0.0-android-arm64.zip",
                 runtimeType = "python-webnovel",
                 versions = listOf("1.0.0"),
                 minVersion = "1.0.0",
-            ),
-            MarketPluginMeta(
-                id = "runtime-python",
-                name = "Python",
-                version = "3.10.0",
-                kind = MarketPluginKind.RUNTIME,
-                description = "Python 3.10 runtime",
-                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/python-v3.10.0/python-3.10.0-android-arm64.zip",
-                runtimeType = "python",
-                versions = listOf("3.10.0"),
-                minVersion = "3.10.0",
-            ),
-            MarketPluginMeta(
-                id = "runtime-ffmpeg",
-                name = "ffmpeg",
-                version = "6.0.0",
-                kind = MarketPluginKind.RUNTIME,
-                description = "ffmpeg multimedia processing",
-                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/ffmpeg-v6.0.0/ffmpeg-6.0.0-android-arm64.zip",
-                runtimeType = "ffmpeg",
-                versions = listOf("6.0.0"),
-                minVersion = "6.0.0",
             ),
         ),
     )

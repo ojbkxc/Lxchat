@@ -57,6 +57,10 @@ import com.lxseek.chat.ui.settings.RatingForm
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lxseek.chat.data.SettingsManager
+import com.lxseek.chat.membership.MembershipTier
+import com.lxseek.chat.membership.YipayCallbackResult
+import com.lxseek.chat.membership.YipayConfig
+import com.lxseek.chat.membership.YipayPaymentManager
 import com.lxseek.chat.service.LxChatForegroundService
 import com.lxseek.chat.service.AppForegroundTracker
 import com.lxseek.chat.data.local.ChatDatabase
@@ -82,8 +86,15 @@ class MainActivity : ComponentActivity() {
 
     private val notificationConversationId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
+    /** Yipay callback result surfaced to the UI (Snackbar). Reset to Idle after consumption. */
+    private val yipayCallbackResult = kotlinx.coroutines.flow.MutableStateFlow<YipayCallbackResult>(YipayCallbackResult.Idle)
+
     companion object {
         const val EXTRA_CONVERSATION_ID = "com.lxseek.chat.extra.CONVERSATION_ID"
+        /** DeepLink host for the Yipay return_url: lxchat://yipay-callback */
+        private const val YIPAY_CALLBACK_HOST = "yipay-callback"
+        /** Membership duration (days) granted on a successful yipay purchase. */
+        private const val YIPAY_MEMBERSHIP_DURATION_DAYS = 30
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -186,6 +197,7 @@ class MainActivity : ComponentActivity() {
             val dynamicColor by settingsManager.dynamicColor.collectAsState(initial = false)
             val fontPreference by settingsManager.fontPreference.collectAsState(initial = "app_default")
             val customFontPath by settingsManager.customFontPath.collectAsState(initial = "")
+            val chatFontScale by settingsManager.chatFontScale.collectAsState(initial = 1.0f)
             val appReduceMotion by settingsManager.reduceMotion.collectAsState(initial = false)
             val appName by settingsManager.appName.collectAsState(initial = "LxChat")
 
@@ -218,7 +230,8 @@ class MainActivity : ComponentActivity() {
                 schemeStyle = schemeStyle,
                 dynamicColor = dynamicColor,
                 fontPreference = fontPreference,
-                customFontPath = customFontPath
+                customFontPath = customFontPath,
+                chatFontScale = chatFontScale
             ) {
                 ProvideLxChatMotionPolicy(appReduceMotion = appReduceMotion) {
                 val activity = LocalActivity.current
@@ -286,6 +299,10 @@ class MainActivity : ComponentActivity() {
                                 onNotificationConversationConsumed = { expectedId ->
                                     consumeNotificationTarget(notificationConversationId, expectedId)
                                 },
+                                yipayCallbackResult = yipayCallbackResult,
+                                onYipayCallbackConsumed = {
+                                    yipayCallbackResult.value = YipayCallbackResult.Idle
+                                },
                             )
                         }
                     }
@@ -314,11 +331,62 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNavigationIntent(intent: Intent?) {
-        notificationConversationId.value = intent?.getStringExtra(EXTRA_CONVERSATION_ID)
+        if (intent == null) return
+        val data = intent.data
+
+        // Yipay payment callback DeepLink: lxchat://yipay-callback?...
+        if (data != null && data.scheme == "lxchat" && data.host == YIPAY_CALLBACK_HOST) {
+            handleYipayCallback(data)
+            return
+        }
+
+        // Notification conversation DeepLink: lxchat://conversation/{id} or extra
+        notificationConversationId.value = intent.getStringExtra(EXTRA_CONVERSATION_ID)
             ?.takeIf { it.isNotBlank() }
-            ?: intent?.data?.takeIf { uri ->
+            ?: data?.takeIf { uri ->
                 uri.scheme == "lxchat" && uri.host == "conversation"
             }?.lastPathSegment?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * Parse + verify the Yipay callback, then activate membership on success.
+     * The result is published to [yipayCallbackResult] for the UI to display.
+     */
+    private fun handleYipayCallback(uri: Uri) {
+        val config = YipayConfig.DEFAULT
+        val manager = YipayPaymentManager()
+        val params = manager.parseCallback(uri)
+        if (params == null) {
+            yipayCallbackResult.value = YipayCallbackResult.Failed
+            return
+        }
+        // Verify signature AND trade status.
+        if (!manager.verifyCallback(config, params)) {
+            yipayCallbackResult.value = YipayCallbackResult.Failed
+            return
+        }
+        val verifier = com.lxseek.chat.membership.YipayCallbackVerifier(config.merchantKey)
+        if (!verifier.isTradeSuccess(params)) {
+            yipayCallbackResult.value = YipayCallbackResult.Failed
+            return
+        }
+        // Map amount → tier (Premium ¥0.30 / Pro ¥0.50) and activate.
+        val tier = mapMoneyToTier(params.money)
+        val container = (application as LxChatApplication).container
+        lifecycleScope.launch {
+            container.membershipProvider.applyYipayPurchase(
+                tier = tier,
+                durationDays = YIPAY_MEMBERSHIP_DURATION_DAYS,
+            )
+            yipayCallbackResult.value = YipayCallbackResult.Success(tier)
+        }
+    }
+
+    /** Map the yipay money string to a [MembershipTier]. Unknown amounts fall back to Premium. */
+    private fun mapMoneyToTier(money: String): MembershipTier = when (money.trim()) {
+        "0.30", "0.3" -> MembershipTier.Premium
+        "0.50", "0.5" -> MembershipTier.Pro
+        else -> MembershipTier.Premium
     }
 }
 
@@ -329,6 +397,8 @@ fun MainNavigation(
     settingsManager: SettingsManager,
     notificationConversationId: kotlinx.coroutines.flow.StateFlow<String?>,
     onNotificationConversationConsumed: (String) -> Unit,
+    yipayCallbackResult: kotlinx.coroutines.flow.StateFlow<YipayCallbackResult> = kotlinx.coroutines.flow.MutableStateFlow(YipayCallbackResult.Idle),
+    onYipayCallbackConsumed: () -> Unit = {},
 ) {
     val appContext = LocalContext.current.applicationContext
     val motionPolicy = LocalLxChatMotionPolicy.current
@@ -381,6 +451,22 @@ fun MainNavigation(
     if (pdfPages.isNotEmpty()) { savedPdfPages = pdfPages } else { savedPdfPages = emptyList() }
     val snackbarHostState = remember { SnackbarHostState() }
     var snackbarVersion by remember { mutableIntStateOf(0) }
+
+    // Yipay payment callback → Snackbar feedback (success / failed).
+    val yipayResult by yipayCallbackResult.collectAsState()
+    LaunchedEffect(yipayResult) {
+        when (yipayResult) {
+            is YipayCallbackResult.Success -> {
+                snackbarHostState.showSnackbar(appContext.getString(R.string.membership_payment_success))
+                onYipayCallbackConsumed()
+            }
+            YipayCallbackResult.Failed -> {
+                snackbarHostState.showSnackbar(appContext.getString(R.string.membership_payment_failed))
+                onYipayCallbackConsumed()
+            }
+            YipayCallbackResult.Idle -> Unit
+        }
+    }
     val accessibilityManager = LocalAccessibilityManager.current
     var chatSnackbarOffset by remember { mutableStateOf(0.dp) }
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()

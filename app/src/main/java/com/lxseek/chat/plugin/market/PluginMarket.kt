@@ -139,6 +139,13 @@ class PluginMarket(
                     merged[meta.id] = meta
                 }
             }
+            // Merge built-in SKILL entries (webnovel-writer / inkos): they are script
+            // applications classified as SKILL rather than standalone runtime engines.
+            BuiltinMarketSources.fetchBuiltinSkillCatalog().plugins.forEach { meta ->
+                if (meta.id.isNotBlank() && meta.id !in merged) {
+                    merged[meta.id] = meta
+                }
+            }
             _catalog.value = merged.values.toList()
         } finally {
             _refreshing.value = false

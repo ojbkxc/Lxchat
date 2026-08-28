@@ -10,11 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
@@ -27,7 +25,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -55,23 +52,16 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
- * 条件触发设置页。
+ * Trigger section — embedded inside the Cron settings page.
  *
- * 页面布局：
- * 1. 总开关卡片（启用/禁用整套触发系统）
- * 2. 规则预设卡片（一键添加常用规则：电量低于 20% 提醒、充电完成提醒等）
- * 3. 规则列表卡片（每条显示名称、类型、阈值、开关、删除按钮）
- * 4. 添加规则按钮（弹窗：名称、类型、阈值、条件、提示词、模型选择）
- *
- * 真正的监听逻辑见 [com.lxseek.chat.trigger.BatteryTriggerReceiver] /
- * [com.lxseek.chat.trigger.NetworkTriggerReceiver]，执行逻辑见
- * [com.lxseek.chat.trigger.TriggerExecutorService]。
+ * Page layout:
+ * 1. Master toggle card (enable/disable the entire trigger system)
+ * 2. Rule preset card (one-tap add common rules)
+ * 3. Rule list card (each row: name, type, threshold, toggle, delete)
+ * 4. Add-rule button (dialog: name, type, threshold, condition, prompt, model)
  */
 @Composable
-fun TriggerSettingsPage(
-    @Suppress("UNUSED_PARAMETER") viewModel: ChatViewModel,
-    onBack: () -> Unit,
-) {
+internal fun TriggerSection(viewModel: ChatViewModel) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember(context) { TriggerConfigStore(context.applicationContext) }
@@ -81,7 +71,6 @@ fun TriggerSettingsPage(
     var enabled by remember(config) { mutableStateOf(config.enabled) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    // 可用模型列表（provider -> models），扁平化为 (provider, model) 对。
     val availableModels by viewModel.settings.availableModels.collectAsState()
 
     fun saveMasterToggle() {
@@ -113,163 +102,166 @@ fun TriggerSettingsPage(
         }
     }
 
-    CollapsingSettingsScaffold(
-        title = stringResource(R.string.settings_trigger),
-        onBack = onBack,
-        scrollState = rememberScrollState(),
-    ) {
-        Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(16.dp))
 
-        // ── 1. 总开关卡片 ──
-        Card(colors = CardDefaults.cardColors()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.trigger_enabled),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = stringResource(R.string.trigger_enabled_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = {
-                        enabled = it
-                        saveMasterToggle()
-                    },
-                )
-            }
-        }
+    // ── Section header ──
+    Text(
+        text = stringResource(R.string.settings_trigger),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(vertical = 4.dp),
+    )
 
-        Spacer(Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
 
-        // ── 2. 规则预设卡片 ──
-        Card(colors = CardDefaults.cardColors()) {
-            Column(Modifier.padding(16.dp)) {
+    // ── 1. Master toggle card ──
+    Card(colors = CardDefaults.cardColors()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.trigger_presets),
-                    style = MaterialTheme.typography.titleSmall,
+                    text = stringResource(R.string.trigger_enabled),
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = stringResource(R.string.trigger_presets_desc),
+                    text = stringResource(R.string.trigger_enabled_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(8.dp))
-                PresetRow(stringResource(R.string.trigger_preset_battery_low)) {
-                    addRule(
-                        TriggerRule(
-                            id = UUID.randomUUID().toString(),
-                            name = context.getString(R.string.trigger_preset_battery_low),
-                            type = TriggerType.BATTERY_LOW,
-                            threshold = 20,
-                            condition = "below",
-                            prompt = context.getString(R.string.trigger_preset_battery_low_prompt),
-                        )
-                    )
-                }
-                PresetRow(stringResource(R.string.trigger_preset_battery_high)) {
-                    addRule(
-                        TriggerRule(
-                            id = UUID.randomUUID().toString(),
-                            name = context.getString(R.string.trigger_preset_battery_high),
-                            type = TriggerType.BATTERY_HIGH,
-                            threshold = 80,
-                            condition = "above",
-                            prompt = context.getString(R.string.trigger_preset_battery_high_prompt),
-                        )
-                    )
-                }
-                PresetRow(stringResource(R.string.trigger_preset_charging_start)) {
-                    addRule(
-                        TriggerRule(
-                            id = UUID.randomUUID().toString(),
-                            name = context.getString(R.string.trigger_preset_charging_start),
-                            type = TriggerType.CHARGING_START,
-                            prompt = context.getString(R.string.trigger_preset_charging_start_prompt),
-                        )
-                    )
-                }
-                PresetRow(stringResource(R.string.trigger_preset_charging_stop)) {
-                    addRule(
-                        TriggerRule(
-                            id = UUID.randomUUID().toString(),
-                            name = context.getString(R.string.trigger_preset_charging_stop),
-                            type = TriggerType.CHARGING_STOP,
-                            prompt = context.getString(R.string.trigger_preset_charging_stop_prompt),
-                        )
-                    )
-                }
-                PresetRow(stringResource(R.string.trigger_preset_network_change)) {
-                    addRule(
-                        TriggerRule(
-                            id = UUID.randomUUID().toString(),
-                            name = context.getString(R.string.trigger_preset_network_change),
-                            type = TriggerType.NETWORK_CHANGE,
-                            prompt = context.getString(R.string.trigger_preset_network_change_prompt),
-                        )
-                    )
-                }
             }
+            Switch(
+                checked = enabled,
+                onCheckedChange = {
+                    enabled = it
+                    saveMasterToggle()
+                },
+            )
         }
-
-        Spacer(Modifier.height(12.dp))
-
-        // ── 3. 规则列表卡片 ──
-        Card(colors = CardDefaults.cardColors()) {
-            Column(Modifier.padding(16.dp)) {
-                Text(
-                    text = stringResource(R.string.trigger_rules),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    text = stringResource(R.string.trigger_rules_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(8.dp))
-
-                if (config.rules.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.trigger_rules_empty),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    config.rules.forEachIndexed { idx, rule ->
-                        if (idx > 0) HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                        RuleRow(
-                            rule = rule,
-                            onToggle = { toggleRule(rule.id, it) },
-                            onDelete = { removeRule(rule.id) },
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                // ── 4. 添加规则按钮 ──
-                Button(
-                    onClick = { showAddDialog = true },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.trigger_add_rule))
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
     }
+
+    Spacer(Modifier.height(12.dp))
+
+    // ── 2. Rule preset card ──
+    Card(colors = CardDefaults.cardColors()) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.trigger_presets),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = stringResource(R.string.trigger_presets_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            PresetRow(stringResource(R.string.trigger_preset_battery_low)) {
+                addRule(
+                    TriggerRule(
+                        id = UUID.randomUUID().toString(),
+                        name = context.getString(R.string.trigger_preset_battery_low),
+                        type = TriggerType.BATTERY_LOW,
+                        threshold = 20,
+                        condition = "below",
+                        prompt = context.getString(R.string.trigger_preset_battery_low_prompt),
+                    )
+                )
+            }
+            PresetRow(stringResource(R.string.trigger_preset_battery_high)) {
+                addRule(
+                    TriggerRule(
+                        id = UUID.randomUUID().toString(),
+                        name = context.getString(R.string.trigger_preset_battery_high),
+                        type = TriggerType.BATTERY_HIGH,
+                        threshold = 80,
+                        condition = "above",
+                        prompt = context.getString(R.string.trigger_preset_battery_high_prompt),
+                    )
+                )
+            }
+            PresetRow(stringResource(R.string.trigger_preset_charging_start)) {
+                addRule(
+                    TriggerRule(
+                        id = UUID.randomUUID().toString(),
+                        name = context.getString(R.string.trigger_preset_charging_start),
+                        type = TriggerType.CHARGING_START,
+                        prompt = context.getString(R.string.trigger_preset_charging_start_prompt),
+                    )
+                )
+            }
+            PresetRow(stringResource(R.string.trigger_preset_charging_stop)) {
+                addRule(
+                    TriggerRule(
+                        id = UUID.randomUUID().toString(),
+                        name = context.getString(R.string.trigger_preset_charging_stop),
+                        type = TriggerType.CHARGING_STOP,
+                        prompt = context.getString(R.string.trigger_preset_charging_stop_prompt),
+                    )
+                )
+            }
+            PresetRow(stringResource(R.string.trigger_preset_network_change)) {
+                addRule(
+                    TriggerRule(
+                        id = UUID.randomUUID().toString(),
+                        name = context.getString(R.string.trigger_preset_network_change),
+                        type = TriggerType.NETWORK_CHANGE,
+                        prompt = context.getString(R.string.trigger_preset_network_change_prompt),
+                    )
+                )
+            }
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+
+    // ── 3. Rule list card ──
+    Card(colors = CardDefaults.cardColors()) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.trigger_rules),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = stringResource(R.string.trigger_rules_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+
+            if (config.rules.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.trigger_rules_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                config.rules.forEachIndexed { idx, rule ->
+                    if (idx > 0) HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                    RuleRow(
+                        rule = rule,
+                        onToggle = { toggleRule(rule.id, it) },
+                        onDelete = { removeRule(rule.id) },
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ── 4. Add rule button ──
+            Button(
+                onClick = { showAddDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.trigger_add_rule))
+            }
+        }
+    }
+
+    Spacer(Modifier.height(16.dp))
 
     if (showAddDialog) {
         AddRuleDialog(
@@ -283,7 +275,7 @@ fun TriggerSettingsPage(
     }
 }
 
-/** 一行预设：左侧加号图标 + 标签，点击即添加。 */
+/** A preset row: plus icon + label, click to add. */
 @Composable
 private fun PresetRow(label: String, onClick: () -> Unit) {
     Row(
@@ -307,7 +299,7 @@ private fun PresetRow(label: String, onClick: () -> Unit) {
     }
 }
 
-/** 规则列表中的一行：名称 + 类型/阈值摘要 + 开关 + 删除。 */
+/** A rule row in the list: name + type/threshold summary + toggle + delete. */
 @Composable
 private fun RuleRow(
     rule: TriggerRule,
@@ -344,7 +336,7 @@ private fun RuleRow(
     }
 }
 
-/** 把规则转成一行人类可读摘要。 */
+/** Convert a rule to a human-readable summary. */
 @Composable
 private fun ruleSummary(rule: TriggerRule): String {
     val typePart = when (rule.type) {
@@ -358,7 +350,7 @@ private fun ruleSummary(rule: TriggerRule): String {
     return stringResource(R.string.trigger_rule_summary_cooldown, typePart, cooldownSec)
 }
 
-/** 添加规则弹窗：名称、类型、阈值、条件、提示词、模型选择。 */
+/** Add-rule dialog: name, type, threshold, condition, prompt, model. */
 @Composable
 private fun AddRuleDialog(
     availableModels: Map<String, List<String>>,
@@ -392,11 +384,11 @@ private fun AddRuleDialog(
                 )
                 Spacer(Modifier.height(8.dp))
 
-                // 类型下拉
+                // Type dropdown
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = typeLabel(type),
-                        onValueChange = { /* 只读 */ },
+                        onValueChange = { /* read-only */ },
                         readOnly = true,
                         singleLine = true,
                         label = { Text(stringResource(R.string.trigger_field_type)) },
@@ -416,7 +408,6 @@ private fun AddRuleDialog(
                                 text = { Text(typeLabel(t)) },
                                 onClick = {
                                     type = t
-                                    // 智能填充默认 condition/threshold
                                     when (t) {
                                         TriggerType.BATTERY_LOW -> {
                                             condition = "below"
@@ -436,7 +427,7 @@ private fun AddRuleDialog(
                 }
                 Spacer(Modifier.height(8.dp))
 
-                // 阈值 + 条件（仅 BATTERY_LOW/HIGH 需要）
+                // Threshold + condition (only for BATTERY_LOW/HIGH)
                 if (type == TriggerType.BATTERY_LOW || type == TriggerType.BATTERY_HIGH) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -470,7 +461,7 @@ private fun AddRuleDialog(
                 )
                 Spacer(Modifier.height(8.dp))
 
-                // 模型下拉
+                // Model dropdown
                 Box(modifier = Modifier.fillMaxWidth()) {
                     val modelDisplay = if (modelId.isNullOrBlank()) {
                         stringResource(R.string.im_channel_settings_follow_default)
@@ -481,7 +472,7 @@ private fun AddRuleDialog(
                     }
                     OutlinedTextField(
                         value = modelDisplay,
-                        onValueChange = { /* 只读 */ },
+                        onValueChange = { /* read-only */ },
                         readOnly = true,
                         singleLine = true,
                         label = { Text(stringResource(R.string.trigger_field_model)) },
@@ -542,7 +533,7 @@ private fun AddRuleDialog(
     )
 }
 
-/** 触发类型的本地化标签。 */
+/** Localized label for a trigger type. */
 @Composable
 private fun typeLabel(type: TriggerType): String = when (type) {
     TriggerType.BATTERY_LOW -> stringResource(R.string.trigger_type_battery_low)

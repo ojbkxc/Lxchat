@@ -656,6 +656,26 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                 )
                             }
                         }
+                        add {
+                            val chatFontScale by viewModel.settings.chatFontScale.collectAsState()
+                            var sliderValue by remember { mutableStateOf(chatFontScale) }
+                            LaunchedEffect(chatFontScale) { sliderValue = chatFontScale }
+                            SettingsItem(
+                                headlineContent = { Text(stringResource(R.string.chat_font_scale)) },
+                                supportingContent = {
+                                    Text(stringResource(R.string.chat_font_scale_desc, sliderValue))
+                                },
+                                trailingContent = {
+                                    Slider(
+                                        value = sliderValue,
+                                        onValueChange = { sliderValue = it },
+                                        onValueChangeFinished = { viewModel.settings.setChatFontScale(sliderValue) },
+                                        valueRange = 1.0f..1.3f,
+                                        modifier = Modifier.width(120.dp),
+                                    )
+                                }
+                            )
+                        }
                     }
                 )
             }

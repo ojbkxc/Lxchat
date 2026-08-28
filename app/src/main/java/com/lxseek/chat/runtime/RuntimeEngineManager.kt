@@ -53,26 +53,26 @@ class RuntimeEngineManager(
         // 自动匹配：在 meta.versions（缺省为 [meta.version]）中选择满足 meta.minVersion 的最高版本。
         val min = Version.parse(meta.minVersion)
         val candidates = meta.versions.ifEmpty { if (meta.version.isBlank()) emptyList() else listOf(meta.version) }
-        if (candidates.isEmpty()) throw IllegalStateException("引擎 $engineId 未声明可用版本")
+        if (candidates.isEmpty()) throw IllegalStateException("Engine $engineId has no declared versions")
         val selected = requestedVersion?.let { req ->
             if (req !in candidates) throw IllegalArgumentException(
-                "版本 $req 不在引擎 $engineId 的可用版本 ${candidates.joinToString("/")} 中",
+                "Version $req not in available versions ${candidates.joinToString("/")} for engine $engineId",
             )
             req
         } ?: candidates.filter { min == Version.NONE || Version.parse(it).satisfiesMin(min) }
             .maxByOrNull { Version.parse(it) }
             ?: throw IllegalStateException(
-                "引擎 $engineId 没有满足最低版本 ${meta.minVersion ?: "未知"} 的候选版本",
+                "Engine $engineId has no candidate satisfying min version ${meta.minVersion ?: "unknown"}",
             )
         if (min != Version.NONE && !Version.parse(selected).satisfiesMin(min)) {
             throw IllegalStateException(
-                "版本 $selected 低于引擎 $engineId 的最低版本要求 ${meta.minVersion}",
+                "Version $selected below min version ${meta.minVersion} for engine $engineId",
             )
         }
-        val url = meta.downloadUrl ?: throw IllegalArgumentException("引擎 $engineId 缺少 downloadUrl")
+        val url = meta.downloadUrl ?: throw IllegalArgumentException("Engine $engineId missing downloadUrl")
         val root = packageManager.install(engineId, selected, url)
         val manifest = packageManager.readManifest(engineId, selected)
-            ?: throw IllegalStateException("引擎 $engineId 安装后无法读取 manifest")
+            ?: throw IllegalStateException("Engine $engineId: cannot read manifest after install")
         return InstallResult(selected, RuntimeEnginePlugin(engineId, selected, manifest, processManager))
     }
 
@@ -112,10 +112,10 @@ class RuntimeEngineManager(
         requirementOverride: RuntimeRequirement? = null,
     ): Map<String, String> {
         val installation = installationOf(engineId)
-            ?: throw IllegalStateException("引擎 $engineId 未安装。请先调用 market_install 安装。")
+            ?: throw IllegalStateException("Engine $engineId not installed. Please install via market_install first.")
         val version = installation.version
         val manifest = packageManager.readManifest(engineId, version)
-            ?: throw IllegalStateException("引擎 $engineId 已安装但本地文件缺失，请重新安装")
+            ?: throw IllegalStateException("Engine $engineId installed but local files missing, please reinstall")
         // 启动前二次校验版本（优先技能约束覆盖，否则用 manifest 自身声明）。
         versionRequirementCheck(engineId, version, requirementOverride ?: requirement)
         // 依赖引擎：自动确保已安装，并解析其安装根目录（供 {depRoot} 引用原生命令环境）。
@@ -138,6 +138,9 @@ class RuntimeEngineManager(
     /**
      * 确保依赖引擎（如 runtime-python）已安装，返回其安装根目录。未安装时自动从市场
      * 目录解析 meta 并按需下载安装；目录中不存在则返回 null（调用方决定是否报错）。
+     *
+     * 安装失败时抛出异常向上传播，由调用方 [ensureStarted] 的 UI 层 try-catch 处理，
+     * 不在此处用 runCatching 静默吞错——否则用户看不到依赖引擎安装失败的根因。
      */
     suspend fun ensureDependencyRoot(requiresEngine: String): File? {
         val existing = installationOf(requiresEngine)
@@ -146,7 +149,10 @@ class RuntimeEngineManager(
         }
         val meta = resolveCatalogMeta(requiresEngine) ?: return null
         val market = market ?: return null
-        if (runCatching { market.installRuntimeInternal(meta, null) }.isFailure) return null
+        // Let exceptions propagate so the caller can surface the real failure reason
+        // (network error, invalid package, missing manifest, etc.) instead of swallowing
+        // them into a silent null that hides the root cause.
+        market.installRuntimeInternal(meta, null)
         val installation = installationOf(requiresEngine) ?: return null
         return packageManager.versionRoot(requiresEngine, installation.version)
     }
@@ -241,7 +247,7 @@ class RuntimeEngineManager(
             "node" -> listOf(File(root, "node").absolutePath)
             "python" -> listOf(File(root, "python").absolutePath)
             "ffmpeg" -> listOf(File(root, "ffmpeg").absolutePath)
-            else -> throw IllegalStateException("未知的引擎类型: ${manifest.type}，无法构建启动命令")
+            else -> throw IllegalStateException("Unknown engine type: ${manifest.type}, cannot build start command")
         }
     }
 
@@ -252,7 +258,7 @@ class RuntimeEngineManager(
         val min = Version.parse(requirement.minVersion)
         if (min != Version.NONE && !actual.satisfiesMin(min)) {
             throw IllegalStateException(
-                "引擎 $engineId 版本 $version 低于技能要求的 ${requirement.runtime} >= ${requirement.minVersion}，无法启动",
+                "Engine $engineId version $version below skill requirement ${requirement.runtime} >= ${requirement.minVersion}, cannot start",
             )
         }
     }
@@ -295,6 +301,7 @@ class RuntimeEnginePlugin(
     companion object {
         /** 引擎展示名（含文献/来源附注）。 */
         fun engineDisplayName(engineId: String): String = when (engineId) {
+            "runtime-node" -> "Node.js"
             RuntimeEngineType.NODE_INKOS -> "Node + inkos"
             RuntimeEngineType.PYTHON_WEB_NOVEL -> "webnovel-writer"
             "runtime-python" -> "Python"

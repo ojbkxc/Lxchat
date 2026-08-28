@@ -87,8 +87,8 @@ class PetFloatingView @JvmOverloads constructor(
     }
 
     // ---- Character / emotion state ----
-    private var currentCharacter: PetCharacter = PetCharacter.DADA
-    private var characterPalette: PetPalette = PetPalette.DADA
+    private var currentCharacter: PetCharacter = PetCharacter.HUHU
+    private var characterPalette: PetPalette = PetPalette.HUHU
     private var tipSlotHeight = 0
     private var bubbleCenterY = 0f
 

@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,13 +79,16 @@ internal fun UserMessageBubble(
     val haptics = LocalLxChatHaptics.current
     val allowSpatialTransitions = LocalLxChatMotionPolicy.current.allowSpatialTransitions
     var showMenu by remember { mutableStateOf(false) }
+    // Responsive bubble width: cap at 80% of the screen width so tablets no longer
+    // leave the user message pinned to a narrow 300dp column.
+    val maxBubbleWidth = (LocalConfiguration.current.screenWidthDp * 0.8f).dp
 
     Column(horizontalAlignment = Alignment.End) {
         Surface(
             shape = shape,
             color = backgroundColor,
             modifier = Modifier
-                .widthIn(max = 300.dp)
+                .widthIn(max = maxBubbleWidth)
                 .then(contextAlpha)
                 // Keep size interpolation local to the stable user-bubble surface. Initial
                 // measurement is immediate; subsequent editor enter/exit changes animate
@@ -252,11 +256,11 @@ internal fun UserMessageBubble(
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                     .padding(horizontal = 4.dp)
             ) {
-                IconButton(onClick = { onSwitchBranch(-1) }, enabled = branchIndex > 0 && isEditingAllowed, modifier = Modifier.size(24.dp)) {
+                IconButton(onClick = { onSwitchBranch(-1) }, enabled = branchIndex > 0 && isEditingAllowed, modifier = Modifier.size(48.dp)) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, modifier = Modifier.size(16.dp))
                 }
                 Text("${branchIndex + 1} / $totalBranches", style = MaterialTheme.typography.labelSmall)
-                IconButton(onClick = { onSwitchBranch(1) }, enabled = branchIndex < totalBranches - 1 && isEditingAllowed, modifier = Modifier.size(24.dp)) {
+                IconButton(onClick = { onSwitchBranch(1) }, enabled = branchIndex < totalBranches - 1 && isEditingAllowed, modifier = Modifier.size(48.dp)) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, modifier = Modifier.size(16.dp))
                 }
             }
@@ -268,15 +272,15 @@ internal fun UserMessageBubble(
                 modifier = Modifier.then(contextAlpha)
             ) {
                 if (!actionCopyText.isNullOrBlank()) {
-                    IconButton(onClick = { clipboardManager.setText(AnnotatedString(actionCopyText)); haptics.confirm() }, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { clipboardManager.setText(AnnotatedString(actionCopyText)); haptics.confirm() }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.copy), modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     }
                 }
-                IconButton(onClick = onStartEdit, enabled = isEditingAllowed, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = onStartEdit, enabled = isEditingAllowed, modifier = Modifier.size(48.dp)) {
                     Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit), modifier = Modifier.size(16.dp), tint = LocalContentColor.current.copy(alpha = if (isEditingAllowed) 0.6f else 0.3f))
                 }
                 Box {
-                    IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { showMenu = true }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more), modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     }
                     DropdownMenu(

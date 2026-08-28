@@ -2,6 +2,7 @@ package com.lxseek.chat.ui.settings
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -22,9 +23,12 @@ import com.lxseek.chat.R
 import com.lxseek.chat.androidcontrol.AndroidUiControllerService
 import com.lxseek.chat.model.ModelId
 import com.lxseek.chat.model.apiModelName
+import com.lxseek.chat.runtime.RuntimeEnginePlugin
 import com.lxseek.chat.util.TtsManager
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.io.IOException
 
 /** Live snapshot of the accessibility bridge, mirroring the device-control page's cheap read. */
 private data class RuntimeAccessibilityStatus(
@@ -46,9 +50,10 @@ private data class RuntimeAccessibilityStatus(
 
 /**
  * Agent / runtime status board. Aggregates the live state of everything that keeps LxChat running:
- * the accessibility bridge that powers device control, the TTS engine for speech, and the model
- * configuration for generation. Status is refreshed while the page is visible so toggles made in
- * other screens appear immediately.
+ * the accessibility bridge that powers device control, the TTS engine for speech, the model
+ * configuration for generation, and the runtime engines (Node.js / Python / ffmpeg) that power
+ * script-based skills. Status is refreshed while the page is visible so toggles made in other
+ * screens appear immediately.
  */
 @Composable
 fun SettingsRuntimeStatusPage(
@@ -64,6 +69,15 @@ fun SettingsRuntimeStatusPage(
     val customModels by settings.customModels.collectAsState()
     val enabledModels by settings.enabledModels.collectAsState()
 
+    // ── Runtime engines state ──
+    val market = viewModel.pluginMarket
+    val runtimeEngineManager = market.runtimeEngineManager
+    val scope = rememberCoroutineScope()
+    val catalog by market.catalog.collectAsState()
+    var installingEngines by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var refreshedOnce by remember { mutableStateOf(false) }
+    val known = remember { KNOWN_ENGINES }
+
     // Poll for the accessibility bridge's live state (it is tied to the system service lifecycle).
     LaunchedEffect(Unit) {
         while (true) {
@@ -72,10 +86,26 @@ fun SettingsRuntimeStatusPage(
         }
     }
 
+    // 强制刷新目录，确保 RUNTIME 引擎条目可安装。
+    LaunchedEffect(Unit) {
+        if (!refreshedOnce) {
+            market.refreshCatalog()
+            refreshedOnce = true
+        }
+    }
+
     CollapsingSettingsScaffold(
         title = stringResource(R.string.settings_runtime_status),
         onBack = onBack,
         scrollState = rememberScrollState(),
+        actions = {
+            IconButton(onClick = { scope.launch { market.refreshCatalog() } }) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = stringResource(R.string.runtime_engine_refresh),
+                )
+            }
+        },
     ) {
         Text(
             text = stringResource(R.string.runtime_status_howto),
@@ -192,6 +222,64 @@ fun SettingsRuntimeStatusPage(
                 }
             },
         ))
+
+        // ── Runtime engines section ──
+        Text(
+            text = stringResource(R.string.runtime_engines_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+        )
+        if (runtimeEngineManager == null) {
+            Text(
+                text = stringResource(R.string.runtime_engine_no_manager),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        } else {
+            known.forEach { engineId ->
+                val status = runtimeEngineManager.status(engineId)
+                val meta = catalog.firstOrNull { it.id == engineId }
+                val isInstalling = engineId in installingEngines
+                EngineRow(
+                    engineId = engineId,
+                    installed = status.installed,
+                    installedVersion = status.installedVersion,
+                    running = status.running,
+                    canInstall = meta != null && !isInstalling,
+                    isInstalling = isInstalling,
+                    onAction = { action ->
+                        scope.launch {
+                            when (action) {
+                                EngineAction.Start -> {
+                                    runCatching {
+                                        runtimeEngineManager.ensureStarted(engineId, null, null)
+                                    }.onFailure { e ->
+                                        viewModel.emitSnackbar(formatEngineError(R.string.runtime_engine_op_start, e))
+                                    }
+                                }
+                                EngineAction.Stop -> runtimeEngineManager.stop(engineId)
+                                EngineAction.Install -> {
+                                    installingEngines = installingEngines + engineId
+                                    runCatching {
+                                        market.installRuntimeInternal(meta!!)
+                                    }.onFailure { e ->
+                                        viewModel.emitSnackbar(formatEngineError(R.string.runtime_engine_op_install, e))
+                                    }
+                                    installingEngines = installingEngines - engineId
+                                }
+                                EngineAction.Uninstall -> {
+                                    runCatching { market.uninstall(engineId) }
+                                        .onFailure { e ->
+                                            viewModel.emitSnackbar(formatEngineError(R.string.runtime_engine_op_uninstall, e))
+                                        }
+                                }
+                            }
+                        }
+                    }
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+        }
     }
 }
 
@@ -211,5 +299,130 @@ private fun StatusLine(title: String, positive: Boolean) {
             fontWeight = FontWeight.Medium,
             color = if (positive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+// ── Runtime engines helpers ──
+
+private enum class EngineAction { Start, Stop, Install, Uninstall }
+
+/**
+ * The only true runtime engines displayed on this page: Node.js, Python and ffmpeg.
+ * webnovel-writer / inkos are SKILL plugins (script applications depending on these
+ * runtimes) and are installed from the skill market instead.
+ */
+private val KNOWN_ENGINES = listOf(
+    "runtime-node",
+    "runtime-python",
+    "runtime-ffmpeg",
+)
+
+/**
+ * Format an engine operation failure into a human-readable snackbar message, classifying by
+ * exception type so the user can tell network errors apart from install/state errors.
+ */
+@Composable
+private fun formatEngineError(opResId: Int, e: Throwable): String {
+    val op = stringResource(opResId)
+    val detail = when (e) {
+        is IOException -> stringResource(R.string.runtime_engine_err_network, e.message ?: "")
+        is IllegalStateException -> stringResource(R.string.runtime_engine_err_state, e.message ?: "")
+        is IllegalArgumentException -> stringResource(R.string.runtime_engine_err_param, e.message ?: "")
+        else -> {
+            val msg = e.message ?: e::class.simpleName ?: ""
+            stringResource(R.string.runtime_engine_err_unknown, msg)
+        }
+    }
+    return stringResource(R.string.runtime_engine_op_failed, op, detail)
+}
+
+@Composable
+private fun EngineRow(
+    engineId: String,
+    installed: Boolean,
+    installedVersion: String?,
+    running: Boolean,
+    canInstall: Boolean,
+    isInstalling: Boolean,
+    onAction: (EngineAction) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = RuntimeEnginePlugin.engineDisplayName(engineId),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (isInstalling) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (running) {
+                    Text(
+                        text = stringResource(R.string.runtime_engine_status_running),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            val stateText = when {
+                isInstalling -> stringResource(R.string.runtime_engine_status_installing)
+                installed && installedVersion != null ->
+                    stringResource(R.string.runtime_engine_status_installed, installedVersion)
+                else -> stringResource(R.string.runtime_engine_status_not_installed)
+            }
+            Text(
+                text = stateText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                when {
+                    installed && running -> {
+                        OutlinedButton(onClick = { onAction(EngineAction.Stop) }) {
+                            Text(stringResource(R.string.runtime_engine_action_stop))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        TextButton(onClick = { onAction(EngineAction.Uninstall) }) {
+                            Text(stringResource(R.string.runtime_engine_action_uninstall))
+                        }
+                    }
+                    installed -> {
+                        OutlinedButton(onClick = { onAction(EngineAction.Start) }) {
+                            Text(stringResource(R.string.runtime_engine_action_start))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        TextButton(onClick = { onAction(EngineAction.Uninstall) }) {
+                            Text(stringResource(R.string.runtime_engine_action_uninstall))
+                        }
+                    }
+                    else -> {
+                        OutlinedButton(
+                            onClick = { onAction(EngineAction.Install) },
+                            enabled = canInstall,
+                        ) {
+                            Text(
+                                text = if (isInstalling) {
+                                    stringResource(R.string.runtime_engine_action_installing)
+                                } else {
+                                    stringResource(R.string.runtime_engine_action_install)
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

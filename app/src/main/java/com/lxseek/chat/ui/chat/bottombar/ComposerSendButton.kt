@@ -218,7 +218,7 @@ internal fun ComposerSendButton(
         },
         containerColor = containerColor,
         contentColor = contentColor,
-        modifier = Modifier.size(48.dp),
+        modifier = Modifier.size(56.dp),
         shape = CircleShape,
         elevation = FloatingActionButtonDefaults.elevation(
             defaultElevation = if (canSend) 2.dp else 0.dp,
@@ -237,29 +237,29 @@ internal fun ComposerSendButton(
         ) { icon ->
             when (icon) {
                 ComposerActionIcon.STOPPING -> CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(28.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 ComposerActionIcon.PENDING -> CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(28.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 ComposerActionIcon.STOP -> Icon(
                     Icons.Default.Stop,
                     stringResource(R.string.action),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(28.dp),
                 )
                 ComposerActionIcon.SEND -> Icon(
                     Icons.Default.ArrowUpward,
                     stringResource(R.string.action),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(28.dp),
                 )
                 ComposerActionIcon.IDLE -> Icon(
                     Icons.Default.GraphicEq,
                     stringResource(R.string.action),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(28.dp),
                 )
             }
         }

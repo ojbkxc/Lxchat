@@ -113,3 +113,19 @@ fun MotionAwareLinearProgressIndicator(
         )
     }
 }
+
+/** Determinate progress is informative rather than decorative, so it remains a direct value. */
+@Composable
+fun MotionAwareLinearProgressIndicator(
+    progress: () -> Float,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+) {
+    MaterialLinearProgressIndicator(
+        progress = progress,
+        modifier = modifier,
+        color = color,
+        trackColor = trackColor,
+    )
+}

@@ -1,5 +1,7 @@
 package com.lxseek.chat.ui.settings
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +52,8 @@ import com.lxseek.chat.membership.LocalMembershipProvider
 import com.lxseek.chat.membership.MembershipStatus
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.membership.RedemptionResult
+import com.lxseek.chat.membership.YipayConfig
+import com.lxseek.chat.membership.YipayPaymentManager
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -77,7 +81,7 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     var isRedeeming by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val paymentComingSoon = stringResource(R.string.membership_payment_coming_soon)
+    val paymentRedirecting = stringResource(R.string.membership_payment_redirecting)
 
     BackHandler { onBack() }
 
@@ -129,8 +133,25 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             if (status.tier == MembershipTier.Free || !status.isActive) {
                 item {
                     YipayUpgradeSection(
-                        onUpgrade = { _ ->
-                            Toast.makeText(context, paymentComingSoon, Toast.LENGTH_SHORT).show()
+                        onUpgrade = { tier ->
+                            val amount = when (tier) {
+                                MembershipTier.Premium -> "0.30"
+                                MembershipTier.Pro -> "0.50"
+                                else -> return@YipayUpgradeSection
+                            }
+                            val config = YipayConfig.DEFAULT
+                            val manager = YipayPaymentManager()
+                            val outTradeNo = "lxchat_${System.currentTimeMillis()}"
+                            val returnUrl = "lxchat://yipay-callback"
+                            val paymentUrl = manager.buildPaymentUrl(
+                                config = config,
+                                outTradeNo = outTradeNo,
+                                amount = amount,
+                                returnUrl = returnUrl,
+                            )
+                            Toast.makeText(context, paymentRedirecting, Toast.LENGTH_SHORT).show()
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paymentUrl))
+                            context.startActivity(intent)
                         },
                     )
                 }

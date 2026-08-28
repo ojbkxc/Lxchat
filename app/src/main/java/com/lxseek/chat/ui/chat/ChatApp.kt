@@ -96,18 +96,11 @@ fun ChatApp(
     }
     ConversationShareEffect(viewModel, context)
 
-    val latestDrawerEnabled by rememberUpdatedState(drawerEnabled)
-    val drawerState = rememberDrawerState(
-        initialValue = DrawerValue.Closed,
-        confirmStateChange = { newValue ->
-            val allowed = newValue == DrawerValue.Closed || latestDrawerEnabled
-            if (allowed && newValue != DrawerValue.Closed) {
-                focusManager.clearFocus()
-            }
-            allowed
-        }
+    val drawerState = rememberChatDrawerState(
+        drawerEnabled = drawerEnabled,
+        motionPolicy = motionPolicy,
+        focusManager = focusManager,
     )
-    DrawerAvailabilityEffect(drawerEnabled, motionPolicy, drawerState)
 
     val conversations by viewModel.conversations.collectAsState()
     // Defer value reads to the narrow composition regions that actually render messages. The
@@ -231,10 +224,11 @@ fun ChatApp(
     val windowHeightDp = with(density) {
         windowSize.height.toDp().value.coerceAtLeast(1f)
     }
-    val drawerWidth = with(density) { windowSize.width.toDp() } * 0.8f
+    val drawerDimensions = computeDrawerDimensions(density, windowSize.width)
+    val drawerWidth = drawerDimensions.width
     var bottomBarHeightPx by rememberSaveable { mutableFloatStateOf(0f) }
     val bottomBarHeight = with(density) { bottomBarHeightPx.toDp() }
-    val drawerWidthPx = with(density) { drawerWidth.toPx() }
+    val drawerWidthPx = drawerDimensions.widthPx
     var drawerProgress by remember { mutableFloatStateOf(0f) }
     // Bottom offset to clear the Settings button in the drawer.
     var settingsButtonTopDp by remember { mutableFloatStateOf(80f) }

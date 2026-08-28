@@ -77,6 +77,7 @@ fun LxChatTheme(
     dynamicColor: Boolean = false,
     fontPreference: String = "app_default",
     customFontPath: String = "",
+    chatFontScale: Float = 1.0f,
     content: @Composable () -> Unit
 ) {
     val systemDark = isSystemInDarkTheme()
@@ -102,6 +103,9 @@ fun LxChatTheme(
 
     val fontFamily = effectiveFontFamily(fontPreference, customFontPath)
     chatFontFamily = fontFamily
+    // Apply the user-adjustable chat font scale to all ChatType styles (same pattern
+    // as chatFontFamily: a top-level var read by ChatType property getters).
+    com.lxseek.chat.ui.theme.chatFontScale = chatFontScale
     val typography = remember(fontFamily) { typographyWithFont(fontFamily) }
 
     MaterialTheme(

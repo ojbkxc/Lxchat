@@ -81,8 +81,8 @@ fun SettingsGroup(
                 item()
                 if (index != items.lastIndex) {
                     HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
@@ -234,69 +234,59 @@ private data class SettingsGroupData(
 )
 
 private val settingsGroups = listOf(
+    // Group 1 — Appearance & Language (high-frequency, promoted to top)
+    SettingsGroupData(titleRes = R.string.settings_group_appearance_language, items = listOf(
+        SettingsCategory("appearance", R.string.settings_appearance, R.string.settings_appearance_desc, Icons.Default.Palette),
+        SettingsCategory("language", R.string.language_title, R.string.language_desc, Icons.Default.Translate),
+    )),
+    // Group 2 — Models & Service (core configuration)
     SettingsGroupData(titleRes = R.string.settings_group_services, items = listOf(
         SettingsCategory("provider", R.string.settings_provider, R.string.settings_provider_desc, Icons.Default.Cloud),
         SettingsCategory("models", R.string.settings_models, R.string.settings_models_desc, Icons.Default.Chat),
         SettingsCategory("model_plaza", R.string.settings_model_plaza, R.string.settings_model_plaza_desc, Icons.Default.AutoAwesome),
+        SettingsCategory("generation", R.string.settings_generation, R.string.settings_generation_desc, Icons.Default.Tune),
     )),
+    // Group 3 — Prompts & Context (response control)
     SettingsGroupData(titleRes = R.string.settings_group_responses, items = listOf(
         SettingsCategory("prompts", R.string.settings_prompts, R.string.settings_prompts_desc, Icons.Default.Psychology),
-        SettingsCategory("generation", R.string.settings_generation, R.string.settings_generation_desc, Icons.Default.Tune),
         SettingsCategory("context", R.string.context_title, R.string.context_desc, Icons.Default.Memory),
         SettingsCategory("routing", R.string.settings_complexity_routing, R.string.settings_complexity_routing_desc, Icons.Default.Route),
         SettingsCategory("titlegen", R.string.settings_title_gen, R.string.settings_title_gen_desc, Icons.Default.Edit),
     )),
-    SettingsGroupData(titleRes = R.string.settings_group_multimodal, items = listOf(
-        SettingsCategory("transcription", R.string.settings_transcription, R.string.settings_transcription_desc, Icons.Default.ImageSearch),
-        SettingsCategory("imagegen", R.string.settings_image_gen, R.string.settings_image_gen_desc, Icons.Default.AddPhotoAlternate),
-    )),
+    // Group 4 — Tools & Integration (5 items, was 3 + search/shell/automation from Advanced)
     SettingsGroupData(titleRes = R.string.settings_group_tools, items = listOf(
-        SettingsCategory("websearch", R.string.settings_web_search, R.string.settings_web_search_desc, Icons.Default.Language),
         SettingsCategory(
             "mcp",
             R.string.mcp_title,
             R.string.mcp_desc,
             iconRes = R.drawable.ic_mcp,
         ),
-        SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
         SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
-        SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
-    )),
-    SettingsGroupData(titleRes = R.string.settings_group_advanced, items = listOf(
         SettingsCategory("search", R.string.search_title, R.string.search_desc, Icons.Default.Search),
         SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Terminal),
-        SettingsCategory("adb_shell", R.string.settings_adb_shell, R.string.settings_adb_shell_desc, Icons.Default.Terminal),
         SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
-        SettingsCategory("workflow", R.string.settings_workflow, R.string.settings_workflow_desc, Icons.Default.AccountTree),
-        SettingsCategory("device_control", R.string.settings_device_control, R.string.settings_device_control_desc, Icons.Default.Android),
-        SettingsCategory("runtime_status", R.string.settings_runtime_status, R.string.settings_runtime_status_desc, Icons.Default.Speed),
-        SettingsCategory("pet_overlay", R.string.settings_pet_overlay, R.string.settings_pet_overlay_desc, Icons.Default.Android),
-        SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
-        SettingsCategory("notification_reply", R.string.settings_notification_reply, R.string.settings_notification_reply_desc, Icons.Default.Notifications),
-        SettingsCategory("cron", R.string.settings_cron, R.string.settings_cron_desc, Icons.Default.Schedule),
-        SettingsCategory("trigger", R.string.settings_trigger, R.string.settings_trigger_desc, Icons.Default.Bolt),
-        SettingsCategory("sms_command", R.string.settings_sms_command, R.string.settings_sms_command_desc, Icons.Default.Sms),
-        SettingsCategory("reply_channel", R.string.settings_reply_channel, R.string.settings_reply_channel_desc, Icons.Default.Send),
-        SettingsCategory("runtime_engines", R.string.settings_runtime_engines, R.string.settings_runtime_engines_desc, Icons.Default.Android),
     )),
-    SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
-        SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
-        SettingsCategory("dns", R.string.settings_dns, R.string.settings_dns_desc, Icons.Default.Dns),
-    )),
+    // Group 5 — Data & Memory (merged multimodal/transcription + network/proxy)
     SettingsGroupData(titleRes = R.string.settings_group_memory_data, items = listOf(
         SettingsCategory("memory", R.string.settings_memory, R.string.settings_memory_desc, Icons.Default.Description),
         SettingsCategory("datacontrol", R.string.settings_data_control, R.string.settings_data_control_desc, Icons.Default.Storage),
+        SettingsCategory("transcription", R.string.settings_transcription, R.string.settings_transcription_desc, Icons.Default.ImageSearch),
         SettingsCategory("logs", R.string.settings_logs, R.string.settings_logs_desc, Icons.Default.ReceiptLong),
+        SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
     )),
-    SettingsGroupData(titleRes = R.string.settings_group_appearance_language, items = listOf(
-        SettingsCategory("appearance", R.string.settings_appearance, R.string.settings_appearance_desc, Icons.Default.Palette),
-        SettingsCategory("language", R.string.language_title, R.string.language_desc, Icons.Default.Translate),
+    // Group 6 — Advanced (remaining 5 from the former 8-item Advanced group)
+    SettingsGroupData(titleRes = R.string.settings_group_advanced, items = listOf(
+        SettingsCategory("device_control", R.string.settings_device_control, R.string.settings_device_control_desc, Icons.Default.Android),
+        SettingsCategory("runtime_status", R.string.settings_runtime_status, R.string.settings_runtime_status_desc, Icons.Default.Speed),
+        SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
+        SettingsCategory("notification_reply", R.string.settings_notification_reply, R.string.settings_notification_reply_desc, Icons.Default.Notifications),
+        SettingsCategory("cron", R.string.settings_cron, R.string.settings_cron_desc, Icons.Default.Schedule),
     )),
-    SettingsGroupData(titleRes = R.string.settings_group_insights, items = listOf(
-        SettingsCategory("statistics", R.string.settings_statistics, R.string.settings_statistics_desc, Icons.Default.BarChart),
-    )),
+    // Group 7 — About (merged insights/statistics + membership)
     SettingsGroupData(titleRes = R.string.settings_group_about, items = listOf(
         SettingsCategory("about", R.string.settings_about, R.string.settings_about_desc, Icons.Default.Info),
+        SettingsCategory("statistics", R.string.settings_statistics, R.string.settings_statistics_desc, Icons.Default.BarChart),
+        SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
     )),
 )
 
@@ -341,48 +331,39 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "generation" -> SettingsGenerationPage(viewModel, onBack = { selectedCategory = null })
                 "context" -> SettingsContextPage(viewModel, onBack = { selectedCategory = null })
                 "routing" -> SettingsRoutingPage(viewModel, onBack = { selectedCategory = null })
-                "websearch" -> SettingsWebSearchPage(viewModel, onBack = { selectedCategory = null })
-                "imagegen" -> SettingsImageGenPage(viewModel, onBack = { selectedCategory = null })
+
                 "shell" -> SettingsShellPage(viewModel, onBack = { selectedCategory = null })
-                "adb_shell" -> SettingsAdbPage(viewModel, onBack = { selectedCategory = null })
+
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
-                "plugins" -> SettingsPluginsListPage(viewModel, onBack = { selectedCategory = null })
+
                 "market" -> SettingsMarketPage(
                     viewModel,
                     onBack = { selectedCategory = null },
                     onOpenOnlineMarket = { selectedCategory = "online_market" },
                 )
-                "runtime_engines" -> SettingsRuntimeEnginesPage(
-                    viewModel,
-                    onBack = { selectedCategory = null },
-                )
+
                 "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null })
                 "online_market" -> SettingsPluginMarketPage(
                     viewModel,
                     onBack = { selectedCategory = null },
                     onOpenSources = { selectedCategory = "market_sources" },
                 )
-                "market_sources" -> SettingsMarketSourcesPage(
-                    viewModel,
-                    onBack = { selectedCategory = "online_market" },
-                )
+
                 "automation" -> SettingsAutomationPage(
                     viewModel,
                     onBack = { selectedCategory = null },
                     onOpenWorkflow = { selectedCategory = "workflow" },
                 )
-                "workflow" -> SettingsWorkflowPage(viewModel, onBack = { selectedCategory = null })
+
                 "device_control" -> SettingsDeviceControlPage(viewModel, onBack = { selectedCategory = null })
-                "pet_overlay" -> SettingsPetOverlayPage(viewModel, onBack = { selectedCategory = null })
+
                 "runtime_status" -> SettingsRuntimeStatusPage(viewModel, onBack = { selectedCategory = null })
                 "im_gateway" -> SettingsImGatewayPage(viewModel, onBack = { selectedCategory = null })
                 "notification_reply" -> NotificationReplySettingsPage(viewModel, onBack = { selectedCategory = null })
                 "cron" -> CronSettingsPage(viewModel, onBack = { selectedCategory = null })
-                "trigger" -> TriggerSettingsPage(viewModel, onBack = { selectedCategory = null })
-                "sms_command" -> SmsCommandSettingsPage(viewModel, onBack = { selectedCategory = null })
-                "reply_channel" -> ReplyChannelSettingsPage(onBack = { selectedCategory = null })
+
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })
-                "dns" -> SettingsDnsPage(viewModel, onBack = { selectedCategory = null })
+
                 "language" -> SettingsLanguagePage(viewModel, onBack = { selectedCategory = null })
                 "titlegen" -> SettingsTitleGenPage(viewModel, onBack = { selectedCategory = null })
                 "transcription" -> SettingsTranscriptionPage(viewModel, onBack = { selectedCategory = null })

@@ -709,6 +709,8 @@
     <string name="font_custom_pick">Pick a font file</string>
     <string name="font_no_file_selected">No font selected</string>
     <string name="font_invalid_file">Invalid font file</string>
+    <string name="chat_font_scale">Chat Font Scale</string>
+    <string name="chat_font_scale_desc">Adjust the font size of chat messages. %.2f×</string>
     <string name="dynamic_color">Dynamic Color</string>
     <string name="dynamic_color_desc">Use system-generated colors based on wallpaper (Android 12+)</string>
     <string name="blur_effects">Blur Effects</string>

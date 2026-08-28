@@ -5,8 +5,13 @@ import kotlinx.serialization.Serializable
 /**
  * 运行时引擎类型。每种类型对应一种可下载的原生运行时二进制（Node / Python / ffmpeg）。
  *
- * 引擎的稳定 id（如 [RuntimeEngineType.nodeInkos]）同时作为市场 RUNTIME 条目的 plugin id，
+ * 引擎的稳定 id（如 [RuntimeEngineType.nodeInkos]）同时作为市场条目的 plugin id，
  * 供 `market_install` / `runtime_start` 等工具按 id 解析。
+ *
+ * 注意：webnovel-writer 与 inkos 并非独立运行时引擎，而是依赖 Python / Node.js 运行时的
+ * 脚本应用，在市场目录中归类为 SKILL（见 [com.lxseek.chat.plugin.market.BuiltinMarketSources.fetchBuiltinSkillCatalog]）。
+ * 此处保留 [NODE_INKOS] / [PYTHON_WEB_NOVEL] 常量仅为工具调用层（RuntimeToolProvider）按 id
+ * 解析引擎使用，不代表它们是独立 RUNTIME。
  */
 enum class RuntimeEngineType(val id: String) {
     NODE("node"),
@@ -14,10 +19,16 @@ enum class RuntimeEngineType(val id: String) {
     FFMPEG("ffmpeg");
 
     companion object {
-        /** @actalk/inkos 网文创作引擎（依赖 node:sqlite，要求 node >= 22.5）。 */
+        /**
+         * inkos 网文创作 SKILL（依赖 Node.js 运行时，要求 node >= 22.5）。
+         * 注意：这是 SKILL 而非独立 RUNTIME 引擎，常量仅供 RuntimeToolProvider 按 id 解析。
+         */
         const val NODE_INKOS = "runtime-node-inkos"
 
-        /** webnovel-writer 网文创作引擎（GPL-3.0，依赖 runtime-python，要求 python >= 3.10）。 */
+        /**
+         * webnovel-writer 网文创作 SKILL（GPL-3.0，依赖 Python 运行时，要求 python >= 3.10）。
+         * 注意：这是 SKILL 而非独立 RUNTIME 引擎，常量仅供 RuntimeToolProvider 按 id 解析。
+         */
         const val PYTHON_WEB_NOVEL = "runtime-python-webnovel"
 
         /** 解析任意已知引擎 id → 规范 id（含 inkos/webnovel 等非枚举引擎），未知返回 null。 */

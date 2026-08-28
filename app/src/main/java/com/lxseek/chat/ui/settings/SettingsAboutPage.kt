@@ -57,13 +57,13 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.about_developer)) },
                     supportingContent = { Text(stringResource(R.string.about_developer_name)) },
-                    leadingContent = { Icon(Icons.Default.Person, contentDescription = null) }
+                    leadingContent = { Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
                 )
             }, {
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.about_version)) },
                     supportingContent = { Text("v$versionName ($versionCode)") },
-                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null) }
+                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
                 )
             }))
 
@@ -153,7 +153,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             SettingsGroup(title = stringResource(R.string.about_links), items = listOf({
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.about_github), modifier = Modifier.padding(vertical = 6.dp)) },
-                    leadingContent = { Icon(Icons.Default.Code, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Default.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = {
                         Icon(
                             Icons.Default.OpenInNew,
@@ -166,7 +166,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             }, {
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.about_issue_tracker), modifier = Modifier.padding(vertical = 6.dp)) },
-                    leadingContent = { Icon(Icons.Default.BugReport, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Default.BugReport, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = {
                         Icon(
                             Icons.Default.OpenInNew,
@@ -179,7 +179,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             }, {
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.about_contribute), modifier = Modifier.padding(vertical = 6.dp)) },
-                    leadingContent = { Icon(Icons.Default.VolunteerActivism, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = {
                         Icon(
                             Icons.Default.OpenInNew,
@@ -192,7 +192,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             }, {
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.about_privacy_policy), modifier = Modifier.padding(vertical = 6.dp)) },
-                    leadingContent = { Icon(Icons.Default.VerifiedUser, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = {
                         Icon(
                             Icons.Default.OpenInNew,

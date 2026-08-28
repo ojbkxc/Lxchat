@@ -398,7 +398,7 @@ internal fun ChatMarkdownCodeBlock(
     ) {
         MarkdownCodeBackground(
             color = assets.renderContext.colors.codeBackground,
-            shape = RoundedCornerShape(dimens.codeBackgroundCornerSize),
+            shape = RoundedCornerShape(12.dp),
             modifier = modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -800,7 +800,7 @@ private fun SearchHighlightedMarkdownCodeText(
 
     MarkdownCodeBackground(
         color = LocalMarkdownColors.current.codeBackground,
-        shape = RoundedCornerShape(LocalMarkdownDimens.current.codeBackgroundCornerSize),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),

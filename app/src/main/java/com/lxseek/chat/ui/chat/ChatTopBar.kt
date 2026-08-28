@@ -28,7 +28,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import com.lxseek.chat.ui.motion.MotionAwareLinearProgressIndicator as LinearProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -117,7 +117,7 @@ internal fun ChatTopBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 110.dp)
+            .defaultMinSize(minHeight = 80.dp)
             .background(
                 Brush.verticalGradient(
                     0.0f to MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
@@ -189,7 +189,7 @@ internal fun ChatTopBar(
                             Spacer(Modifier.width(5.dp))
                             IconButton(
                                 onClick = onSearchDismiss,
-                                modifier = Modifier.size(44.dp),
+                                modifier = Modifier.size(48.dp),
                             ) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowBack,
@@ -239,7 +239,7 @@ internal fun ChatTopBar(
                             IconButton(
                                 enabled = searchMatchIndex > 0,
                                 onClick = onSearchPrevious,
-                                modifier = Modifier.size(44.dp),
+                                modifier = Modifier.size(48.dp),
                             ) {
                                 Icon(
                                     Icons.Default.KeyboardArrowUp,
@@ -250,7 +250,7 @@ internal fun ChatTopBar(
                                 enabled = searchMatchIndex >= 0 &&
                                     searchMatchIndex < searchMatchCount - 1,
                                 onClick = onSearchNext,
-                                modifier = Modifier.size(44.dp),
+                                modifier = Modifier.size(48.dp),
                             ) {
                                 Icon(
                                     Icons.Default.KeyboardArrowDown,
@@ -273,7 +273,7 @@ internal fun ChatTopBar(
 
                 // Title capsule: menu + title
                 ChatTopBarCapsule(
-                    modifier = Modifier.fillMaxHeight().widthIn(max = 260.dp)
+                    modifier = Modifier.fillMaxHeight().widthIn(max = 220.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxHeight(),
@@ -282,7 +282,7 @@ internal fun ChatTopBar(
                         Spacer(modifier = Modifier.width(5.dp))
                         IconButton(
                             onClick = onNavigateBack ?: onOpenDrawer,
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
                                 imageVector = if (onNavigateBack != null) {
@@ -340,7 +340,7 @@ internal fun ChatTopBar(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Spacer(modifier = Modifier.width(5.dp))
-                        IconButton(onClick = onNewChat, modifier = Modifier.size(44.dp)) {
+                        IconButton(onClick = onNewChat, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_chat), modifier = Modifier.size(24.dp))
                         }
                         Box {
@@ -348,7 +348,7 @@ internal fun ChatTopBar(
                                 onClick = {
                                     moreMenuOpen = true
                                 },
-                                modifier = Modifier.size(44.dp),
+                                modifier = Modifier.size(48.dp),
                             ) {
                                 Icon(
                                     Icons.Default.MoreVert,
@@ -440,7 +440,7 @@ private fun ChatTopBarCapsule(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(12.dp)
     Surface(
         modifier = modifier,
         shape = shape,

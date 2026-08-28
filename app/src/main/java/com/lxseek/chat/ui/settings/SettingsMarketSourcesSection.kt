@@ -1,6 +1,5 @@
 package com.lxseek.chat.ui.settings
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,11 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -23,7 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,13 +45,15 @@ import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
 /**
- * Manage plugin market sources: list existing sources with enable toggles, add a new
- * source (name + index URL), and delete a source. Deleting a source does not uninstall
- * its already-installed plugins; it only stops future catalog refreshes from it.
+ * Market sources management — embedded inside the plugin market page.
+ *
+ * Lists existing sources with enable toggles, add a new source (name + index URL),
+ * and delete a source. Deleting a source does not uninstall its already-installed
+ * plugins; it only stops future catalog refreshes from it.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsMarketSourcesPage(
+internal fun MarketSourcesSection(
     viewModel: ChatViewModel,
     onBack: () -> Unit,
 ) {
@@ -67,9 +65,7 @@ fun SettingsMarketSourcesPage(
     var showAddDialog by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<String?>(null) }
 
-    BackHandler { onBack() }
-
-    Scaffold(
+    androidx.compose.material3.Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.market_sources)) },

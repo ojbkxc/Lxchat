@@ -137,6 +137,9 @@ fun SettingsShellPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             }
             }
 
+            // ── ADB / Root / Shizuku Section ──
+            AdbSection(viewModel)
+
             // ── Delete confirm dialog ──
             deleteConfirmDeviceId?.let { deviceId ->
                 val device = shellDevices.find { it.id == deviceId }

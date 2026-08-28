@@ -347,7 +347,7 @@ internal fun CompactSegmentBlock(
     Surface(
         tonalElevation = 0.dp,
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.45f),
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 8.dp + topPaddingExtra, bottom = mergedBottomPadding + bottomPaddingExtra)
@@ -474,7 +474,7 @@ internal fun CompactSegmentBlock(
                             ) {
                                 Text(
                                     if (seg.type == "transcription") transcriptionLabel(segs, idx) else stringResource(R.string.tool_thinking),
-                                    style = ChatType.meta,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -490,7 +490,7 @@ internal fun CompactSegmentBlock(
                                     } else {
                                         Text(
                                             text = seg.content.replace('\n', ' '),
-                                            style = ChatType.metaNormal,
+                                            style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
@@ -499,7 +499,7 @@ internal fun CompactSegmentBlock(
                                 } else {
                                     Text(
                                         text = "Image transcription is empty.",
-                                        style = ChatType.metaNormal,
+                                        style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                                     )
                                 }
@@ -516,13 +516,13 @@ internal fun CompactSegmentBlock(
                             ) {
                                 Text(
                                     text = toolNameHeaderText(seg),
-                                    style = ChatType.meta,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
                                     text = toolSummary(seg),
-                                    style = ChatType.metaNormal,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -549,30 +549,6 @@ internal fun CompactSegmentBlock(
  * plus, once the call has finished, a trailing execution duration. `durationMs` is filled only at
  * completion (see GenerationToolExecutor), so nothing flashes while the tool is still running.
  */
-@Composable
-private fun toolNameHeaderText(seg: MessageSegment): String =
-    toolDisplayName(seg) + seg.durationMs
-        ?.takeIf { it > 0L }
-        ?.let { " \u00b7 " + formatShortDuration(it) }
-        .orEmpty()
-
-private fun formatShortDuration(ms: Long): String {
-    val seconds = ms / 1000
-    return when {
-        seconds < 1 -> "${ms}ms"
-        seconds < 60 -> "${seconds}s"
-        seconds < 3600 -> {
-            val m = seconds / 60
-            val s = seconds % 60
-            if (s == 0L) "${m}m" else "${m}m ${s}s"
-        }
-        else -> {
-            val h = seconds / 3600
-            val m = (seconds % 3600) / 60
-            if (m == 0L) "${h}h" else "${h}h ${m}m"
-        }
-    }
-}
 
 /**
  * Reduced Motion keeps expanded layout space for the whole content fade.
@@ -585,293 +561,3 @@ internal fun retainExpandedLayoutDuringFade(
     currentExpanded: Boolean,
     targetExpanded: Boolean,
 ): Boolean = currentExpanded || targetExpanded
-
-@Composable
-internal fun TimelineSegmentsContent(
-    segments: List<MessageSegment>,
-    detailSegments: List<MessageSegment>,
-    message: ChatMessage,
-    isStreaming: Boolean,
-    groupAdjacentBlocks: Boolean,
-    autoExpandActiveGroup: Boolean,
-    autoExpansionController: GroupedSegmentAutoExpansionController,
-    expandedStates: SnapshotStateMap<String, Boolean>,
-    renderContext: ChatMarkdownRenderContext,
-    segmentAppearanceRegistry: SegmentAppearanceRegistry,
-    onLayoutMutationStarted: (String) -> Unit,
-    onLayoutMutationSettled: (String) -> Unit,
-    onSegmentClick: (List<Int>) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        var detailIndex = 0
-        var index = 0
-        var groupedBlockIndex = 0
-        var previousVisibleWasAnswer = false
-        val lastVisibleSegmentIndex = segments.indexOfLast { segment ->
-            segment.isVisibleAnswerSegment() || segment.isInfoSegment()
-        }
-        while (index < segments.size) {
-            val seg = segments[index]
-            when (seg.type) {
-                "answer" -> {
-                    if (seg.content.isNotBlank()) {
-                        val answerIsStreaming =
-                            isStreaming && index == lastVisibleSegmentIndex
-                        val answerAppearanceKey =
-                            "${segmentAppearanceKey(message.id, index, seg)}:timeline"
-                        AnimatedTimelineBlockAppearance(
-                            animationKey = answerAppearanceKey,
-                            appearanceRegistry = segmentAppearanceRegistry,
-                            isStreaming = isStreaming,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = if (index == 0) 0.dp else 6.dp)
-                            ) {
-                                StreamingMarkdownDocument(
-                                    content = seg.content,
-                                    isStreaming = answerIsStreaming,
-                                    renderContext = renderContext,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .noOpBringIntoView(),
-                                    selectionEnabled = !answerIsStreaming,
-                                )
-                            }
-                        }
-                        previousVisibleWasAnswer = true
-                    }
-                    index++
-                }
-                "thought", "tool", "transcription" -> {
-                    if (groupAdjacentBlocks) {
-                        val blockSegments = mutableListOf<MessageSegment>()
-                        val blockDetailIndices = mutableListOf<Int>()
-                        var blockEnd = index
-                        while (blockEnd < segments.size && !segments[blockEnd].isVisibleAnswerSegment()) {
-                            val blockSeg = segments[blockEnd]
-                            if (blockSeg.isInfoSegment()) {
-                                blockSegments.add(blockSeg)
-                                blockDetailIndices.add(detailIndex)
-                                detailIndex++
-                            }
-                            blockEnd++
-                        }
-                        val expansionKey = groupedSegmentBlockAppearanceKey(
-                            message.id,
-                            blockDetailIndices.firstOrNull() ?: index,
-                        )
-                        val blockTopPaddingExtra = if (groupedBlockIndex > 0) 8.dp else 0.dp
-                        val blockContent: @Composable () -> Unit = {
-                            CompactSegmentBlock(
-                                segs = blockSegments,
-                                segmentIndices = blockDetailIndices,
-                                message = message,
-                                isStreaming = isStreaming,
-                                useLiveStatus = isStreaming && blockDetailIndices.lastOrNull() == detailSegments.lastIndex,
-                                expandedStates = expandedStates,
-                                expansionKey = expansionKey,
-                                cardAppearanceKey = "$expansionKey:card",
-                                segmentAppearanceRegistry = segmentAppearanceRegistry,
-                                autoExpansionController = autoExpansionController,
-                                autoExpansionEnabled = autoExpandActiveGroup,
-                                autoExpansionActive =
-                                    isStreaming && blockEnd == segments.size,
-                                topPaddingExtra = blockTopPaddingExtra,
-                                bottomPaddingExtra = 0.dp,
-                                onExpansionStarted = onLayoutMutationStarted,
-                                onExpansionSettled = onLayoutMutationSettled,
-                                onSegmentClick = { detailIndex -> onSegmentClick(listOf(detailIndex)) }
-                            )
-                        }
-                        AnimatedTimelineBlockAppearance(
-                            animationKey = expansionKey,
-                            appearanceRegistry = segmentAppearanceRegistry,
-                            isStreaming = isStreaming,
-                        ) {
-                            blockContent()
-                        }
-                        groupedBlockIndex++
-                        previousVisibleWasAnswer = false
-                        index = blockEnd
-                    } else {
-                        val currentDetailIndex = detailIndex
-                        detailIndex++
-                        val cardTopPaddingExtra = if (previousVisibleWasAnswer) 8.dp else 0.dp
-                        val timelineKey = detailSegmentAppearanceKey(
-                            message.id,
-                            currentDetailIndex,
-                            seg,
-                        )
-                        val cardContent: @Composable () -> Unit = {
-                            TimelineInfoSegmentCard(
-                                seg = seg,
-                                detailSegments = detailSegments,
-                                detailIndex = currentDetailIndex,
-                                isStreamingContent =
-                                    isStreaming && index == lastVisibleSegmentIndex,
-                                animateAppearance = isStreaming,
-                                topPaddingExtra = cardTopPaddingExtra,
-                                cardAnimationKey = "$timelineKey:card",
-                                segmentAppearanceRegistry = segmentAppearanceRegistry,
-                                onClick = { onSegmentClick(listOf(currentDetailIndex)) }
-                            )
-                        }
-                        AnimatedTimelineBlockAppearance(
-                            animationKey = timelineKey,
-                            appearanceRegistry = segmentAppearanceRegistry,
-                            isStreaming = isStreaming,
-                        ) {
-                            cardContent()
-                        }
-                        previousVisibleWasAnswer = false
-                        index++
-                    }
-                }
-                else -> {
-                    index++
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TimelineInfoSegmentCard(
-    seg: MessageSegment,
-    detailSegments: List<MessageSegment>,
-    detailIndex: Int,
-    isStreamingContent: Boolean,
-    animateAppearance: Boolean,
-    topPaddingExtra: Dp = 0.dp,
-    cardAnimationKey: String,
-    segmentAppearanceRegistry: SegmentAppearanceRegistry,
-    onClick: () -> Unit
-) {
-    val animateCardAppearance = rememberSegmentAppearance(
-        registry = segmentAppearanceRegistry,
-        animationKey = cardAnimationKey,
-        isStreaming = animateAppearance,
-    )
-    val cardAppearanceModifier = generationLifecycleAppearanceModifier(
-        animationKey = cardAnimationKey,
-        animate = animateCardAppearance,
-        durationMillis = SEGMENT_ENTER_DURATION_MS,
-        initialScale = SEGMENT_ENTER_INITIAL_SCALE,
-    )
-    Surface(
-        tonalElevation = 0.dp,
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp + topPaddingExtra, bottom = 6.dp)
-            .then(cardAppearanceModifier)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable {
-                onClick()
-            }
-            .noOpBringIntoView()
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp)
-        ) {
-            val isTool = seg.type == "tool"
-            val isTranscription = seg.type == "transcription"
-            if (isTool) {
-                Icon(Icons.Default.Build, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
-            } else if (isTranscription) {
-                Icon(Icons.Filled.Image, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
-            } else {
-                Icon(androidx.compose.ui.res.painterResource(id = com.lxseek.chat.R.drawable.neurology_24), null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = when (seg.type) {
-                        "tool" -> toolNameHeaderText(seg)
-                        "transcription" -> transcriptionLabel(detailSegments, detailIndex)
-                        else -> stringResource(R.string.tool_thinking)
-                    },
-                    style = ChatType.meta,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (seg.type == "thought" && seg.content.isNotBlank()) {
-                    StreamingThoughtPreviewText(
-                        content = seg.content,
-                        streaming = isStreamingContent,
-                    )
-                } else {
-                    val summary = when (seg.type) {
-                        "tool" -> toolSummary(seg)
-                        "transcription" -> seg.content.takeIf { it.isNotBlank() }
-                            ?: "Image transcription is empty."
-                        else -> ""
-                    }
-                    if (summary.isNotBlank()) {
-                        Text(
-                            text = summary,
-                            style = ChatType.metaNormal,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            )
-        }
-    }
-}
-
-private const val STREAMING_THOUGHT_PREVIEW_CODE_POINTS = 60
-
-private fun thoughtPreviewTail(
-    content: AnnotatedString,
-    maximumCodePoints: Int = STREAMING_THOUGHT_PREVIEW_CODE_POINTS,
-): AnnotatedString {
-    if (content.isEmpty() || maximumCodePoints <= 0) return content
-    val raw = content.text
-    val codePointCount = raw.codePointCount(0, raw.length)
-    if (codePointCount <= maximumCodePoints) return content
-    val start = raw.offsetByCodePoints(0, codePointCount - maximumCodePoints)
-    return AnnotatedString.Builder().apply {
-        append("…")
-        append(content.subSequence(start, content.length))
-    }.toAnnotatedString()
-}
-
-@Composable
-private fun StreamingThoughtPreviewText(
-    content: String,
-    streaming: Boolean,
-) {
-    val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-    val flat = remember(content) { content.replace('\n', ' ') }
-    val annotated = remember(flat) { AnnotatedString(flat) }
-    val faded = rememberStreamingGlyphFade(
-        content = annotated,
-        color = color,
-        enabled = streaming,
-    )
-    val preview = remember(faded, streaming) {
-        if (streaming) thoughtPreviewTail(faded) else faded
-    }
-    Text(
-        text = preview,
-        style = ChatType.metaNormal,
-        color = color,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
-}

@@ -161,6 +161,9 @@ fun CronSettingsPage(
                 Spacer(Modifier.height(8.dp))
             }
         }
+
+        // ── Trigger Section (merged from TriggerSettingsPage) ──
+        TriggerSection(viewModel)
     }
 
     if (dialogOpen) {

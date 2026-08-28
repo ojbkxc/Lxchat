@@ -64,7 +64,7 @@ class RuntimePackageManager(private val context: Context) {
                 HttpClient.downloadToFile(url, tmp)
             } catch (e: IOException) {
                 tmp.delete()
-                throw IOException("引擎下载失败：${e.message}", e)
+                throw IOException("Engine download failed: ${e.message}", e)
             }
             // 先校验包结构再落位：坏包不写入安装目录，并清理临时文件。
             target.mkdirs()
@@ -73,13 +73,13 @@ class RuntimePackageManager(private val context: Context) {
             } catch (e: Exception) {
                 target.deleteRecursively()
                 tmp.delete()
-                throw IOException("引擎包结构无效或解压失败：${e.message}", e)
+                throw IOException("Invalid engine package or extraction failed: ${e.message}", e)
             } finally {
                 tmp.delete()
             }
             if (target.resolve("manifest.json").isFile != true) {
                 target.deleteRecursively()
-                throw IOException("引擎包缺失 manifest.json")
+                throw IOException("Engine package missing manifest.json")
             }
             makeExecutable(target)
             return@withContext target

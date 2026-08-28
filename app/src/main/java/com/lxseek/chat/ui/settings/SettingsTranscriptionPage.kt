@@ -257,6 +257,13 @@ fun SettingsTranscriptionPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             )
                 }
             }
+
+            // ── Image Generation Section (merged from SettingsImageGenPage) ──
+            ImageGenSection(viewModel)
+
+            // ── Web Search Section (merged from SettingsWebSearchPage) ──
+            WebSearchSection(viewModel)
+
             if (showDocFab) { Spacer(modifier = Modifier.height(80.dp)) }
     }
 

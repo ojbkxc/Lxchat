@@ -243,6 +243,8 @@ class SettingsManager(private val context: Context) {
     val fontPreference: Flow<String> = context.dataStore.data.map { it[FONT_PREFERENCE] ?: "app_default" }
     val customFontPath: Flow<String> = context.dataStore.data.map { it[CUSTOM_FONT_PATH] ?: "" }
     val customFontName: Flow<String> = context.dataStore.data.map { it[CUSTOM_FONT_NAME] ?: "" }
+    /** User-adjustable scale factor for ChatType font sizes (1.0 = no scaling). */
+    val chatFontScale: Flow<Float> = context.dataStore.data.map { it[CHAT_FONT_SCALE] ?: 1.0f }
     val firstLaunchTime: Flow<Long?> = context.dataStore.data.map { it[FIRST_LAUNCH_TIME] }
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { it[ONBOARDING_COMPLETED] ?: false }
     val ratingPromptSubmitted: Flow<Boolean> = context.dataStore.data.map { it[RATING_PROMPT_SUBMITTED] ?: false }
@@ -908,6 +910,9 @@ class SettingsManager(private val context: Context) {
     }
     suspend fun saveCustomFontName(value: String) {
         context.dataStore.edit { it[CUSTOM_FONT_NAME] = value }
+    }
+    suspend fun saveChatFontScale(value: Float) {
+        context.dataStore.edit { it[CHAT_FONT_SCALE] = value }
     }
 
     suspend fun saveSchemeStyle(style: String) {

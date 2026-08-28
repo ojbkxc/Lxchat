@@ -165,7 +165,7 @@ class PetOverlayWindowService : Service() {
         scope.launch {
             val character = runCatching {
                 PetOverlayController.getCharacter(this@PetOverlayWindowService)
-            }.getOrDefault(PetCharacter.DADA)
+            }.getOrDefault(PetCharacter.HUHU)
             view.setCharacter(character)
             val sheet = if (character.hasSpritesheet) {
                 withContext(Dispatchers.IO) { loadSpritesheet(character) }
@@ -177,7 +177,7 @@ class PetOverlayWindowService : Service() {
     /**
      * Decodes the WebP spritesheet for [character]. Loading priority:
      * 1. Local cache (`filesDir/pets/<id>/spritesheet.webp`) — previously downloaded
-     * 2. Bundled asset ([PetCharacter.assetsPath]) — shipped in the APK (dada only)
+     * 2. Bundled asset ([PetCharacter.assetsPath]) — shipped in the APK (huhu only)
      * 3. Remote download ([PetCharacter.downloadUrl]) — downloaded then cached permanently
      * Returns null on failure (caller falls back to Canvas bubble).
      */
@@ -188,7 +188,7 @@ class PetOverlayWindowService : Service() {
             runCatching { BitmapFactory.decodeFile(cacheFile.absolutePath) }
                 .getOrNull()?.let { return it }
         }
-        // 2. Try bundled asset (dada is shipped in the APK).
+        // 2. Try bundled asset (huhu is shipped in the APK).
         if (character.assetsPath.isNotEmpty()) {
             return try {
                 assets.open(character.assetsPath).use { stream ->
@@ -204,7 +204,16 @@ class PetOverlayWindowService : Service() {
             return try {
                 cacheFile.parentFile?.mkdirs()
                 HttpClient.downloadToFile(character.downloadUrl, cacheFile)
-                BitmapFactory.decodeFile(cacheFile.absolutePath)
+                val bitmap = BitmapFactory.decodeFile(cacheFile.absolutePath)
+                // Validate the decoded bitmap; a zero-size or failed decode means the download
+                // produced an unusable file — drop the cache so the next attempt re-downloads.
+                if (bitmap != null && bitmap.width > 0 && bitmap.height > 0) {
+                    bitmap
+                } else {
+                    DebugLog.e(TAG, "Downloaded spritesheet decoded to invalid bitmap: ${character.downloadUrl}")
+                    runCatching { cacheFile.delete() }
+                    null
+                }
             } catch (e: Exception) {
                 DebugLog.e(TAG, "Failed to download spritesheet: ${character.downloadUrl}", e)
                 runCatching { cacheFile.delete() }
@@ -312,8 +321,15 @@ class PetOverlayWindowService : Service() {
         fun refreshImage(context: Context) {
             val app = context.applicationContext
             // Re-deliver a start command so onStartCommand runs loadCustomImageAsync again.
+            // Use startForegroundService on Android O+ to satisfy the background-launch restriction
+            // (the service promotes itself to foreground in onCreate).
             kotlin.runCatching {
-                app.startService(Intent(app, PetOverlayWindowService::class.java))
+                val intent = Intent(app, PetOverlayWindowService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    app.startForegroundService(intent)
+                } else {
+                    app.startService(intent)
+                }
             }
         }
 
@@ -324,8 +340,15 @@ class PetOverlayWindowService : Service() {
         fun refreshCharacter(context: Context) {
             val app = context.applicationContext
             // Re-deliver a start command so onStartCommand runs applyCharacterAsync again.
+            // Use startForegroundService on Android O+ to satisfy the background-launch restriction
+            // (the service promotes itself to foreground in onCreate).
             kotlin.runCatching {
-                app.startService(Intent(app, PetOverlayWindowService::class.java))
+                val intent = Intent(app, PetOverlayWindowService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    app.startForegroundService(intent)
+                } else {
+                    app.startService(intent)
+                }
             }
         }
 

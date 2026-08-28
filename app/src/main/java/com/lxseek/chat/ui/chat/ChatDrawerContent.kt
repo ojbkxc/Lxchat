@@ -212,37 +212,6 @@ internal fun ChatDrawerContent(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (!search.isActive) {
-                FilledTonalButton(
-                    onClick = {
-                        focusManager.clearFocus()
-                        showGlobalSearch = true
-                    },
-                    modifier = Modifier.fillMaxWidth().height(42.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("全局搜索", style = ChatType.drawerButton)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                FilledTonalButton(
-                    onClick = {
-                        focusManager.clearFocus()
-                        onOpenTasks()
-                        scope.launch { drawerState.closeWithMotionPolicy(motionPolicy) }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(42.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Repeat, null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.tasks), style = ChatType.drawerButton)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
                 val newChatDisabled = isSwitching
                 val newChatContainer by animateColorAsState(
                     if (newChatDisabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
@@ -264,7 +233,7 @@ internal fun ChatDrawerContent(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(42.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     enabled = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -275,6 +244,37 @@ internal fun ChatDrawerContent(
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(stringResource(R.string.new_chat), style = ChatType.drawerButton)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                FilledTonalButton(
+                    onClick = {
+                        focusManager.clearFocus()
+                        showGlobalSearch = true
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("全局搜索", style = ChatType.drawerButton)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                FilledTonalButton(
+                    onClick = {
+                        focusManager.clearFocus()
+                        onOpenTasks()
+                        scope.launch { drawerState.closeWithMotionPolicy(motionPolicy) }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Repeat, null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.tasks), style = ChatType.drawerButton)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -324,9 +324,9 @@ internal fun ChatDrawerContent(
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(44.dp)
+                                    .height(48.dp)
                                     .padding(vertical = 2.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(12.dp))
                                     .pointerInput(showMenu) {
                                         if (!showMenu) {
                                             awaitPointerEventScope {
@@ -356,7 +356,7 @@ internal fun ChatDrawerContent(
                                         }
                                     ),
                                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(12.dp)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -508,7 +508,7 @@ internal fun ChatDrawerContent(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(42.dp)
+                    .height(48.dp)
                     .onGloballyPositioned { coords ->
                         val buttonTopPx = coords.positionInWindow().y
                         onSettingsButtonTop((windowHeightPx - buttonTopPx) / density.density)

@@ -37,7 +37,7 @@ private const val FadeDuration = 300
 private const val EnterSlideFraction = 0.75f  // fraction of screen width
 private const val ExitSlideFraction = 0.75f
 private const val ScaleFrom = 0.94f
-private const val ScaleTo = 0.94f
+private const val ScaleTo = 1.06f
 
 /** Spring used for all enter & exit animations (slide + scale + fade). */
 internal fun settingsSpring(): SpringSpec<Float> = spring(

@@ -176,7 +176,7 @@ class SettingsRepository(
     val petOverlayEnabled: StateFlow<Boolean> = hot(settingsManager.petOverlayEnabled, false)
     val petOverlayImagePath: StateFlow<String> = hot(settingsManager.petOverlayImagePath, "")
     val petOverlaySizeScale: StateFlow<Float> = hot(settingsManager.petOverlaySizeScale, 1.0f)
-    val petOverlayCharacter: StateFlow<String> = hot(settingsManager.petOverlayCharacter, PetCharacter.DADA.prefKey)
+    val petOverlayCharacter: StateFlow<String> = hot(settingsManager.petOverlayCharacter, PetCharacter.HUHU.prefKey)
     val petEmotionEnabled: StateFlow<Boolean> = hot(settingsManager.petEmotionEnabled, true)
     val exactExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.exactExecutionEnabled, false)
     val proxyEnabled: StateFlow<Boolean> = hot(settingsManager.proxyEnabled, false)
@@ -225,6 +225,8 @@ class SettingsRepository(
     val fontPreference: StateFlow<String> = hot(settingsManager.fontPreference, "app_default")
     val customFontPath: StateFlow<String> = hot(settingsManager.customFontPath, "")
     val customFontName: StateFlow<String> = hot(settingsManager.customFontName, "")
+    /** User-adjustable scale factor for ChatType font sizes (1.0 = no scaling). */
+    val chatFontScale: StateFlow<Float> = hot(settingsManager.chatFontScale, 1.0f)
     val searchContextWindow: StateFlow<Int> = hot(settingsManager.searchContextWindow, 8)
     val searchMatchLimit: StateFlow<Int> = hot(settingsManager.searchMatchLimit, 10)
     val ragThreshold: StateFlow<Float> = hot(settingsManager.ragThreshold, 0.5f)
@@ -575,6 +577,7 @@ class SettingsRepository(
     fun setFontPreference(value: String) = scope.launch { settingsManager.saveFontPreference(value) }
     fun setCustomFontPath(value: String) = scope.launch { settingsManager.saveCustomFontPath(value) }
     fun setCustomFontName(value: String) = scope.launch { settingsManager.saveCustomFontName(value) }
+    fun setChatFontScale(value: Float) = scope.launch { settingsManager.saveChatFontScale(value) }
     fun setSearchMatchLimit(n: Int) = scope.launch { settingsManager.saveSearchMatchLimit(n) }
     fun setSearchContextWindow(n: Int) = scope.launch { settingsManager.saveSearchContextWindow(n) }
     fun setRagThreshold(threshold: Float) = scope.launch { settingsManager.saveRagThreshold(threshold) }

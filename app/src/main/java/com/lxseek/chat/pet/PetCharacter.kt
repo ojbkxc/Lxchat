@@ -8,10 +8,10 @@ import com.lxseek.chat.R
  * spritesheet used in settings.
  *
  * Loading priority: local cache (`filesDir/pets/<id>/`) → bundled [assetsPath] → [downloadUrl].
- * Only [DADA] is bundled in the APK (to keep size small); the other three are downloaded on
+ * Only [HUHU] is bundled in the APK (to keep size small); the other three are downloaded on
  * first selection from [downloadUrl] and cached permanently under `filesDir/pets/<id>/`.
  *
- * The persisted preference stores [prefKey]; unknown values fall back to [DADA].
+ * The persisted preference stores [prefKey]; unknown values fall back to [HUHU].
  * Only spritesheet characters are shown in the settings picker (see [selectableEntries]).
  */
 enum class PetCharacter(
@@ -26,8 +26,8 @@ enum class PetCharacter(
     val previewResId: Int,
 ) {
     CLASSIC("classic", "", "", "", 0),
-    DADA("dada-code", "pets/dada-code/spritesheet.webp", "", "pet_preview_dada", R.drawable.pet_preview_dada),
-    HUHU("huhu-plan", "", "https://raw.githubusercontent.com/ojbkxc/Lxchat/main/pets-download/huhu-plan/spritesheet.webp", "pet_preview_huhu", R.drawable.pet_preview_huhu),
+    DADA("dada-code", "", "https://raw.githubusercontent.com/ojbkxc/Lxchat/main/pets-download/dada-code/spritesheet.webp", "pet_preview_dada", R.drawable.pet_preview_dada),
+    HUHU("huhu-plan", "pets/huhu-plan/spritesheet.webp", "", "pet_preview_huhu", R.drawable.pet_preview_huhu),
     BUBU("bubu-fix", "", "https://raw.githubusercontent.com/ojbkxc/Lxchat/main/pets-download/bubu-fix/spritesheet.webp", "pet_preview_bubu", R.drawable.pet_preview_bubu),
     HUIHUI("huihui-build", "", "https://raw.githubusercontent.com/ojbkxc/Lxchat/main/pets-download/huihui-build/spritesheet.webp", "pet_preview_huihui", R.drawable.pet_preview_huihui);
 
@@ -42,7 +42,7 @@ enum class PetCharacter(
         val selectableEntries: List<PetCharacter> get() = entries.filter { it.hasSpritesheet }
 
         fun fromKey(key: String?): PetCharacter =
-            entries.firstOrNull { it.prefKey == key } ?: DADA
+            entries.firstOrNull { it.prefKey == key } ?: HUHU
     }
 }
 

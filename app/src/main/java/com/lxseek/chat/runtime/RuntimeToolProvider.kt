@@ -227,8 +227,9 @@ class RuntimeToolProvider(
     }
 
     /**
-     * inkos 网文创作：引擎未运行时自动拉起（等价 runtime_start 后再执行）。Extended。
-     * 使用用户已有模型 Key 的 baseUrl/apiKey/model 驱动 inkos CLI 创作出章节。
+     * inkos 网文创作 SKILL（非独立 RUNTIME 引擎，依赖 Node.js 运行时）：引擎未运行时自动拉起
+     * （等价 runtime_start 后再执行）。Extended。使用用户已有模型 Key 的 baseUrl/apiKey/model
+     * 驱动 inkos CLI 创作出章节。
      *
      * 对齐真实 inkos CLI（@actalk/inkos，bin = cli/dist/index.js，基于 commander）：
      * 非交互批量续写用 `write next` 子命令，创意指令作为 `--context` 传入；
@@ -295,9 +296,9 @@ class RuntimeToolProvider(
     }
 
     /**
-     * webnovel-writer 网文创作（GPL-3.0 引擎，依赖 runtime-python）：按 action 驱动适配器完成
-     * 初始化设定 / 规划卷纲 / 写章 / 一致性审查 / 状态查询。引擎未运行时自动拉起（并自动确保
-     * 依赖的 runtime-python 已装）。Extended。
+     * webnovel-writer 网文创作 SKILL（GPL-3.0，非独立 RUNTIME 引擎，依赖 Python 运行时）：
+     * 按 action 驱动适配器完成初始化设定 / 规划卷纲 / 写章 / 一致性审查 / 状态查询。
+     * 引擎未运行时自动拉起（并自动确保依赖的 runtime-python 已装）。Extended。
      *
      * 参数：action = init|plan|write|review|query；params = 传给适配器的 JSON 字符串。
      * 适配器会注入用户已配置的默认模型 Key（LCHAT_LLM_*），RAG 可降级（无 embedding 时不阻塞）。
