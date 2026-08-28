@@ -401,9 +401,9 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
 }
 
 /**
- * A single selectable built-in sprite: a colored circle (the character's body color) with its
- * name below. The selected option gets a highlight ring. Reuses [PetPalette.swatch] so the swatch
- * always matches the running overlay.
+ * A single selectable built-in sprite. Characters with a spritesheet preview drawable show the
+ * preview image; [PetCharacter.CLASSIC] falls back to a colored circle. The selected option gets
+ * a highlight ring. Reuses [PetPalette.swatch] for the CLASSIC color swatch.
  */
 @Composable
 private fun PetCharacterOption(
@@ -411,17 +411,30 @@ private fun PetCharacterOption(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val color = Color(PetPalette.swatch(character))
-    val modifier = Modifier.clip(CircleShape).clickable(onClick = onClick)
+    val context = LocalContext.current
+    // Resolve the preview drawable id for spritesheet characters (0 for CLASSIC or missing).
+    val previewResId = if (character.previewDrawableName.isNotEmpty()) {
+        remember(character) {
+            context.resources.getIdentifier(
+                character.previewDrawableName, "drawable", context.packageName,
+            )
+        }
+    } else 0
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier,
+        modifier = Modifier.clip(CircleShape).clickable(onClick = onClick),
     ) {
         Box(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(color)
+                .then(
+                    if (previewResId == 0) {
+                        Modifier.background(Color(PetPalette.swatch(character)))
+                    } else {
+                        Modifier
+                    },
+                )
                 .then(
                     if (selected) {
                         Modifier.border(
@@ -433,7 +446,16 @@ private fun PetCharacterOption(
                         Modifier
                     },
                 ),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            if (previewResId != 0) {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(previewResId),
+                    contentDescription = null,
+                    modifier = Modifier.size(44.dp).clip(CircleShape),
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = stringResource(characterLabel(character)),

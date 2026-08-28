@@ -154,8 +154,10 @@ class PetOverlayWindowService : Service() {
 
     /**
      * Asynchronously applies the persisted built-in sprite to the floating view (no-op when the
-     * service has no view yet). Runs on the main-thread scope because
-     * [PetFloatingView.setCharacter] touches the view.
+     * service has no view yet). For characters with a spritesheet asset the WebP atlas is decoded
+     * off the main thread and pushed via [PetFloatingView.setSpritesheet]; [PetCharacter.CLASSIC]
+     * and decode failures fall back to the Canvas bubble. Runs on the main-thread scope because
+     * [PetFloatingView.setCharacter] / [PetFloatingView.setSpritesheet] touch the view.
      */
     private fun applyCharacterAsync() {
         val view = floatingView ?: return
@@ -164,6 +166,22 @@ class PetOverlayWindowService : Service() {
                 PetOverlayController.getCharacter(this@PetOverlayWindowService)
             }.getOrDefault(PetCharacter.CLASSIC)
             view.setCharacter(character)
+            val sheet = if (character.hasSpritesheet) {
+                withContext(Dispatchers.IO) { loadSpritesheet(character) }
+            } else null
+            view.setSpritesheet(sheet)
+        }
+    }
+
+    /** Decodes the WebP spritesheet for [character] from `assets/`. Returns null on failure. */
+    private fun loadSpritesheet(character: PetCharacter): Bitmap? {
+        return try {
+            assets.open(character.assetsPath).use { stream ->
+                BitmapFactory.decodeStream(stream)
+            }
+        } catch (e: Exception) {
+            DebugLog.e(TAG, "Failed to load spritesheet: ${character.assetsPath}", e)
+            null
         }
     }
 
