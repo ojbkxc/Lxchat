@@ -361,9 +361,41 @@ internal fun ChatDrawerContent(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(horizontal = 16.dp),
+                                        .padding(start = 10.dp, end = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
+                                    // First-letter avatar fallback: a circular brand-colored badge with
+                                    // the conversation title's leading character, receding gracefully on
+                                    // blank titles (falls back to the app name's first char).
+                                    val titleText = conversation.title.ifBlank {
+                                        stringResource(R.string.app_name)
+                                    }
+                                    val firstChar = titleText.trim().firstOrNull()
+                                        ?.let { it.toString().uppercase() } ?: "•"
+                                    val avatarBg = if (isSelected) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.08f)
+                                    } else {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    }
+                                    val avatarFg = if (isSelected) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.primary
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .background(avatarBg, MaterialTheme.shapes.small),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = firstChar,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = avatarFg,
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = conversation.title,
                                         modifier = Modifier.weight(1f),
