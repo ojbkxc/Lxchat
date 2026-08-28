@@ -487,15 +487,20 @@ class ResidualToolProvider(private val context: Context) : ToolProvider {
             put("min_size", minSize)
             put("groups", groups.size)
             putJsonArray("duplicates") {
-                groups.take(limit).forEach { (hash, files) ->
-                    buildJsonObject {
-                        put("md5", hash)
-                        put("size_bytes", files.firstOrNull()?.sizeBytes ?: 0L)
-                        put("count", files.size)
-                        putJsonArray("paths") {
-                            files.forEach { add(JsonPrimitive(it.path)) }
-                        }
-                    }.let { add(it) }
+                var shown = 0
+                for ((hash, files) in groups) {
+                    if (shown >= limit) break
+                    shown++
+                    add(
+                        buildJsonObject {
+                            put("md5", hash)
+                            put("size_bytes", files.firstOrNull()?.sizeBytes ?: 0L)
+                            put("count", files.size)
+                            putJsonArray("paths") {
+                                files.forEach { add(JsonPrimitive(it.path)) }
+                            }
+                        },
+                    )
                 }
             }
             put("hint", "Files sharing the same md5 within a group are exact duplicates. " +
