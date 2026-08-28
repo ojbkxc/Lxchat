@@ -8,7 +8,6 @@ import android.accessibilityservice.GestureDescription.StrokeDescription
 import android.accessibilityservice.GestureResultCallback
 import android.graphics.Bitmap
 import android.graphics.Path
-import android.graphics.PathMeasure
 import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
@@ -153,9 +152,8 @@ class AndroidUiControllerService : AccessibilityService() {
     /** Swipe between two screen points over [durationMs]; used for scrolling lists and paging. */
     fun swipe(fromX: Int, fromY: Int, toX: Int, toY: Int, durationMs: Long = 300L): Boolean = synchronized(lock) {
         val path = Path().apply { moveTo(fromX.toFloat(), fromY.toFloat()); lineTo(toX.toFloat(), toY.toFloat()) }
-        val length = PathMeasure(path, false).length.toInt()
         val desc = GestureDescription.Builder()
-            .addStroke(StrokeDescription(path, 0L, durationMs), length)
+            .addStroke(StrokeDescription(path, 0L, durationMs))
             .build()
         return dispatchGestureBlocking(desc)
     }

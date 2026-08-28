@@ -956,6 +956,8 @@
     <string name="runtime_engine_action_start">启动</string>
     <string name="runtime_engine_action_stop">停止</string>
     <string name="runtime_engine_action_uninstall">卸载</string>
+    <string name="runtime_engine_status_installing">安装中…</string>
+    <string name="runtime_engine_action_installing">安装中…</string>
     <string name="runtime_engine_refresh">刷新</string>
     <string name="runtime_engine_no_manager">运行时引擎模块不可用</string>
     <string name="market_installed_ok">Plugin installed</string>
