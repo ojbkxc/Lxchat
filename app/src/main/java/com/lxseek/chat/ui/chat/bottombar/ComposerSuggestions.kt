@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -75,7 +76,16 @@ internal fun ComposerSuggestions(
         }
 
         is ActiveMention.Tool -> {
-            val suggestions = ToolMentions.filter(mention.query)
+            val q = mention.query.trim()
+            val suggestions = if (q.isEmpty()) {
+                toolMentions
+            } else {
+                toolMentions.filter {
+                    it.name.contains(q, ignoreCase = true) ||
+                        stringResource(it.labelRes).contains(q) ||
+                        stringResource(it.descriptionRes).contains(q)
+                }
+            }
             if (suggestions.isEmpty()) return
             SuggestionSurface {
                 ToolMentions.Group.values().forEach { group ->
@@ -88,8 +98,8 @@ internal fun ComposerSuggestions(
                                     val kept = text.substring(0, mention.startIndex)
                                     onCompleteText("$kept@${tool.name} ")
                                 },
-                                accent = tool.label,
-                                main = tool.description,
+                                accent = stringResource(tool.labelRes),
+                                main = stringResource(tool.descriptionRes),
                             )
                         }
                     }
@@ -157,17 +167,7 @@ private fun detectMention(text: String): ActiveMention? {
 @Composable
 private fun GroupHeader(group: ToolMentions.Group) {
     Text(
-        text = when (group) {
-            ToolMentions.Group.FILE -> "文件"
-            ToolMentions.Group.WEB -> "联网"
-            ToolMentions.Group.MEMORY -> "记忆"
-            ToolMentions.Group.SEARCH -> "检索"
-            ToolMentions.Group.SHELL -> "执行"
-            ToolMentions.Group.TASK -> "任务"
-            ToolMentions.Group.IMAGE -> "图像"
-            ToolMentions.Group.AGENT -> "操控"
-            ToolMentions.Group.SYSTEM -> "系统"
-        },
+        text = stringResource(ToolMentions.groupTitleRes(group)),
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
         fontWeight = FontWeight.SemiBold,

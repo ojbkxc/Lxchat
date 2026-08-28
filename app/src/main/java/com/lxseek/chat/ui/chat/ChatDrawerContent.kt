@@ -564,7 +564,7 @@ private fun GlobalSearchDialog(
             modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f),
         ) {
             Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                Text("全局搜索", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.drawer_global_search), style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
                     value = query,
@@ -585,7 +585,7 @@ private fun GlobalSearchDialog(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                "输入关键词以搜索所有对话",
+                                stringResource(R.string.drawer_search_empty),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyMedium,
                             )
@@ -639,7 +639,7 @@ private fun GlobalSearchResultRow(
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             Text(
-                text = result.conversationTitle ?: "(未命名)",
+                text = result.conversationTitle ?: stringResource(R.string.drawer_unnamed),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.lxseek.chat.R
 import com.lxseek.chat.tool.AskUserController
 
 /**
@@ -78,7 +80,7 @@ fun AskUserQuestionPanel(
                 tint = MaterialTheme.colorScheme.primary,
             )
         },
-        title = { Text("Agent 提问", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.ask_user_title), fontWeight = FontWeight.Bold) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(pending.question, style = MaterialTheme.typography.bodyMedium)
@@ -147,7 +149,7 @@ fun AskUserQuestionPanel(
                         OutlinedTextField(
                             value = customText,
                             onValueChange = { customText = it },
-                            placeholder = { Text("请输入自定义回答…", style = MaterialTheme.typography.bodySmall) },
+                            placeholder = { Text(stringResource(R.string.ask_user_custom_hint), style = MaterialTheme.typography.bodySmall) },
                             modifier = Modifier.fillMaxWidth(),
                             textStyle = MaterialTheme.typography.bodyMedium,
                             maxLines = 3,
@@ -159,7 +161,7 @@ fun AskUserQuestionPanel(
                     OutlinedTextField(
                         value = freeText,
                         onValueChange = { freeText = it },
-                        placeholder = { Text("请输入你的回答…", style = MaterialTheme.typography.bodySmall) },
+                        placeholder = { Text(stringResource(R.string.ask_user_answer_hint), style = MaterialTheme.typography.bodySmall) },
                         modifier = Modifier.fillMaxWidth(),
                         textStyle = MaterialTheme.typography.bodyMedium,
                         maxLines = 4,
@@ -185,7 +187,7 @@ fun AskUserQuestionPanel(
             TextButton(
                 onClick = onCancel,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) { Text("取消") }
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
 import com.lxseek.chat.R
 import com.lxseek.chat.util.NoAutoScrollSelectionContainer
 import com.lxseek.chat.util.noOpBringIntoView
@@ -449,7 +450,7 @@ internal fun AssistantMessageContent(
                                     onClick = { onRegenerate(message.id) },
                                     modifier = Modifier.padding(start = 28.dp, top = 4.dp),
                                 ) {
-                                    Text(errorAction.label)
+                                    Text(stringResource(errorAction.labelRes))
                                 }
                             }
                         }
@@ -782,11 +783,11 @@ internal fun AssistantMessageContent(
  * pick the most helpful button label. All actions currently trigger regeneration; the
  * label itself is the user-facing differentiation (e.g. "检查网络" vs "重试").
  */
-private enum class ErrorAction(val label: String) {
-    CHECK_NETWORK("检查网络"),
-    RETRY_LATER("稍后重试"),
-    INCREASE_MAX_TOKENS("增加 Max Tokens"),
-    RETRY("重试"),
+private enum class ErrorAction(@StringRes val labelRes: Int) {
+    CHECK_NETWORK(R.string.err_action_check_network),
+    RETRY_LATER(R.string.err_action_retry_later),
+    INCREASE_MAX_TOKENS(R.string.err_action_increase_max_tokens),
+    RETRY(R.string.retry),
 }
 
 private fun inferErrorAction(text: String): ErrorAction {

@@ -15,8 +15,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.lxseek.chat.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -125,7 +127,7 @@ private fun MermaidArtifactView(code: String, modifier: Modifier) {
     }
     when (val s = state.value) {
         MermaidLoadState.Loading, MermaidLoadState.Downloading ->
-            Text("渲染 Mermaid 图表…", modifier = modifier.padding(8.dp))
+            Text(stringResource(R.string.markdown_rendering_mermaid), modifier = modifier.padding(8.dp))
         is MermaidLoadState.Error -> Text(
             s.message, modifier = modifier.padding(8.dp),
             color = Color(0xFFE5484D),
