@@ -89,7 +89,7 @@ class RuntimePackageManager(private val context: Context) {
     fun removeVersion(engineId: String, version: String) {
         versionRoot(engineId, version).deleteRecursively()
         val root = engineRoot(engineId)
-        if (root.exists() && (root.listFiles()?.isEmpty() != false)) {
+        if (root.exists() && (root.listFiles()?.isEmpty() == true)) {
             root.deleteRecursively()
         }
     }

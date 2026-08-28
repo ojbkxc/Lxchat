@@ -257,7 +257,7 @@ class RuntimeEngineManager(
     }
 
     private fun runtimeTypeOf(installation: MarketInstallation): String =
-        installation.runtimeType.ifBlank { RuntimeEngineType.fromId(installation.pluginId)?.id ?: "" }
+        installation.runtimeType.ifBlank { RuntimeEngineType.fromId(installation.pluginId) ?: "" }
 
     private companion object {
         const val TAG = "RuntimeEngineMgr"

@@ -549,7 +549,7 @@ class RuntimeToolProvider(
                         parameters = ToolParameters(
                             properties = mapOf(
                                 "engine_id" to ToolProperty("string", "引擎 id"),
-                                "argv" to ToolProperty("string", "传给引擎可执行文件的参数数组（JSON）"),
+                                "argv" to ToolProperty("string", "传给引擎的参数(JSON数组字符串，如 [\"-c\",\"print(1)\"])"),
                                 "timeout_ms" to ToolProperty("string", "可选，超时毫秒"),
                             ),
                             required = listOf("engine_id", "argv"),

@@ -20,9 +20,15 @@ enum class RuntimeEngineType(val id: String) {
         /** webnovel-writer 网文创作引擎（GPL-3.0，依赖 runtime-python，要求 python >= 3.10）。 */
         const val PYTHON_WEB_NOVEL = "runtime-python-webnovel"
 
-        private val BY_ID = entries.associateBy { it.id }
-
-        fun fromId(id: String): RuntimeEngineType? = BY_ID[id]
+        /** 解析任意已知引擎 id → 规范 id（含 inkos/webnovel 等非枚举引擎），未知返回 null。 */
+        fun fromId(id: String): String? = when (id) {
+            NODE.id -> NODE.id
+            PYTHON.id -> PYTHON.id
+            FFMPEG.id -> FFMPEG.id
+            NODE_INKOS -> NODE_INKOS
+            PYTHON_WEB_NOVEL -> PYTHON_WEB_NOVEL
+            else -> null
+        }
     }
 }
 

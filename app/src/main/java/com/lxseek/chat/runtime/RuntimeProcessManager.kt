@@ -44,8 +44,7 @@ class RuntimeProcessManager(
 
     private val running = ConcurrentHashMap<String, EngineProcess>()
     private val idleJobs = ConcurrentHashMap<String, Job>()
-    @Volatile
-    private var lastActivityTs = ConcurrentHashMap<String, Long>()
+    private val lastActivityTs = ConcurrentHashMap<String, Long>()
 
     fun isRunning(engineId: String): Boolean {
         val ep = running[engineId] ?: return false
@@ -100,6 +99,9 @@ class RuntimeProcessManager(
         stopHandler?.invoke(engineId)
         return if (ep.process.isAlive) {
             ep.process.destroy()
+            if (!ep.process.waitFor(2, TimeUnit.SECONDS)) {
+                ep.process.destroyForcibly()
+            }
             true
         } else {
             false
@@ -134,7 +136,7 @@ class RuntimeProcessManager(
 
     /** 引擎进程自然退出后清理运行状态，并回调 [exitHandler]（可继续追踪退出码）。 */
     private fun deadWatch(engineId: String, process: Process) {
-        val cleanup: (java.lang.Thread) -> Unit = {
+        val cleanup: () -> Unit = {
             running.remove(engineId)
             idleJobs.remove(engineId)?.cancel()
             // 进程自然退出时也触发停止回调（清理引擎文件）
@@ -144,7 +146,7 @@ class RuntimeProcessManager(
             try {
                 process.waitFor()
             } finally {
-                cleanup(java.lang.Thread.currentThread())
+                cleanup()
             }
         }
     }
