@@ -1466,7 +1466,7 @@
     <string name="notification_reply_blacklist_desc">One regex per line; matching the notification title or content blocks the reply</string>
     <string name="notification_reply_blacklist_placeholder">One regex per line; a match blocks the reply&#10;e.g. ads|spam|marketing</string>
     <string name="notification_reply_only_when_locked">Reply only while locked</string>
-    <string name="notification_reply_only_when_locked_desc">Auto-reply only when the screen is locked, so it stays quiet while you're using the phone</string>
+    <string name="notification_reply_only_when_locked_desc">Auto-reply only when the screen is locked, so it stays quiet while you\'re using the phone</string>
     <string name="notification_reply_cooldown">Reply cooldown (seconds)</string>
     <string name="notification_reply_cooldown_desc">Minimum gap between two replies to the same friend</string>
     <string name="notification_reply_model">Reply model</string>
@@ -1487,9 +1487,9 @@
     <string name="notification_reply_test_enabled">Auto-reply enabled</string>
     <string name="notification_reply_test_disabled">Auto-reply disabled</string>
     <string name="notification_reply_test_pkg_ok">Monitored packages include WeChat</string>
-    <string name="notification_reply_test_pkg_missing">Monitored packages don't include WeChat</string>
+    <string name="notification_reply_test_pkg_missing">Monitored packages don\'t include WeChat</string>
     <string name="notification_reply_test_contacts_ok">%1$d friends mapped</string>
-    <string name="notification_reply_test_contacts_empty">No contacts mapped yet; they'll appear once friends message you</string>
+    <string name="notification_reply_test_contacts_empty">No contacts mapped yet; they\'ll appear once friends message you</string>
     <string name="notification_reply_test_model_default">Using the default model</string>
     <string name="notification_reply_test_model_set">Model selected: %1$s</string>
     <string name="notification_reply_test_cooldown">Cooldown: %1$s seconds</string>
