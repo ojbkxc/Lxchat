@@ -6,8 +6,11 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.RadialGradient
 import android.graphics.Shader
 
@@ -17,6 +20,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import com.lxseek.chat.MainActivity
+import com.lxseek.chat.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -62,13 +66,10 @@ class PetFloatingView @JvmOverloads constructor(
     /** Destination rect for the custom bitmap, recomputed in onSizeChanged. */
     private val bitmapDstRect = Rect()
 
-    // Bubble body — shader is assigned in onSizeChanged once the size is known.
+    // Bubble body — shader is assigned in buildBubbleShader() once the size is known.
     private val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     // Soft drop shadow under the bubble for a floating feel.
-    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = SHADOW_COLOR
-        alpha = SHADOW_ALPHA
-    }
+    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { alpha = SHADOW_ALPHA }
     // Crisp white border around the bubble.
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = PET_WHITE
@@ -77,12 +78,14 @@ class PetFloatingView @JvmOverloads constructor(
     }
     // Eye whites.
     private val eyeWhitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = PET_WHITE }
-    // Dark pupils.
-    private val pupilPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = PUPIL_COLOR }
+    // Dark pupils (palette-driven body color).
+    private val pupilPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     // Tiny specular highlight on each eye.
     private val eyeHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = PET_WHITE }
-    // Semi-transparent pink blush on the cheeks.
-    private val blushPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = BLUSH_COLOR }
+    // Semi-transparent blush on the cheeks (palette-driven).
+    private val blushPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    // Signature accent color reused for accessories (antenna, pencil tip, badge, gear teeth).
+    private val accentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     // The smile arc.
     private val smilePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = PET_WHITE
@@ -90,6 +93,27 @@ class PetFloatingView @JvmOverloads constructor(
         strokeWidth = dp(3f)
         strokeCap = Paint.Cap.ROUND
     }
+
+    // --- Built-in character (four roles + classic). Driven by PetOverlayController. ---
+    private var currentCharacter: PetCharacter = PetCharacter.CLASSIC
+    private var characterPalette: PetPalette = PetPalette.CLASSIC
+    // Vertical headroom above the bubble reserved for the transient status-tip capsule
+    // (height - width when the hosting window is taller than it is wide). Zero for legacy sizes.
+    private var tipSlotHeight = 0
+    /** Y center of the bubble body (below the tip slot), used by every face-draw call. */
+    private var bubbleCenterY = 0f
+
+    // --- Status-tip bubble (transient message above the pet, e.g. "Thinking…"). ---
+    private val tipBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = TIP_BG_COLOR
+        style = Paint.Style.FILL
+    }
+    private val tipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = TIP_TEXT_COLOR
+        textSize = dp(TIP_TEXT_SIZE_DP)
+        textAlign = Paint.Align.CENTER
+    }
+    private val tipArrowPath = Path()
 
     // Touch bookkeeping used to distinguish a tap from a drag.
     private var downRawX = 0f
@@ -153,18 +177,47 @@ class PetFloatingView @JvmOverloads constructor(
      */
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        val cx = w / 2f
-        val cy = h / 2f
-        val radius = (minOf(w, h) - dp(BORDER_PADDING_DP)) / 2f
+        // The hosting window may reserve headroom above the bubble for the status-tip capsule.
+        tipSlotHeight = (h - w).coerceAtLeast(0)
+        bubbleCenterY = (w / 2f) + tipSlotHeight
+        bitmapDstRect.set(0, 0, w, h)
+        rebuildBubbleShader()
+    }
+
+    private fun bubbleRadius(): Float =
+        (minOf(width, height) - dp(BORDER_PADDING_DP)) / 2f
+
+    /** (Re)builds the radial body gradient from the active character's palette. */
+    private fun rebuildBubbleShader() {
+        if (width <= 0 || height <= 0) return
+        val cx = width / 2f
+        val cy = bubbleCenterY
+        val radius = bubbleRadius()
         bubblePaint.shader = RadialGradient(
             cx - radius * LIGHT_OFFSET,
             cy - radius * LIGHT_OFFSET,
             radius * GRADIENT_RADIUS_SCALE,
-            intArrayOf(BUBBLE_LIGHT, BUBBLE_MID, BUBBLE_DARK),
+            intArrayOf(characterPalette.light, characterPalette.mid, characterPalette.dark),
             floatArrayOf(0f, 0.55f, 1f),
             Shader.TileMode.CLAMP,
         )
-        bitmapDstRect.set(0, 0, w, h)
+    }
+
+    /** Switches the built-in sprite to [character]; a no-op when it is already active. */
+    fun setCharacter(character: PetCharacter) {
+        if (currentCharacter == character) return
+        currentCharacter = character
+        characterPalette = PetPalette.of(character)
+        applyPalette()
+        rebuildBubbleShader()
+        invalidate()
+    }
+
+    private fun applyPalette() {
+        shadowPaint.color = characterPalette.shadow
+        pupilPaint.color = characterPalette.pupil
+        blushPaint.color = characterPalette.blush
+        accentPaint.color = characterPalette.accent
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -179,6 +232,8 @@ class PetFloatingView @JvmOverloads constructor(
             } else {
                 drawDefaultBubble(canvas)
             }
+            // Transient status capsule above the pet (reuses the tip headroom for both sprites).
+            drawTipBubble(canvas)
         } finally {
             canvas.restoreToCount(savedLayer)
         }
@@ -189,13 +244,116 @@ class PetFloatingView @JvmOverloads constructor(
         canvas.drawBitmap(bitmap, null, bitmapDstRect, bitmapPaint)
     }
 
+    /** Draws a small signature accessory at the crown of the bubble for non-classic roles. */
+    private fun drawCharacterAccents(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+        val r = radius
+        when (currentCharacter) {
+            PetCharacter.CLASSIC -> Unit
+            PetCharacter.DADA -> {
+                // Antenna: a short stem topped with a tiny ball on the crown.
+                val stemTop = cy - r * 0.92f
+                val stemBottom = cy - r * 0.58f
+                val stemPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = characterPalette.dark
+                    strokeWidth = dp(1.8f)
+                    strokeCap = Paint.Cap.ROUND
+                }
+                canvas.drawLine(cx, stemBottom, cx, stemTop, stemPaint)
+                canvas.drawCircle(cx, stemTop - r * 0.04f, r * 0.13f, accentPaint)
+            }
+            PetCharacter.HUHU -> {
+                // Pencil tip: an upward triangle on the crown.
+                val tipY = cy - r * 0.94f
+                val baseY = cy - r * 0.62f
+                val half = r * 0.16f
+                val path = Path().apply {
+                    moveTo(cx, tipY)
+                    lineTo(cx - half, baseY)
+                    lineTo(cx + half, baseY)
+                    close()
+                }
+                canvas.drawPath(path, accentPaint)
+            }
+            PetCharacter.BUBU -> {
+                // Patch badge: a crossed "×" sticker on the crown.
+                val y = cy - r * 0.8f
+                val arm = r * 0.16f
+                val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = characterPalette.accent
+                    strokeWidth = dp(2f)
+                    strokeCap = Paint.Cap.ROUND
+                }
+                canvas.drawLine(cx - arm, y - arm, cx + arm, y + arm, p)
+                canvas.drawLine(cx - arm, y + arm, cx + arm, y - arm, p)
+            }
+            PetCharacter.HUIHUI -> {
+                // Gear teeth: three short vertical bars arcing across the crown.
+                val y = cy - r * 0.82f
+                val gap = r * 0.16f
+                val tWidth = dp(2f)
+                val teeth = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = characterPalette.accent }
+                listOf(-gap, 0f, gap).forEach { dx ->
+                    canvas.drawRoundRect(
+                        cx + dx - tWidth / 2, y - r * 0.14f,
+                        cx + dx + tWidth / 2, y + r * 0.14f,
+                        tWidth / 2, tWidth / 2,
+                        teeth,
+                    )
+                }
+            }
+        }
+    }
+
+    /** The localized status message for the current emotion, or `null` when idle. */
+    private fun tipText(): CharSequence? = when (currentEmotion) {
+        PetEmotion.THINKING -> context.getString(R.string.pet_tip_thinking)
+        PetEmotion.HAPPY -> context.getString(R.string.pet_tip_done)
+        PetEmotion.SAD -> context.getString(R.string.pet_tip_sad)
+        PetEmotion.ERROR -> context.getString(R.string.pet_tip_error)
+        PetEmotion.IDLE -> null
+    }
+
+    /**
+     * Draws a transient speech capsule above the bubble (in the tip headroom) while the pet is in
+     * a non-idle emotion, with a small tail pointing down at the bubble. No-op when the window has
+     * no tip headroom or the pet is idle.
+     */
+    private fun drawTipBubble(canvas: Canvas) {
+        if (tipSlotHeight <= 0) return
+        val text = tipText() ?: return
+        val w = width
+        val textWidth = tipTextPaint.measureText(text.toString())
+        val padX = dp(TIP_HORIZONTAL_PADDING_DP)
+        val capWidth = textWidth + padX * 2
+        val capHeight = tipTextPaint.textSize + dp(TIP_VERTICAL_PADDING_DP) * 2
+
+        val cx = w / 2f
+        val left = (cx - capWidth / 2).coerceAtLeast(dp(TIP_EDGE_MARGIN_DP))
+        val right = (cx + capWidth / 2).coerceAtMost(w - dp(TIP_EDGE_MARGIN_DP))
+        val top = dp(TIP_TOP_PADDING_DP)
+        val bottom = top + capHeight
+
+        val rect = RectF(left, top, right, bottom)
+        canvas.drawRoundRect(rect, capHeight / 2, capHeight / 2, tipBgPaint)
+
+        val baseline = (top + bottom) / 2f - (tipTextPaint.ascent() + tipTextPaint.descent()) / 2f
+        canvas.drawText(text.toString(), cx, baseline, tipTextPaint)
+
+        // Tail: a small triangle from the capsule down to the crown of the bubble.
+        val bubbleTop = bubbleCenterY - bubbleRadius()
+        tipArrowPath.reset()
+        tipArrowPath.moveTo(cx, bubbleTop + dp(TIP_ARROW_OVERLAP_DP))
+        tipArrowPath.lineTo(cx - dp(TIP_ARROW_HALF_DP), bottom)
+        tipArrowPath.lineTo(cx + dp(TIP_ARROW_HALF_DP), bottom)
+        tipArrowPath.close()
+        canvas.drawPath(tipArrowPath, tipBgPaint)
+    }
+
     /** Draws the default Canvas bubble — gradient body, face, blush, smile. */
     private fun drawDefaultBubble(canvas: Canvas) {
-        val w = width.toFloat()
-        val h = height.toFloat()
-        val cx = w / 2f
-        val cy = h / 2f
-        val radius = (minOf(w, h) - dp(BORDER_PADDING_DP)) / 2f
+        val cx = width / 2f
+        val cy = bubbleCenterY
+        val radius = bubbleRadius()
 
         // 1. Soft drop shadow — a slightly larger, semi-transparent circle offset downward.
         canvas.drawCircle(cx, cy + dp(SHADOW_OFFSET_DP), radius + dp(SHADOW_SPREAD_DP), shadowPaint)
@@ -205,6 +363,9 @@ class PetFloatingView @JvmOverloads constructor(
 
         // 3. White border on top of the body.
         canvas.drawCircle(cx, cy, radius, borderPaint)
+
+        // 3b. Per-character signature accessory on the crown of the bubble.
+        drawCharacterAccents(canvas, cx, cy, radius)
 
         // 4. Face — eyes and mouth vary with the current emotion.
         val eyeY = cy - radius * EYE_VERTICAL_RATIO
@@ -379,6 +540,15 @@ class PetFloatingView @JvmOverloads constructor(
         if (event.actionMasked == MotionEvent.ACTION_DOWN && isTransparentAt(event.x, event.y)) {
             return false
         }
+        // For the built-in (non-image) pet, the pixels above the bubble crown — the transient tip
+        // headroom and any margins — are empty. Pass those touches through so the pet doesn't
+        // block the app underneath with dead space outside its body.
+        if (event.actionMasked == MotionEvent.ACTION_DOWN &&
+            customBitmap == null &&
+            event.y < bubbleCenterY - bubbleRadius()
+        ) {
+            return false
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 cancelSnapAnimation()
@@ -504,24 +674,23 @@ class PetFloatingView @JvmOverloads constructor(
     }
 
     private companion object {
-        // Original palette — kept for compatibility; PET_BLUE is now the gradient midpoint.
-        const val PET_BLUE = 0xFF3B82F6.toInt()
         const val PET_WHITE = 0xFFFFFFFF.toInt()
 
-        // Bubble radial gradient stops: light highlight → brand blue → deep blue rim.
-        const val BUBBLE_LIGHT = 0xFF93C5FD.toInt()
-        const val BUBBLE_MID = PET_BLUE // brand blue sits at the gradient midpoint
-        const val BUBBLE_DARK = 0xFF1D4ED8.toInt()
-        // Soft, semi-transparent deep-blue shadow under the bubble.
-        const val SHADOW_COLOR = 0xFF1E3A8A.toInt()
-        const val SHADOW_ALPHA = 64 // ~25% opacity — gentle, not muddy.
-        // Dark, near-navy pupils for a cute, focused gaze.
-        const val PUPIL_COLOR = 0xFF1E3A8A.toInt()
-        // Translucent pink blush (ARGB: 0x33 alpha ≈ 20%).
-        const val BLUSH_COLOR = 0x33FF8FAB.toInt()
+        // Status-tip capsule (transient speech bubble above the pet).
+        const val TIP_BG_COLOR = 0xFF1F2937.toInt()
+        const val TIP_TEXT_COLOR = 0xFFFFFFFF.toInt()
+        const val TIP_TEXT_SIZE_DP = 10f
+        const val TIP_HORIZONTAL_PADDING_DP = 10f
+        const val TIP_VERTICAL_PADDING_DP = 5f
+        const val TIP_TOP_PADDING_DP = 4f
+        const val TIP_EDGE_MARGIN_DP = 4f
+        const val TIP_ARROW_HALF_DP = 5f
+        const val TIP_ARROW_OVERLAP_DP = 4f
 
         // Geometry constants (dp where suffixed, ratios of the bubble radius otherwise).
         const val BORDER_PADDING_DP = 6f
+        const val SHADOW_ALPHA = 64 // ~25% opacity — gentle, not muddy.
+        // Blush is ratio-of-radius; its color is palette-driven via blushPaint.
         const val SHADOW_OFFSET_DP = 3f
         const val SHADOW_SPREAD_DP = 1f
         // Light source offset and gradient reach, as a fraction of the radius.

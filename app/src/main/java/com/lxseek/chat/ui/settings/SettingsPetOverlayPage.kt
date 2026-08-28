@@ -4,6 +4,8 @@ import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
@@ -42,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -52,6 +56,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewModelScope
 import com.lxseek.chat.R
+import com.lxseek.chat.pet.PetCharacter
+import com.lxseek.chat.pet.PetPalette
 import com.lxseek.chat.pet.PetOverlayController
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.Dispatchers
@@ -76,6 +82,7 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val imagePath by viewModel.settings.petOverlayImagePath.collectAsState()
     val emotionEnabled by viewModel.settings.petEmotionEnabled.collectAsState()
     val sizeScale by viewModel.settings.petOverlaySizeScale.collectAsState()
+    val characterKey by viewModel.settings.petOverlayCharacter.collectAsState()
     var sliderValue by remember { mutableStateOf(sizeScale) }
     // Keep the local slider in sync when the persisted value changes externally (reset/import).
     LaunchedEffect(sizeScale) { sliderValue = sizeScale }
@@ -112,6 +119,17 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             if (!target) {
                 com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.IDLE)
             }
+        }
+    }
+
+    /**
+     * Persists the chosen built-in sprite and pushes it to a running overlay so the switch takes
+     * effect immediately; the pet window swaps its color palette + accessory on the fly.
+     */
+    fun setCharacter(character: PetCharacter) {
+        viewModel.viewModelScope.launch {
+            viewModel.settings.savePetOverlayCharacter(character.prefKey)
+            PetOverlayController.refreshCharacter(context)
         }
     }
 
@@ -153,6 +171,29 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         )
 
         SettingsGroupColumn(modifier = Modifier.fillMaxWidth()) {
+            SettingsGroup(
+                title = stringResource(R.string.pet_group_builtin_title),
+                items = listOf({
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        PetCharacter.values().forEachIndexed { index, character ->
+                            PetCharacterOption(
+                                character = character,
+                                selected = PetCharacter.fromKey(characterKey) == character,
+                                onClick = { setCharacter(character) },
+                            )
+                            if (index < PetCharacter.values().lastIndex) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                        }
+                    }
+                }),
+            )
+
             SettingsGroup(
                 title = stringResource(R.string.settings_group_appearance_language),
                 items = listOf({
@@ -357,6 +398,63 @@ fun SettingsPetOverlayPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             }
         }
     }
+}
+
+/**
+ * A single selectable built-in sprite: a colored circle (the character's body color) with its
+ * name below. The selected option gets a highlight ring. Reuses [PetPalette.swatch] so the swatch
+ * always matches the running overlay.
+ */
+@Composable
+private fun PetCharacterOption(
+    character: PetCharacter,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val color = Color(PetPalette.swatch(character))
+    val modifier = Modifier.clip(CircleShape).clickable(onClick = onClick)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(color)
+                .then(
+                    if (selected) {
+                        Modifier.border(
+                            width = 3.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape,
+                        )
+                    } else {
+                        Modifier
+                    },
+                ),
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = stringResource(characterLabel(character)),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
+    }
+}
+
+/** Maps a built-in sprite to its display-name string resource. */
+@androidx.annotation.StringRes
+private fun characterLabel(character: PetCharacter): Int = when (character) {
+    PetCharacter.CLASSIC -> R.string.pet_character_classic
+    PetCharacter.DADA -> R.string.pet_character_dada
+    PetCharacter.HUHU -> R.string.pet_character_huhu
+    PetCharacter.BUBU -> R.string.pet_character_bubu
+    PetCharacter.HUIHUI -> R.string.pet_character_huihui
 }
 
 /**

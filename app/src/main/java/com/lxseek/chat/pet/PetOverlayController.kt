@@ -47,9 +47,21 @@ object PetOverlayController {
     suspend fun getSizeScale(context: Context): Float =
         settings(context).petOverlaySizeScale.first()
 
+    /** Returns the persisted built-in sprite ([PetCharacter.prefKey]); defaults to classic. */
+    suspend fun getCharacter(context: Context): PetCharacter =
+        PetCharacter.fromKey(settings(context).petOverlayCharacter.first())
+
     /** Reloads the custom image into a running overlay; no-op if the service is not running. */
     fun refreshImage(context: Context) {
         PetOverlayWindowService.refreshImage(context)
+    }
+
+    /**
+     * Switches the built-in sprite on a running overlay; no-op if the service is not running
+     * (the next [PetOverlayWindowService.start] picks the new value up).
+     */
+    fun refreshCharacter(context: Context) {
+        PetOverlayWindowService.refreshCharacter(context)
     }
 
     /**

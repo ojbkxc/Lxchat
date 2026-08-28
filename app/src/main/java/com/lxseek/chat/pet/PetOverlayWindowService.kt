@@ -74,19 +74,22 @@ class PetOverlayWindowService : Service() {
             return START_NOT_STICKY
         }
         if (floatingView == null) {
-            // Read the persisted size scale (0.5~1.0) asynchronously, then build the window on the
-            // main thread. scope uses Dispatchers.Main, so addFloatingView is safe to call here.
+            // Read the persisted size scale (0.5~1.0) and sprite asynchronously, then build the
+            // window on the main thread. scope uses Dispatchers.Main, so addFloatingView is safe
+            // here.
             scope.launch {
                 val sizeScale = runCatching {
                     PetOverlayController.getSizeScale(this@PetOverlayWindowService)
                 }.getOrDefault(1.0f)
                 addFloatingView(sizeScale)
+                applyCharacterAsync()
                 loadCustomImageAsync()
             }
         } else {
             // Always (re)load the custom image so a path change while the service is running is picked
             // up on the next start command (e.g. after PetOverlayController.refreshImage).
             loadCustomImageAsync()
+            applyCharacterAsync()
         }
         return START_STICKY
     }
@@ -100,9 +103,13 @@ class PetOverlayWindowService : Service() {
         // SIZE_DP is the maximum (100%); scale it down per the user preference (0.5~1.0).
         val effectiveSizeDp = SIZE_DP * sizeScale.coerceIn(0.5f, 1.0f)
         val sizePx = (effectiveSizeDp * density).toInt()
+        // Reserve headroom above the bubble for the status-tip capsule (PetFloatingView reads it
+        // as h - w and draws the transient message capsule there). The empty strip is touch-pass
+        // through, so it never blocks the app underneath.
+        val windowH = sizePx + (TIP_HEADROOM_DP * density).toInt()
         val params = WindowManager.LayoutParams(
             sizePx,
-            sizePx,
+            windowH,
             overlayType(),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
@@ -142,6 +149,21 @@ class PetOverlayWindowService : Service() {
                 withContext(Dispatchers.IO) { decodeScaledBitmap(path, targetW, targetH) }
             } else null
             view.setCustomBitmap(bitmap)
+        }
+    }
+
+    /**
+     * Asynchronously applies the persisted built-in sprite to the floating view (no-op when the
+     * service has no view yet). Runs on the main-thread scope because
+     * [PetFloatingView.setCharacter] touches the view.
+     */
+    private fun applyCharacterAsync() {
+        val view = floatingView ?: return
+        scope.launch {
+            val character = runCatching {
+                PetOverlayController.getCharacter(this@PetOverlayWindowService)
+            }.getOrDefault(PetCharacter.CLASSIC)
+            view.setCharacter(character)
         }
     }
 
@@ -210,6 +232,8 @@ class PetOverlayWindowService : Service() {
         private const val NOTIFICATION_ID = 2
         private const val SIZE_DP = 64f
         private const val MARGIN_DP = 12f
+        // Vertical padding held above the bubble so PetFloatingView has room for the status-tip capsule.
+        private const val TIP_HEADROOM_DP = 36f
 
         fun start(context: Context) {
             val app = context.applicationContext
@@ -241,6 +265,18 @@ class PetOverlayWindowService : Service() {
         fun refreshImage(context: Context) {
             val app = context.applicationContext
             // Re-deliver a start command so onStartCommand runs loadCustomImageAsync again.
+            kotlin.runCatching {
+                app.startService(Intent(app, PetOverlayWindowService::class.java))
+            }
+        }
+
+        /**
+         * Reloads the persisted built-in sprite into a running overlay. If the service is not
+         * running this is a no-op (the next [start] will pick the value up). Safe from any thread.
+         */
+        fun refreshCharacter(context: Context) {
+            val app = context.applicationContext
+            // Re-deliver a start command so onStartCommand runs applyCharacterAsync again.
             kotlin.runCatching {
                 app.startService(Intent(app, PetOverlayWindowService::class.java))
             }

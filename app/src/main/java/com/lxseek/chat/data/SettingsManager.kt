@@ -1,6 +1,7 @@
 package com.lxseek.chat.data
 
 import android.content.Context
+import com.lxseek.chat.pet.PetCharacter
 import com.lxseek.chat.model.OpenAiServiceTiers
 import com.lxseek.chat.model.ThinkingLevels
 import com.lxseek.chat.model.ContextBudget
@@ -62,6 +63,12 @@ class SettingsManager(private val context: Context) {
     val contextCompactRetainCount: Flow<Int> = context.dataStore.data.map {
         it[CONTEXT_COMPACT_RETAIN_COUNT] ?: 6
     }
+    // ── Smart Model Routing（优化2）─────────────────────────
+    val complexityRoutingEnabled: Flow<Boolean> = context.dataStore.data.map { it[COMPLEXITY_ROUTING_ENABLED] ?: false }
+    val simpleTaskModel: Flow<String?> = context.dataStore.data.map { it[SIMPLE_TASK_MODEL] }
+    val complexTaskModel: Flow<String?> = context.dataStore.data.map { it[COMPLEX_TASK_MODEL] }
+    // ── SubAgent（优化4）────────────────────────────────────
+    val subagentMaxRunning: Flow<Int> = context.dataStore.data.map { it[SUBAGENT_MAX_RUNNING] ?: 5 }
     val codeExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[CODE_EXECUTION_ENABLED] ?: false }
     val googleSearchEnabled: Flow<Boolean> = context.dataStore.data.map { it[GOOGLE_SEARCH_ENABLED] ?: false }
     val thinkingEnabled: Flow<Boolean> = context.dataStore.data.map { it[THINKING_ENABLED] ?: true }
@@ -163,6 +170,9 @@ class SettingsManager(private val context: Context) {
     val petOverlayEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_OVERLAY_ENABLED] ?: false }
     val petOverlayImagePath: Flow<String> = context.dataStore.data.map { it[PET_OVERLAY_IMAGE_PATH] ?: "" }
     val petOverlaySizeScale: Flow<Float> = context.dataStore.data.map { it[PET_OVERLAY_SIZE_SCALE] ?: 1.0f }
+    val petOverlayCharacter: Flow<String> = context.dataStore.data.map {
+        PetCharacter.fromKey(it[PET_OVERLAY_CHARACTER]).prefKey
+    }
     val petEmotionEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_EMOTION_ENABLED] ?: true }
     val exactExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[EXACT_EXECUTION_ENABLED] ?: false }
     val proxyEnabled: Flow<Boolean> = context.dataStore.data.map { it[PROXY_ENABLED] ?: false }
@@ -685,6 +695,28 @@ class SettingsManager(private val context: Context) {
         context.dataStore.edit { it[CONTEXT_COMPACT_RETAIN_COUNT] = count }
     }
 
+    // ── Smart Model Routing（优化2）─────────────────────────
+    suspend fun saveComplexityRoutingEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[COMPLEXITY_ROUTING_ENABLED] = enabled }
+    }
+
+    suspend fun saveSimpleTaskModel(model: String?) {
+        context.dataStore.edit { prefs ->
+            if (model == null) prefs.remove(SIMPLE_TASK_MODEL) else prefs[SIMPLE_TASK_MODEL] = model
+        }
+    }
+
+    suspend fun saveComplexTaskModel(model: String?) {
+        context.dataStore.edit { prefs ->
+            if (model == null) prefs.remove(COMPLEX_TASK_MODEL) else prefs[COMPLEX_TASK_MODEL] = model
+        }
+    }
+
+    // ── SubAgent（优化4）────────────────────────────────────
+    suspend fun saveSubagentMaxRunning(max: Int) {
+        context.dataStore.edit { it[SUBAGENT_MAX_RUNNING] = max.coerceIn(1, 20) }
+    }
+
     suspend fun saveTitleGenerationModel(model: String?) {
         context.dataStore.edit {
             if (model == null) it.remove(TITLE_GENERATION_MODEL)
@@ -737,6 +769,9 @@ class SettingsManager(private val context: Context) {
     suspend fun savePetOverlayEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_OVERLAY_ENABLED] = enabled } }
     suspend fun savePetOverlayImagePath(path: String) { context.dataStore.edit { it[PET_OVERLAY_IMAGE_PATH] = path } }
     suspend fun savePetOverlaySizeScale(scale: Float) { context.dataStore.edit { it[PET_OVERLAY_SIZE_SCALE] = scale.coerceIn(0.5f, 1.0f) } }
+    suspend fun savePetOverlayCharacter(character: String) {
+        context.dataStore.edit { it[PET_OVERLAY_CHARACTER] = PetCharacter.fromKey(character).prefKey }
+    }
     suspend fun savePetEmotionEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_EMOTION_ENABLED] = enabled } }
     suspend fun saveExactExecutionEnabled(enabled: Boolean) { context.dataStore.edit { it[EXACT_EXECUTION_ENABLED] = enabled } }
     suspend fun saveProxyEnabled(enabled: Boolean) { context.dataStore.edit { it[PROXY_ENABLED] = enabled } }
@@ -957,6 +992,7 @@ class SettingsManager(private val context: Context) {
             prefs.remove(AUTOMATION_TOOLS_ENABLED)
             prefs.remove(PET_OVERLAY_ENABLED)
             prefs.remove(PET_OVERLAY_IMAGE_PATH)
+            prefs.remove(PET_OVERLAY_CHARACTER)
             prefs.remove(PET_OVERLAY_SIZE_SCALE)
             prefs.remove(EXACT_EXECUTION_ENABLED)
             prefs.remove(PROXY_ENABLED)

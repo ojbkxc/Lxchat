@@ -79,6 +79,7 @@ internal val AUTOMATION_TOOLS_ENABLED = booleanPreferencesKey("automation_tools_
 internal val PET_OVERLAY_ENABLED = booleanPreferencesKey("pet_overlay_enabled")
 internal val PET_OVERLAY_IMAGE_PATH = stringPreferencesKey("pet_overlay_image_path")
 internal val PET_OVERLAY_SIZE_SCALE = floatPreferencesKey("pet_overlay_size_scale")
+internal val PET_OVERLAY_CHARACTER = stringPreferencesKey("pet_overlay_character")
 internal val PET_EMOTION_ENABLED = booleanPreferencesKey("pet_emotion_enabled")
 internal val EXACT_EXECUTION_ENABLED = booleanPreferencesKey("exact_execution_enabled")
 internal val PROXY_ENABLED = booleanPreferencesKey("proxy_enabled")
@@ -166,3 +167,14 @@ internal val MEMBERSHIP_REDEEMED_NONCES = stringSetPreferencesKey("membership_re
 internal val MARKET_SOURCES_JSON = stringPreferencesKey("market_sources_json")
 /** JSON array of installed market plugins ([com.lxseek.chat.plugin.market.MarketInstallation]). */
 internal val MARKET_INSTALLED_JSON = stringPreferencesKey("market_installed_json")
+
+// ── Smart Model Routing ───────────────────────────────────
+/** 是否启用基于任务复杂度的智能路由（优化2）。默认 false，保持向后兼容。 */
+internal val COMPLEXITY_ROUTING_ENABLED = booleanPreferencesKey("complexity_routing_enabled")
+/** 简单任务使用的模型 ID（"Provider:modelId"），null 表示未配置。 */
+internal val SIMPLE_TASK_MODEL = stringPreferencesKey("simple_task_model")
+/** 复杂任务使用的模型 ID（"Provider:modelId"），null 表示未配置。 */
+internal val COMPLEX_TASK_MODEL = stringPreferencesKey("complex_task_model")
+// ── SubAgent ──────────────────────────────────────────────
+/** 子代理最大并发运行数（优化4）。默认 5，范围 [1, 20]。 */
+internal val SUBAGENT_MAX_RUNNING = intPreferencesKey("subagent_max_running")

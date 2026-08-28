@@ -17,6 +17,7 @@ import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.data.ShellDeviceConfig
 import com.lxseek.chat.data.McpServerConfig
 import com.lxseek.chat.data.SystemPromptEntry
+import com.lxseek.chat.pet.PetCharacter
 import com.lxseek.chat.model.ModelId
 import com.lxseek.chat.model.OpenAiServiceTiers
 import com.lxseek.chat.model.ToolCallDisplayModes
@@ -99,6 +100,12 @@ class SettingsRepository(
     val contextCompactModel: StateFlow<String?> = hot(settingsManager.contextCompactModel, null)
     val contextCompactPrompt: StateFlow<String> = hot(settingsManager.contextCompactPrompt, BuiltInPrompts.CONTEXT_COMPACT_SYSTEM)
     val contextCompactRetainCount: StateFlow<Int> = hot(settingsManager.contextCompactRetainCount, 6)
+    // ── Smart Model Routing（优化2）─────────────────────────
+    val complexityRoutingEnabled: StateFlow<Boolean> = hot(settingsManager.complexityRoutingEnabled, false)
+    val simpleTaskModel: StateFlow<String?> = hot(settingsManager.simpleTaskModel, null)
+    val complexTaskModel: StateFlow<String?> = hot(settingsManager.complexTaskModel, null)
+    // ── SubAgent（优化4）────────────────────────────────────
+    val subagentMaxRunning: StateFlow<Int> = hot(settingsManager.subagentMaxRunning, 5)
     val codeExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.codeExecutionEnabled, false)
     val googleSearchEnabled: StateFlow<Boolean> = hot(settingsManager.googleSearchEnabled, false)
     val thinkingEnabled: StateFlow<Boolean> = hot(settingsManager.thinkingEnabled, true)
@@ -169,6 +176,7 @@ class SettingsRepository(
     val petOverlayEnabled: StateFlow<Boolean> = hot(settingsManager.petOverlayEnabled, false)
     val petOverlayImagePath: StateFlow<String> = hot(settingsManager.petOverlayImagePath, "")
     val petOverlaySizeScale: StateFlow<Float> = hot(settingsManager.petOverlaySizeScale, 1.0f)
+    val petOverlayCharacter: StateFlow<String> = hot(settingsManager.petOverlayCharacter, PetCharacter.CLASSIC.prefKey)
     val petEmotionEnabled: StateFlow<Boolean> = hot(settingsManager.petEmotionEnabled, true)
     val exactExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.exactExecutionEnabled, false)
     val proxyEnabled: StateFlow<Boolean> = hot(settingsManager.proxyEnabled, false)
@@ -460,6 +468,13 @@ class SettingsRepository(
     fun setContextCompactPrompt(prompt: String) = scope.launch { settingsManager.saveContextCompactPrompt(prompt) }
     fun setContextCompactRetainCount(count: Int) = scope.launch { settingsManager.saveContextCompactRetainCount(count) }
 
+    // ── Smart Model Routing（优化2）─────────────────────────
+    fun setComplexityRoutingEnabled(enabled: Boolean) = scope.launch { settingsManager.saveComplexityRoutingEnabled(enabled) }
+    fun setSimpleTaskModel(model: String?) = scope.launch { settingsManager.saveSimpleTaskModel(model) }
+    fun setComplexTaskModel(model: String?) = scope.launch { settingsManager.saveComplexTaskModel(model) }
+    // ── SubAgent（优化4）────────────────────────────────────
+    fun setSubagentMaxRunning(max: Int) = scope.launch { settingsManager.saveSubagentMaxRunning(max) }
+
     fun setTitleGenerationModel(model: String?) = scope.launch { settingsManager.saveTitleGenerationModel(model) }
     fun setTitleGenerationPrompt(prompt: String) = scope.launch { settingsManager.saveTitleGenerationPrompt(prompt) }
     fun setImageTranscriptionEnabled(enabled: Boolean) =
@@ -635,6 +650,7 @@ class SettingsRepository(
     suspend fun savePetOverlayEnabled(enabled: Boolean) = settingsManager.savePetOverlayEnabled(enabled)
     suspend fun savePetOverlayImagePath(path: String) = settingsManager.savePetOverlayImagePath(path)
     suspend fun savePetOverlaySizeScale(scale: Float) = settingsManager.savePetOverlaySizeScale(scale)
+    suspend fun savePetOverlayCharacter(character: String) = settingsManager.savePetOverlayCharacter(character)
     suspend fun savePetEmotionEnabled(enabled: Boolean) = settingsManager.savePetEmotionEnabled(enabled)
     suspend fun saveAutoBackupPeriodHours(hours: Int) = settingsManager.saveAutoBackupPeriodHours(hours)
     suspend fun saveAutoBackupCategories(categories: String) = settingsManager.saveAutoBackupCategories(categories)

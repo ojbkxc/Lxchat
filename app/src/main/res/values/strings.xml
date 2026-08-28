@@ -1206,6 +1206,21 @@
     <string name="pet_overlay_image_desc">Choose an image as the pet icon. Transparent PNG is supported.</string>
     <string name="pet_overlay_size">Pet size</string>
     <string name="pet_overlay_size_desc">Adjust the display size of the desktop pet</string>
+    <string name="pet_group_builtin_title">Built-in pets</string>
+    <string name="pet_character_label">Pet appearance</string>
+    <string name="pet_character_classic">Classic (default bubble)</string>
+    <string name="pet_character_dada">Dada</string>
+    <string name="pet_character_huhu">Huhu</string>
+    <string name="pet_character_bubu">Bubu</string>
+    <string name="pet_character_huihui">Huihui</string>
+    <string name="pet_character_dada_desc">A steady co-building robot that helps you piece ideas together</string>
+    <string name="pet_character_huhu_desc">A route robot with a pencil and a plan, always finding a way out of hard tasks</string>
+    <string name="pet_character_bubu_desc">A little robot with a patching wrench, best at finding and fixing cracks</string>
+    <string name="pet_character_huihui_desc">A little robot cradling a build gear, energized the moment a new reply arrives</string>
+    <string name="pet_tip_thinking">Thinking…</string>
+    <string name="pet_tip_done">Done</string>
+    <string name="pet_tip_sad">Something went wrong</string>
+    <string name="pet_tip_error">Connection error</string>
     <string name="settings_group_permissions">Permissions</string>
     <string name="settings_workflow">Workflows</string>
     <string name="settings_workflow_desc">Chain several generations, pausing between steps</string>
@@ -1716,4 +1731,15 @@
     <string name="trigger_type_network_change">Network change</string>
     <string name="trigger_type_charging_start">Charging started</string>
     <string name="trigger_type_charging_stop">Charging stopped</string>
+
+    <!-- Smart Model Routing -->
+    <string name="settings_complexity_routing">Smart Model Routing</string>
+    <string name="settings_complexity_routing_desc">Route simple tasks to small models, complex tasks to large models</string>
+    <string name="settings_complexity_routing_enabled">Enable complexity-based routing</string>
+    <string name="settings_simple_task_model">Simple task model</string>
+    <string name="settings_complex_task_model">Complex task model</string>
+    <string name="settings_subagent_max_running">Max concurrent subagents</string>
+    <string name="settings_routing_model_not_set">Not set (use default)</string>
+    <string name="settings_routing_select_model">Select model</string>
+    <string name="settings_routing_subagent_range">Range: 1–20</string>
 </resources>

@@ -1605,6 +1605,21 @@
     <string name="logs_unified_log_title">全部日志（ADB Shell + App）</string>
     <string name="pet_overlay_size">桌面宠物大小</string>
     <string name="pet_overlay_size_desc">调整桌面宠物的显示大小</string>
+    <string name="pet_group_builtin_title">内置宠物</string>
+    <string name="pet_character_label">宠物外观</string>
+    <string name="pet_character_classic">经典（默认气泡）</string>
+    <string name="pet_character_dada">搭搭 Dada</string>
+    <string name="pet_character_huhu">弧弧 Huhu</string>
+    <string name="pet_character_bubu">补补 Bubu</string>
+    <string name="pet_character_huihui">回回 Huihui</string>
+    <string name="pet_character_dada_desc">沉稳的协作机器人，陪你把想法一块块搭起来</string>
+    <string name="pet_character_huhu_desc">拿着铅笔和计划本的路线机器人，复杂任务也能找到出口</string>
+    <string name="pet_character_bubu_desc">举着修补扳手的小机器人，最擅长发现并修好裂缝</string>
+    <string name="pet_character_huihui_desc">抱着构建齿轮的小机器人，新回复一到就精神满满</string>
+    <string name="pet_tip_thinking">思考中…</string>
+    <string name="pet_tip_done">完成啦</string>
+    <string name="pet_tip_sad">出错了…</string>
+    <string name="pet_tip_error">连接出错</string>
     <string name="settings_plugins">插件与技能</string>
     <string name="settings_plugins_desc">管理扩展、技能和市场</string>
 
@@ -1725,4 +1740,15 @@
     <string name="im_channel_settings_save">保存设置</string>
     <string name="im_channel_settings_saved">设置已保存</string>
     <string name="im_channel_settings_follow_default">跟随默认</string>
+
+    <!-- Smart Model Routing -->
+    <string name="settings_complexity_routing">智能模型路由</string>
+    <string name="settings_complexity_routing_desc">简单任务用小模型，复杂任务用大模型</string>
+    <string name="settings_complexity_routing_enabled">启用复杂度路由</string>
+    <string name="settings_simple_task_model">简单任务模型</string>
+    <string name="settings_complex_task_model">复杂任务模型</string>
+    <string name="settings_subagent_max_running">子代理最大并发数</string>
+    <string name="settings_routing_model_not_set">未设置（使用默认）</string>
+    <string name="settings_routing_select_model">选择模型</string>
+    <string name="settings_routing_subagent_range">范围：1–20</string>
 </resources>
