@@ -228,14 +228,21 @@ class RuntimeToolProvider(
 
     /**
      * inkos 网文创作：引擎未运行时自动拉起（等价 runtime_start 后再执行）。Extended。
-     * 使用用户已有模型 Key 的 baseUrl/apiKey/model 注入进程，实际创作出章节。
+     * 使用用户已有模型 Key 的 baseUrl/apiKey/model 驱动 inkos CLI 创作出章节。
+     *
+     * 对齐真实 inkos CLI（@actalk/inkos，bin = cli/dist/index.js，基于 commander）：
+     * 非交互批量续写用 `write next` 子命令，创意指令作为 `--context` 传入；
+     * LLM 覆盖走 inkos 全局参数 `--api-key-env <env>`（从命名环境变量读 key）、
+     * `--base-url <url>`、`--model <model>`。injectedEnv 已把 LCHAT_LLM_* 注入子进程 env。
      */
     private suspend fun novelInkos(args: Map<String, String>): String {
         val engineId = RuntimeEngineType.NODE_INKOS
         val message = args["message"]?.takeIf(String::isNotBlank)
             ?: return error(engineId, "missing_message", "缺少 message（创作指令）")
         val modelEnv = manager.buildModelEnv()
-        if (modelEnv["INKOS_LLM_API_KEY"].isNullOrBlank()) {
+        if (modelEnv["INKOS_LLM_API_KEY"].isNullOrBlank() &&
+            modelEnv["LCHAT_LLM_API_KEY"].isNullOrBlank()
+        ) {
             return error(
                 engineId,
                 "model_not_configured",
@@ -249,21 +256,30 @@ class RuntimeToolProvider(
                 null,
                 RuntimeRequirement(runtime = "node", minVersion = "22.5"),
             )
-            val root = manager.packageManager.versionRoot(engineId, manager.installationOf(engineId)?.version.orEmpty())
-            val manifest = manager.packageManager.readManifest(engineId, manager.installationOf(engineId)?.version.orEmpty())
-            val entry = manifest?.entry ?: "inkos/run.js"
+            val installation = manager.installationOf(engineId) ?: throw IllegalStateException("引擎未安装")
+            val root = manager.packageManager.versionRoot(engineId, installation.version)
+            val manifest = manager.packageManager.readManifest(engineId, installation.version)
+            // inkos CLI 真实入口：cli/dist/index.js（无 run.js、无 --prompt）。
+            val entry = manifest?.entry ?: "cli/dist/index.js"
             val binary = File(root, binaryName(engineId)).absolutePath
+            val cmd = mutableListOf(binary, File(root, entry).absolutePath)
+            // 全局参数须位于子命令之前（enablePositionalOptions）。
+            modelEnv["LCHAT_LLM_API_KEY"].orEmpty().let { key ->
+                if (key.isNotBlank()) cmd += listOf("--api-key-env", "LCHAT_LLM_API_KEY")
+            }
+            modelEnv["LCHAT_LLM_BASE_URL"]?.takeIf(String::isNotBlank)
+                ?.let { cmd += listOf("--base-url", it) }
+            modelEnv["LCHAT_LLM_MODEL"]?.takeIf(String::isNotBlank)
+                ?.let { cmd += listOf("--model", it) }
+            // 非交互批量续写下一章；创意指令作为 --context。
+            cmd += listOf("write", "next", "--context", message, "--json", "--quiet")
             val timeoutMs = (args["timeout_ms"]?.toLongOrNull() ?: 120_000L).coerceIn(10_000, 600_000)
-            val result = runProcessOnce(
-                listOf(binary, File(root, entry).absolutePath, "--prompt", message),
-                envMap,
-                root,
-                timeoutMs,
-            )
+            val result = runProcessOnce(cmd, envMap, root, timeoutMs)
             buildJsonObject {
                 put("ok", result.isSuccess)
                 put("engine_id", engineId)
                 put("action", "novel_inkos")
+                put("command", "inkos write next --context … --json --quiet")
                 put("exit_code", result.exitCode)
                 if (result.timedOut) put("timed_out", true)
                 if (result.output.isNotBlank()) put("output", result.output)
@@ -548,7 +564,7 @@ class RuntimeToolProvider(
                 definition = ToolDefinition(
                     function = ToolFunction(
                         name = Names.NOVEL_INKOS,
-                        description = "用 inkos 网文创作引擎实际创作小说章节。引擎未运行时自动拉起；使用用户已配置的默认模型服务（baseUrl/apiKey/model）进行创作。未配置模型会返回错误。",
+                        description = "用 inkos 网文创作引擎实际创作小说章节（非交互批量续写下一章：inkos write next，传入的 message 作为创作指令 --context）。引擎未运行时自动拉起；通过 inkos 全局参数注入用户已配置的默认模型服务（--api-key-env/--base-url/--model）。未配置模型或引擎未安装会返回错误。",
                         parameters = ToolParameters(
                             properties = mapOf(
                                 "message" to ToolProperty("string", "创作指令（题材/设定/大纲/期望章节）"),
