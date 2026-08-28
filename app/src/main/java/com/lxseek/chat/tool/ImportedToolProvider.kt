@@ -19,6 +19,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -101,6 +103,9 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
             )
         }
 
+    override fun definitions(ctx: GenerationContext): List<ToolDefinition> =
+        toolDescriptors(ctx).map { it.definition }
+
     override fun handles(name: String): Boolean = definitions().any { it.name == name }
 
     override suspend fun execute(name: String, arguments: String, ctx: GenerationContext): String =
@@ -132,9 +137,9 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
             tool.headers.forEach { (k, v) -> setRequestProperty(k, v) }
         }
         try {
-            conn.buildRequestBody(args)?.let { body ->
+            tool.buildRequestBody(args)?.let { body ->
                 conn.doOutput = true
-                setRequestProperty("Content-Type", "application/json")
+                conn.setRequestProperty("Content-Type", "application/json")
                 conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             }
             val code = conn.responseCode
@@ -154,7 +159,7 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
         val intent = Intent(tool.intentAction ?: Intent.ACTION_VIEW).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             tool.intentData?.let { data = Uri.parse(substitute(it, args)) }
-            tool.intentPackage?.let { pkg = it }
+            tool.intentPackage?.let { setPackage(it) }
         }
         val started = runCatching { app.startActivity(intent) }.isSuccess
         return buildJsonObject { put("status", if (started) "ok" else "error") }.toString()
@@ -172,7 +177,7 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
         return out.replace(Regex("\\{[^}]+}"), "")
     }
 
-    private fun JsonObject.buildRequestBody(args: JsonObject): String? {
+    private fun ImportedTool.buildRequestBody(args: JsonObject): String? {
         val template = jsonBody ?: return null
         if (template is JsonPrimitive || (template as? JsonObject)?.isEmpty() == true) return null
         val substituted = template.substituteValue(args)
@@ -193,8 +198,8 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
     }
 
     private fun parseArgs(arguments: String): JsonObject =
-        runCatching { (Json.parseToJsonElement(arguments.ifBlank { "{}" }) as? JsonObject) }
-            .getOrDefault(JsonObject(emptyMap()))
+        runCatching { Json.parseToJsonElement(arguments.ifBlank { "{}" }).jsonObject }
+            .getOrElse { JsonObject(emptyMap()) }
 
     private fun errorJson(error: String, message: String?): String = buildJsonObject {
         put("status", "error")

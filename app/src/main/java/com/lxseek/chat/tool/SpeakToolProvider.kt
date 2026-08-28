@@ -43,6 +43,9 @@ class SpeakToolProvider(private val app: Application) : ToolProvider {
         ),
     )
 
+    override fun definitions(ctx: GenerationContext): List<ToolDefinition> =
+        toolDescriptors(ctx).map { it.definition }
+
     override fun handles(name: String): Boolean = name == SPEAK
 
     override suspend fun execute(name: String, arguments: String, ctx: GenerationContext): String {
