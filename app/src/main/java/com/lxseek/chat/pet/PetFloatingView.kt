@@ -68,6 +68,8 @@ class PetFloatingView @JvmOverloads constructor(
 
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val bitmapDstRect = Rect()
+    /** RectF mirror of [bitmapDstRect] for transparent-pixel hit testing (avoids per-touch alloc). */
+    private val bitmapDstRectF = RectF()
 
     // ---- Canvas fallback bubble paints ----
     private val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -153,6 +155,7 @@ class PetFloatingView @JvmOverloads constructor(
         tipSlotHeight = (h - w).coerceAtLeast(0)
         bubbleCenterY = (w / 2f) + tipSlotHeight
         bitmapDstRect.set(0, 0, w, h)
+        bitmapDstRectF.set(bitmapDstRect)
         computeFrameDstRect(w, h)
         rebuildBubbleShader()
     }
@@ -462,7 +465,7 @@ class PetFloatingView @JvmOverloads constructor(
      */
     private fun isTransparentAt(x: Float, y: Float): Boolean {
         val custom = customBitmap
-        if (custom != null && !custom.isRecycled) return isTransparentInBitmap(custom, x, y, bitmapDstRect, 0, 0)
+        if (custom != null && !custom.isRecycled) return isTransparentInBitmap(custom, x, y, bitmapDstRectF, 0, 0)
         val sheet = spritesheetBitmap
         if (sheet != null && !sheet.isRecycled) {
             val state = PetAnimation.stateForEmotion(currentEmotion)
