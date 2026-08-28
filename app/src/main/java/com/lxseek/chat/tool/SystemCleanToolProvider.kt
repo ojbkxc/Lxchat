@@ -256,7 +256,7 @@ class SystemCleanToolProvider : ToolProvider {
             notification?.let { append("post=").append(it).append('\n') }
         }
         val path = "$TIMED_DIR/$name.conf"
-        val cmd = "mkdir -p $TIMED_DIR && cat > \"$path\" <<'LXCONF_EOF'\n$confLXCONF_EOF"
+        val cmd = "mkdir -p $TIMED_DIR && cat > \"$path\" <<'LXCONF_EOF'\n${conf}LXCONF_EOF"
         return result("system_clean_timed_task", "create $path", runRoot(cmd, TIMEOUT_DEFAULT))
     }
 
