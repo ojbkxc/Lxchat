@@ -50,6 +50,11 @@ data class McpServerConfig(
     val url: String = "",
     val transport: McpTransportType = McpTransportType.STREAMABLE_HTTP,
     val headers: Map<String, String> = emptyMap(),
+    /**
+     * 每服务器环境变量（密钥可存这里，URL/header 值中用 `${VAR}` / `${VAR:-default}` 引用，
+     * 展开逻辑见 [com.lxseek.chat.mcp.McpEnvExpansion]）。
+     */
+    val env: Map<String, String> = emptyMap(),
     /** Raw MCP tool names disabled for this server. New tools stay enabled by default. */
     val disabledTools: Set<String> = emptySet(),
     /** OAuth 2.0 (RFC 9728 + PKCE) settings for official remote MCP servers. */

@@ -35,9 +35,11 @@ class NativeBackupFormatTest {
             name = "mcp",
             url = "https://example.test/mcp",
             headers = mapOf("Authorization" to "Bearer mcp-secret"),
+            env = mapOf("API_KEY" to "env-secret"),
             disabledTools = setOf("dangerous"),
         ).withoutSecrets()
         assertTrue(mcp.headers.isEmpty())
+        assertTrue(mcp.env.isEmpty())
         assertEquals(setOf("dangerous"), mcp.disabledTools)
 
         val remote = EmbeddingModelConfig(
@@ -65,6 +67,7 @@ class NativeBackupFormatTest {
         assertFalse(portableJson.contains("conch-secret"))
         assertFalse(portableJson.contains("ssh-secret"))
         assertFalse(portableJson.contains("mcp-secret"))
+        assertFalse(portableJson.contains("env-secret"))
         assertFalse(portableJson.contains("embedding-secret"))
         assertFalse(portableJson.contains("/data/user/0"))
     }

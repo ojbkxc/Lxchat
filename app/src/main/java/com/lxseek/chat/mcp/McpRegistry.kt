@@ -210,12 +210,25 @@ class McpRegistry(
 
     private fun replaceRuntimeLocked(config: McpServerConfig) {
         runtimes.remove(config.id)?.close()
+        // 展开 ${VAR} / ${VAR:-default}（url + headers 值）。缺失变量直接报错，
+        // 不带着未解析占位符去建立连接。
+        val expanded = McpEnvExpansion.expand(config)
+        if (expanded.missingVars.isNotEmpty()) {
+            putSnapshot(
+                McpServerSnapshot(
+                    serverId = config.id,
+                    status = McpConnectionStatus.ERROR,
+                    error = "Undefined MCP env vars: ${expanded.missingVars.joinToString(", ")}",
+                ),
+            )
+            return
+        }
         val runtime = try {
             Runtime(
                 config = config,
                 client = McpProtocolClient(
-                    endpoint = normalizeEndpoint(config.url),
-                    customHeaders = config.headers,
+                    endpoint = normalizeEndpoint(expanded.config.url),
+                    customHeaders = expanded.config.headers,
                     transportType = config.transport,
                     serverId = config.id,
                     serverName = config.name.ifBlank { config.url },

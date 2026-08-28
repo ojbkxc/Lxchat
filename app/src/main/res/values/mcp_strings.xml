@@ -28,6 +28,15 @@
     <string name="mcp_delete_header">Delete header</string>
     <string name="mcp_show_header_value">Show header value</string>
     <string name="mcp_hide_header_value">Hide header value</string>
+    <string name="mcp_env_vars">Environment Variables</string>
+    <string name="mcp_env_vars_desc">Values are stored encrypted. Reference them in the URL or header values with ${VAR}, or ${VAR:-default} for a fallback.</string>
+    <string name="mcp_no_env_vars">No environment variables</string>
+    <string name="mcp_env_var_name">Variable name</string>
+    <string name="mcp_env_var_value">Variable value</string>
+    <string name="mcp_add_env_var">Add Variable</string>
+    <string name="mcp_delete_env_var">Delete variable</string>
+    <string name="mcp_show_env_value">Show variable value</string>
+    <string name="mcp_hide_env_value">Hide variable value</string>
     <string name="mcp_timeout">Timeout (seconds)</string>
     <string name="mcp_timeout_desc">5–300 seconds</string>
     <string name="mcp_status">Status</string>

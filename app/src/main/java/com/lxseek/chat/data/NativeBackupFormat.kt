@@ -39,13 +39,14 @@ internal data class NativeBackupSecrets(
     val shellApiKeys: Map<String, String> = emptyMap(),
     val embeddingApiKeys: Map<String, String> = emptyMap(),
     val mcpHeaders: Map<String, Map<String, String>> = emptyMap(),
+    val mcpEnv: Map<String, Map<String, String>> = emptyMap(),
 )
 
 internal fun ShellDeviceConfig.withoutSecrets(): ShellDeviceConfig =
     copy(apiKey = "", sshPassword = "")
 
 internal fun McpServerConfig.withoutSecrets(): McpServerConfig =
-    copy(headers = emptyMap())
+    copy(headers = emptyMap(), env = emptyMap())
 
 internal fun EmbeddingModelConfig.asPortableRemoteConfig(): EmbeddingModelConfig? =
     takeIf { it.type == EmbeddingModelType.REMOTE }

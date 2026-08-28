@@ -86,6 +86,13 @@ private data class McpHeaderDraft(
     val revealValue: Boolean = false,
 )
 
+private data class McpEnvDraft(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val value: String = "",
+    val revealValue: Boolean = false,
+)
+
 private data class McpStatusUiState(
     val status: McpConnectionStatus,
     val enabledToolCount: Int,
@@ -358,7 +365,15 @@ private fun McpServerEditor(
             },
         )
     }
+    var envRows by remember(initial.id) {
+        mutableStateOf(
+            initial.env.map { (name, value) ->
+                McpEnvDraft(name = name, value = value)
+            },
+        )
+    }
     val parsedHeaders = remember(headerRows) { buildMcpHeaders(headerRows) }
+    val parsedEnv = remember(envRows) { buildMcpEnv(envRows) }
     val validUrl = remember(draft.url) { isValidMcpUrl(draft.url) }
     val canSave = draft.name.isNotBlank() && validUrl
     val scrollState = rememberScrollState()
@@ -369,11 +384,17 @@ private fun McpServerEditor(
                 name = draft.name.trim(),
                 url = draft.url.trim(),
                 headers = parsedHeaders,
+                env = parsedEnv,
             ),
         )
     }
     fun updateHeader(updated: McpHeaderDraft) {
         headerRows = headerRows.map { current ->
+            if (current.id == updated.id) updated else current
+        }
+    }
+    fun updateEnv(updated: McpEnvDraft) {
+        envRows = envRows.map { current ->
             if (current.id == updated.id) updated else current
         }
     }
@@ -494,6 +515,57 @@ private fun McpServerEditor(
                             label = stringResource(R.string.mcp_add_header),
                             onClick = {
                                 headerRows = headerRows + McpHeaderDraft()
+                            },
+                        )
+                    }
+                },
+            )
+            SettingsGroup(
+                title = stringResource(R.string.mcp_env_vars),
+                items = buildList {
+                    if (envRows.isEmpty()) {
+                        add {
+                            SettingsItem(
+                                headlineContent = {
+                                    Text(
+                                        stringResource(R.string.mcp_no_env_vars),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                supportingContent = {
+                                    Text(stringResource(R.string.mcp_env_vars_desc))
+                                },
+                                leadingContent = {
+                                    Icon(
+                                        Icons.Default.Code,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                            )
+                        }
+                    } else {
+                        envRows.forEach { env ->
+                            add {
+                                key(env.id) {
+                                    McpEnvItem(
+                                        env = env,
+                                        onEnvChange = ::updateEnv,
+                                        onDelete = {
+                                            envRows = envRows.filterNot {
+                                                it.id == env.id
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    add {
+                        SettingsAddItem(
+                            label = stringResource(R.string.mcp_add_env_var),
+                            onClick = {
+                                envRows = envRows + McpEnvDraft()
                             },
                         )
                     }
@@ -644,6 +716,65 @@ private fun McpHeaderItem(
                 Icon(
                     Icons.Default.Delete,
                     stringResource(R.string.mcp_delete_header),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun McpEnvItem(
+    env: McpEnvDraft,
+    onEnvChange: (McpEnvDraft) -> Unit,
+    onDelete: () -> Unit,
+) {
+    SettingsItem(
+        headlineContent = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                McpHeaderField(
+                    label = stringResource(R.string.mcp_env_var_name),
+                    value = env.name,
+                    onValueChange = { onEnvChange(env.copy(name = it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                McpHeaderField(
+                    label = stringResource(R.string.mcp_env_var_value),
+                    value = env.value,
+                    onValueChange = { onEnvChange(env.copy(value = it)) },
+                    password = !env.revealValue,
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingContent = {
+                        IconButton(
+                            onClick = {
+                                onEnvChange(env.copy(revealValue = !env.revealValue))
+                            },
+                        ) {
+                            Icon(
+                                if (env.revealValue) {
+                                    Icons.Default.VisibilityOff
+                                } else {
+                                    Icons.Default.Visibility
+                                },
+                                stringResource(
+                                    if (env.revealValue) {
+                                        R.string.mcp_hide_env_value
+                                    } else {
+                                        R.string.mcp_show_env_value
+                                    },
+                                ),
+                            )
+                        }
+                    },
+                )
+            }
+        },
+        trailingContent = {
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Default.Delete,
+                    stringResource(R.string.mcp_delete_env_var),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -808,6 +939,16 @@ private fun buildMcpHeaders(headers: List<McpHeaderDraft>): Map<String, String> 
             .filterNot { it.name.isBlank() && it.value.isBlank() }
             .forEach { header ->
                 put(header.name.trim(), header.value.trim())
+            }
+    }
+}
+
+private fun buildMcpEnv(env: List<McpEnvDraft>): Map<String, String> {
+    return buildMap {
+        env
+            .filterNot { it.name.isBlank() && it.value.isBlank() }
+            .forEach { entry ->
+                put(entry.name.trim(), entry.value.trim())
             }
     }
 }

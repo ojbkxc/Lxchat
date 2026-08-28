@@ -19,6 +19,9 @@ internal object NativeBackupSecretsPolicy {
         val mcpSecrets = sm.mcpServers.first()
             .filter { it.headers.isNotEmpty() }
             .associate { it.id to it.headers }
+        val mcpEnvSecrets = sm.mcpServers.first()
+            .filter { it.env.isNotEmpty() }
+            .associate { it.id to it.env }
         return NativeBackupSecrets(
             apiKeys = sm.apiKeys.first(),
             activeApiKeyIds = sm.activeApiKeyIds.first(),
@@ -27,6 +30,7 @@ internal object NativeBackupSecretsPolicy {
             shellDevices = shellSecrets,
             embeddingApiKeys = embeddingSecrets,
             mcpHeaders = mcpSecrets,
+            mcpEnv = mcpEnvSecrets,
         )
     }
 
@@ -144,12 +148,20 @@ internal object NativeBackupSecretsPolicy {
         if (orphanMcpSecrets > 0) {
             warnings += "ignored $orphanMcpSecrets MCP header record(s) without a matching server"
         }
+        val orphanMcpEnvSecrets = data.mcpEnv.keys.count { it !in mcpIds }
+        if (orphanMcpEnvSecrets > 0) {
+            warnings += "ignored $orphanMcpEnvSecrets MCP env record(s) without a matching server"
+        }
         sm.saveMcpServers(
             mcpServers.map { server ->
                 val imported = data.mcpHeaders[server.id]
+                val importedEnv = data.mcpEnv[server.id]
                 when {
-                    imported != null -> server.copy(headers = imported)
-                    replace -> server.copy(headers = emptyMap())
+                    imported != null || importedEnv != null -> server.copy(
+                        headers = imported ?: if (replace) emptyMap() else server.headers,
+                        env = importedEnv ?: if (replace) emptyMap() else server.env,
+                    )
+                    replace -> server.copy(headers = emptyMap(), env = emptyMap())
                     else -> server
                 }
             },
