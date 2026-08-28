@@ -1,5 +1,6 @@
 package com.lxseek.chat.ui.settings
 
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

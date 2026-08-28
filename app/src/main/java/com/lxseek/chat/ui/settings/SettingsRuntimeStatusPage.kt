@@ -1,5 +1,6 @@
 package com.lxseek.chat.ui.settings
 
+import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
@@ -254,7 +255,7 @@ fun SettingsRuntimeStatusPage(
                                     runCatching {
                                         runtimeEngineManager.ensureStarted(engineId, null, null)
                                     }.onFailure { e ->
-                                        viewModel.emitSnackbar(formatEngineError(R.string.runtime_engine_op_start, e))
+                                        viewModel.emitSnackbar(formatEngineError(context, R.string.runtime_engine_op_start, e))
                                     }
                                 }
                                 EngineAction.Stop -> runtimeEngineManager.stop(engineId)
@@ -263,14 +264,14 @@ fun SettingsRuntimeStatusPage(
                                     runCatching {
                                         market.installRuntimeInternal(meta!!)
                                     }.onFailure { e ->
-                                        viewModel.emitSnackbar(formatEngineError(R.string.runtime_engine_op_install, e))
+                                        viewModel.emitSnackbar(formatEngineError(context, R.string.runtime_engine_op_install, e))
                                     }
                                     installingEngines = installingEngines - engineId
                                 }
                                 EngineAction.Uninstall -> {
                                     runCatching { market.uninstall(engineId) }
                                         .onFailure { e ->
-                                            viewModel.emitSnackbar(formatEngineError(R.string.runtime_engine_op_uninstall, e))
+                                            viewModel.emitSnackbar(formatEngineError(context, R.string.runtime_engine_op_uninstall, e))
                                         }
                                 }
                             }
@@ -321,19 +322,18 @@ private val KNOWN_ENGINES = listOf(
  * Format an engine operation failure into a human-readable snackbar message, classifying by
  * exception type so the user can tell network errors apart from install/state errors.
  */
-@Composable
-private fun formatEngineError(opResId: Int, e: Throwable): String {
-    val op = stringResource(opResId)
+private fun formatEngineError(context: Context, opResId: Int, e: Throwable): String {
+    val op = context.getString(opResId)
     val detail = when (e) {
-        is IOException -> stringResource(R.string.runtime_engine_err_network, e.message ?: "")
-        is IllegalStateException -> stringResource(R.string.runtime_engine_err_state, e.message ?: "")
-        is IllegalArgumentException -> stringResource(R.string.runtime_engine_err_param, e.message ?: "")
+        is IOException -> context.getString(R.string.runtime_engine_err_network, e.message ?: "")
+        is IllegalStateException -> context.getString(R.string.runtime_engine_err_state, e.message ?: "")
+        is IllegalArgumentException -> context.getString(R.string.runtime_engine_err_param, e.message ?: "")
         else -> {
             val msg = e.message ?: e::class.simpleName ?: ""
-            stringResource(R.string.runtime_engine_err_unknown, msg)
+            context.getString(R.string.runtime_engine_err_unknown, msg)
         }
     }
-    return stringResource(R.string.runtime_engine_op_failed, op, detail)
+    return context.getString(R.string.runtime_engine_op_failed, op, detail)
 }
 
 @Composable
