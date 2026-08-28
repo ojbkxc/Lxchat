@@ -21,6 +21,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -82,7 +83,7 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
     }
 
     override fun toolDescriptors(ctx: GenerationContext): List<ToolDescriptor> =
-        definitions().map { t ->
+        listOf(deployDescriptor()) + definitions().map { t ->
             ToolDescriptor(
                 definition = ToolDefinition(function = ToolFunction(
                     name = t.name,
@@ -106,10 +107,24 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> =
         toolDescriptors(ctx).map { it.definition }
 
-    override fun handles(name: String): Boolean = definitions().any { it.name == name }
+    private fun deployDescriptor(): ToolDescriptor = ToolDescriptor(
+        definition = ToolDefinition(function = ToolFunction(
+            name = DEPLOY,
+            description = "Register or update zero-code tools for later use by writing them to app storage. Pass a JSON 'tools' array. Each item supports kind 'http' (name, description, url, method, headers, json_body, parameters, required) or 'intent' (name, description, intent_action, intent_data, intent_package, parameters, required). 'url' must be http/https. Deployed tools become callable, using '{param}' placeholders for arguments.",
+            parameters = ToolParameters(
+                properties = mapOf("tools" to ToolProperty("array", "Array of tool definitions to register.")),
+                required = listOf("tools"),
+            ),
+        )),
+        riskLevel = RiskLevel.Moderate,
+        tier = ToolTier.Extended,
+    )
+
+    override fun handles(name: String): Boolean = name == DEPLOY || definitions().any { it.name == name }
 
     override suspend fun execute(name: String, arguments: String, ctx: GenerationContext): String =
         withContext(Dispatchers.IO) {
+            if (name == DEPLOY) return@withContext executeDeploy(parseArgs(arguments))
             val tool = definitions().firstOrNull { it.name == name }
                 ?: return@withContext errorJson("unknown_tool", "Unknown imported tool: $name")
             try {
@@ -124,6 +139,34 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
                 errorJson("tool_error", e.message)
             }
         }
+
+    private fun executeDeploy(args: JsonObject): String {
+        val raw = args["tools"] as? JsonArray
+            ?: return errorJson("bad_input", "'tools' must be an array of tool definitions.")
+        val validated = raw.mapNotNull { el ->
+            runCatching { json.decodeFromJsonElement(ImportedTool.serializer(), el) }.getOrNull()
+        }.filter { it.name.isNotBlank() && isSafe(it) }
+        if (validated.isEmpty()) {
+            return errorJson("validation", "No valid tool definitions: http needs http/https url, intent needs intent_action or intent_data.")
+        }
+        val merged = LinkedHashMap<String, ImportedTool>()
+        definitions().forEach { t -> merged[t.name] = t }
+        validated.forEach { t -> merged[t.name] = t }
+        val elements = merged.values.map { json.encodeToJsonElement(ImportedTool.serializer(), it) }
+        val f = file()
+        f.parentFile?.mkdirs()
+        f.writeText(buildJsonObject { put("tools", JsonArray(elements)) }.toString())
+        return buildJsonObject {
+            put("status", "ok")
+            put("deployed", validated.size)
+            put("total", merged.size)
+        }.toString()
+    }
+
+    private fun isSafe(t: ImportedTool): Boolean = when (t.kind) {
+        Kind.HTTP -> t.url.startsWith("http://") || t.url.startsWith("https://")
+        Kind.INTENT -> !t.intentAction.isNullOrBlank() || !t.intentData.isNullOrBlank()
+    }
 
     private fun executeHttp(tool: ImportedTool, args: JsonObject): String {
         val urlStr = substitute(tool.url, args)
@@ -210,5 +253,6 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
     private companion object {
         private const val TAG = "ImportedTool"
         private const val MAX_RESPONSE = 64 * 1024
+        private const val DEPLOY = "deploy_tools"
     }
 }

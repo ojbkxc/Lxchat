@@ -709,9 +709,9 @@ private fun SearchHighlightedMarkdownCode(
         // idle; keep raw code text while streaming or when a search highlight is active so the
         // highlight/copy path never fights the rendered web content.
         val lang = language?.lowercase()
-        if (fenced && !fadeThisNode && spec == null && lang in ARTIFACT_LANGS) {
+        if (lang != null && lang in ARTIFACT_LANGS && fenced && !fadeThisNode && spec == null) {
             MarkdownArtifactView(language = lang, code = code)
-            return@Composable
+            return@block
         }
         SearchHighlightedMarkdownCodeText(
             code = code,
