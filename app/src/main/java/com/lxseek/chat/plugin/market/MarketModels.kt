@@ -24,13 +24,24 @@ enum class MarketPluginKind {
     TOOLPKG,
 }
 
-/** 用户添加的市场源。id 在创建时生成，安装记录通过 sourceId 关联回来源。 */
+/**
+ * 市场源类型。
+ * - [MARKET] 自定义源：拉取一个静态 `MarketIndex` JSON 清单（indexUrl）。
+ * - [CLAWHUB] / [SKILLHUB] 内置源：走各自的 REST 分页 API，由 [BuiltinMarketSources] 适配。
+ */
+enum class MarketSourceKind { MARKET, CLAWHUB, SKILLHUB }
+
+/**
+ * 市场源。id 在创建时生成，安装记录通过 sourceId 关联回来源。
+ * [kind] 缺省为 [MarketSourceKind.MARKET]，兼容旧持久化记录。
+ */
 @Serializable
 data class MarketSource(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val indexUrl: String,
     val enabled: Boolean = true,
+    val kind: MarketSourceKind = MarketSourceKind.MARKET,
 )
 
 /** 市场索引：一个源 URL 返回的 JSON 根对象。 */

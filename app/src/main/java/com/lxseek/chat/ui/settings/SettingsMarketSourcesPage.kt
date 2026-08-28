@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.plugin.market.MarketSource
+import com.lxseek.chat.plugin.market.MarketSourceKind
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
@@ -197,12 +198,14 @@ private fun SourceRow(
             )
         }
         Switch(checked = source.enabled, onCheckedChange = onToggle)
-        IconButton(onClick = onDelete) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = stringResource(R.string.market_source_delete),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (source.kind == MarketSourceKind.MARKET) {
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.market_source_delete),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
     HorizontalDivider(

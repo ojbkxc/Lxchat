@@ -64,14 +64,16 @@ class PluginMarket(
     init {
         scope.launch {
             settings.marketSourcesRaw.collect { raw ->
-                val list = decodeList<MarketSource>(raw)
-                if (list.isEmpty()) {
-                    // 首次启动：无任何源时自动注册官方默认源（用户可删除或停用）。
-                    _sources.value = listOf(DEFAULT_SOURCE)
-                    persistSources(_sources.value)
-                } else {
-                    _sources.value = list
+                val decoded = decodeList<MarketSource>(raw)
+                // 内置源始终可用：旧记录未含时自动补入（可停用；删除后下次启动恢复）。
+                var merged = if (decoded.isEmpty()) listOf(DEFAULT_SOURCE) else decoded
+                for (builtin in BuiltinMarketSources.BUILTIN_SOURCES) {
+                    if (merged.none { it.kind == builtin.kind }) {
+                        merged = merged + builtin
+                    }
                 }
+                _sources.value = merged
+                if (merged != decoded) persistSources(merged)
             }
         }
         scope.launch {
@@ -100,7 +102,13 @@ class PluginMarket(
             }
             val merged = LinkedHashMap<String, MarketPluginMeta>()
             enabled.forEach { source ->
-                val index = runCatching { fetchIndex(source.indexUrl) }
+                val index = runCatching {
+                    when (source.kind) {
+                        MarketSourceKind.MARKET -> fetchIndex(source.indexUrl)
+                        MarketSourceKind.CLAWHUB -> BuiltinMarketSources.fetchClawhubCatalog()
+                        MarketSourceKind.SKILLHUB -> BuiltinMarketSources.fetchSkillhubCatalog()
+                    }
+                }
                 index.exceptionOrNull()?.let { e ->
                     _lastRefreshError.value = "源「${source.name}」加载失败：${e.message}"
                 }
@@ -131,9 +139,7 @@ class PluginMarket(
         }
         val installation = when (meta.kind) {
             MarketPluginKind.SKILL -> {
-                val manifestUrl = meta.manifestUrl
-                    ?: throw IllegalArgumentException("技能插件缺少 manifestUrl")
-                val content = fetchText(manifestUrl)
+                val content = fetchSkillContent(meta)
                 if (content.isBlank()) throw IllegalArgumentException("技能正文为空")
                 MarketInstallation(
                     pluginId = meta.id,
@@ -270,6 +276,24 @@ class PluginMarket(
         val response = HttpClient.getTextResponse(url)
         if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
         response.body
+    }
+
+    /**
+     * 拉取 SKILL 插件正文。对 ClawHub / SkillHub 内置源走各自的适配器；自定义源沿用
+     * `manifestUrl`（SKILL.md 正文直接地址）的单文件下载。根据来源判定，规避静态清单
+     * 在分页 API 源上不可用的问题。
+     */
+    private suspend fun fetchSkillContent(meta: MarketPluginMeta): String {
+        val source = _sources.value.firstOrNull { it.id == meta.sourceId }
+        return when (source?.kind) {
+            MarketSourceKind.CLAWHUB -> BuiltinMarketSources.fetchClawhubSkillBody(meta.id)
+            MarketSourceKind.SKILLHUB -> BuiltinMarketSources.fetchSkillhubSkillBody(meta.id)
+            else -> {
+                val manifestUrl = meta.manifestUrl
+                    ?: throw IllegalArgumentException("技能插件缺少 manifestUrl")
+                fetchText(manifestUrl)
+            }
+        }
     }
 
     /** 启动时按持久化记录重建插件并注册（离线可用）；单个坏记录不阻断整体恢复。 */
