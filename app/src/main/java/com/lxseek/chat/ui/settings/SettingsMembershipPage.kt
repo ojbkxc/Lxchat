@@ -55,6 +55,8 @@ import com.lxseek.chat.membership.MembershipStatus
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.membership.PendingOrderStore
 import com.lxseek.chat.membership.RemoteCloudApi
+import com.lxseek.chat.membership.YipayConfig
+import com.lxseek.chat.membership.YipayPaymentManager
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
