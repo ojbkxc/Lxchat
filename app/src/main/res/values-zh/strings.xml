@@ -1961,4 +1961,33 @@
     <string name="chat_font_scale">聊天字体缩放</string>
     <string name="chat_font_scale_desc">调整聊天消息的字体大小。%.2f×</string>
     <string name="market_kind_runtime">运行时</string>
+
+    <!-- 快捷指令描述（见 SlashCommands.kt）。 -->
+    <string name="slash_help">显示所有可用斜杠命令</string>
+    <string name="slash_new">立即创建并切换到新对话</string>
+    <string name="slash_stop">停止当前正在进行的生成</string>
+    <string name="slash_share">导出并分享当前对话</string>
+    <string name="slash_fork">从当前对话新建一个可继续的分支</string>
+    <string name="slash_clear">清除当前对话消息（保留对话但不显示消息）</string>
+    <string name="slash_search">搜索对话历史</string>
+    <string name="slash_export">导出对话为文件（txt/md）</string>
+    <string name="slash_summarize">总结当前对话</string>
+    <string name="slash_model">切换/选择模型（无参数时显示列表）</string>
+    <string name="slash_settings">快速打开设置页面</string>
+    <string name="slash_tools">查看可用工具列表</string>
+    <string name="slash_skills">查看已安装技能</string>
+    <string name="slash_memory">查看记忆内容</string>
+    <string name="slash_screenshot">截取当前屏幕</string>
+    <string name="slash_clean">系统清理</string>
+    <string name="slash_battery">查看电池状态</string>
+    <string name="slash_wifi">WiFi 开关</string>
+    <string name="slash_flashlight">手电筒开关</string>
+    <string name="slash_volume">音量控制（无参数显示当前音量）</string>
+    <string name="slash_pet">切换桌面宠物</string>
+    <string name="slash_voice">切换语音输入模式</string>
+    <string name="slash_timer">设置定时器（如 /timer 10m）</string>
+    <string name="slash_reminder">设置提醒</string>
+    <string name="slash_translate">翻译文本</string>
+    <string name="slash_image">图片生成</string>
+    <string name="slash_command_placeholder">功能开发中</string>
 </resources>

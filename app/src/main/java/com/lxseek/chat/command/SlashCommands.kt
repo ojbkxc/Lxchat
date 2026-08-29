@@ -3,10 +3,13 @@ package com.lxseek.chat.command
 import com.lxseek.chat.viewmodel.ChatViewModel
 
 /**
- * 可扩展的斜杠命令系统。
+ * Extensible slash-command system.
  *
- * 发送时若输入文本精确命中某条命令的 [Command.trigger]，就执行对应动作而不是当作普通消息发送。
- * 新增命令只需在 [all] 列表追加一条 [Command] 并在 [execute] 中补充分支即可。
+ * When the user sends text that exactly matches a [Command.trigger] (or a trigger followed by
+ * parameters for commands with [Command.hasParams]), the corresponding action is executed
+ * instead of treating the input as a normal message.
+ *
+ * To add a command: append a [Command] to [all] and add a branch in [execute].
  */
 object SlashCommands {
 
@@ -14,42 +17,97 @@ object SlashCommands {
         val trigger: String,
         val label: String,
         val description: String,
+        /** True if this command accepts trailing parameters (e.g. "/model gpt-4"). */
+        val hasParams: Boolean = false,
     )
 
-    /** 所有已注册命令，按 trigger 排序，保证提示顺序稳定。 */
+    /** All registered commands, sorted by trigger for stable suggestion ordering. */
     val all: List<Command> = listOf(
-        Command("/help", "帮助", "显示所有可用斜杠命令"),
+        // ── Conversation ─────────────────────────────────────────
         Command("/new", "新对话", "立即创建并切换到新对话"),
         Command("/stop", "停止", "停止当前正在进行的生成"),
+        Command("/clear", "清空", "清除当前对话消息（保留对话但不显示消息）"),
+        Command("/search", "搜索", "搜索对话历史", hasParams = true),
         Command("/share", "分享", "导出并分享当前对话"),
         Command("/fork", "复制分支", "从当前对话新建一个可继续的分支"),
+        // ── Configuration ────────────────────────────────────────
+        Command("/model", "模型", "切换/选择模型（无参数时显示列表）", hasParams = true),
+        Command("/pet", "宠物", "切换桌面宠物", hasParams = true),
+        Command("/voice", "语音", "切换语音输入模式"),
+        Command("/settings", "设置", "快速打开设置页面"),
+        // ── Export / help ─────────────────────────────────────────
+        Command("/export", "导出", "导出对话为文件（txt/md）"),
+        Command("/help", "帮助", "显示所有可用斜杠命令"),
     )
 
-    /** 前缀过滤：输入为 "/" 时返回全部，否则返回 trigger 以输入开头的命令。 */
+    /**
+     * Parse raw user input into a [Command] and its optional parameter string.
+     *
+     * Returns `null` when the input does not start with a known trigger.
+     * Example: "/model gpt-4" → (Command("/model"), "gpt-4").
+     */
+    fun parseCommand(input: String): Pair<Command, String?>? {
+        val text = input.trim()
+        if (!text.startsWith("/")) return null
+        // Split into the first token (trigger) and the remainder (parameters).
+        val spaceIdx = text.indexOf(' ')
+        if (spaceIdx < 0) {
+            val cmd = all.firstOrNull { it.trigger == text } ?: return null
+            return cmd to null
+        }
+        val trigger = text.substring(0, spaceIdx)
+        val param = text.substring(spaceIdx + 1).trim()
+        val cmd = all.firstOrNull { it.trigger == trigger } ?: return null
+        return cmd to if (param.isEmpty()) null else param
+    }
+
+    /** Prefix filter: return all commands when input is "/", otherwise those whose trigger starts with the input. */
     fun filterByPrefix(input: String): List<Command> {
         val text = input.trim()
         if (text == "/") return all
         return all.filter { it.trigger.startsWith(text) }
     }
 
-    /** 完全匹配：发送时调用，命中返回对应命令，否则 null。 */
+    /**
+     * Match a full input string (possibly with parameters) to a command.
+     * Replaces the old [findExact] to support parameterized commands like "/timer 10m".
+     */
+    fun findMatch(input: String): Command? = parseCommand(input)?.first
+
+    /** Legacy exact-match kept for backward compatibility (no parameters). */
     fun findExact(input: String): Command? =
         all.firstOrNull { input.trim() == it.trigger }
 
     /**
-     * 尝试把 [text] 当作斜杠命令执行。
-     * 返回 true 表示已消费输入（调用方应清空输入框）；false 表示不是命令，走正常发送。
+     * Attempt to execute [text] as a slash command.
+     * Returns `true` if the input was consumed (caller should clear the input field);
+     * `false` if it is not a command and should be sent as a normal message.
      */
     suspend fun execute(text: String, viewModel: ChatViewModel): Boolean {
-        val command = findExact(text) ?: return false
+        val parsed = parseCommand(text) ?: return false
+        val command = parsed.first
+        val param = parsed.second
         when (command.trigger) {
-            "/help" -> viewModel.emitSnackbar(
-                all.joinToString("\n") { "${it.trigger} — ${it.description}" },
-            )
+            // ── Conversation ──────────────────────────────────────────
             "/new" -> viewModel.createNewChat()
             "/stop" -> viewModel.stopGeneration()
+            "/clear" -> viewModel.clearConversation()
+            "/search" -> viewModel.searchConversationHistory(param.orEmpty())
             "/share" -> viewModel.shareConversation()
             "/fork" -> viewModel.forkConversationFrom(null)
+            // ── Configuration ─────────────────────────────────────────
+            "/model" -> viewModel.switchModel(param)
+            "/pet" -> viewModel.switchPet(param)
+            "/voice" -> viewModel.toggleVoiceInput()
+            "/settings" -> viewModel.openSettings()
+            // ── Export / help ─────────────────────────────────────────
+            "/export" -> viewModel.exportConversation()
+            "/help" -> viewModel.emitSnackbar(
+                all.joinToString("\n") {
+                    val suffix = if (it.hasParams) " <…>" else ""
+                    "${it.trigger}$suffix — ${it.description}"
+                },
+            )
         }
         return true
     }

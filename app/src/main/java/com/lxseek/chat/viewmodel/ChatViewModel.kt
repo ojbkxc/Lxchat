@@ -1009,4 +1009,173 @@ class ChatViewModel(
     )
 
     suspend fun loadDraft(conversationId: String): LoadedComposerDraft = composerDrafts.load(conversationId)
+
+    // ── Slash command handlers (see SlashCommands.kt) ──────────────────────
+    // Methods invoked by the slash-command dispatcher. Existing actions delegate to their
+    // dedicated controllers; device/assistant actions that need platform APIs emit a snackbar
+    // placeholder until a ToolProvider integration is wired.
+
+    /** /clear — remove all visible messages from the current conversation (keeps the chat shell). */
+    fun clearConversation() {
+        val convId = currentConversationId.value
+        if (convId == null) {
+            emitSnackbar("没有当前对话")
+            return
+        }
+        val msgs = messages.value
+        if (msgs.isEmpty()) {
+            emitSnackbar("当前对话已为空")
+            return
+        }
+        viewModelScope.launch {
+            msgs.forEach { deleteMessage(it.id) }
+            emitSnackbar("已清除 ${msgs.size} 条消息")
+        }
+    }
+
+    /** /search <keyword> — search conversation history for the keyword. */
+    fun searchConversationHistory(keyword: String) {
+        if (keyword.isBlank()) {
+            emitSnackbar("用法: /search <关键词>")
+            return
+        }
+        viewModelScope.launch {
+            val results = convRepo.searchMessages(keyword)
+            if (results.isEmpty()) {
+                emitSnackbar("未找到包含 \"$keyword\" 的消息")
+            } else {
+                val preview = results.take(10).joinToString("\n") { it.text.take(60) }
+                emitSnackbar("找到 ${results.size} 条匹配消息:\n$preview")
+            }
+        }
+    }
+
+    /** /export — export the current conversation to a file (delegates to share for now). */
+    fun exportConversation() = shareConversation()
+
+    /** /summarize — ask the AI to summarize the current conversation. */
+    fun summarizeConversation() {
+        if (currentConversationId.value == null) {
+            emitSnackbar("没有当前对话")
+            return
+        }
+        if (messages.value.isEmpty()) {
+            emitSnackbar("当前对话为空，无需总结")
+            return
+        }
+        viewModelScope.launch { sendMessage("请总结当前对话的要点") }
+    }
+
+    /** /model [name] — switch model, or list available models when no argument is given. */
+    fun switchModel(name: String?) {
+        if (name.isNullOrBlank()) {
+            val current = settings.selectedModel.value
+            val models = settings.availableModels.value
+            val list = models.entries.flatMap { (provider, ms) -> ms.map { "$provider / $it" } }
+            emitSnackbar(
+                if (list.isEmpty()) "当前模型: $current"
+                else "当前模型: $current\n可用模型:\n${list.joinToString("\n")}",
+            )
+        } else {
+            setActiveModel(name)
+            emitSnackbar("已切换模型: $name")
+        }
+    }
+
+    /** /settings — open the settings page. */
+    fun openSettings() = emitSnackbar("请通过侧边菜单打开设置页面")
+
+    /** /tools — list available tool providers from enabled plugins. */
+    fun listTools() {
+        val plugins = pluginHost.plugins.value
+        val enabled = plugins.filter { it.enabled }
+        emitSnackbar(
+            if (enabled.isEmpty()) "暂无可用工具"
+            else "可用工具插件:\n${enabled.joinToString("\n") { "${it.manifest.id} — ${it.manifest.name}" }}",
+        )
+    }
+
+    /** /skills — list installed skills (plugins) with their enabled state. */
+    fun listSkills() {
+        val plugins = pluginHost.plugins.value
+        emitSnackbar(
+            if (plugins.isEmpty()) "暂无已安装技能"
+            else "已安装技能:\n${plugins.joinToString("\n") { "${it.manifest.id} (${if (it.enabled) "启用" else "禁用"})" }}",
+        )
+    }
+
+    /** /memory — list saved memory files. */
+    fun listMemory() {
+        val files = memoryManager.listFiles()
+        emitSnackbar(
+            if (files.isEmpty()) "暂无记忆内容"
+            else "记忆文件:\n${files.joinToString("\n") { "${it.name} — ${it.description}" }}",
+        )
+    }
+
+    /** /screenshot — capture the current screen. */
+    fun takeScreenshot() = emitSnackbar("截屏功能开发中")
+
+    /** /clean — trigger system cleanup. */
+    fun cleanSystem() = emitSnackbar("系统清理功能开发中")
+
+    /** /battery — show battery status. */
+    fun getBatteryStatus() = emitSnackbar("电池状态查询功能开发中")
+
+    /** /wifi — toggle WiFi. */
+    fun toggleWifi() = emitSnackbar("WiFi 开关功能开发中")
+
+    /** /flashlight — toggle flashlight. */
+    fun toggleFlashlight() = emitSnackbar("手电筒开关功能开发中")
+
+    /** /volume [level] — control volume, or show current level when no argument is given. */
+    fun controlVolume(level: String?) {
+        if (level.isNullOrBlank()) emitSnackbar("音量控制功能开发中（当前音量查询）")
+        else emitSnackbar("音量控制功能开发中（设置音量: $level）")
+    }
+
+    /** /pet [name] — switch desktop pet. */
+    fun switchPet(name: String?) {
+        if (name.isNullOrBlank()) emitSnackbar("桌面宠物功能开发中（显示当前宠物）")
+        else emitSnackbar("桌面宠物功能开发中（切换到: $name）")
+    }
+
+    /** /voice — toggle voice input mode (delegates to the voice conversation controller). */
+    fun toggleVoiceInput() = toggleVoiceConversation()
+
+    /** /timer <duration> — set a timer (e.g. "10m"). */
+    fun setTimer(duration: String) {
+        if (duration.isBlank()) {
+            emitSnackbar("用法: /timer <时长>（如 /timer 10m）")
+            return
+        }
+        emitSnackbar("定时器功能开发中（时长: $duration）")
+    }
+
+    /** /reminder <text> — set a reminder. */
+    fun setReminder(text: String) {
+        if (text.isBlank()) {
+            emitSnackbar("用法: /reminder <内容>")
+            return
+        }
+        emitSnackbar("提醒功能开发中（内容: $text）")
+    }
+
+    /** /translate <text> — translate text via the active AI model. */
+    fun translateText(text: String) {
+        if (text.isBlank()) {
+            emitSnackbar("用法: /translate <文本>")
+            return
+        }
+        viewModelScope.launch { sendMessage("请翻译以下文本:\n$text") }
+    }
+
+    /** /image <prompt> — generate an image from a prompt via the active AI model. */
+    fun generateImage(prompt: String) {
+        if (prompt.isBlank()) {
+            emitSnackbar("用法: /image <描述>")
+            return
+        }
+        viewModelScope.launch { sendMessage("请生成图片: $prompt") }
+    }
 }

@@ -1953,4 +1953,33 @@
     <string name="err_action_increase_max_tokens">Increase Max Tokens</string>
     <string name="markdown_mermaid_engine_error">Chart engine not ready (needs a one-time download; the download failed)</string>
     <string name="markdown_rendering_mermaid">Rendering Mermaid chart…</string>
+
+    <!-- Slash command descriptions (see SlashCommands.kt). -->
+    <string name="slash_help">Show all available slash commands</string>
+    <string name="slash_new">Create and switch to a new conversation</string>
+    <string name="slash_stop">Stop the current generation</string>
+    <string name="slash_share">Export and share the current conversation</string>
+    <string name="slash_fork">Fork the current conversation into a new branch</string>
+    <string name="slash_clear">Clear messages in the current conversation</string>
+    <string name="slash_search">Search conversation history</string>
+    <string name="slash_export">Export the conversation to a file (txt/md)</string>
+    <string name="slash_summarize">Summarize the current conversation</string>
+    <string name="slash_model">Switch or list available models</string>
+    <string name="slash_settings">Open the settings page</string>
+    <string name="slash_tools">List available tools</string>
+    <string name="slash_skills">List installed skills</string>
+    <string name="slash_memory">View saved memory content</string>
+    <string name="slash_screenshot">Take a screenshot</string>
+    <string name="slash_clean">Run system cleanup</string>
+    <string name="slash_battery">Show battery status</string>
+    <string name="slash_wifi">Toggle WiFi</string>
+    <string name="slash_flashlight">Toggle flashlight</string>
+    <string name="slash_volume">Control or show volume level</string>
+    <string name="slash_pet">Switch desktop pet</string>
+    <string name="slash_voice">Toggle voice input mode</string>
+    <string name="slash_timer">Set a timer (e.g. /timer 10m)</string>
+    <string name="slash_reminder">Set a reminder</string>
+    <string name="slash_translate">Translate text</string>
+    <string name="slash_image">Generate an image from a prompt</string>
+    <string name="slash_command_placeholder">Feature under development</string>
 </resources>
