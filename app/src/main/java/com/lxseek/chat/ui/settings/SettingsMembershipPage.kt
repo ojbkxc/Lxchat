@@ -486,9 +486,7 @@ private fun YipayUpgradeSection(onUpgrade: (MembershipTier) -> Unit) {
 
 // Section D: Device ID card (read-only display)
 
-/**
-  * (documentation)
-  * (documentation)
+/** Device ID display section (read-only). */
 @Composable
 private fun DeviceIdCardSection(deviceIdDisplay: String) {
     Card(
@@ -600,9 +598,7 @@ private fun ActivationResultFeedback(result: ActivationResult) {
 
 // Section F: Free trial (3 days)
 
-/**
-  * (documentation)
-  * (documentation)
+/** Free trial section (3 days). */
 @Composable
 private fun FreeTrialSection(
     isTrialing: Boolean,
@@ -649,9 +645,7 @@ private fun FreeTrialSection(
 
 // Section G: Renew membership
 
-/**
-  * (documentation)
-  * (documentation)
+/** Renewal section: active but expiring soon. */
 @Composable
 private fun RenewMembershipSection(
     isRenewing: Boolean,
