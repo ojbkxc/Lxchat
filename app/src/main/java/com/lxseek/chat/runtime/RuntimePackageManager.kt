@@ -49,41 +49,69 @@ class RuntimePackageManager(private val context: Context) {
      * 下载采用流式落盘（[HttpClient.downloadToFile]）而非 [HttpClient.getBytes]：引擎包可达
      * 数百 MB，全量加载到 ByteArray 会 OOM；流式 copyTo 直接写文件，内存占用与包大小无关。
      */
-    suspend fun install(engineId: String, version: String, compressUrl: String): File =
-        withContext(Dispatchers.IO) {
-            val target = versionRoot(engineId, version)
-            if (target.isDirectory && target.resolve("manifest.json").isFile) {
-                // 已存在则幂等返回。
-                return@withContext target
-            }
-            val url = compressUrl.replace("{version}", version)
-            val tmp = File(context.filesDir, "runtimes/.downloads/${safeName(engineId)}-${safeName(version)}.zip")
-            tmp.parentFile?.mkdirs()
-            // 流式下载到临时文件：避免大包全量入内存导致 OOM。
-            try {
-                HttpClient.downloadToFile(url, tmp)
-            } catch (e: IOException) {
-                tmp.delete()
-                throw IOException("Engine download failed: ${e.message}", e)
-            }
-            // 先校验包结构再落位：坏包不写入安装目录，并清理临时文件。
-            target.mkdirs()
-            try {
-                unzip(tmp, target)
-            } catch (e: Exception) {
-                target.deleteRecursively()
-                tmp.delete()
-                throw IOException("Invalid engine package or extraction failed: ${e.message}", e)
-            } finally {
-                tmp.delete()
-            }
-            if (target.resolve("manifest.json").isFile != true) {
-                target.deleteRecursively()
-                throw IOException("Engine package missing manifest.json")
-            }
-            makeExecutable(target)
+    suspend fun install(
+        engineId: String,
+        version: String,
+        compressUrl: String,
+        onLog: ((String) -> Unit)? = null,
+    ): File = withContext(Dispatchers.IO) {
+        val target = versionRoot(engineId, version)
+        if (target.isDirectory && target.resolve("manifest.json").isFile) {
+            // 已存在则幂等返回。
+            onLog?.invoke("[$engineId] $version 已安装，跳过")
             return@withContext target
         }
+        val url = compressUrl.replace("{version}", version)
+        val tmp = File(context.filesDir, "runtimes/.downloads/${safeName(engineId)}-${safeName(version)}.zip")
+        tmp.parentFile?.mkdirs()
+        // 流式下载到临时文件：避免大包全量入内存导致 OOM。
+        onLog?.invoke("[$engineId] 开始下载 $version")
+        onLog?.invoke("[$engineId] 地址: $url")
+        try {
+            HttpClient.downloadToFile(url, tmp)
+            onLog?.invoke("[$engineId] 下载完成（${formatSize(tmp.length())}）")
+        } catch (e: IOException) {
+            tmp.delete()
+            // 仅输出干净的错误摘要，避免将来源字符串中的乱码带进 UI 日志。
+            val detail = (e.message ?: "").replace(Regex("[^\\u0020-\\u007E]"), "").ifBlank { e::class.simpleName ?: "" }
+            onLog?.invoke("[$engineId] 下载失败: $detail")
+            throw IOException("Engine download failed: ${e.message}", e)
+        }
+        // 先校验包结构再落位：坏包不写入安装目录，并清理临时文件。
+        onLog?.invoke("[$engineId] 解压中…")
+        target.mkdirs()
+        try {
+            unzip(tmp, target)
+        } catch (e: Exception) {
+            target.deleteRecursively()
+            tmp.delete()
+            onLog?.invoke("[$engineId] 解压失败: ${e.message}")
+            throw IOException("Invalid engine package or extraction failed: ${e.message}", e)
+        } finally {
+            tmp.delete()
+        }
+        if (target.resolve("manifest.json").isFile != true) {
+            target.deleteRecursively()
+            onLog?.invoke("[$engineId] 校验失败: 缺少 manifest.json")
+            throw IOException("Engine package missing manifest.json")
+        }
+        makeExecutable(target)
+        onLog?.invoke("[$engineId] 安装完成: $version")
+        return@withContext target
+    }
+
+    /** 字节数格式化为可读大小（用于安装日志进度显示）。 */
+    private fun formatSize(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val units = arrayOf("KB", "MB", "GB")
+        var v = bytes.toDouble()
+        var i = -1
+        do {
+            v /= 1024.0
+            i++
+        } while (v >= 1024.0 && i < units.lastIndex)
+        return "%.1f %s".format(java.util.Locale.US, v, units[i])
+    }
 
     /** 读取并解析引擎 manifest；缺失或损坏返回 null。 */
     fun readManifest(engineId: String, version: String): RuntimeManifest? {

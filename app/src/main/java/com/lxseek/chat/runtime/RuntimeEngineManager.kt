@@ -55,7 +55,11 @@ class RuntimeEngineManager(
      * 已装版本之外的最高兼容版本，优先最高）；低于约束的版本会被拒绝并说明原因。
      * 下载/解压为阻塞操作，交由 [RuntimePackageManager.install] 切到 IO 线程执行。
      */
-    suspend fun installRuntime(meta: MarketPluginMeta, requestedVersion: String?): InstallResult {
+    suspend fun installRuntime(
+        meta: MarketPluginMeta,
+        requestedVersion: String?,
+        onLog: ((String) -> Unit)? = null,
+    ): InstallResult {
         val engineId = meta.id
         // 自动匹配：在 meta.versions（缺省为 [meta.version]）中选择满足 meta.minVersion 的最高版本。
         val min = Version.parse(meta.minVersion)
@@ -76,8 +80,9 @@ class RuntimeEngineManager(
                 "Version $selected below min version ${meta.minVersion} for engine $engineId",
             )
         }
+        onLog?.invoke("[$engineId] 已选版本: $selected（最小要求 ${meta.minVersion ?: "无"}）")
         val url = meta.downloadUrl ?: throw IllegalArgumentException("Engine $engineId missing downloadUrl")
-        val root = packageManager.install(engineId, selected, url)
+        val root = packageManager.install(engineId, selected, url, onLog)
         val manifest = packageManager.readManifest(engineId, selected)
             ?: throw IllegalStateException("Engine $engineId: cannot read manifest after install")
         return InstallResult(selected, RuntimeEnginePlugin(engineId, selected, manifest, processManager))

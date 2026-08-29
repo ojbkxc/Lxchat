@@ -1810,6 +1810,8 @@
     <string name="runtime_engine_action_stop">停止</string>
     <string name="runtime_engine_action_uninstall">卸载</string>
     <string name="runtime_engine_refresh">刷新</string>
+    <string name="runtime_engine_version_pick">版本：%1$s</string>
+    <string name="runtime_engine_version_latest">最新</string>
     <string name="runtime_engine_no_manager">运行时引擎模块不可用</string>
     <string name="runtime_engine_op_start">启动</string>
     <string name="runtime_engine_op_install">安装</string>

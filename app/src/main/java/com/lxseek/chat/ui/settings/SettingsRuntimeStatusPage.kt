@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -18,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
@@ -25,6 +28,7 @@ import com.lxseek.chat.androidcontrol.AndroidUiControllerService
 import com.lxseek.chat.model.ModelId
 import com.lxseek.chat.model.apiModelName
 import com.lxseek.chat.runtime.RuntimeEnginePlugin
+import com.lxseek.chat.runtime.Version
 import com.lxseek.chat.util.TtsManager
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
@@ -76,6 +80,8 @@ fun SettingsRuntimeStatusPage(
     val scope = rememberCoroutineScope()
     val catalog by market.catalog.collectAsState()
     var installingEngines by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val selectedVersions = remember { mutableStateMapOf<String, String>() }
+    val engineLogs = remember { mutableStateMapOf<String, String>() }
     var refreshedOnce by remember { mutableStateOf(false) }
     val known = remember { KNOWN_ENGINES }
 
@@ -241,6 +247,13 @@ fun SettingsRuntimeStatusPage(
                 val status = runtimeEngineManager.status(engineId)
                 val meta = catalog.firstOrNull { it.id == engineId }
                 val isInstalling = engineId in installingEngines
+                val min = Version.parse(meta?.minVersion)
+                val availableVersions = (meta?.versions ?: emptyList())
+                    .sortedWith(compareByDescending { Version.parse(it) })
+                    .ifEmpty { meta?.version?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList() }
+                val effectiveSelected = selectedVersions[engineId]
+                    ?: availableVersions.firstOrNull { min == Version.NONE || Version.parse(it).satisfiesMin(min) }
+                    ?: availableVersions.firstOrNull()
                 EngineRow(
                     engineId = engineId,
                     installed = status.installed,
@@ -248,6 +261,10 @@ fun SettingsRuntimeStatusPage(
                     running = status.running,
                     canInstall = meta != null && !isInstalling,
                     isInstalling = isInstalling,
+                    versions = availableVersions,
+                    selectedVersion = effectiveSelected,
+                    onVersionSelected = { selectedVersions[engineId] = it },
+                    log = engineLogs[engineId].orEmpty(),
                     onAction = { action ->
                         scope.launch {
                             when (action) {
@@ -259,11 +276,19 @@ fun SettingsRuntimeStatusPage(
                                     }
                                 }
                                 EngineAction.Stop -> runtimeEngineManager.stop(engineId)
-                                EngineAction.Install -> {
+                                is EngineAction.Install -> {
+                                    val version = action.selectedVersion
+                                    engineLogs[engineId] = ""
                                     installingEngines = installingEngines + engineId
                                     runCatching {
-                                        market.installRuntimeInternal(meta!!)
+                                        market.installRuntimeInternal(meta!!, version) { line ->
+                                            scope.launch { engineLogs[engineId] = engineLogs.getValue(engineId) + line + "\n" }
+                                        }
                                     }.onFailure { e ->
+                                        scope.launch {
+                                            val msg = e.message ?: e::class.simpleName ?: ""
+                                            engineLogs[engineId] = engineLogs.getValue(engineId) + "[$engineId] 失败: $msg\n"
+                                        }
                                         viewModel.emitSnackbar(formatEngineError(context, R.string.runtime_engine_op_install, e))
                                     }
                                     installingEngines = installingEngines - engineId
@@ -305,7 +330,12 @@ private fun StatusLine(title: String, positive: Boolean) {
 
 // ── Runtime engines helpers ──
 
-private enum class EngineAction { Start, Stop, Install, Uninstall }
+private sealed interface EngineAction {
+    data object Start : EngineAction
+    data object Stop : EngineAction
+    data class Install(val selectedVersion: String?) : EngineAction
+    data object Uninstall : EngineAction
+}
 
 /**
  * The only true runtime engines displayed on this page: Node.js, Python and ffmpeg.
@@ -344,6 +374,10 @@ private fun EngineRow(
     running: Boolean,
     canInstall: Boolean,
     isInstalling: Boolean,
+    versions: List<String>,
+    selectedVersion: String?,
+    onVersionSelected: (String) -> Unit,
+    log: String,
     onAction: (EngineAction) -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -408,8 +442,15 @@ private fun EngineRow(
                         }
                     }
                     else -> {
+                        VersionSelector(
+                            versions = versions,
+                            selected = selectedVersion,
+                            onSelected = onVersionSelected,
+                            enabled = canInstall,
+                        )
+                        Spacer(Modifier.width(8.dp))
                         OutlinedButton(
-                            onClick = { onAction(EngineAction.Install) },
+                            onClick = { onAction(EngineAction.Install(selectedVersion)) },
                             enabled = canInstall,
                         ) {
                             Text(
@@ -422,6 +463,93 @@ private fun EngineRow(
                         }
                     }
                 }
+            }
+
+            if (log.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 160.dp),
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                ) {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()).padding(10.dp),
+                    ) {
+                        Text(
+                            text = log,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VersionSelector(
+    versions: List<String>,
+    selected: String?,
+    onSelected: (String) -> Unit,
+    enabled: Boolean,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(
+            onClick = { expanded = true },
+            enabled = enabled,
+            contentPadding = PaddingValues(horizontal = 12.dp),
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.runtime_engine_version_pick,
+                    selected ?: versions.firstOrNull().orEmpty(),
+                ),
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(imageVector = Icons.Default.KeyboardArrowDown, contentDescription = null)
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            versions.forEach { v ->
+                val latest = v == versions.firstOrNull()
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(v)
+                            if (latest) {
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(R.string.runtime_engine_version_latest),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                    },
+                    leadingIcon = if (v == selected) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                    onClick = {
+                        onSelected(v)
+                        expanded = false
+                    },
+                )
             }
         }
     }

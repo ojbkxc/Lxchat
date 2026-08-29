@@ -237,11 +237,15 @@ class PluginMarket(
      * 前置检查重复安装；按约束选择版本后下载解压并注册宿主、持久化。
      * 改为 suspend 以便用 [installMutex] 保护读改写；调用方均在协程上下文。
      */
-    suspend fun installRuntimeInternal(meta: MarketPluginMeta, requestedVersion: String? = null) = installMutex.withLock {
+    suspend fun installRuntimeInternal(
+        meta: MarketPluginMeta,
+        requestedVersion: String? = null,
+        onLog: ((String) -> Unit)? = null,
+    ) = installMutex.withLock {
         if (_installations.value.any { it.pluginId == meta.id }) {
             throw IllegalArgumentException("该插件已安装")
         }
-        val installation = buildRuntimeInstallation(meta, requestedVersion)
+        val installation = buildRuntimeInstallation(meta, requestedVersion, onLog)
         host.register(buildPlugin(installation), initiallyEnabled = true)
         val updated = _installations.value + installation
         _installations.value = updated
@@ -252,10 +256,11 @@ class PluginMarket(
     private suspend fun buildRuntimeInstallation(
         meta: MarketPluginMeta,
         requestedVersion: String?,
+        onLog: ((String) -> Unit)?,
     ): MarketInstallation {
         val rtm = runtimeManager
             ?: throw IllegalStateException("运行时引擎模块未启用")
-        val result = rtm.installRuntime(meta, requestedVersion)
+        val result = rtm.installRuntime(meta, requestedVersion, onLog)
         return MarketInstallation(
             pluginId = meta.id,
             sourceId = meta.sourceId,

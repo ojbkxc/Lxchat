@@ -991,6 +991,8 @@
     <string name="runtime_engine_status_installing">Installing…</string>
     <string name="runtime_engine_action_installing">Installing…</string>
     <string name="runtime_engine_refresh">Refresh</string>
+    <string name="runtime_engine_version_pick">Version: %1$s</string>
+    <string name="runtime_engine_version_latest">Latest</string>
     <string name="runtime_engine_no_manager">Runtime engine module unavailable</string>
     <string name="runtime_engine_op_start">Start</string>
     <string name="runtime_engine_op_install">Install</string>
