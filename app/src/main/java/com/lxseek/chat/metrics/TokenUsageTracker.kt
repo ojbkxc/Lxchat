@@ -37,6 +37,15 @@ class TokenUsageTracker {
         val byProvider: Map<String, Long>,
     )
 
+    /** Aggregated token stats for a single tool, accumulated across calls. */
+    data class ToolTokenStats(
+        val toolName: String,
+        val totalInputTokens: Long,
+        val totalOutputTokens: Long,
+        val callCount: Int,
+        val avgTokensPerCall: Long = if (callCount == 0) 0L else (totalInputTokens + totalOutputTokens) / callCount,
+    )
+
     private val _records = MutableStateFlow<List<UsageRecord>>(emptyList())
     val records: StateFlow<List<UsageRecord>> = _records.asStateFlow()
 
@@ -45,6 +54,11 @@ class TokenUsageTracker {
 
     private val _sessionTotals = MutableStateFlow<Map<String, Long>>(emptyMap())
     val sessionTotals: StateFlow<Map<String, Long>> = _sessionTotals.asStateFlow()
+
+    // Per-tool token accumulation: toolName -> (inputTokens, outputTokens, callCount).
+    private val _toolStats = MutableStateFlow<Map<String, ToolTokenStats>>(emptyMap())
+    /** Live per-tool token stats, keyed by tool name. */
+    val toolStats: StateFlow<Map<String, ToolTokenStats>> = _toolStats.asStateFlow()
 
     /** Record a single LLM call's token usage. */
     fun record(record: UsageRecord) {
@@ -99,7 +113,44 @@ class TokenUsageTracker {
         _records.value = emptyList()
         _cumulative.value = 0L
         _sessionTotals.value = emptyMap()
+        _toolStats.value = emptyMap()
     }
+
+    /**
+     * Records token usage attributed to a single tool invocation. Accumulates
+     * per-tool stats exposed via [getToolUsageStats] / [toolStats]; does NOT
+     * emit an [UsageRecord] (tool calls are not LLM calls). Use the regular
+     * [record] overload for the LLM call that triggered the tool.
+     */
+    fun recordToolUsage(toolName: String, inputTokens: Int, outputTokens: Int) {
+        if (toolName.isBlank()) return
+        val input  = inputTokens.coerceAtLeast(0).toLong()
+        val output = outputTokens.coerceAtLeast(0).toLong()
+        _toolStats.value = _toolStats.value.toMutableMap().apply {
+            val prev = get(toolName)
+            put(
+                toolName,
+                if (prev == null) {
+                    ToolTokenStats(
+                        toolName = toolName,
+                        totalInputTokens = input,
+                        totalOutputTokens = output,
+                        callCount = 1,
+                    )
+                } else {
+                    ToolTokenStats(
+                        toolName = toolName,
+                        totalInputTokens = prev.totalInputTokens + input,
+                        totalOutputTokens = prev.totalOutputTokens + output,
+                        callCount = prev.callCount + 1,
+                    )
+                }
+            )
+        }
+    }
+
+    /** Returns a snapshot of per-tool token stats keyed by tool name. */
+    fun getToolUsageStats(): Map<String, ToolTokenStats> = _toolStats.value
 
     /** Estimate tokens from character count when the API does not return usage info.
      *  Uses the common ~4 chars per token heuristic. */

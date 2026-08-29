@@ -1668,6 +1668,27 @@
     <string name="membership_payment_premium_price">¥0.30</string>
     <string name="membership_payment_pro_price">¥0.50</string>
     <string name="membership_revoke">撤销会员</string>
+    <string name="membership_device_id">设备身份证</string>
+    <string name="membership_device_id_desc">用于激活码绑定，一码一机</string>
+    <string name="membership_activate_code">激活码</string>
+    <string name="membership_activate_code_hint">请输入激活码（XXXX-XXXX-XXXX-XXXX）</string>
+    <string name="membership_activate">激活</string>
+    <string name="membership_activate_success">激活成功</string>
+    <string name="membership_activate_invalid">激活码无效</string>
+    <string name="membership_activate_already_used">激活码已被其他设备使用</string>
+    <string name="membership_activate_expired">激活码已过期</string>
+    <string name="membership_activate_network_error">网络错误，请重试</string>
+    <string name="membership_trial_button">免费试用 3 天</string>
+    <string name="membership_trial_success">试用已激活：3 天高级版</string>
+    <string name="membership_trial_used">试用已使用过</string>
+    <string name="membership_trial_failed">试用激活失败</string>
+    <string name="membership_renew_button">续费会员</string>
+    <string name="membership_renewing">续费中…</string>
+    <string name="membership_renew_success">续费成功</string>
+    <string name="membership_renew_failed">续费失败</string>
+    <string name="membership_payment_confirming">正在向服务器确认付款…</string>
+    <string name="membership_payment_not_paid">服务器未确认付款</string>
+    <string name="membership_trial_in_progress">正在激活试用…</string>
 
     <!-- ── Missing translations: IM multi-channel management ─────────────────────── -->
     <string name="im_channels_title">IM 渠道管理</string>

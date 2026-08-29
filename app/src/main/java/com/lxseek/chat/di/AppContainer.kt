@@ -27,7 +27,10 @@ import com.lxseek.chat.tool.NotificationToolProvider
 import com.lxseek.chat.tool.ScreenRecordToolProvider
 import com.lxseek.chat.tool.UsageStatsToolProvider
 import com.lxseek.chat.tool.McpToolProvider
+import com.lxseek.chat.tool.ConfigAuditLog
+import com.lxseek.chat.tool.ConfigSnapshotManager
 import com.lxseek.chat.tool.MetaToolProvider
+import com.lxseek.chat.tool.ToolPermissionMatrix
 import com.lxseek.chat.mcp.McpRegistry
 import com.lxseek.chat.plugin.McpPlugin
 import com.lxseek.chat.plugin.BuiltinSkillsPlugin
@@ -453,11 +456,33 @@ class AppContainer(private val appContext: Context) {
         UsageStatsToolProvider(application)
     }
 
+    /** In-memory config snapshot ring for safe rollback (max 10 snapshots). */
+    val configSnapshotManager: ConfigSnapshotManager by lazy { ConfigSnapshotManager() }
+
+    /** In-memory bounded audit log of configuration changes (max 100 entries). */
+    val configAuditLog: ConfigAuditLog by lazy { ConfigAuditLog() }
+
+    /**
+     * Per-tool permission matrix. Built without pluginHost to avoid the same
+     * circular lazy dependency as metaToolProvider; the matrix still supports
+     * explicit setPermission overrides for any tool name.
+     */
+    val toolPermissionMatrix: ToolPermissionMatrix by lazy {
+        ToolPermissionMatrix(pluginHost = null, settings = settingsRepository)
+    }
+
     /** Conversation-level meta tools: model can tune app config via tools. */
     val metaToolProvider: MetaToolProvider by lazy {
         // pluginHost is null to avoid a circular lazy dependency
         // (pluginHost references metaToolProvider in its listOfNotNull).
-        MetaToolProvider(settingsRepository, skillHost, pluginHost = null)
+        MetaToolProvider(
+            settingsRepository,
+            skillHost,
+            pluginHost = null,
+            permissionMatrix = toolPermissionMatrix,
+            snapshotManager = configSnapshotManager,
+            auditLog = configAuditLog,
+        )
     }
 
     /** IM gateway bridge: watches persisted config and exposes the active [com.lxseek.chat.im.MessageChannel]. */

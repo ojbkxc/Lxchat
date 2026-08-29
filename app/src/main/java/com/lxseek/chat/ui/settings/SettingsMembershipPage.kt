@@ -48,9 +48,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
+import com.lxseek.chat.membership.ActivationManager
+import com.lxseek.chat.membership.ActivationResult
+import com.lxseek.chat.membership.LocalCloudApi
 import com.lxseek.chat.membership.LocalMembershipProvider
 import com.lxseek.chat.membership.MembershipStatus
 import com.lxseek.chat.membership.MembershipTier
+import com.lxseek.chat.membership.PendingOrderStore
 import com.lxseek.chat.membership.RedemptionResult
 import com.lxseek.chat.membership.YipayConfig
 import com.lxseek.chat.membership.YipayPaymentManager
@@ -83,6 +87,15 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val paymentRedirecting = stringResource(R.string.membership_payment_redirecting)
 
+    // 设备身份证 + 激活码体系：本地实现 LocalCloudApi，封装在 ActivationManager 中。
+    // 以后云端部署后只需把 LocalCloudApi 换成 RemoteCloudApi，UI 无需改动。
+    val activationManager = remember {
+        ActivationManager(LocalCloudApi(context), context)
+    }
+    var activationCodeInput by remember { mutableStateOf("") }
+    var activationResult by remember { mutableStateOf<ActivationResult?>(null) }
+    var isActivating by remember { mutableStateOf(false) }
+
     BackHandler { onBack() }
 
     Scaffold(
@@ -108,6 +121,37 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item { MembershipStatusCard(status) }
+
+            item {
+                DeviceIdCardSection(
+                    deviceIdDisplay = activationManager.getDeviceIdDisplay(),
+                )
+            }
+
+            item {
+                ActivationCodeSection(
+                    code = activationCodeInput,
+                    onCodeChange = {
+                        activationCodeInput = it
+                        activationResult = null
+                    },
+                    result = activationResult,
+                    isActivating = isActivating,
+                    onActivate = {
+                        scope.launch {
+                            isActivating = true
+                            val result = activationManager.activate(activationCodeInput)
+                            activationResult = result
+                            if (result is ActivationResult.Success) {
+                                activationCodeInput = ""
+                                // 激活成功后刷新会员状态，让 StatusCard 同步。
+                                viewModel.membership.refresh()
+                            }
+                            isActivating = false
+                        }
+                    },
+                )
+            }
 
             item {
                 RedemptionCodeSection(
@@ -149,6 +193,16 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                 amount = amount,
                                 returnUrl = returnUrl,
                             )
+                            // Persist the pending order so onResume can query the gateway
+                            // if the DeepLink callback is lost.
+                            PendingOrderStore(context).save(
+                                PendingOrderStore.PendingOrder(
+                                    outTradeNo = outTradeNo,
+                                    tier = tier,
+                                    amount = amount,
+                                    timestamp = System.currentTimeMillis(),
+                                )
+                            )
                             Toast.makeText(context, paymentRedirecting, Toast.LENGTH_SHORT).show()
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paymentUrl))
                             context.startActivity(intent)
@@ -182,6 +236,7 @@ private fun MembershipStatusCard(status: MembershipStatus) {
         MembershipTier.Free -> stringResource(R.string.membership_status_free)
         MembershipTier.Premium -> stringResource(R.string.membership_status_premium)
         MembershipTier.Pro -> stringResource(R.string.membership_status_pro)
+        MembershipTier.Enterprise -> "Enterprise"
     }
     val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
@@ -246,6 +301,7 @@ private fun tierAccentColor(tier: MembershipTier): Color = when (tier) {
     MembershipTier.Free -> Color(0xFF9E9E9E) // gray
     MembershipTier.Premium -> Color(0xFFFFB300) // gold/amber
     MembershipTier.Pro -> Color(0xFF7E57C2) // deep purple
+    MembershipTier.Enterprise -> Color(0xFF1565C0) // deep blue
 }
 
 // ── Section B: Redemption code input ──────────────────────────
@@ -345,6 +401,124 @@ private fun YipayUpgradeSection(onUpgrade: (MembershipTier) -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E57C2)),
         ) {
             Text(stringResource(R.string.membership_upgrade_pro), color = Color.White)
+        }
+    }
+}
+
+// ── Section D: Device ID card (read-only display) ─────────────
+
+/**
+ * 设备身份证显示区（只读）。
+ *
+ * 用户可在设置页查看本设备的身份证号，便于客服/激活码发放方核对。
+ * 身份证号由 [DeviceIdCard.getDeviceIdDisplay] 生成，组合多个硬件特征做 SHA-256，
+ * 不可被简单篡改；后续移 NDK 进一步防破解。
+ */
+@Composable
+private fun DeviceIdCardSection(deviceIdDisplay: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.membership_device_id),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = deviceIdDisplay,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.membership_device_id_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+// ── Section E: Activation code input ───────────────────────────
+
+@Composable
+private fun ActivationCodeSection(
+    code: String,
+    onCodeChange: (String) -> Unit,
+    result: ActivationResult?,
+    isActivating: Boolean,
+    onActivate: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = stringResource(R.string.membership_activate_code),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = code,
+            onValueChange = onCodeChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(stringResource(R.string.membership_activate_code_hint)) },
+            singleLine = true,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onActivate,
+            enabled = code.isNotBlank() && !isActivating,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.membership_activate))
+        }
+
+        result?.let { ActivationResultFeedback(it) }
+    }
+}
+
+@Composable
+private fun ActivationResultFeedback(result: ActivationResult) {
+    Spacer(modifier = Modifier.height(12.dp))
+    when (result) {
+        is ActivationResult.Success -> {
+            Text(
+                text = stringResource(R.string.membership_activate_success),
+                color = Color(0xFF2E7D32), // green
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        ActivationResult.InvalidCode -> {
+            Text(
+                text = stringResource(R.string.membership_activate_invalid),
+                color = Color(0xFFC62828), // red
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        ActivationResult.AlreadyUsed -> {
+            Text(
+                text = stringResource(R.string.membership_activate_already_used),
+                color = Color(0xFFC62828),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        ActivationResult.Expired -> {
+            Text(
+                text = stringResource(R.string.membership_activate_expired),
+                color = Color(0xFFC62828),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        ActivationResult.NetworkError -> {
+            Text(
+                text = stringResource(R.string.membership_activate_network_error),
+                color = Color(0xFFC62828),
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }

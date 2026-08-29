@@ -19,5 +19,6 @@ data class MembershipSettings(
             MembershipTier.Free -> "Free"
             MembershipTier.Premium -> "Premium"
             MembershipTier.Pro -> "Pro"
+            MembershipTier.Enterprise -> "Enterprise"
         }
 }

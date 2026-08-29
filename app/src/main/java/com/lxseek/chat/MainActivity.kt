@@ -58,6 +58,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.membership.MembershipTier
+import com.lxseek.chat.membership.PendingOrderStore
 import com.lxseek.chat.membership.YipayCallbackResult
 import com.lxseek.chat.membership.YipayConfig
 import com.lxseek.chat.membership.YipayPaymentManager
@@ -317,6 +318,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         AppForegroundTracker.setInForeground(true)
+        // Yipay fallback: query any pending order in case the DeepLink callback was lost.
+        checkPendingYipayOrder()
     }
 
     override fun onPause() {
@@ -373,12 +376,58 @@ class MainActivity : ComponentActivity() {
         // Map amount → tier (Premium ¥0.30 / Pro ¥0.50) and activate.
         val tier = mapMoneyToTier(params.money)
         val container = (application as LxChatApplication).container
+        val store = PendingOrderStore(this)
         lifecycleScope.launch {
+            // Don't double-activate if the onResume fallback already succeeded.
+            if (yipayCallbackResult.value is YipayCallbackResult.Success) {
+                store.clear()
+                return@launch
+            }
             container.membershipProvider.applyYipayPurchase(
                 tier = tier,
                 durationDays = YIPAY_MEMBERSHIP_DURATION_DAYS,
             )
             yipayCallbackResult.value = YipayCallbackResult.Success(tier)
+            store.clear()
+        }
+    }
+
+    /**
+     * Fallback for lost DeepLink callbacks: when the App returns to the foreground with a
+     * pending Yipay order, query the gateway directly and activate membership if paid.
+     *
+     * Skipped when a callback already succeeded (DeepLink beat us to it) — the store is
+     * cleared and we do nothing. Expired orders (older than 10 min) are also cleared.
+     */
+    private fun checkPendingYipayOrder() {
+        val store = PendingOrderStore(this)
+        val pending = store.get() ?: return
+        // DeepLink already activated membership — don't double-activate.
+        if (yipayCallbackResult.value is YipayCallbackResult.Success) {
+            store.clear()
+            return
+        }
+        if (store.isExpired()) {
+            store.clear()
+            return
+        }
+        val config = YipayConfig.DEFAULT
+        val manager = YipayPaymentManager()
+        lifecycleScope.launch {
+            val result = manager.queryOrderStatus(config, pending.outTradeNo)
+            if (result == null || result.code != 1 || result.status != 1) return@launch
+            // A DeepLink may have arrived between get() and the response — re-check.
+            if (yipayCallbackResult.value is YipayCallbackResult.Success) {
+                store.clear()
+                return@launch
+            }
+            val container = (application as LxChatApplication).container
+            container.membershipProvider.applyYipayPurchase(
+                tier = pending.tier,
+                durationDays = YIPAY_MEMBERSHIP_DURATION_DAYS,
+            )
+            yipayCallbackResult.value = YipayCallbackResult.Success(pending.tier)
+            store.clear()
         }
     }
 

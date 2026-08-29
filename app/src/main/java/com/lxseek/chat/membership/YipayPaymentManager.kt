@@ -1,8 +1,15 @@
 package com.lxseek.chat.membership
 
 import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.net.URLEncoder
 import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 
 /**
  * Yipay (易支付) payment manager — builds the gateway submit URL and parses/verifies
@@ -112,12 +119,57 @@ class YipayPaymentManager {
         return verifier.verify(params)
     }
 
+    /**
+     * Query the gateway for the status of [outTradeNo] — the fallback path when the
+     * DeepLink callback is lost (user closed the browser, redirect failed, …).
+     *
+     * Calls `GET {gatewayUrl}/api.php?act=order&pid=...&key=...&out_trade_no=...`.
+     * Runs on an IO dispatcher with short timeouts. Returns null on network/parse
+     * failure; otherwise a [QueryResult] where `code==1 && status==1` means paid.
+     */
+    suspend fun queryOrderStatus(config: YipayConfig, outTradeNo: String): QueryResult? =
+        withContext(Dispatchers.IO) {
+            try {
+                val base = config.gatewayUrl.trimEnd('/')
+                val url = "$base/api.php?act=order" +
+                    "&pid=${URLEncoder.encode(config.pid, "UTF-8")}" +
+                    "&key=${URLEncoder.encode(config.merchantKey, "UTF-8")}" +
+                    "&out_trade_no=${URLEncoder.encode(outTradeNo, "UTF-8")}"
+                val request = Request.Builder().url(url).get().build()
+                queryClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
+                    val body = response.body.string()
+                    val parsed = queryJson.decodeFromString<QueryResponse>(body)
+                    QueryResult(
+                        code = parsed.code,
+                        status = parsed.status ?: 0,
+                        money = parsed.money.orEmpty(),
+                        tradeNo = parsed.tradeNo.orEmpty(),
+                        outTradeNo = parsed.outTradeNo.orEmpty(),
+                    )
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
     private fun md5Hex(input: String): String {
         val md = MessageDigest.getInstance("MD5")
         val digest = md.digest(input.toByteArray(Charsets.UTF_8))
         return digest.joinToString(separator = "") { byte ->
             "%02x".format(byte.toInt() and 0xFF)
         }
+    }
+
+    companion object {
+        /** Dedicated client for order-status queries: short timeouts, no streaming. */
+        private val queryClient: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .writeTimeout(5, TimeUnit.SECONDS)
+            .build()
+
+        private val queryJson: Json = Json { ignoreUnknownKeys = true }
     }
 }
 
@@ -134,3 +186,30 @@ sealed class YipayCallbackResult {
     /** Signature mismatch, missing params, or non-success trade status. */
     object Failed : YipayCallbackResult()
 }
+
+/**
+ * Result of the gateway order-status query ([YipayPaymentManager.queryOrderStatus]).
+ *
+ * - `code == 1`: query succeeded; check `status` (1 = paid, 0 = unpaid).
+ * - `code == -1`: order does not exist.
+ * - `code == -3`: merchant id/key mismatch.
+ *
+ * `null` from [YipayPaymentManager.queryOrderStatus] means a network/parse failure.
+ */
+data class QueryResult(
+    val code: Int,
+    val status: Int,
+    val money: String,
+    val tradeNo: String,
+    val outTradeNo: String,
+)
+
+/** Wire shape of the gateway `act=order` response. Missing fields default to null/0. */
+@Serializable
+private data class QueryResponse(
+    val code: Int = 0,
+    val status: Int? = null,
+    val money: String? = null,
+    val trade_no: String? = null,
+    val out_trade_no: String? = null,
+)

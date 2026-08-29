@@ -6,11 +6,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 
-/** Membership tier levels. */
+/**
+ * Membership tier levels.
+ *
+ * Tiers are ordered by privilege: [Free] ⊂ [Premium] ⊂ [Pro] ⊂ [Enterprise].
+ * The [Enterprise] tier is reserved for future organization/seat-based plans;
+ * today no feature category requires it, but it is a first-class enum value so
+ * persistence, parsing, and UI comparisons stay exhaustive and forward-compatible.
+ */
 enum class MembershipTier {
     Free,
     Premium,
     Pro,
+    Enterprise,
     ;
 
     companion object {
