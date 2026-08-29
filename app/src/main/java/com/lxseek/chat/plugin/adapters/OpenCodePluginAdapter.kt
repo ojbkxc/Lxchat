@@ -5,7 +5,7 @@ import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.tool.ToolDescriptor
-import com.lxseek.chat.tool.ToolProvider
+
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -45,7 +45,7 @@ data class OpenCodePluginMeta(
  *   "tools": [ { "name": "...", "description": "...", "parameters": { ...schema... } } ] }
  * ```
  *
- * Each [OpenCodeToolDef] can be projected to a read-only [ToolProvider.ToolDescriptor]
+ * Each [OpenCodeToolDef] can be projected to a read-only [ToolDescriptor]
  * via [toToolDescriptor]; the resulting descriptor carries no executable behavior and is
  * marked requiresApproval so the host can surface it safely.
  */
@@ -73,7 +73,7 @@ object OpenCodePluginAdapter {
     }
 
     /**
-     * Project an [OpenCodeToolDef] to a read-only [ToolProvider.ToolDescriptor]. The
+     * Project an [OpenCodeToolDef] to a read-only [ToolDescriptor]. The
      * descriptor's [ToolDefinition] is built from the tool's JSON Schema parameters; the
      * descriptor is marked ReadOnly (default) and requiresApproval so the host surfaces
      * it safely — the tool body cannot be executed on Android.
