@@ -49,7 +49,7 @@
     <string name="tool_thinking">思考</string>
 
     <!-- System Prompt -->
-    <string name="system_prompt">系统指令</string>
+    <string name="system_prompt">系统提示词</string>
     <string name="no_system_prompt">无</string>
 
     <!-- Drawer -->
@@ -128,7 +128,7 @@
     <string name="settings_device_control_desc">让模型打开并操作其他应用</string>
     <string name="settings_runtime_status">运行状态</string>
     <string name="settings_runtime_status_desc">Agent、无障碍与语音健康状态</string>
-    <string name="runtime_status_howto">支撑 LxChat 运行的服务实时状态。页面打开期间自动刷新。</string>
+    <string name="runtime_status_howto">运行状态实时刷新。</string>
     <string name="runtime_refresh">刷新</string>
     <string name="runtime_open_settings">打开设置</string>
     <string name="runtime_accessibility_title">设备控制桥接</string>
@@ -145,10 +145,10 @@
     <string name="runtime_model_unset">未选择模型</string>
     <string name="runtime_model_counts">已启用 %1$d · 自定义 %2$d</string>
     <string name="settings_im_gateway">即时消息网关</string>
-    <string name="settings_im_gateway_desc">将微信等即时消息桥接到智能体</string>
+    <string name="settings_im_gateway_desc">将微信等即时消息桥接到AI</string>
     <string name="settings_group_im">即时消息</string>
     <string name="settings_group_connection">连接</string>
-    <string name="device_control_howto">智能体基于屏幕上的元素树进行规划，可以打开应用、读取界面并点击或输入文字。打开应用无需桥接；点击、轻触和输入需要下面启用的无障碍桥接。</string>
+    <string name="device_control_howto">AI基于屏幕上的元素树进行规划，可以打开应用、读取界面并点击或输入文字。打开应用无需桥接；点击、轻触和输入需要下面启用的无障碍桥接。</string>
     <string name="device_control_accessibility">无障碍桥接</string>
     <string name="device_control_enabled">已启用</string>
     <string name="device_control_disabled">未启用</string>
@@ -158,11 +158,11 @@
     <string name="device_control_unknown">未知</string>
     <string name="device_control_open_settings">打开无障碍设置</string>
     <string name="device_control_refresh">刷新</string>
-    <string name="im_gateway_howto">将微信机器人（或其他即时消息）桥接到智能体的远程网关适配器。\n\n配置步骤：\n1. 在微信机器人侧部署 OneBot v11/v12 或 wechaty 网关服务（如 NapCat、go-cqhttp、NoneBot 或 wechaty-puppet-wechat）。\n2. 将其 REST/SSE API 暴露在可访问的 host:port 上。\n3. 在「网关地址」填写网关 REST API 地址（如 http://192.168.1.10:3000）。\n4. 如网关需要认证，在「认证令牌」填写令牌。\n\n应用通过 REST/SSE 轮询网关——设备上不保持常驻 IM 连接，耗电和后台占用都很低。</string>
+    <string name="im_gateway_howto">将微信机器人（或其他即时消息）桥接到AI的远程网关适配器。\n\n配置步骤：\n1. 在微信机器人侧部署 OneBot v11/v12 或 wechaty 网关服务（如 NapCat、go-cqhttp、NoneBot 或 wechaty-puppet-wechat）。\n2. 将其 REST/SSE API 暴露在可访问的 host:port 上。\n3. 在「网关地址」填写网关 REST API 地址（如 http://192.168.1.10:3000）。\n4. 如网关需要认证，在「认证令牌」填写令牌。\n\n应用通过 REST/SSE 轮询网关——设备上不保持常驻 IM 连接，耗电和后台占用都很低。</string>
     <string name="im_gateway_configured">已配置并启用</string>
     <string name="im_gateway_not_configured">未配置</string>
     <string name="im_gateway_enabled">启用网关</string>
-    <string name="im_gateway_enabled_desc">允许智能体收发即时消息</string>
+    <string name="im_gateway_enabled_desc">允许AI收发即时消息</string>
     <string name="im_gateway_platform">平台</string>
     <string name="im_gateway_base_url">网关地址</string>
     <string name="im_gateway_token">认证令牌（可选）</string>
@@ -178,7 +178,7 @@
     <string name="im_gateway_saved">网关已保存</string>
     <string name="settings_group_proactive">主动行为</string>
     <string name="im_gateway_proactive_enabled">主动消息</string>
-    <string name="im_gateway_proactive_enabled_desc">允许代理在联系人空闲时主动发起问候</string>
+    <string name="im_gateway_proactive_enabled_desc">允许AI在联系人空闲时主动发起问候</string>
     <string name="im_gateway_proactive_idle_minutes">问候前的空闲分钟数</string>
     <string name="im_gateway_proactive_silent_start">静默窗口开始 (HH:MM)</string>
     <string name="im_gateway_proactive_silent_end">静默窗口结束 (HH:MM)</string>
@@ -190,9 +190,9 @@
     <string name="im_gateway_show_token">显示令牌</string>
     <string name="automation_ai_tools">访问任务与循环</string>
     <string name="automation_ai_tools_desc">允许模型创建和管理任务，或启动、停止会话循环。默认关闭。</string>
-    <string name="qs_agent_tile_label">LxChat 智能体</string>
-    <string name="qs_agent_on_desc">智能体自动化工具已开启</string>
-    <string name="qs_agent_off_desc">智能体自动化工具已关闭</string>
+    <string name="qs_agent_tile_label">LxChat AI</string>
+    <string name="qs_agent_on_desc">AI自动化工具已开启</string>
+    <string name="qs_agent_off_desc">AI自动化工具已关闭</string>
     <string name="qs_accessibility_tile_label">LxChat App 控制</string>
     <string name="qs_accessibility_on_desc">App 控制无障碍已开启</string>
     <string name="qs_accessibility_off_desc">App 控制无障碍已关闭 - 点击开启</string>
@@ -291,8 +291,8 @@
     <string name="settings_provider_desc">API 密钥、基础 URL 和提供商选择</string>
     <string name="settings_model_plaza">模型广场</string>
     <string name="settings_model_plaza_desc">发现好模型，一键配置</string>
-    <string name="settings_prompts">系统指令</string>
-    <string name="settings_prompts_desc">创建和管理系统指令</string>
+    <string name="settings_prompts">系统提示词</string>
+    <string name="settings_prompts_desc">创建和管理系统提示词</string>
     <string name="settings_models">模型</string>
     <string name="settings_models_desc">启用、禁用和配置 AI 模型</string>
     <string name="settings_generation">生成</string>
@@ -363,22 +363,22 @@
     <string name="custom_provider_rename_title">重命名提供商</string>
 
     <!-- Settings - Prompts Page -->
-    <string name="prompts_title">系统指令</string>
+    <string name="prompts_title">系统提示词</string>
     <string name="prompts_add">添加新指令</string>
-    <string name="prompts_edit_title">编辑系统指令</string>
-    <string name="prompts_add_title">添加系统指令</string>
+    <string name="prompts_edit_title">编辑系统提示词</string>
+    <string name="prompts_add_title">添加系统提示词</string>
     <string name="prompts_title_hint">标题（例如：翻译器）</string>
     <string name="prompts_template_title">选择模板</string>
     <string name="prompts_template_blank">空白</string>
-    <string name="prompts_template_blank_desc">从空白的可编辑系统指令开始。</string>
+    <string name="prompts_template_blank_desc">从空白的可编辑系统提示词开始。</string>
     <string name="prompts_template_default">默认</string>
-    <string name="prompts_template_default_desc">使用 LxChat 默认指令，包含运行时上下文、记忆、网页搜索、Shell 和设备文件访问规则。</string>
+    <string name="prompts_template_default_desc">使用 LxChat 默认提示词，包含运行时上下文、记忆、网页搜索、终端和设备文件访问规则。</string>
     <string name="prompts_duplicate">复制</string>
     <string name="prompts_duplicate_title">%1$s 副本</string>
     <string name="prompts_empty_preview">空指令</string>
-    <string name="prompts_empty_title">暂无系统指令</string>
+    <string name="prompts_empty_title">暂无系统提示词</string>
     <string name="prompts_empty_desc">创建自定义人格和指令</string>
-    <string name="prompts_delete_title">删除系统指令？</string>
+    <string name="prompts_delete_title">删除系统提示词？</string>
     <string name="prompts_delete_text">确定要删除 \'%1$s\' 吗？此操作无法撤销。</string>
     <string name="template_title_required">标题不能为空</string>
     <string name="template_tab_system">系统</string>
@@ -468,7 +468,7 @@
     <!-- Settings - TTS -->
     <string name="tts_title">语音播报</string>
     <string name="tts_enabled">朗读</string>
-    <string name="tts_enabled_desc">启用助手消息的文本转语音功能</string>
+    <string name="tts_enabled_desc">启用AI消息的文本转语音功能</string>
     <string name="tts_autoplay">自动播放回复</string>
     <string name="tts_autoplay_desc">回复完成后自动朗读</string>
     <string name="tts_language">语音语言</string>
@@ -540,7 +540,7 @@
     <string name="shell_title">终端</string>
     <string name="shell_type_ssh">SSH</string>
     <string name="shell_type_conch">Conch</string>
-    <string name="shell_desc">远程 Shell 命令执行</string>
+    <string name="shell_desc">远程终端命令执行</string>
 
     <!-- Settings - ADB Shell Page -->
     <string name="settings_adb_shell">ADB Shell</string>
@@ -565,7 +565,7 @@
     <string name="adb_shizuku_description">Shizuku 提供免 root shell 访问</string>
     <string name="adb_shizuku_refresh">刷新</string>
     <string name="shell_enable">启用终端工具</string>
-    <string name="shell_enable_desc">允许模型通过远程服务器执行 Shell 命令</string>
+    <string name="shell_enable_desc">允许模型通过远程服务器执行终端命令</string>
     <string name="shell_device_name">名称</string>
     <string name="shell_device_name_hint">我的服务器</string>
     <string name="shell_device_desc">描述</string>
@@ -652,8 +652,8 @@
     <string name="title_gen_model">标题模型</string>
     <string name="title_gen_current_model">使用当前模型</string>
     <string name="title_gen_select_model">选择标题模型</string>
-    <string name="title_gen_prompt">标题 Prompt</string>
-    <string name="title_gen_prompt_desc">生成对话标题时使用的系统指令</string>
+    <string name="title_gen_prompt">标题提示词</string>
+    <string name="title_gen_prompt_desc">生成对话标题时使用的系统提示词</string>
 
     <!-- Settings - Image Transcription Page -->
     <string name="transcription_model">转述模型</string>
@@ -662,7 +662,7 @@
     <string name="transcription_select_model">选择转述模型</string>
     <string name="transcription_batch_size">批次大小</string>
     <string name="transcription_batch_size_desc">每次 API 调用处理的图片数量（1–10）</string>
-    <string name="transcription_prompt">转述 Prompt</string>
+    <string name="transcription_prompt">转述提示词</string>
     <string name="transcription_prompt_desc">每次图像转述请求发送的指令</string>
     <string name="transcription_enabled_models">启用的模型</string>
     <string name="transcription_no_models_enabled">未启用任何模型</string>
@@ -674,7 +674,7 @@
     <string name="transcription_label">图片转述</string>
     <string name="transcription_label_numbered">图片转述 %1$d</string>
     <string name="provider_vision_badge">视觉</string>
-    <string name="prompt_content">Prompt</string>
+    <string name="prompt_content">提示词</string>
 
     <!-- Settings - Memory Page -->
     <string name="memory_title">记忆</string>
@@ -747,11 +747,11 @@
     <string name="settings_app_name_hint">输入软件名称</string>
     <string name="settings_app_name_reset">恢复默认</string>
     <string name="android_controller_service_label">LxChat 应用控制</string>
-    <string name="android_controller_service_desc">让 LxChat 读取当前屏幕并在应用内点击/输入（例如打开应用、在微信里发消息），由你通过助手语音或文字下达指令时生效。</string>
+    <string name="android_controller_service_desc">让 LxChat 读取当前屏幕并在应用内点击/输入（例如打开应用、在微信里发消息），由你通过AI语音或文字下达指令时生效。</string>
     <string name="blur_effects">模糊效果</string>
     <string name="blur_effects_desc">对聊天列表顶部工具栏下方应用模糊。关闭可节省性能。</string>
     <string name="reduce_motion">减少动态效果</string>
-    <string name="reduce_motion_desc">减少持续运动和大范围空间位移，同时保留淡入淡出、直接手势和必要的状态反馈。</string>
+    <string name="reduce_motion_desc">减少动画，保留必要过渡。</string>
     <string name="tool_call_display_mode">思考与工具块</string>
     <string name="tool_call_display_mode_timeline">时间线</string>
     <string name="tool_call_display_mode_grouped_timeline">分组</string>
@@ -846,7 +846,7 @@
     <!-- Conversation list / read tools -->
     <string name="conversation_list_empty">未找到任何对话。</string>
     <string name="chat_empty_title">开始一段对话</string>
-    <string name="chat_empty_desc">随便问点什么或创建任务——剩下的交给 LxChat，按你的方式来。</string>
+    <string name="chat_empty_desc">问点什么，或创建任务。</string>
     <string name="plaza_title">模型广场</string>
     <string name="plaza_subtitle">发现好模型，一键连接服务商。</string>
     <string name="plaza_search_hint">搜索模型或服务商</string>
@@ -903,18 +903,18 @@
     <string name="tool_execution_stopped">工具执行已停止</string>
     <string name="tool_state_executing">执行中</string>
     <string name="tool_unknown_device">未知设备</string>
-    <string name="tool_no_output">(No output)</string>
+    <string name="tool_no_output">(无输出)</string>
     <string name="tool_background_job_running">后台任务 %1$s 正在运行</string>
-    <string name="tool_shell_jobs">Shell 任务</string>
-    <string name="tool_shell_job">Shell 任务</string>
-    <string name="tool_stop_shell_job">停止 Shell 任务</string>
-    <string name="tool_listing_shell_jobs">正在列出 Shell 任务…</string>
-    <string name="tool_reading_shell_job">正在读取 Shell 任务 %1$s…</string>
-    <string name="tool_stopping_shell_job">正在停止 Shell 任务 %1$s…</string>
-    <string name="tool_no_shell_jobs">没有 Shell 任务</string>
-    <string name="tool_shell_job_count">列出了 %1$d 个 Shell 任务</string>
-    <string name="tool_shell_job_status">已读取 Shell 任务 %1$s</string>
-    <string name="tool_stopped_shell_job">已停止 Shell 任务 %1$s</string>
+    <string name="tool_shell_jobs">终端任务</string>
+    <string name="tool_shell_job">终端任务</string>
+    <string name="tool_stop_shell_job">停止 终端任务</string>
+    <string name="tool_listing_shell_jobs">正在列出 终端任务…</string>
+    <string name="tool_reading_shell_job">正在读取 终端任务 %1$s…</string>
+    <string name="tool_stopping_shell_job">正在停止 终端任务 %1$s…</string>
+    <string name="tool_no_shell_jobs">没有 终端任务</string>
+    <string name="tool_shell_job_count">列出了 %1$d 个 终端任务</string>
+    <string name="tool_shell_job_status">已读取 终端任务 %1$s</string>
+    <string name="tool_stopped_shell_job">已停止 终端任务 %1$s</string>
     <string name="tool_shell_returned_exit_code">命令返回退出码 %1$d</string>
     <string name="tool_read_file_empty">已读取 %1$s · 空文件</string>
     <string name="tool_found_no_matches">未找到匹配项</string>
@@ -948,7 +948,7 @@
     <string name="tool_removing_memory">删除 %1$s…</string>
     <string name="tool_looking_up_memories">查找记忆中…</string>
     <string name="tool_updating_active">更新活跃记忆中…</string>
-    <string name="tool_listing_shells">列出Shell中…</string>
+    <string name="tool_listing_shells">列出终端中…</string>
     <string name="tool_searching_for">搜索 \'%1$s\'…</string>
     <!-- Tool done states (P0 + P1) -->
     <string name="tool_listed_conversations">已列出 %1$d 个对话</string>
@@ -1191,7 +1191,7 @@
     <string name="about_contribute">参与贡献</string>
     <string name="about_privacy_policy">隐私政策</string>
     <string name="about_version">版本</string>
-    <string name="about_rating_desc">这个项目由一个人独立开发。真诚地感谢您的反馈。</string>
+    <string name="about_rating_desc">独立开发，感谢反馈。</string>
     <string name="about_updates">更新</string>
     <string name="about_check_updates">检查更新</string>
     <string name="about_check_updates_desc">检查 GitHub 上的最新版本</string>
@@ -1308,7 +1308,7 @@
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">欢迎来到 LxChat</string>
-    <string name="onboarding_welcome_desc">一款 BYOK 应用，帮你夺回数据主权。</string>
+    <string name="onboarding_welcome_desc">自带密钥，数据完全由你掌控。</string>
     <string name="onboarding_byok_title">自带密钥</string>
     <string name="onboarding_byok_desc">配置 API 密钥或导入 GGUF 模型，解锁本地推理。</string>
     <string name="onboarding_provider_title">选择提供商</string>
@@ -1388,8 +1388,8 @@
     <string name="shell_confirm_allow">允许一次</string>
     <string name="shell_confirm_always">总是允许此服务器</string>
     <string name="shell_confirm_deny">拒绝</string>
-    <string name="shell_confirm_setting">确认远程 Shell 操作</string>
-    <string name="shell_confirm_setting_desc">在助手于远程 SSH/Conch 服务器上运行命令或写入文件前询问</string>
+    <string name="shell_confirm_setting">确认远程终端操作</string>
+    <string name="shell_confirm_setting_desc">在AI于远程 SSH/Conch 服务器上运行命令或写入文件前询问</string>
 
     <!-- Crash reporting -->
     <string name="crash_title">LxChat 意外退出</string>
@@ -1428,25 +1428,25 @@
     <string name="openai_service_tier_default">默认</string>
     <string name="openai_service_tier_flex">弹性</string>
     <string name="openai_service_tier_fast">快速</string>
-    <string name="context_title">Context</string>
-    <string name="context_desc">Context management</string>
-    <string name="context_compact">Context compact</string>
-    <string name="context_compact_auto">Automatic compact</string>
-    <string name="context_compact_auto_desc">Summarize older context before overflow</string>
-    <string name="context_compact_model">Compact model</string>
-    <string name="context_compact_prompt">Compact prompt</string>
-    <string name="context_compact_prompt_desc">Summary instructions</string>
-    <string name="context_compact_select_model">Select compact model</string>
-    <string name="context_compact_retain">Recent messages to keep</string>
-    <string name="context_compact_manual">Compact context</string>
+    <string name="context_title">上下文</string>
+    <string name="context_desc">上下文管理</string>
+    <string name="context_compact">上下文压缩</string>
+    <string name="context_compact_auto">自动压缩</string>
+    <string name="context_compact_auto_desc">溢出前自动总结旧消息</string>
+    <string name="context_compact_model">压缩模型</string>
+    <string name="context_compact_prompt">压缩提示词</string>
+    <string name="context_compact_prompt_desc">总结指令</string>
+    <string name="context_compact_select_model">选择压缩模型</string>
+    <string name="context_compact_retain">保留最近消息</string>
+    <string name="context_compact_manual">压缩上下文</string>
     <string name="context_compacting">正在压缩上下文…</string>
     <string name="context_compact_select_available_model">请选择可用模型</string>
     <string name="context_compact_prompt_empty">压缩提示词不能为空</string>
     <string name="context_compact_retain_invalid">请输入有效的保留消息数</string>
-    <string name="thinking_segment_display_mode">Thinking segments</string>
-    <string name="thinking_segment_display_mode_desc">Choose where thinking segments open</string>
-    <string name="thinking_segment_display_card">Card</string>
-    <string name="thinking_segment_display_bottom_sheet">Bottom sheet</string>
+    <string name="thinking_segment_display_mode">思考段落</string>
+    <string name="thinking_segment_display_mode_desc">选择思考段落的展开方式</string>
+    <string name="thinking_segment_display_card">卡片</string>
+    <string name="thinking_segment_display_bottom_sheet">底部弹窗</string>
     <string name="context_usage_messages">约 %1$s / %2$s tokens · %3$d 条逻辑消息</string>
     <string name="context_boundary_active">压缩边界已启用</string>
     <string name="context_boundary_none">无压缩边界</string>
@@ -1663,7 +1663,7 @@
     <string name="membership_redeem_already_used">兑换码已被使用</string>
     <string name="membership_upgrade_premium">升级到高级版</string>
     <string name="membership_upgrade_pro">升级到专业版</string>
-    <string name="membership_payment_coming_soon">支付功能即将上线</string>
+    <string name="membership_payment_coming_soon">支付功能</string>
     <string name="membership_payment_redirecting">正在跳转支付页面…</string>
     <string name="membership_payment_success">支付成功，会员已激活</string>
     <string name="membership_payment_failed">支付验证失败</string>
@@ -1805,7 +1805,7 @@
     <string name="settings_complexity_routing_enabled">启用复杂度路由</string>
     <string name="settings_simple_task_model">简单任务模型</string>
     <string name="settings_complex_task_model">复杂任务模型</string>
-    <string name="settings_subagent_max_running">子代理最大并发数</string>
+    <string name="settings_subagent_max_running">子AI最大并发数</string>
     <string name="settings_routing_model_not_set">未设置（使用默认）</string>
     <string name="settings_routing_select_model">选择模型</string>
     <string name="settings_routing_subagent_range">范围：1–20</string>
