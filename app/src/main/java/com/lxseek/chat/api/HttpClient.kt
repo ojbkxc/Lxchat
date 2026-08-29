@@ -257,6 +257,9 @@ object HttpClient {
             .build()
     }
 
+    /** Buffer size for streaming downloads (64 KiB chunks). */
+    private const val DOWNLOAD_BUFFER_SIZE = 64 * 1024
+
     /** Hostname of the activation server (used for certificate pinning). */
     private const val ACTIVATION_HOST = "activate.lxseek.com"
 
@@ -556,6 +559,7 @@ object HttpClient {
         dest: java.io.File,
         headers: Map<String, String> = emptyMap(),
         callTimeoutMillis: Long? = null,
+        onProgress: ((downloadedBytes: Long, totalBytes: Long) -> Unit)? = null,
     ) {
         guardCleartextCredentials(url, headers)
         val requestBuilder = Request.Builder().url(url).get()
@@ -566,12 +570,23 @@ object HttpClient {
                 throw IOException("HTTP ${resp.code}")
             }
             val body = resp.body
-                ?: throw IOException("寮曟搸涓嬭浇鍐呭涓虹┖锛氬搷搴旀棤 body")
+                ?: throw IOException("Engine download content is empty: response has no body")
+            val contentLength = body.contentLength()
             body.byteStream().use { input ->
-                dest.outputStream().use { output -> input.copyTo(output) }
+                dest.outputStream().use { output ->
+                    val buffer = ByteArray(DOWNLOAD_BUFFER_SIZE)
+                    var downloaded = 0L
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        downloaded += read
+                        onProgress?.invoke(downloaded, contentLength)
+                    }
+                }
             }
             if (dest.length() == 0L) {
-                throw IOException("寮曟搸涓嬭浇鍐呭涓虹┖锛氳惤鐩?0 瀛楄妭")
+                throw IOException("Engine download content is empty: 0 bytes written")
             }
         }
     }

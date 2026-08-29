@@ -111,11 +111,12 @@ class PetOverlayWindowService : Service() {
         val effectiveSizeDp = SIZE_DP * sizeScale.coerceIn(0.5f, 1.0f)
         val sizePx = (effectiveSizeDp * density).toInt()
         // Reserve headroom above the bubble for the status-tip capsule (PetFloatingView reads it
-        // as h - w and draws the transient message capsule there). The empty strip is touch-pass
-        // through, so it never blocks the app underneath.
+        // as h - petSizePx and draws the transient message capsule there). The empty strip is
+        // touch-pass-through, so it never blocks the app underneath.
+        val windowW = maxOf(sizePx, (TIP_WIDTH_DP * density).toInt())
         val windowH = sizePx + (TIP_HEADROOM_DP * density).toInt()
         val params = WindowManager.LayoutParams(
-            sizePx,
+            windowW,
             windowH,
             overlayType(),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -123,15 +124,17 @@ class PetOverlayWindowService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            // Start pinned to the top-right with a comfortable margin.
-            x = resources.displayMetrics.widthPixels - sizePx - (MARGIN_DP * density).toInt()
+            // Start pinned to the top-right with a comfortable margin (window right edge).
+            x = resources.displayMetrics.widthPixels - windowW - (MARGIN_DP * density).toInt()
             y = topMarginPx()
         }
         val view = PetFloatingView(this).apply {
             bindWindowParams(params)
+            setPetSize(sizePx)
             setCharacter(character)
             setSpritesheet(sheet)
         }
+
         try {
             wm.addView(view, params)
             floatingView = view
@@ -297,7 +300,10 @@ class PetOverlayWindowService : Service() {
         private const val SIZE_DP = 64f
         private const val MARGIN_DP = 12f
         // Vertical padding held above the bubble so PetFloatingView has room for the status-tip capsule.
-        private const val TIP_HEADROOM_DP = 36f
+        private const val TIP_HEADROOM_DP = 120f
+        // Width of the tip bubble area. The window is widened to this when it exceeds the pet size,
+        // giving multi-line tip text room without clipping.
+        private const val TIP_WIDTH_DP = 200f
 
         fun start(context: Context) {
             val app = context.applicationContext

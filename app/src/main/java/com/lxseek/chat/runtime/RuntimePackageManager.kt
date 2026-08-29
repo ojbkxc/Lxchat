@@ -68,7 +68,24 @@ class RuntimePackageManager(private val context: Context) {
         onLog?.invoke("[$engineId] 开始下载 $version")
         onLog?.invoke("[$engineId] 地址: $url")
         try {
-            HttpClient.downloadToFile(url, tmp)
+            var lastReportedPercent = -1
+            var lastReportedBytes = -1L
+            HttpClient.downloadToFile(url, tmp, onProgress = { done, total ->
+                if (total > 0) {
+                    val percent = (done * 100 / total).toInt()
+                    // Throttle: report every 5% and always the final 100%.
+                    if (percent >= lastReportedPercent + 5 || percent == 100) {
+                        lastReportedPercent = percent
+                        onLog?.invoke("[$engineId] 下载中 $percent% (${formatSize(done)}/${formatSize(total)})")
+                    }
+                } else {
+                    // Total unknown (-1): report every ~5MB of transferred bytes.
+                    if (done - lastReportedBytes >= DOWNLOAD_PROGRESS_STEP_BYTES) {
+                        lastReportedBytes = done
+                        onLog?.invoke("[$engineId] 已下载 ${formatSize(done)}")
+                    }
+                }
+            })
             onLog?.invoke("[$engineId] 下载完成（${formatSize(tmp.length())}）")
         } catch (e: IOException) {
             tmp.delete()
@@ -99,6 +116,9 @@ class RuntimePackageManager(private val context: Context) {
         onLog?.invoke("[$engineId] 安装完成: $version")
         return@withContext target
     }
+
+    /** Unknown total size -> report download progress every ~5MB of transferred bytes. */
+    private val DOWNLOAD_PROGRESS_STEP_BYTES = 5L * 1024 * 1024
 
     /** 字节数格式化为可读大小（用于安装日志进度显示）。 */
     private fun formatSize(bytes: Long): String {

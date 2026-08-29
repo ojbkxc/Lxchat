@@ -13,6 +13,8 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.text.Layout
+import android.text.StaticLayout
 import android.util.Log
 import android.util.AttributeSet
 import android.view.Choreographer
@@ -92,6 +94,10 @@ class PetFloatingView @JvmOverloads constructor(
     private var characterPalette: PetPalette = PetPalette.HUHU
     private var tipSlotHeight = 0
     private var bubbleCenterY = 0f
+    /** Actual pet size in pixels (may differ from [width] when the window is widened for tips). */
+    private var petSizePx = 0
+    /** Horizontal center of the pet within the window (pet is centered in the window). */
+    private var petCenterX = 0f
 
     // ---- Status-tip bubble ----
     private val tipBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = TIP_BG_COLOR; style = Paint.Style.FILL }
@@ -150,6 +156,19 @@ class PetFloatingView @JvmOverloads constructor(
 
     fun bindWindowParams(params: WindowManager.LayoutParams) { windowParams = params }
 
+    /** Sets the actual pet size in pixels. The window may be wider than this to fit tip text. */
+    fun setPetSize(sizePx: Int) {
+        petSizePx = sizePx
+        if (width > 0 && height > 0) {
+            tipSlotHeight = (height - petSizePx).coerceAtLeast(0)
+            petCenterX = width / 2f
+            bubbleCenterY = (petSizePx / 2f) + tipSlotHeight
+            computeFrameDstRect(width, height)
+            rebuildBubbleShader()
+            invalidate()
+        }
+    }
+
     fun setCustomBitmap(bitmap: Bitmap?) {
         customBitmap = bitmap
         requestLayout(); invalidate()
@@ -164,8 +183,10 @@ class PetFloatingView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        tipSlotHeight = (h - w).coerceAtLeast(0)
-        bubbleCenterY = (w / 2f) + tipSlotHeight
+        val effectivePetSize = if (petSizePx > 0) petSizePx else w
+        tipSlotHeight = (h - effectivePetSize).coerceAtLeast(0)
+        petCenterX = w / 2f
+        bubbleCenterY = (effectivePetSize / 2f) + tipSlotHeight
         bitmapDstRect.set(0, 0, w, h)
         bitmapDstRectF.set(bitmapDstRect)
         computeFrameDstRect(w, h)
@@ -174,7 +195,8 @@ class PetFloatingView @JvmOverloads constructor(
 
     /** Fits a 192x208 cell into the bubble area (below the tip slot), preserving aspect ratio. */
     private fun computeFrameDstRect(w: Int, h: Int) {
-        val availW = w.toFloat()
+        val effectivePetSize = if (petSizePx > 0) petSizePx else w
+        val availW = effectivePetSize.toFloat()
         val availH = (h - tipSlotHeight).toFloat()
         if (availW <= 0f || availH <= 0f) { frameDstRect.setEmpty(); return }
         val cellAspect = PetAnimation.CELL_WIDTH.toFloat() / PetAnimation.CELL_HEIGHT.toFloat()
@@ -182,16 +204,20 @@ class PetFloatingView @JvmOverloads constructor(
         val dstH: Float
         if (availW / availH > cellAspect) { dstH = availH; dstW = dstH * cellAspect }
         else { dstW = availW; dstH = dstW / cellAspect }
-        val left = (availW - dstW) / 2f
+        // Center the frame horizontally within the window (pet is centered).
+        val left = petCenterX - dstW / 2f
         val top = tipSlotHeight.toFloat() + (availH - dstH) / 2f
         frameDstRect.set(left, top, left + dstW, top + dstH)
     }
 
-    private fun bubbleRadius(): Float = (minOf(width, height) - dp(BORDER_PADDING_DP)) / 2f
+    private fun bubbleRadius(): Float {
+        val size = if (petSizePx > 0) petSizePx else minOf(width, height)
+        return (size - dp(BORDER_PADDING_DP)) / 2f
+    }
 
     private fun rebuildBubbleShader() {
         if (width <= 0 || height <= 0) return
-        val cx = width / 2f
+        val cx = petCenterX
         val cy = bubbleCenterY
         val radius = bubbleRadius()
         bubblePaint.shader = RadialGradient(
@@ -326,19 +352,34 @@ class PetFloatingView @JvmOverloads constructor(
         if (tipSlotHeight <= 0) return
         val text = tipText() ?: return
         val w = width
-        val textWidth = tipTextPaint.measureText(text.toString())
         val padX = dp(TIP_HORIZONTAL_PADDING_DP)
-        val capWidth = textWidth + padX * 2
-        val capHeight = tipTextPaint.textSize + dp(TIP_VERTICAL_PADDING_DP) * 2
+        val padY = dp(TIP_VERTICAL_PADDING_DP)
+        val maxTextWidth = w - padX * 2 - dp(TIP_EDGE_MARGIN_DP) * 2
+        if (maxTextWidth <= 0f) return
+        val tipText = text.toString()
+        // StaticLayout handles multi-line wrapping automatically.
+        val layout = StaticLayout.Builder.obtain(tipText, 0, tipText.length, tipTextPaint, maxTextWidth.toInt())
+            .setAlignment(Layout.Alignment.ALIGN_CENTER)
+            .setLineSpacing(0f, 1f)
+            .setIncludePad(false)
+            .build()
+        val capWidth = layout.width.toFloat() + padX * 2
+        val capHeight = layout.height.toFloat() + padY * 2
         val cx = w / 2f
         val left = (cx - capWidth / 2).coerceAtLeast(dp(TIP_EDGE_MARGIN_DP))
-        val right = (cx + capWidth / 2).coerceAtMost(w - dp(TIP_EDGE_MARGIN_DP))
+        val right = (left + capWidth).coerceAtMost(w - dp(TIP_EDGE_MARGIN_DP))
+        val actualWidth = right - left
         val top = dp(TIP_TOP_PADDING_DP)
         val bottom = top + capHeight
         val rect = RectF(left, top, right, bottom)
         canvas.drawRoundRect(rect, capHeight / 2, capHeight / 2, tipBgPaint)
-        val baseline = (top + bottom) / 2f - (tipTextPaint.ascent() + tipTextPaint.descent()) / 2f
-        canvas.drawText(text.toString(), cx, baseline, tipTextPaint)
+        // Draw multi-line text centered within the capsule.
+        val textLeft = left + (actualWidth - layout.width.toFloat()) / 2f
+        canvas.save()
+        canvas.translate(textLeft, top + padY)
+        layout.draw(canvas)
+        canvas.restore()
+        // Arrow pointing down to the pet.
         val bubbleTop = bubbleCenterY - bubbleRadius()
         tipArrowPath.reset()
         tipArrowPath.moveTo(cx, bubbleTop + dp(TIP_ARROW_OVERLAP_DP))
@@ -351,7 +392,7 @@ class PetFloatingView @JvmOverloads constructor(
     // ---- Canvas fallback bubble ----
 
     private fun drawDefaultBubble(canvas: Canvas) {
-        val cx = width / 2f
+        val cx = petCenterX
         val cy = bubbleCenterY
         val radius = bubbleRadius()
         canvas.drawCircle(cx, cy + dp(SHADOW_OFFSET_DP), radius + dp(SHADOW_SPREAD_DP), shadowPaint)
@@ -453,8 +494,12 @@ class PetFloatingView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val params = windowParams ?: return performClickFallback(event)
         if (event.actionMasked == MotionEvent.ACTION_DOWN && isTransparentAt(event.x, event.y)) return false
-        // For the built-in pet, touches above the bubble crown pass through.
-        if (event.actionMasked == MotionEvent.ACTION_DOWN && customBitmap == null && spritesheetBitmap == null && event.y < bubbleCenterY - bubbleRadius()) return false
+        // For the built-in Canvas bubble, touches outside the bubble circle pass through.
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && customBitmap == null && spritesheetBitmap == null) {
+            val dx = event.x - petCenterX
+            val dy = event.y - bubbleCenterY
+            if (hypot(dx, dy) > bubbleRadius()) return false
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 cancelSnapAnimation()
@@ -571,9 +616,9 @@ class PetFloatingView @JvmOverloads constructor(
         const val PET_WHITE = 0xFFFFFFFF.toInt()
         const val NANOS_PER_MS = 1_000_000L
 
-        const val TIP_BG_COLOR = 0xFF1F2937.toInt()
+        const val TIP_BG_COLOR = 0x801F2937
         const val TIP_TEXT_COLOR = 0xFFFFFFFF.toInt()
-        const val TIP_TEXT_SIZE_DP = 10f
+        const val TIP_TEXT_SIZE_DP = 13f
         const val TIP_HORIZONTAL_PADDING_DP = 10f
         const val TIP_VERTICAL_PADDING_DP = 5f
         const val TIP_TOP_PADDING_DP = 4f
