@@ -155,7 +155,7 @@ internal fun ChatDrawerContent(
     val currentConversationId by viewModel.currentConversationId.collectAsState()
     val isSwitching by viewModel.isSwitching.collectAsState()
     val generatingConversationIds by viewModel.generatingConversationIds.collectAsState()
-    var showGlobalSearch by remember { mutableStateOf(false) }
+
 
     ModalDrawerSheet(
         drawerShape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
@@ -210,8 +210,6 @@ internal fun ChatDrawerContent(
                 .padding(horizontal = 16.dp, vertical = 20.dp)
                 .clearFocusOnTap()
         ) {
-            Text(stringResource(R.string.conversations), style = ChatType.conversationsTitle)
-            Spacer(modifier = Modifier.height(12.dp))
 
             val search = rememberDrawerSearchState(viewModel)
 
@@ -219,54 +217,6 @@ internal fun ChatDrawerContent(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (!search.isActive) {
-                val newChatDisabled = isSwitching
-                val newChatContainer by animateColorAsState(
-                    if (newChatDisabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-                    else MaterialTheme.colorScheme.primary,
-                    tween(300), label = "newChatContainer"
-                )
-                val newChatContent by animateColorAsState(
-                    if (newChatDisabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    else MaterialTheme.colorScheme.onPrimary,
-                    tween(300), label = "newChatContent"
-                )
-                Button(
-                    onClick = {
-                        if (!newChatDisabled) {
-                            viewModel.createNewChat()
-                            scope.launch {
-                                drawerState.closeWithMotionPolicy(motionPolicy)
-                                inputFocusRequester.requestFocus()
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    enabled = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = newChatContainer,
-                        contentColor = newChatContent
-                    )
-                ) {
-                    Icon(Icons.Default.Add, null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.new_chat), style = ChatType.drawerButton)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                FilledTonalButton(
-                    onClick = {
-                        focusManager.clearFocus()
-                        showGlobalSearch = true
-                    },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.drawer_global_search), style = ChatType.drawerButton)
-                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -371,47 +321,7 @@ internal fun ChatDrawerContent(
                                         .padding(start = 10.dp, end = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    // First-letter avatar fallback: a circular brand-colored badge with
-                                    // the conversation title's leading character, receding gracefully on
-                                    // blank titles (falls back to the app name's first char).
-                                    val titleText = conversation.title.ifBlank {
-                                        stringResource(R.string.app_name)
-                                    }
-                                    // Take a full code point so CJK chars render as-is and emoji
-                                    // (surrogate pairs) don't split into an unreadable half.
-                                    val firstGlyph = titleText.trim().firstOrNull()?.let {
-                                        if (it.isHighSurrogate() &&
-                                            titleText.indexOf(it) + 1 < titleText.length
-                                        ) {
-                                            "${it}${titleText[titleText.indexOf(it) + 1]}"
-                                        } else {
-                                            it.toString().uppercase()
-                                        }
-                                    } ?: "•"
-                                    val avatarBg = if (isSelected) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.08f)
-                                    } else {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    }
-                                    val avatarFg = if (isSelected) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.primary
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .size(30.dp)
-                                            .background(avatarBg, MaterialTheme.shapes.small),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            text = firstGlyph,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = avatarFg,
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
+
                                     Text(
                                         text = conversation.title,
                                         modifier = Modifier.weight(1f),
@@ -529,162 +439,8 @@ internal fun ChatDrawerContent(
         }
     }
 
-    if (showGlobalSearch) {
-        GlobalSearchDialog(
-            viewModel = viewModel,
-            onDismiss = { showGlobalSearch = false },
-            onResultClick = { conversationId ->
-                viewModel.selectConversation(conversationId)
-                scope.launch { drawerState.closeWithMotionPolicy(motionPolicy) }
-                showGlobalSearch = false
-            },
-        )
-    }
 }
 
-/**
- * Cross-conversation search dialog: a text field plus reactive results from
- * [ChatViewModel.searchMessagesGlobally]. Each result shows the owning conversation title and a
- * snippet of the matching message with the query highlighted. Tapping a result selects that
- * conversation and dismisses the dialog + drawer.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun GlobalSearchDialog(
-    viewModel: ChatViewModel,
-    onDismiss: () -> Unit,
-    onResultClick: (String) -> Unit,
-) {
-    var query by remember { mutableStateOf("") }
-    val resultsFlow = remember(query) {
-        if (query.isBlank()) flowOf(emptyList<GlobalSearchResult>())
-        else viewModel.searchMessagesGlobally(query.trim())
-    }
-    val results by resultsFlow.collectAsState(initial = emptyList())
-    val noResultsText = stringResource(R.string.search_no_results)
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f),
-        ) {
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                Text(stringResource(R.string.drawer_global_search), style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text(stringResource(R.string.drawer_search_hint)) },
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                when {
-                    query.isBlank() -> {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                stringResource(R.string.drawer_search_empty),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
-                    results.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                noResultsText,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
-                    else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(results, key = { it.messageId }) { result ->
-                                GlobalSearchResultRow(
-                                    result = result,
-                                    query = query.trim(),
-                                    onClick = { onResultClick(result.conversationId) },
-                                )
-                                HorizontalDivider()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun GlobalSearchResultRow(
-    result: GlobalSearchResult,
-    query: String,
-    onClick: () -> Unit,
-) {
-    val highlightColor = MaterialTheme.colorScheme.primary
-    val snippet = remember(result.text, query, highlightColor) {
-        buildMatchSnippet(result.text, query, highlightColor)
-    }
-    Surface(
-        onClick = onClick,
-        color = Color.Transparent,
-        shape = RoundedCornerShape(8.dp),
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-            Text(
-                text = result.conversationTitle ?: stringResource(R.string.drawer_unnamed),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = snippet,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-/** Builds a short snippet around the first match of [query] in [text], highlighting the match. */
-private fun buildMatchSnippet(text: String, query: String, highlightColor: Color): AnnotatedString =
-    buildAnnotatedString {
-        if (query.isBlank()) {
-            append(text.take(80))
-            return@buildAnnotatedString
-        }
-        val idx = text.indexOf(query, ignoreCase = true)
-        if (idx < 0) {
-            append(text.take(80))
-            return@buildAnnotatedString
-        }
-        val contextChars = 40
-        val start = (idx - contextChars).coerceAtLeast(0)
-        val end = (idx + query.length + contextChars).coerceAtMost(text.length)
-        if (start > 0) append("…")
-        append(text.substring(start, idx))
-        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = highlightColor)) {
-            append(text.substring(idx, idx + query.length))
-        }
-        append(text.substring(idx + query.length, end))
-        if (end < text.length) append("…")
-    }
 
 
 // ── Merged from ChatDrawerState.kt (P3 preventive split) ─────────────────────
