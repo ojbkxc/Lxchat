@@ -4,6 +4,7 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
+import com.lxseek.chat.tool.ToolDescriptor
 import com.lxseek.chat.tool.ToolProvider
 import org.json.JSONArray
 import org.json.JSONObject
@@ -77,7 +78,7 @@ object OpenCodePluginAdapter {
      * descriptor is marked ReadOnly (default) and requiresApproval so the host surfaces
      * it safely — the tool body cannot be executed on Android.
      */
-    fun toToolDescriptor(tool: OpenCodeToolDef): ToolProvider.ToolDescriptor {
+    fun toToolDescriptor(tool: OpenCodeToolDef): ToolDescriptor {
         val parameters = jsonSchemaToToolParameters(tool.parameters)
         val definition = ToolDefinition(
             function = ToolFunction(
@@ -86,7 +87,7 @@ object OpenCodePluginAdapter {
                 parameters = parameters,
             ),
         )
-        return ToolProvider.ToolDescriptor(
+        return ToolDescriptor(
             definition = definition,
             requiresApproval = true,
             summary = tool.description.takeIf { it.isNotEmpty() },

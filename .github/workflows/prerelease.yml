@@ -76,16 +76,12 @@ jobs:
         run: |
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
 
-      - name: Create pre-release
+      - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           {
-            echo "## LxChat $TAG (Pre-Release)"
-            echo ""
-            echo "> ⚠️ 这是预发布版本，包含最新的开发中功能，可能不稳定。"
-            echo ">"
-            echo "> 稳定版请查看 [Releases](https://github.com/ojbkxc/Lxchat/releases/latest)。"
+            echo "## LxChat $TAG (正式版)"
             echo ""
             echo "**Commit:** ${{ github.sha }}"
             echo ""
@@ -94,8 +90,7 @@ jobs:
             echo "- \`LxChat-v${VERSION}-android-arm64-v8a.apk\` — Android APK (arm64-v8a)"
           } > /tmp/release_notes.md
           gh release create "$TAG" \
-            --title "LxChat $TAG (Pre-Release)" \
+            --title "LxChat $TAG (正式版)" \
             --notes-file /tmp/release_notes.md \
-            --prerelease \
             --target ${{ github.sha }} \
             $(find dist -type f)
