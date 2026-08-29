@@ -66,7 +66,7 @@ object HttpClient {
         if (h == "ts.net" || h.endsWith(".ts.net")) return true
         // Tailscale IPv6 ULA range fd7a:115c:a1e0::/48
         if (h.startsWith("fd7a:115c:a1e0")) return true
-        // Bare hostname with no dot → LAN name, not a public domain.
+        // Bare hostname with no dot 鈫?LAN name, not a public domain.
         if (!h.contains('.')) return true
         val o = h.split('.')
         if (o.size == 4 && o.all { it.toIntOrNull() in 0..255 }) {
@@ -93,7 +93,7 @@ object HttpClient {
         }
     }
 
-    // ── Network proxy ─────────────────────────────────────────────────────
+    // 鈹€鈹€ Network proxy 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     enum class ProxyType { HTTP, SOCKS }
 
     /** Active proxy config, or null = direct connection. Read live by the proxy
@@ -220,14 +220,14 @@ object HttpClient {
      * Dedicated client for the activation server (activate.lxseek.com).
      *
      * Hardened with:
-     * - **Certificate pinning** — pins the SHA-256 hash of the server's leaf cert
+     * - **Certificate pinning** 鈥?pins the SHA-256 hash of the server's leaf cert
      *   (or a CA in its chain). Blocks MITM proxies even if the device trusts a
      *   rogue CA. The placeholder hash below is a 32-zero SHA-256; replace with
      *   the real pin captured via `openssl s_client` or OkHttp's
      *   `CertificatePinner.pin()` before release. With the placeholder, pinning
      *   is effectively disabled (no cert will match), so set [ACTIVATION_PIN_ENABLED]
      *   to true only after the real hash is in place.
-     * - **Short timeouts** (10 s) — activation is a quick request/response, not a
+     * - **Short timeouts** (10 s) 鈥?activation is a quick request/response, not a
      *   long-running stream.
      * - **Same DNS / proxy** setup as [client] for consistency.
      */
@@ -349,7 +349,7 @@ object HttpClient {
             require(timeoutMillis > 0L)
             source?.timeout()?.timeout(timeoutMillis, TimeUnit.MILLISECONDS)
         }
-        /** Cancel the underlying HTTP call immediately — unblocks [readLine]. */
+        /** Cancel the underlying HTTP call immediately 鈥?unblocks [readLine]. */
         override fun cancel() {
             cancelled.set(true)
             call.cancel()
@@ -429,7 +429,7 @@ object HttpClient {
 
     internal fun boundRequestTrace(): RequestTrace? = coroutineRequestTrace.get()
 
-    /** Cancel EVERY in-flight streaming Call in the process — the "stop everything" backstop
+    /** Cancel EVERY in-flight streaming Call in the process 鈥?the "stop everything" backstop
      *  (e.g. ViewModel cleared). Per-conversation Stop should use the conversation's
      *  [com.lxseek.chat.viewmodel.StreamScope] instead, so it doesn't kill another
      *  conversation's generation. */
@@ -566,12 +566,12 @@ object HttpClient {
                 throw IOException("HTTP ${resp.code}")
             }
             val body = resp.body
-                ?: throw IOException("引擎下载内容为空：响应无 body")
+                ?: throw IOException("寮曟搸涓嬭浇鍐呭涓虹┖锛氬搷搴旀棤 body")
             body.byteStream().use { input ->
                 dest.outputStream().use { output -> input.copyTo(output) }
             }
             if (dest.length() == 0L) {
-                throw IOException("引擎下载内容为空：落盘 0 字节")
+                throw IOException("寮曟搸涓嬭浇鍐呭涓虹┖锛氳惤鐩?0 瀛楄妭")
             }
         }
     }

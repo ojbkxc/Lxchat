@@ -68,9 +68,9 @@ import java.util.Locale
  * Membership settings page: status card + redemption code input + yipay upgrade entry.
  *
  * Three sections rendered in a [LazyColumn]:
- *  - **Status card** — current tier (color-coded), expiry, source, or upgrade prompt for Free.
- *  - **Redemption code** — text field + redeem button + result feedback.
- *  - **Yipay upgrade** — Premium/Pro upgrade buttons (Free only); payment is server-gated so a
+ *  - **Status card** 鈥?current tier (color-coded), expiry, source, or upgrade prompt for Free.
+ *  - **Redemption code** 鈥?text field + redeem button + result feedback.
+ *  - **Yipay upgrade** 鈥?Premium/Pro upgrade buttons (Free only); payment is server-gated so a
  *    toast is shown for now.
  *
  * The page reads [ChatViewModel.membership] (a [com.lxseek.chat.viewmodel.MembershipViewModelApi])
@@ -87,23 +87,18 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val paymentRedirecting = stringResource(R.string.membership_payment_redirecting)
 
-    // 设备身份证 + 激活码体系：用 RemoteCloudApi 调远程激活服务（activate.lxseek.com）。
-    // LocalCloudApi 保留作为离线兜底（无网络时本地验证签名），但主路径走远程。
-    val activationManager = remember {
+    // 璁惧韬唤璇?+ 婵€娲荤爜浣撶郴锛氱敤 RemoteCloudApi 璋冭繙绋嬫縺娲绘湇鍔★紙activate.lxseek.com锛夈€?    // LocalCloudApi 淇濈暀浣滀负绂荤嚎鍏滃簳锛堟棤缃戠粶鏃舵湰鍦伴獙璇佺鍚嶏級锛屼絾涓昏矾寰勮蛋杩滅▼銆?    val activationManager = remember {
         ActivationManager(RemoteCloudApi(context), context)
     }
     var activationCodeInput by remember { mutableStateOf("") }
     var activationResult by remember { mutableStateOf<ActivationResult?>(null) }
     var isActivating by remember { mutableStateOf(false) }
 
-    // 免费试用状态
-    var isTrialing by remember { mutableStateOf(false) }
+    // 鍏嶈垂璇曠敤鐘舵€?    var isTrialing by remember { mutableStateOf(false) }
     var trialMessage by remember { mutableStateOf<String?>(null) }
-    // 本地标记：是否已用过免费试用。只读一次（试用成功后 status.tier 变化会让试用区消失）。
-    val trialUsed = remember { activationManager.isTrialUsed() }
+    // 鏈湴鏍囪锛氭槸鍚﹀凡鐢ㄨ繃鍏嶈垂璇曠敤銆傚彧璇讳竴娆★紙璇曠敤鎴愬姛鍚?status.tier 鍙樺寲浼氳璇曠敤鍖烘秷澶憋級銆?    val trialUsed = remember { activationManager.isTrialUsed() }
 
-    // 续费状态
-    var isRenewing by remember { mutableStateOf(false) }
+    // 缁垂鐘舵€?    var isRenewing by remember { mutableStateOf(false) }
     var renewMessage by remember { mutableStateOf<String?>(null) }
 
     BackHandler { onBack() }
@@ -154,8 +149,7 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             activationResult = result
                             if (result is ActivationResult.Success) {
                                 activationCodeInput = ""
-                                // 激活成功后刷新会员状态，让 StatusCard 同步。
-                                viewModel.membership.refresh()
+                                // 婵€娲绘垚鍔熷悗鍒锋柊浼氬憳鐘舵€侊紝璁?StatusCard 鍚屾銆?                                viewModel.membership.refresh()
                             }
                             isActivating = false
                         }
@@ -163,8 +157,7 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 )
             }
 
-            // 免费试用 3 天：仅在未激活且未用过试用时显示。
-            if ((status.tier == MembershipTier.Free || !status.isActive) && !trialUsed) {
+            // 鍏嶈垂璇曠敤 3 澶╋細浠呭湪鏈縺娲讳笖鏈敤杩囪瘯鐢ㄦ椂鏄剧ず銆?            if ((status.tier == MembershipTier.Free || !status.isActive) && !trialUsed) {
                 item {
                     FreeTrialSection(
                         isTrialing = isTrialing,
@@ -190,8 +183,7 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 }
             }
 
-            // 续费：已激活但快到期（3 天内）时显示。
-            if (status.isActive && isExpiringSoon(status)) {
+            // 缁垂锛氬凡婵€娲讳絾蹇埌鏈燂紙3 澶╁唴锛夋椂鏄剧ず銆?            if (status.isActive && isExpiringSoon(status)) {
                 item {
                     RenewMembershipSection(
                         isRenewing = isRenewing,
@@ -212,8 +204,7 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                 amount = amount,
                                 returnUrl = returnUrl,
                             )
-                            // 保存 PendingOrder（带 deviceId），onResume 兜底查询用。
-                            PendingOrderStore(context).save(
+                            // 淇濆瓨 PendingOrder锛堝甫 deviceId锛夛紝onResume 鍏滃簳鏌ヨ鐢ㄣ€?                            PendingOrderStore(context).save(
                                 PendingOrderStore.PendingOrder(
                                     outTradeNo = outTradeNo,
                                     tier = tier,
@@ -306,7 +297,7 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     }
 }
 
-// ── Section A: Status card ────────────────────────────────────
+// 鈹€鈹€ Section A: Status card 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 @Composable
 private fun MembershipStatusCard(status: MembershipStatus) {
@@ -383,7 +374,7 @@ private fun tierAccentColor(tier: MembershipTier): Color = when (tier) {
     MembershipTier.Enterprise -> Color(0xFF1565C0) // deep blue
 }
 
-// ── Section B: Redemption code input ──────────────────────────
+// 鈹€鈹€ Section B: Redemption code input 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 @Composable
 private fun RedemptionCodeSection(
@@ -455,7 +446,7 @@ private fun RedemptionResultFeedback(result: RedemptionResult) {
     }
 }
 
-// ── Section C: Yipay upgrade entry ────────────────────────────
+// 鈹€鈹€ Section C: Yipay upgrade entry 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 @Composable
 private fun YipayUpgradeSection(onUpgrade: (MembershipTier) -> Unit) {
@@ -484,15 +475,11 @@ private fun YipayUpgradeSection(onUpgrade: (MembershipTier) -> Unit) {
     }
 }
 
-// ── Section D: Device ID card (read-only display) ─────────────
+// 鈹€鈹€ Section D: Device ID card (read-only display) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 /**
- * 设备身份证显示区（只读）。
- *
- * 用户可在设置页查看本设备的身份证号，便于客服/激活码发放方核对。
- * 身份证号由 [DeviceIdCard.getDeviceIdDisplay] 生成，组合多个硬件特征做 SHA-256，
- * 不可被简单篡改；后续移 NDK 进一步防破解。
- */
+ * 璁惧韬唤璇佹樉绀哄尯锛堝彧璇伙級銆? *
+ * 鐢ㄦ埛鍙湪璁剧疆椤垫煡鐪嬫湰璁惧鐨勮韩浠借瘉鍙凤紝渚夸簬瀹㈡湇/婵€娲荤爜鍙戞斁鏂规牳瀵广€? * 韬唤璇佸彿鐢?[DeviceIdCard.getDeviceIdDisplay] 鐢熸垚锛岀粍鍚堝涓‖浠剁壒寰佸仛 SHA-256锛? * 涓嶅彲琚畝鍗曠鏀癸紱鍚庣画绉?NDK 杩涗竴姝ラ槻鐮磋В銆? */
 @Composable
 private fun DeviceIdCardSection(deviceIdDisplay: String) {
     Card(
@@ -523,7 +510,7 @@ private fun DeviceIdCardSection(deviceIdDisplay: String) {
     }
 }
 
-// ── Section E: Activation code input ───────────────────────────
+// 鈹€鈹€ Section E: Activation code input 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 @Composable
 private fun ActivationCodeSection(
@@ -602,14 +589,11 @@ private fun ActivationResultFeedback(result: ActivationResult) {
     }
 }
 
-// ── Section F: Free trial (3 days) ─────────────────────────────
+// 鈹€鈹€ Section F: Free trial (3 days) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 /**
- * 免费试用 3 天区。
- *
- * 仅在未激活且未用过试用时显示。点击后调 [ActivationManager.trial]，
- * 服务器签发 3 天 Premium 凭证。
- */
+ * 鍏嶈垂璇曠敤 3 澶╁尯銆? *
+ * 浠呭湪鏈縺娲讳笖鏈敤杩囪瘯鐢ㄦ椂鏄剧ず銆傜偣鍑诲悗璋?[ActivationManager.trial]锛? * 鏈嶅姟鍣ㄧ鍙?3 澶?Premium 鍑瘉銆? */
 @Composable
 private fun FreeTrialSection(
     isTrialing: Boolean,
@@ -654,13 +638,11 @@ private fun FreeTrialSection(
     }
 }
 
-// ── Section G: Renew membership ────────────────────────────────
+// 鈹€鈹€ Section G: Renew membership 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 /**
- * 续费区：已激活但快到期时显示。
- *
- * 点击后发起易支付支付 → DeepLink 回调 → 服务器确认 → 续费。
- */
+ * 缁垂鍖猴細宸叉縺娲讳絾蹇埌鏈熸椂鏄剧ず銆? *
+ * 鐐瑰嚮鍚庡彂璧锋槗鏀粯鏀粯 鈫?DeepLink 鍥炶皟 鈫?鏈嶅姟鍣ㄧ‘璁?鈫?缁垂銆? */
 @Composable
 private fun RenewMembershipSection(
     isRenewing: Boolean,

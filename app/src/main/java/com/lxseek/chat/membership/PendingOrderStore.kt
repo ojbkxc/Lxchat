@@ -4,7 +4,7 @@ import android.content.Context
 import org.json.JSONObject
 
 /**
- * Persists the in-flight Yipay (易支付) order so the App can query its status later.
+ * Persists the in-flight Yipay (鏄撴敮浠? order so the App can query its status later.
  *
  * The App has no backend server, so a DeepLink callback is the only push channel for
  * payment results. If the user closes the browser or the DeepLink fails to launch,
@@ -13,7 +13,7 @@ import org.json.JSONObject
  * on [onResume] as a fallback and activates membership once the order is paid.
  *
  * Backed by SharedPreferences (`yipay_pending_order` / key `pending`) holding a tiny
- * JSON blob. Only one pending order is tracked at a time — a new payment overwrites
+ * JSON blob. Only one pending order is tracked at a time 鈥?a new payment overwrites
  * the previous one. Orders older than [EXPIRY_MILLIS] are treated as expired.
  */
 class PendingOrderStore(context: Context) {
@@ -24,7 +24,7 @@ class PendingOrderStore(context: Context) {
         val tier: MembershipTier,
         val amount: String,
         val timestamp: Long,
-        /** 设备身份证，激活时需要带给服务器。 */
+        /** 璁惧韬唤璇侊紝婵€娲绘椂闇€瑕佸甫缁欐湇鍔″櫒銆?*/
         val deviceId: String = "",
     )
 
@@ -53,8 +53,7 @@ class PendingOrderStore(context: Context) {
                 tier = MembershipTier.parse(json.getString(KEY_TIER)),
                 amount = json.getString(KEY_AMOUNT),
                 timestamp = json.getLong(KEY_TIMESTAMP),
-                // 旧版本存储没有 deviceId 字段，容错读取为空串。
-                deviceId = json.optString(KEY_DEVICE_ID, ""),
+                // 鏃х増鏈瓨鍌ㄦ病鏈?deviceId 瀛楁锛屽閿欒鍙栦负绌轰覆銆?                deviceId = json.optString(KEY_DEVICE_ID, ""),
             )
         } catch (_: Exception) {
             null

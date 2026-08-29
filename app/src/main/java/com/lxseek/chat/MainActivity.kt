@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
 
     override fun attachBaseContext(newBase: Context) {
         // attachBaseContext runs before Application.onCreate, so CrashReporter is NOT installed
-        // yet — an uncaught exception here is an invisible silent crash. DataStore's first read
+        // yet 鈥?an uncaught exception here is an invisible silent crash. DataStore's first read
         // can throw IOException (corrupted file, first-install race, scoped-storage issues).
         // Fall back to the system default locale on any failure rather than killing the process.
         val locale = try {
@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
                 else -> null
             }
         } catch (e: Throwable) {
-            // Swallow — locale customization is non-essential. Use system default.
+            // Swallow 鈥?locale customization is non-essential. Use system default.
             null
         }
         if (locale != null) {
@@ -282,7 +282,7 @@ class MainActivity : ComponentActivity() {
                     val viewModel: ChatViewModel = viewModel(factory = factory)
 
                     when (showOnboarding) {
-                        null -> { /* loading — splash screen covers this */ }
+                        null -> { /* loading 鈥?splash screen covers this */ }
                         true -> {
                             WelcomeScreen(
                                 onComplete = {
@@ -358,11 +358,7 @@ class MainActivity : ComponentActivity() {
      * Parse + verify the Yipay callback signature, then ask the activation server to
      * confirm the payment and issue a signed credential.
      *
-     * Flow: parse callback → verify MD5 signature → check trade status →
-     *       publish [YipayCallbackResult.Confirming] →
-     *       RemoteCloudApi.activateByOrder(deviceId, outTradeNo) →
-     *       server queries the gateway, confirms paid, returns credential →
-     *       publish [YipayCallbackResult.Success].
+     * Flow: parse callback 鈫?verify MD5 signature 鈫?check trade status 鈫?     *       publish [YipayCallbackResult.Confirming] 鈫?     *       RemoteCloudApi.activateByOrder(deviceId, outTradeNo) 鈫?     *       server queries the gateway, confirms paid, returns credential 鈫?     *       publish [YipayCallbackResult.Success].
      *
      * The signature check alone is NOT enough to activate: a user can forge a
      * DeepLink URL with valid-looking params. The server must independently query
@@ -388,8 +384,8 @@ class MainActivity : ComponentActivity() {
             yipayCallbackResult.value = YipayCallbackResult.Failed
             return
         }
-        // Signature valid → ask server to confirm payment & activate.
-        // Map amount → tier for UI feedback only; the server is the source of truth.
+        // Signature valid 鈫?ask server to confirm payment & activate.
+        // Map amount 鈫?tier for UI feedback only; the server is the source of truth.
         val tier = mapMoneyToTier(params.money)
         val store = PendingOrderStore(this)
         val activationManager = ActivationManager(RemoteCloudApi(this), this)
@@ -419,7 +415,7 @@ class MainActivity : ComponentActivity() {
      * Fallback for lost DeepLink callbacks: when the App returns to the foreground with a
      * pending Yipay order, ask the activation server to confirm the payment and activate.
      *
-     * Skipped when a callback already succeeded (DeepLink beat us to it) — the store is
+     * Skipped when a callback already succeeded (DeepLink beat us to it) 鈥?the store is
      * cleared and we do nothing. Expired orders (older than 10 min) are also cleared.
      *
      * Unlike the old path which queried the Yipay gateway directly (requiring the merchant
@@ -429,7 +425,7 @@ class MainActivity : ComponentActivity() {
     private fun checkPendingYipayOrder() {
         val store = PendingOrderStore(this)
         val pending = store.get() ?: return
-        // DeepLink already activated membership — don't double-activate.
+        // DeepLink already activated membership 鈥?don't double-activate.
         if (yipayCallbackResult.value is YipayCallbackResult.Success) {
             store.clear()
             return
@@ -445,7 +441,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val result = activationManager.activateByOrder(pending.outTradeNo)
             if (result is ActivationResult.Success) {
-                // A DeepLink may have arrived between get() and the response — re-check.
+                // A DeepLink may have arrived between get() and the response 鈥?re-check.
                 if (yipayCallbackResult.value is YipayCallbackResult.Success) {
                     store.clear()
                     return@launch
@@ -533,7 +529,7 @@ fun MainNavigation(
     val snackbarHostState = remember { SnackbarHostState() }
     var snackbarVersion by remember { mutableIntStateOf(0) }
 
-    // Yipay payment callback → Snackbar feedback (success / failed / confirming).
+    // Yipay payment callback 鈫?Snackbar feedback (success / failed / confirming).
     val yipayResult by yipayCallbackResult.collectAsState()
     LaunchedEffect(yipayResult) {
         when (yipayResult) {
@@ -596,8 +592,8 @@ fun MainNavigation(
                         Spacer(modifier = Modifier.height(8.dp))
                         Column {
                             // Lightweight markdown render of the release notes, kept on the
-                            // shared type scale: '## ' → bold section label, '- ' → indented
-                            // bullet, blank line → vertical gap, everything else → paragraph.
+                            // shared type scale: '## ' 鈫?bold section label, '- ' 鈫?indented
+                            // bullet, blank line 鈫?vertical gap, everything else 鈫?paragraph.
                             info.body.split("\n").forEach { line ->
                                 when {
                                     line.startsWith("## ") -> Text(
@@ -608,7 +604,7 @@ fun MainNavigation(
                                         modifier = Modifier.padding(top = 14.dp, bottom = 2.dp)
                                     )
                                     line.startsWith("- ") -> Text(
-                                        text = "•  ${line.removePrefix("- ")}",
+                                        text = "鈥? ${line.removePrefix("- ")}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(top = 3.dp, start = 2.dp)
@@ -684,7 +680,7 @@ fun MainNavigation(
         )
     }
 
-    // ask_user tool dialog — agent asks user a question
+    // ask_user tool dialog 鈥?agent asks user a question
     val pendingQuestion by viewModel.pendingQuestion.collectAsState()
     pendingQuestion?.let { pending ->
         AskUserQuestionPanel(
@@ -694,7 +690,7 @@ fun MainNavigation(
         )
     }
 
-    // MCP server → client elicitation dialog (form / URL confirmation)
+    // MCP server 鈫?client elicitation dialog (form / URL confirmation)
     val pendingElicitation by viewModel.pendingElicitation.collectAsState()
     pendingElicitation?.let { pending ->
         McpElicitationPanel(
@@ -704,7 +700,7 @@ fun MainNavigation(
         )
     }
 
-    // Crash report — opt-in, shown once on the first launch after an unexpected exit
+    // Crash report 鈥?opt-in, shown once on the first launch after an unexpected exit
     val crashContext = LocalContext.current
     var pendingCrash by remember { mutableStateOf<Pair<String, String>?>(null) }
     val crashSubmittedMsg = stringResource(R.string.crash_submitted)
@@ -830,7 +826,7 @@ fun MainNavigation(
         )
     }
 
-    // Rating prompt — read from flow directly to avoid collectAsState initial-value race
+    // Rating prompt 鈥?read from flow directly to avoid collectAsState initial-value race
     var showRatingPrompt by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {

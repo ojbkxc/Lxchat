@@ -12,13 +12,13 @@ import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
- * Yipay (易支付) payment manager — builds the gateway submit URL and parses/verifies
+ * Yipay (鏄撴敮浠? payment manager 鈥?builds the gateway submit URL and parses/verifies
  * the DeepLink callback.
  *
  * **Signature algorithm** (identical to v2board EPay.php `pay()` and to
  * [YipayCallbackVerifier.buildSignString]):
  *  1. Collect the request parameters (money, name, notify_url, return_url,
- *     out_trade_no, pid, type — blanks dropped), sort by key ascending (ksort).
+ *     out_trade_no, pid, type 鈥?blanks dropped), sort by key ascending (ksort).
  *  2. Concatenate as `key1=value1&key2=value2&...` using the **raw** values.
  *     (PHP does `http_build_query` then `stripslashes(urldecode(...))` which
  *     round-trips back to the raw values, so we skip the encode/decode dance.)
@@ -40,7 +40,7 @@ class YipayPaymentManager {
      * @param amount       payment amount in **yuan** (e.g. "0.30"); v2board uses cents but
      *                     yipay takes yuan directly
      * @param productName  product name; defaults to [outTradeNo] to match v2board
-     * @param notifyUrl    server async notify URL; blank to omit (App端无服务器, 可留空)
+     * @param notifyUrl    server async notify URL; blank to omit (App绔棤鏈嶅姟鍣? 鍙暀绌?
      * @param returnUrl    sync return URL (DeepLink), e.g. `lxchat://yipay-callback`
      * @return fully-qualified submit URL to open in the browser
      */
@@ -120,20 +120,17 @@ class YipayPaymentManager {
     }
 
     /**
-     * Query the gateway for the status of [outTradeNo] — the fallback path when the
-     * DeepLink callback is lost (user closed the browser, redirect failed, …).
+     * Query the gateway for the status of [outTradeNo] 鈥?the fallback path when the
+     * DeepLink callback is lost (user closed the browser, redirect failed, 鈥?.
      *
      * Calls `GET {gatewayUrl}/api.php?act=order&pid=...&key=...&out_trade_no=...`.
      * Runs on an IO dispatcher with short timeouts. Returns null on network/parse
      * failure; otherwise a [QueryResult] where `code==1 && status==1` means paid.
      *
-     * @deprecated 不再直接调易支付查询 API。商户密钥（merchantKey）不应留在 App 端，
-     * 且 DeepLink 回调可被伪造。新流程改为调 [RemoteCloudApi.activateByOrder]，
-     * 由激活服务器（activate.lxseek.com）后端查询易支付订单确认真正已支付后签发凭证。
-     * 保留本方法仅供离线调试/旧路径兼容，生产环境不应调用。
-     */
+     * @deprecated 涓嶅啀鐩存帴璋冩槗鏀粯鏌ヨ API銆傚晢鎴峰瘑閽ワ紙merchantKey锛変笉搴旂暀鍦?App 绔紝
+     * 涓?DeepLink 鍥炶皟鍙浼€犮€傛柊娴佺▼鏀逛负璋?[RemoteCloudApi.activateByOrder]锛?     * 鐢辨縺娲绘湇鍔″櫒锛坅ctivate.lxseek.com锛夊悗绔煡璇㈡槗鏀粯璁㈠崟纭鐪熸宸叉敮浠樺悗绛惧彂鍑瘉銆?     * 淇濈暀鏈柟娉曚粎渚涚绾胯皟璇?鏃ц矾寰勫吋瀹癸紝鐢熶骇鐜涓嶅簲璋冪敤銆?     */
     @Deprecated(
-        "Use RemoteCloudApi.activateByOrder instead — merchant key must not live in the App.",
+        "Use RemoteCloudApi.activateByOrder instead 鈥?merchant key must not live in the App.",
         ReplaceWith("RemoteCloudApi(context).activateByOrder(deviceId, outTradeNo)"),
     )
     suspend fun queryOrderStatus(config: YipayConfig, outTradeNo: String): QueryResult? =
@@ -186,7 +183,7 @@ class YipayPaymentManager {
  * Result of processing a Yipay callback DeepLink, surfaced to the UI via a StateFlow
  * (see [com.lxseek.chat.MainActivity]). [Idle] is the resting state; the UI consumes
  * [Success]/[Failed] and resets to [Idle]. [Confirming] is an intermediate state shown
- * while the server confirms the payment (1–3 s typically).
+ * while the server confirms the payment (1鈥? s typically).
  */
 sealed class YipayCallbackResult {
     /** No callback processed yet / already consumed. */
