@@ -50,7 +50,7 @@ import kotlinx.coroutines.delay
  * advanced tools menu.
  *
  * The three menus share a single [activeMenu] slot so they are mutually
- * exclusive �?opening the model picker closes the context popover, and vice
+ * exclusive — opening the model picker closes the context popover, and vice
  * versa. Each menu carries its own dismiss-timestamp guard so a dismiss
  * followed by an immediate re-tap (within 200ms) is ignored, which is needed
  * because the anchors live inside a row that also captures touch events.
@@ -58,7 +58,7 @@ import kotlinx.coroutines.delay
  * - **Model menu**: searchable list of enabled models, grouped by provider.
  * - **Context menu**: circular token-budget gauge with compact-boundary hint.
  * - **Tools menu**: thinking, web search, code execution, OpenAI service tier,
- *   shell, compact �?plus a shortcut back to the model picker.
+ *   shell, compact — plus a shortcut back to the model picker.
  *
  * The thinking and OpenAI service tier panels open in modal bottom sheets
  * owned by [ChatBottomBar]; this composable only requests their display via

@@ -322,9 +322,9 @@ fun SettingsMcpPage(
     }
 }
 
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
-// ���� Merged from SettingsMcpComponents.kt ����������������������������������������������������������������������
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
+// ────────────────────────────────────────────────
+// Merged from SettingsMcpComponents.kt
+// ────────────────────────────────────────────────
 @Composable
 internal fun McpStatusDot(status: McpConnectionStatus) {
     val description = stringResource(
