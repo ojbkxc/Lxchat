@@ -71,6 +71,7 @@ class ConversationRepository(
         id = id, title = title, systemPromptId = systemPromptId, modelId = modelId,
         taskId = taskId, origin = origin, graduated = graduated,
         hasUnreadGeneration = hasUnreadGeneration,
+        pinned = pinned,
     )
 
     fun getAllConversations(): Flow<List<ChatConversation>> =

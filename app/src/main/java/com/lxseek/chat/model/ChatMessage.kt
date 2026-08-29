@@ -142,6 +142,7 @@ data class ChatConversation(
     val origin: String = "user",
     val graduated: Boolean = false,
     val hasUnreadGeneration: Boolean = false,
+    val pinned: Boolean = false,
 )
 
 fun ChatMessage.isContextCompact(): Boolean =
