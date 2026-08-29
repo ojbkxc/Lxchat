@@ -30,6 +30,7 @@ import android.os.HandlerThread
 import android.os.StatFs
 import android.os.Vibrator
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.Display
 import android.view.WindowManager
 import android.Manifest
@@ -1066,7 +1067,7 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
                     Uri.parse("package:${app.packageName}"),
                 ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 app.startActivity(intent)
-            } catch (e: Exception) { Log.d(\"DeviceTool\", \"operation failed\", e) }
+            } catch (e: Exception) { Log.d("DeviceTool", "operation failed", e) }
             return err("requires_write_settings", "Screen brightness needs WRITE_SETTINGS; grant page opened.")
         }
         return try {

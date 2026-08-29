@@ -1,6 +1,7 @@
 package com.lxseek.chat.ui.settings
 
 import android.os.Build
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -133,7 +134,7 @@ fun SettingsSandboxPage(
             val confirmed = sandboxManager.isAvailable()
             if (available != confirmed) available = confirmed
             if (available) sandboxManager.refreshPackageList()
-        } catch (e: Exception) { Log.d(\"SettingsSandbox\", \"operation failed\", e) }
+        } catch (e: Exception) { Log.d("SettingsSandbox", "operation failed", e) }
     }
 
     // When a user-initiated rootfs install finishes, re-check availability and surface any error.

@@ -1,6 +1,7 @@
 package com.lxseek.chat.tool
 
 import android.app.Application
+import android.util.Log
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -704,15 +705,15 @@ internal class ScreenRecordEngine(
         running = false
         // Codec
         codec?.let { c ->
-            try { c.stop() } catch (e: Exception) { Log.d(\"ScreenRecord\", \"stop failed\", e) }
-            try { c.release() } catch (e: Exception) { Log.d(\"ScreenRecord\", \"release failed\", e) }
+            try { c.stop() } catch (e: Exception) { Log.d("ScreenRecord", "stop failed", e) }
+            try { c.release() } catch (e: Exception) { Log.d("ScreenRecord", "release failed", e) }
         }
         codec = null
         // Surface owned by the codec; just drop the reference.
         inputSurface = null
         // VirtualDisplay
         virtualDisplay?.let { v ->
-            try { v.release() } catch (e: Exception) { Log.d(\"ScreenRecord\", \"release failed\", e) }
+            try { v.release() } catch (e: Exception) { Log.d("ScreenRecord", "release failed", e) }
         }
         virtualDisplay = null
         // Muxer
@@ -720,12 +721,12 @@ internal class ScreenRecordEngine(
             if (muxerStarted) {
                 try { m.stop() } catch (e: Exception) { DebugLog.w(TAG, "muxer stop failed", e) }
             }
-            try { m.release() } catch (e: Exception) { Log.d(\"ScreenRecord\", \"release failed\", e) }
+            try { m.release() } catch (e: Exception) { Log.d("ScreenRecord", "release failed", e) }
         }
         muxer = null
         muxerStarted = false
         // MediaProjection
-        try { mediaProjection.stop() } catch (e: Exception) { Log.d(\"ScreenRecord\", \"stop failed\", e) }
+        try { mediaProjection.stop() } catch (e: Exception) { Log.d("ScreenRecord", "stop failed", e) }
         // Unblock stop()
         releaseLatch.countDown()
     }

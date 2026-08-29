@@ -114,7 +114,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         viewModel.settings.setCustomFontPath(dest.absolutePath)
                         viewModel.settings.setCustomFontName(fontName)
                     }
-                } catch (e: Exception) { Log.d(\"SettingsAppearance\", \"parse failed\", e) }
+                } catch (e: Exception) { Log.d("SettingsAppearance", "parse failed", e) }
             }
         }
     }
