@@ -120,6 +120,7 @@ class PluginMarket(
                         MarketSourceKind.MARKET -> fetchIndex(source.indexUrl)
                         MarketSourceKind.CLAWHUB -> BuiltinMarketSources.fetchClawhubCatalog()
                         MarketSourceKind.SKILLHUB -> BuiltinMarketSources.fetchSkillhubCatalog()
+                        MarketSourceKind.BUILTIN_ASSET -> BuiltinAssetSource.fetchCatalog(context)
                     }
                 }
                 index.exceptionOrNull()?.let { e ->
@@ -367,6 +368,16 @@ class PluginMarket(
         return when (source?.kind) {
             MarketSourceKind.CLAWHUB -> BuiltinMarketSources.fetchClawhubSkillBody(meta.id)
             MarketSourceKind.SKILLHUB -> BuiltinMarketSources.fetchSkillhubSkillBody(meta.id)
+            MarketSourceKind.BUILTIN_ASSET -> {
+                // Curated skills are served from assets; non-curated fall back to manifestUrl.
+                val body = BuiltinAssetSource.fetchSkillBody(context, meta.id)
+                if (body.isNotBlank()) body
+                else {
+                    val manifestUrl = meta.manifestUrl
+                        ?: throw IllegalArgumentException("技能插件缺少 manifestUrl")
+                    fetchText(manifestUrl)
+                }
+            }
             else -> {
                 val manifestUrl = meta.manifestUrl
                     ?: throw IllegalArgumentException("技能插件缺少 manifestUrl")

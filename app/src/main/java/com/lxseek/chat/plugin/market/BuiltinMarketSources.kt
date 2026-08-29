@@ -38,10 +38,11 @@ object BuiltinMarketSources {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** 两个内置市场源预设，仅在源列表中缺该 kind 时注入；用户可停用（不可删除）。 */
+    /** 三个内置市场源预设，仅在源列表中缺该 kind 时注入；用户可停用（不可删除）。 */
     val BUILTIN_SOURCES: List<MarketSource> = listOf(
         MarketSource(id = "builtin-clawhub", name = "ClawHub 技能市场", indexUrl = "$BASE_CLAWHUB", kind = MarketSourceKind.CLAWHUB),
         MarketSource(id = "builtin-skillhub", name = "SkillHub 技能市场", indexUrl = "$BASE_SKILLHUB", kind = MarketSourceKind.SKILLHUB),
+        MarketSource(id = "builtin-asset", name = "内置技能库", indexUrl = "assets://builtin-skills-index.json", kind = MarketSourceKind.BUILTIN_ASSET),
     )
 
     // ── Builtin RUNTIME engines ────────────────────────────────

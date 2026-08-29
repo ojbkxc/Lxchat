@@ -32,7 +32,7 @@ enum class MarketPluginKind {
  * - [MARKET] 自定义源：拉取一个静态 `MarketIndex` JSON 清单（indexUrl）。
  * - [CLAWHUB] / [SKILLHUB] 内置源：走各自的 REST 分页 API，由 [BuiltinMarketSources] 适配。
  */
-enum class MarketSourceKind { MARKET, CLAWHUB, SKILLHUB }
+enum class MarketSourceKind { MARKET, CLAWHUB, SKILLHUB, BUILTIN_ASSET }
 
 /**
  * 市场源。id 在创建时生成，安装记录通过 sourceId 关联回来源。
