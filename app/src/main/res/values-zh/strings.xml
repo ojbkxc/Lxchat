@@ -1625,10 +1625,10 @@
     <string name="pet_group_builtin_title">内置宠物</string>
     <string name="pet_character_label">宠物外观</string>
     <string name="pet_character_classic">经典（默认气泡）</string>
-    <string name="pet_character_dada">搭搭 Dada</string>
-    <string name="pet_character_huhu">弧弧 Huhu</string>
-    <string name="pet_character_bubu">补补 Bubu</string>
-    <string name="pet_character_huihui">回回 Huihui</string>
+    <string name="pet_character_dada">搭搭</string>
+    <string name="pet_character_huhu">弧弧</string>
+    <string name="pet_character_bubu">补补</string>
+    <string name="pet_character_huihui">回回</string>
     <string name="pet_character_dada_desc">沉稳的协作机器人，陪你把想法一块块搭起来</string>
     <string name="pet_character_huhu_desc">拿着铅笔和计划本的路线机器人，复杂任务也能找到出口</string>
     <string name="pet_character_bubu_desc">举着修补扳手的小机器人，最擅长发现并修好裂缝</string>

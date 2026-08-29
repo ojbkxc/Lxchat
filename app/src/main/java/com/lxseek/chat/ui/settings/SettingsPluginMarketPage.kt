@@ -37,7 +37,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -45,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -95,6 +98,24 @@ fun SettingsPluginMarketPage(
 
     // ── Sources sub-page navigation (merged from SettingsMarketSourcesPage) ──
     var showSources by remember { mutableStateOf(false) }
+
+    // ── Category tab filter: 0=All, 1=Skill, 2=MCP, 3=Runtime, 4=ToolPkg ──
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabKinds = listOf<MarketPluginKind?>(null, MarketPluginKind.SKILL, MarketPluginKind.MCP, MarketPluginKind.RUNTIME, MarketPluginKind.TOOLPKG)
+    val tabLabels = listOf(
+        stringResource(R.string.settings_market_tab_all),
+        stringResource(R.string.settings_market_tab_skills),
+        stringResource(R.string.market_kind_mcp),
+        stringResource(R.string.market_kind_runtime),
+        stringResource(R.string.market_kind_toolpkg),
+    )
+    val filterKind = tabKinds[selectedTab]
+    val filteredInstallations = remember(installations, filterKind) {
+        if (filterKind == null) installations else installations.filter { it.kind == filterKind }
+    }
+    val filteredCatalog = remember(catalog, filterKind) {
+        if (filterKind == null) catalog else catalog.filter { it.kind == filterKind }
+    }
 
     val installedIds = remember(installations) { installations.map { it.pluginId }.toSet() }
 
@@ -153,15 +174,112 @@ fun SettingsPluginMarketPage(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            if (installations.isNotEmpty()) {
-                item(key = "section_installed") {
-                    MarketSectionHeader(stringResource(R.string.market_section_installed))
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab,
+                edgePadding = 12.dp,
+            ) {
+                tabLabels.forEachIndexed { index, label ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(label, maxLines = 1) },
+                    )
                 }
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                if (filteredInstallations.isNotEmpty()) {
+                    item(key = "section_installed") {
+                        MarketSectionHeader(stringResource(R.string.market_section_installed))
+                    }
+                    items(filteredInstallations, key = { "inst_${it.pluginId}" }) { inst ->
+                        InstalledPluginRow(
+                            installation = inst,
+                            onToggle = { market.setEnabled(inst.pluginId, it) },
+                            onUninstall = { uninstallTarget = inst.pluginId },
+                            onEdit = if (inst.kind == MarketPluginKind.MCP) {
+                                {
+                                    urlDraft = inst.serverUrl
+                                    headerDrafts = inst.headers.map { (name, value) ->
+                                        MarketHeaderDraft(name = name, value = value)
+                                    }
+                                    editingFor = inst
+                                }
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                }
+
+                item(key = "section_catalog") {
+                    MarketSectionHeader(stringResource(R.string.market_section_catalog))
+                }
+                when {
+                    refreshing && filteredCatalog.isEmpty() -> {
+                        item(key = "loading") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+                    sources.isEmpty() -> {
+                        item(key = "no_sources") {
+                            MarketEmptyState(
+                                title = stringResource(R.string.market_no_sources_title),
+                                hint = stringResource(R.string.market_no_sources_hint),
+                                actionLabel = stringResource(R.string.market_add_source),
+                                onAction = { showSources = true },
+                            )
+                        }
+                    }
+                    filteredCatalog.isEmpty() -> {
+                        item(key = "empty_catalog") {
+                            MarketEmptyState(
+                                title = stringResource(R.string.market_catalog_empty),
+                                hint = refreshError?.takeIf { !refreshing }.orEmpty(),
+                            )
+                        }
+                    }
+                    else -> {
+                        items(filteredCatalog, key = { "cat_${it.id}" }) { meta ->
+                            val installed = meta.id in installedIds
+                            CatalogPluginRow(
+                                meta = meta,
+                                installed = installed,
+                                installing = installingId == meta.id,
+                                onInstall = {
+                                    installingId = meta.id
+                                    scope.launch {
+                                        try {
+                                            market.install(meta)
+                                            viewModel.emitSnackbar(
+                                                context.getString(R.string.market_installed_ok),
+                                            )
+                                        } catch (e: Exception) {
+                                            viewModel.emitSnackbar(
+                                                context.getString(R.string.market_operation_failed) +
+                                                    "：${e.message}",
+                                            )
+                                        } finally {
+                                            installingId = null
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
                 items(installations, key = { "inst_${it.pluginId}" }) { inst ->
                     InstalledPluginRow(
                         installation = inst,

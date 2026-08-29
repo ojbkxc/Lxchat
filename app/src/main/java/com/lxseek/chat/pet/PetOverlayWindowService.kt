@@ -124,8 +124,9 @@ class PetOverlayWindowService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            // Start pinned to the top-right with a comfortable margin (window right edge).
-            x = resources.displayMetrics.widthPixels - windowW - (MARGIN_DP * density).toInt()
+            // Start pinned to the top-right with a comfortable margin.
+            // Offset so the pet (centered in the window) sits at the right edge, not the window.
+            x = resources.displayMetrics.widthPixels - (windowW + sizePx) / 2 - (MARGIN_DP * density).toInt()
             y = topMarginPx()
         }
         val view = PetFloatingView(this).apply {

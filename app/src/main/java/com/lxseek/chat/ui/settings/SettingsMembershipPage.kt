@@ -54,10 +54,7 @@ import com.lxseek.chat.membership.LocalMembershipProvider
 import com.lxseek.chat.membership.MembershipStatus
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.membership.PendingOrderStore
-import com.lxseek.chat.membership.RedemptionResult
 import com.lxseek.chat.membership.RemoteCloudApi
-import com.lxseek.chat.membership.YipayConfig
-import com.lxseek.chat.membership.YipayPaymentManager
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -80,9 +77,7 @@ import java.util.Locale
 @Composable
 fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val status by viewModel.membership.status.collectAsState()
-    var codeInput by remember { mutableStateOf("") }
-    var redeemResult by remember { mutableStateOf<RedemptionResult?>(null) }
-    var isRedeeming by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val paymentRedirecting = stringResource(R.string.membership_payment_redirecting)
@@ -230,26 +225,6 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 }
             }
 
-            item {
-                RedemptionCodeSection(
-                    code = codeInput,
-                    onCodeChange = {
-                        codeInput = it
-                        redeemResult = null
-                    },
-                    result = redeemResult,
-                    isRedeeming = isRedeeming,
-                    onRedeem = {
-                        scope.launch {
-                            isRedeeming = true
-                            val result = viewModel.membership.redeemCode(codeInput)
-                            redeemResult = result
-                            if (result is RedemptionResult.Valid) codeInput = ""
-                            isRedeeming = false
-                        }
-                    },
-                )
-            }
 
             if (status.tier == MembershipTier.Free || !status.isActive) {
                 item {
@@ -383,77 +358,6 @@ private fun tierAccentColor(tier: MembershipTier): Color = when (tier) {
     MembershipTier.Enterprise -> Color(0xFF1565C0) // deep blue
 }
 
-// Section B: Redemption code input
-
-@Composable
-private fun RedemptionCodeSection(
-    code: String,
-    onCodeChange: (String) -> Unit,
-    result: RedemptionResult?,
-    isRedeeming: Boolean,
-    onRedeem: () -> Unit,
-) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        Text(
-            text = stringResource(R.string.membership_redeem_section_title),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = code,
-            onValueChange = onCodeChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(stringResource(R.string.membership_redeem_code_hint)) },
-            singleLine = true,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = onRedeem,
-            enabled = code.isNotBlank() && !isRedeeming,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.membership_redeem_button))
-        }
-
-        result?.let { RedemptionResultFeedback(it) }
-    }
-}
-
-@Composable
-private fun RedemptionResultFeedback(result: RedemptionResult) {
-    Spacer(modifier = Modifier.height(12.dp))
-    when (result) {
-        is RedemptionResult.Valid -> {
-            Text(
-                text = stringResource(R.string.membership_redeem_success),
-                color = Color(0xFF2E7D32), // green
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-        is RedemptionResult.Invalid -> {
-            Text(
-                text = stringResource(R.string.membership_redeem_invalid, result.reason),
-                color = Color(0xFFC62828), // red
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-        RedemptionResult.Expired -> {
-            Text(
-                text = stringResource(R.string.membership_redeem_expired),
-                color = Color(0xFFC62828),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-        RedemptionResult.AlreadyUsed -> {
-            Text(
-                text = stringResource(R.string.membership_redeem_already_used),
-                color = Color(0xFFC62828),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-    }
-}
 
 // Section C: Yipay upgrade entry
 

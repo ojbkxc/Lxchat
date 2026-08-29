@@ -582,8 +582,12 @@ class PetFloatingView @JvmOverloads constructor(
     private fun snapToNearestEdge(params: WindowManager.LayoutParams) {
         val viewWidth = if (width > 0) width else params.width
         val screenWidth = resources.displayMetrics.widthPixels
-        val leftTarget = 0
-        val rightTarget = (screenWidth - viewWidth).coerceAtLeast(0)
+        val effectivePetSize = if (petSizePx > 0) petSizePx else viewWidth
+        // When the window is wider than the pet (for tip text), offset so the pet
+        // itself snaps to the screen edge, not the window edge.
+        val horizontalOffset = (viewWidth - effectivePetSize) / 2
+        val leftTarget = -horizontalOffset
+        val rightTarget = (screenWidth - viewWidth + horizontalOffset).coerceAtLeast(leftTarget)
         val target = if (params.x <= (leftTarget + rightTarget) / 2) leftTarget else rightTarget
         if (target == params.x) return
         cancelSnapAnimation()
