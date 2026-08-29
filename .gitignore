@@ -39,6 +39,9 @@ app/src/fdroid/jniLibs/arm64-v8a/
 /.claude/
 signing.properties
 
+# Local runtime package downloads (build artifacts)
+packages/
+
 # Local CI log extraction (diagnostic only)
 .ci-logs-extract/
 

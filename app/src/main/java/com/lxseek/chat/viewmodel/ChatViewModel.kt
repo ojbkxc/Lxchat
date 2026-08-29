@@ -898,6 +898,9 @@ class ChatViewModel(
     fun setActiveModel(model: String) = selectionController.setActiveModel(model)
     fun deleteConversation(id: String) = conversationLifecycleController.delete(id)
 
+    fun toggleConversationPin(id: String, pinned: Boolean) =
+        conversationLifecycleController.togglePin(id, pinned)
+
     /**
      * Deletes a message and all its descendants (BFS cascade).
      * Hidden tool_/result_ children are included in the cascade.

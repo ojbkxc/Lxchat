@@ -855,6 +855,8 @@
     <string name="generate_title">Generate Title</string>
     <string name="rename">Rename</string>
     <string name="delete">Delete</string>
+    <string name="pin_conversation">Pin to top</string>
+    <string name="unpin_conversation">Unpin</string>
     <string name="reply">Reply</string>
     <string name="rename_chat">Rename Chat</string>
     <string name="delete_chat">Delete Chat?</string>

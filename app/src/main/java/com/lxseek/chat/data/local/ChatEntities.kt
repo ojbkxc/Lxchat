@@ -69,6 +69,10 @@ data class ChatEntity(
     val selectedRunBranchesJson: String? = null,
     /** True after a completed model generation until this conversation becomes the open target. */
     val hasUnreadGeneration: Boolean = false,
+    /** True when the user has pinned this conversation to the top of the drawer list. */
+    val pinned: Boolean = false,
+    /** Epoch millis when the conversation was pinned; used to order pinned conversations. */
+    val pinnedAt: Long = 0L,
 )
 
 /** A saved automation: a prompt + schedule that fans out a fresh conversation on each run. */

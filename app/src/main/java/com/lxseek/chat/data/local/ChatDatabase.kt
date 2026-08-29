@@ -12,6 +12,7 @@ import com.lxseek.chat.data.local.migration.MIGRATION_19_20
 import com.lxseek.chat.data.local.migration.MIGRATION_20_21
 import com.lxseek.chat.data.local.migration.MIGRATION_21_22
 import com.lxseek.chat.data.local.migration.MIGRATION_22_23
+import com.lxseek.chat.data.local.migration.MIGRATION_24_25
 
 @Database(
     entities = [
@@ -33,7 +34,7 @@ abstract class ChatDatabase : RoomDatabase() {
     abstract fun channelSendLogDao(): ChannelSendLogDao
 
     companion object {
-        const val CURRENT_VERSION = 24
+        const val CURRENT_VERSION = 25
         const val DB_NAME = "lxchat_db"
 
         val ALL_MIGRATIONS = listOf(
@@ -186,6 +187,7 @@ abstract class ChatDatabase : RoomDatabase() {
                     )
                 }
             },
+            MIGRATION_24_25,
         )
 
         fun getStoredVersion(context: Context): Int {

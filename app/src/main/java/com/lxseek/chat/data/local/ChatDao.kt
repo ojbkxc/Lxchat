@@ -30,7 +30,7 @@ private fun encodeSelectionMap(selections: Map<String?, String>): String =
 @Dao
 interface ChatDao : ChatAutomationDao, ChatStatisticsDao {
     // Task executions always remain in their owning Task's History.
-    @Query("SELECT * FROM conversations WHERE taskId IS NULL ORDER BY lastUpdated DESC")
+    @Query("SELECT * FROM conversations WHERE taskId IS NULL ORDER BY pinned DESC, pinnedAt DESC, lastUpdated DESC")
     fun getAllConversations(): Flow<List<ChatEntity>>
 
     @Query("SELECT * FROM conversations WHERE taskId = :taskId ORDER BY lastUpdated DESC")
@@ -169,6 +169,20 @@ interface ChatDao : ChatAutomationDao, ChatStatisticsDao {
 
     @Query("UPDATE conversations SET title = :title WHERE id = :conversationId")
     suspend fun updateConversationTitle(conversationId: String, title: String): Int
+
+    @Query(
+        """
+        UPDATE conversations
+        SET pinned = :pinned,
+            pinnedAt = :pinnedAt
+        WHERE id = :conversationId
+        """
+    )
+    suspend fun updateConversationPin(
+        conversationId: String,
+        pinned: Boolean,
+        pinnedAt: Long,
+    ): Int
 
     @Query(
         """

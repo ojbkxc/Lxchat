@@ -34,6 +34,18 @@ internal class ConversationLifecycleController(
         }
     }
 
+    fun togglePin(conversationId: String, pinned: Boolean) {
+        scope.launch {
+            val existing = conversations.getConversation(conversationId) ?: return@launch
+            conversations.upsertConversation(
+                existing.copy(
+                    pinned = pinned,
+                    pinnedAt = if (pinned) System.currentTimeMillis() else 0L,
+                )
+            )
+        }
+    }
+
     fun delete(conversationId: String) {
         if (currentConversationId.value == conversationId) {
             stopVisibleGeneration()

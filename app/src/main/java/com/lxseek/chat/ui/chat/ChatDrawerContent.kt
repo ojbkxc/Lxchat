@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Search
@@ -332,6 +333,17 @@ internal fun ChatDrawerContent(
                                         Spacer(modifier = Modifier.width(8.dp))
                                     }
 
+                                    if (conversation.pinned) {
+                                        Icon(
+                                            imageVector = Icons.Default.PushPin,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                    }
+
                                     Text(
                                         text = conversation.title,
                                         modifier = Modifier.weight(1f),
@@ -393,6 +405,15 @@ internal fun ChatDrawerContent(
                                 offset = pressOffset,
                                 shape = RoundedCornerShape(12.dp)
                             ) {
+                                DropdownMenuItem(
+                                    text = { Text(if (conversation.pinned) stringResource(R.string.unpin_conversation) else stringResource(R.string.pin_conversation)) },
+                                    leadingIcon = { Icon(Icons.Default.PushPin, contentDescription = null) },
+                                    enabled = menuEnabled,
+                                    onClick = {
+                                        showMenu = false
+                                        viewModel.toggleConversationPin(conversation.id, !conversation.pinned)
+                                    }
+                                )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.generate_title)) },
                                     leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
