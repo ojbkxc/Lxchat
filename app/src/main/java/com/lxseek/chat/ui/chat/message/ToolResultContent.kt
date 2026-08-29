@@ -13,10 +13,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import com.lxseek.chat.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,72 +60,96 @@ internal fun ToolDetailContent(
 ) {
     val presentation = ToolPresentationResolver.resolve(segment)
     val args = presentation.rawArguments
-    if (!args.isNullOrBlank() && args != "{}") {
-        ToolSectionLabel(stringResource(R.string.arguments_label))
-        Spacer(Modifier.height(5.dp))
-        JsonOrPlainView(args)
-        Spacer(Modifier.height(18.dp))
-    }
-
-    if (presentation.kind == ToolKind.MCP) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetaPill(text = "MCP", emphasized = true)
-            presentation.device
-                ?.takeIf(String::isNotBlank)
-                ?.let { MetaPill(it) }
-        }
-        Spacer(Modifier.height(18.dp))
-    }
-
-    ToolSectionLabel(stringResource(R.string.result_label))
-    Spacer(Modifier.height(6.dp))
-    if (segment.toolImages.isNotEmpty()) {
-        ToolImageResults(
-            images = segment.toolImages,
-            onMediaClick = onMediaClick,
-        )
-        Spacer(Modifier.height(12.dp))
-    }
-    if (presentation.kind == ToolKind.SHELL_EXECUTE ||
-        presentation.kind == ToolKind.SHELL_JOB_GET
+    // 结果卡片：圆角 16dp、surfaceVariant 背景、轻 tonalElevation，让工具结果成为独立视觉块
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 1.dp,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        ShellResult(presentation)
-        return
-    }
-    when (presentation.state) {
-        ToolPresentationState.CALLING -> ToolActiveContent(
-            text = toolSummary(presentation),
-            output = presentation.liveOutput,
-        )
-        ToolPresentationState.RUNNING,
-        ToolPresentationState.BACKGROUND_RUNNING -> ToolActiveContent(
-            text = toolSummary(presentation),
-            output = presentation.liveOutput ?: resultOutput(presentation.result),
-        )
-        ToolPresentationState.FAILED -> {
-            ToolErrorContent(
-                presentation.errorMessage ?: stringResource(R.string.tool_call_failed),
-            )
-            if (
-                presentation.kind == ToolKind.MCP &&
-                (
-                    !presentation.rawTextResult.isNullOrBlank() ||
-                        !presentation.rawStructuredResult.isNullOrBlank()
-                    )
-            ) {
-                Spacer(Modifier.height(10.dp))
-                McpResultContent(presentation)
+        Column(modifier = Modifier.padding(12.dp)) {
+            if (!args.isNullOrBlank() && args != "{}") {
+                ToolSectionLabel(stringResource(R.string.arguments_label))
+                Spacer(Modifier.height(5.dp))
+                JsonOrPlainView(args)
+                Spacer(Modifier.height(18.dp))
             }
-            if (!presentation.liveOutput.isNullOrBlank()) {
-                Spacer(Modifier.height(8.dp))
-                TerminalOutput(presentation.liveOutput)
+
+            if (presentation.kind == ToolKind.MCP) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetaPill(text = "MCP", emphasized = true)
+                    presentation.device
+                        ?.takeIf(String::isNotBlank)
+                        ?.let { MetaPill(it) }
+                }
+                Spacer(Modifier.height(18.dp))
+            }
+
+            // 结果标题：完成/空态显示 tertiary 对勾表示成功，运行中/失败由子内容自带指示器
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (presentation.state == ToolPresentationState.COMPLETED ||
+                    presentation.state == ToolPresentationState.EMPTY
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                ToolSectionLabel(stringResource(R.string.result_label))
+            }
+            Spacer(Modifier.height(6.dp))
+            if (segment.toolImages.isNotEmpty()) {
+                ToolImageResults(
+                    images = segment.toolImages,
+                    onMediaClick = onMediaClick,
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+            if (presentation.kind == ToolKind.SHELL_EXECUTE ||
+                presentation.kind == ToolKind.SHELL_JOB_GET
+            ) {
+                ShellResult(presentation)
+                return
+            }
+            when (presentation.state) {
+                ToolPresentationState.CALLING -> ToolActiveContent(
+                    text = toolSummary(presentation),
+                    output = presentation.liveOutput,
+                )
+                ToolPresentationState.RUNNING,
+                ToolPresentationState.BACKGROUND_RUNNING -> ToolActiveContent(
+                    text = toolSummary(presentation),
+                    output = presentation.liveOutput ?: resultOutput(presentation.result),
+                )
+                ToolPresentationState.FAILED -> {
+                    ToolErrorContent(
+                        presentation.errorMessage ?: stringResource(R.string.tool_call_failed),
+                    )
+                    if (
+                        presentation.kind == ToolKind.MCP &&
+                        (
+                            !presentation.rawTextResult.isNullOrBlank() ||
+                                !presentation.rawStructuredResult.isNullOrBlank()
+                            )
+                    ) {
+                        Spacer(Modifier.height(10.dp))
+                        McpResultContent(presentation)
+                    }
+                    if (!presentation.liveOutput.isNullOrBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        TerminalOutput(presentation.liveOutput)
+                    }
+                }
+                ToolPresentationState.STOPPED -> ToolMutedContent(
+                    stringResource(R.string.tool_execution_stopped),
+                )
+                ToolPresentationState.EMPTY,
+                ToolPresentationState.COMPLETED -> ToolCompletedContent(presentation)
             }
         }
-        ToolPresentationState.STOPPED -> ToolMutedContent(
-            stringResource(R.string.tool_execution_stopped),
-        )
-        ToolPresentationState.EMPTY,
-        ToolPresentationState.COMPLETED -> ToolCompletedContent(presentation)
     }
 }
 
@@ -236,11 +265,19 @@ private fun ToolSectionLabel(text: String) {
 
 @Composable
 private fun ToolActiveContent(text: String, output: String?) {
-    Text(
-        text = text,
-        style = ChatType.metaNormal,
-        color = MaterialTheme.colorScheme.primary,
-    )
+    // 运行中：小号进度指示器 + 主色文字
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(14.dp),
+            strokeWidth = 2.dp,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = text,
+            style = ChatType.metaNormal,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
     if (!output.isNullOrBlank()) {
         Spacer(Modifier.height(8.dp))
         TerminalOutput(output)
@@ -249,18 +286,30 @@ private fun ToolActiveContent(text: String, output: String?) {
 
 @Composable
 private fun ToolErrorContent(message: String) {
+    // 失败：errorContainer 卡片 + error 色图标
     Surface(
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        NoAutoScrollSelectionContainer {
-            Text(
-                text = message,
-                style = ChatType.thoughtBody,
-                modifier = Modifier.padding(12.dp),
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(16.dp),
             )
+            Spacer(Modifier.width(8.dp))
+            NoAutoScrollSelectionContainer(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = message,
+                    style = ChatType.thoughtBody,
+                )
+            }
         }
     }
 }
@@ -502,10 +551,10 @@ private fun WebSearchResult(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.45f),
-                        RoundedCornerShape(10.dp),
+                        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+                        RoundedCornerShape(12.dp),
                     )
-                    .padding(10.dp),
+                    .padding(12.dp),
             ) {
                 Text(
                     text = title,
@@ -557,9 +606,10 @@ private fun IndexedCodeLine(index: Int, text: String) {
 
 @Composable
 private fun TerminalOutput(output: String) {
+    // 代码/终端块：圆角 12dp，surfaceContainerHighest 与外层 surfaceVariant 卡片形成对比
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         NoAutoScrollSelectionContainer {
@@ -568,7 +618,7 @@ private fun TerminalOutput(output: String) {
                 style = ChatType.thoughtCodeLarge,
                 fontFamily = MonoFamily,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(10.dp),
+                modifier = Modifier.padding(12.dp),
             )
         }
     }

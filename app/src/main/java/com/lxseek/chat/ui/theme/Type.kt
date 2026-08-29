@@ -45,30 +45,30 @@ val Typography = Typography(
     ),
     headlineLarge = TextStyle(
         fontFamily = OutfitFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 33.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 34.sp,
         lineHeight = 41.sp,
         letterSpacing = 0.sp
     ),
     headlineMedium = TextStyle(
         fontFamily = OutfitFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 28.sp,
-        lineHeight = 35.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 29.sp,
+        lineHeight = 36.sp,
         letterSpacing = 0.sp
     ),
     headlineSmall = TextStyle(
         fontFamily = OutfitFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 23.sp,
-        lineHeight = 29.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
         letterSpacing = 0.sp
     ),
     titleLarge = TextStyle(
         fontFamily = OutfitFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 19.sp,
-        lineHeight = 25.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
         letterSpacing = 0.sp
     ),
     titleMedium = TextStyle(
@@ -109,22 +109,22 @@ val Typography = Typography(
     labelLarge = TextStyle(
         fontFamily = OutfitFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
         letterSpacing = 0.1.sp
     ),
     labelMedium = TextStyle(
         fontFamily = OutfitFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 15.sp,
+        fontSize = 10.sp,
+        lineHeight = 14.sp,
         letterSpacing = 0.5.sp
     ),
     labelSmall = TextStyle(
         fontFamily = OutfitFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 10.sp,
-        lineHeight = 14.sp,
+        fontSize = 9.sp,
+        lineHeight = 13.sp,
         letterSpacing = 0.5.sp
     )
 )

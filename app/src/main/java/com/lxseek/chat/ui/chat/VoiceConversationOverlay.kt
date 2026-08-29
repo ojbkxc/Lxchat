@@ -102,6 +102,19 @@ internal fun VoiceConversationOverlay(
         else -> MaterialTheme.colorScheme.primary
     }
 
+    // 录音按钮闪烁动画：LISTENING 时 error 色按钮呼吸闪烁
+    val isListening = state == VoiceConversationController.State.LISTENING
+    val blinkTransition = rememberInfiniteTransition(label = "recordBlink")
+    val blinkAlpha by blinkTransition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(650, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "blinkAlpha",
+    )
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -165,15 +178,17 @@ internal fun VoiceConversationOverlay(
                 )
                 Surface(
                     shape = CircleShape,
-                    color = accent.copy(alpha = 0.16f),
+                    color = if (isListening) MaterialTheme.colorScheme.error.copy(alpha = 0.18f) else accent.copy(alpha = 0.16f),
                     modifier = Modifier.size(144.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
                             imageVector = stateIcon,
                             contentDescription = null,
-                            tint = accent,
-                            modifier = Modifier.size(60.dp),
+                            tint = if (isListening) MaterialTheme.colorScheme.error else accent,
+                            modifier = Modifier
+                                .size(if (isListening) 64.dp else 60.dp)
+                                .then(if (isListening) Modifier.alpha(blinkAlpha) else Modifier),
                         )
                     }
                 }
@@ -182,7 +197,7 @@ internal fun VoiceConversationOverlay(
             Spacer(modifier = Modifier.height(30.dp))
             Text(
                 text = stateText,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.labelLarge, // 状态文字 labelLarge
                 color = accent,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,

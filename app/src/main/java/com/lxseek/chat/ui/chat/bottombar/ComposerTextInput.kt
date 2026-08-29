@@ -3,6 +3,7 @@ package com.lxseek.chat.ui.chat.bottombar
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -63,19 +64,22 @@ internal fun ComposerTextInput(
             Text(
                 stringResource(R.string.ask_lxchat),
                 style = ChatType.input,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                // 占位符更淡（alpha=0.5f）以降低视觉权重
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             )
         },
         enabled = true,
         lineLimits = TextFieldLineLimits.MultiLine(1, 6),
-        contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp),
+        // 圆角背景 + surfaceVariant 容器色，内边距 horizontal 16dp vertical 12dp
+        shape = RoundedCornerShape(12.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         colors = TextFieldDefaults.colors(
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent,
-            unfocusedContainerColor = Color.Transparent,
-            disabledContainerColor = Color.Transparent,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             cursorColor = MaterialTheme.colorScheme.primary,
         ),
         textStyle = ChatType.input.copy(color = MaterialTheme.colorScheme.onSurface),

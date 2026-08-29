@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -126,7 +128,12 @@ internal fun ComposerToolBar(
         else -> stringResource(R.string.no_model_selected)
     }
 
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+    // 工具栏按钮之间统一 4dp 间距
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         ModelPickerMenu(
             isActive = activeMenu == "model",
             onToggle = {
@@ -377,7 +384,13 @@ private fun ContextBudgetMenu(
         IconButton(
             onClick = onToggle,
             modifier = Modifier
-                .size(48.dp)
+                .size(40.dp)
+                .then(
+                    // 选中态：primaryContainer 圆形背景明确视觉反馈
+                    if (isActive) Modifier.background(
+                        MaterialTheme.colorScheme.primaryContainer, CircleShape
+                    ) else Modifier
+                )
                 .menuAnchor(
                     type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
                     enabled = true,
@@ -487,7 +500,13 @@ private fun ToolsMenu(
         IconButton(
             onClick = onToggle,
             modifier = Modifier
-                .size(48.dp)
+                .size(40.dp)
+                .then(
+                    // 选中态：primaryContainer 圆形背景明确视觉反馈
+                    if (isActive) Modifier.background(
+                        MaterialTheme.colorScheme.primaryContainer, CircleShape
+                    ) else Modifier
+                )
                 .menuAnchor(
                     type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
                     enabled = true,
@@ -496,7 +515,7 @@ private fun ToolsMenu(
             Icon(
                 Icons.Default.MoreVert,
                 stringResource(R.string.tools),
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

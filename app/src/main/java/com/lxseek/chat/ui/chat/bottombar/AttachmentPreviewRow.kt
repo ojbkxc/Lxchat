@@ -139,7 +139,7 @@ internal fun AttachmentPreviewRow(
                     }
                     val thumbModifier = Modifier
                         .size(64.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .then(clickableMod)
 
                     val thumb = videoThumb
@@ -197,7 +197,7 @@ internal fun AttachmentPreviewRow(
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(Color.Black.copy(alpha = 0.4f)),
                             contentAlignment = Alignment.Center
                         ) {
@@ -223,7 +223,7 @@ internal fun AttachmentPreviewRow(
                             .align(Alignment.TopEnd)
                             .offset(x = 5.dp, y = (-5).dp)
                         .size(18.dp)
-                        .background(Color.Black.copy(alpha = 0.8f), CircleShape)
+                        .background(MaterialTheme.colorScheme.error, CircleShape)
                         .clip(CircleShape)
                         .clickable {
                             composer.removeAttachmentAt(index)

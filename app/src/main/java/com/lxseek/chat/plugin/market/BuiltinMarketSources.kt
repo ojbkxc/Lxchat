@@ -74,13 +74,13 @@ object BuiltinMarketSources {
             MarketPluginMeta(
                 id = "runtime-python",
                 name = "Python",
-                version = "3.11.0",
+                version = "3.11.9",
                 kind = MarketPluginKind.RUNTIME,
                 description = "Python 3.11 runtime",
-                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/python-v3.11.0/python-3.11.0-android-arm64.zip",
+                downloadUrl = "https://github.com/ojbkxc/lxchat-runtime/releases/download/python-v3.11.9/python-3.11.9-android-arm64.zip",
                 runtimeType = "python",
-                versions = listOf("3.11.0"),
-                minVersion = "3.11.0",
+                versions = listOf("3.11.9", "3.12.7", "3.13.2", "3.14.0"),
+                minVersion = "3.11.9",
             ),
             MarketPluginMeta(
                 id = "runtime-ffmpeg",

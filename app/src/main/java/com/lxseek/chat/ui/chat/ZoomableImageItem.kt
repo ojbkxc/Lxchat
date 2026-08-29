@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.lxseek.chat.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -17,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -100,6 +102,13 @@ internal fun ZoomableImageItem(
     LaunchedEffect(Unit) {
         snapshotFlow { visualScale(scale) }.collect { onScaleChanged(it) }
     }
+
+    // 缩放动画过渡：缩放时轻微淡入，给聚焦感
+    val zoomAlpha by animateFloatAsState(
+        targetValue = if (visualScale(scale) > 1.05f) 1f else 0.96f,
+        animationSpec = tween(220),
+        label = "zoomAlpha",
+    )
 
     Box(
         modifier = Modifier
@@ -185,6 +194,7 @@ internal fun ZoomableImageItem(
             onSuccess = { state -> imageSize = state.painter.intrinsicSize },
             modifier = Modifier
                 .fillMaxSize()
+                .clip(RoundedCornerShape(16.dp)) // 图片圆角16dp
                 .pointerInput(url, motionPolicy.allowSpatialTransitions) {
                     val velocityTracker = VelocityTracker()
                     awaitEachGesture {
@@ -317,7 +327,8 @@ internal fun ZoomableImageItem(
                     scaleX = visualScale(scale) * baseScale,
                     scaleY = visualScale(scale) * baseScale,
                     translationX = offsetX,
-                    translationY = offsetY
+                    translationY = offsetY,
+                    alpha = zoomAlpha // 缩放动画过渡
                 ),
             contentScale = ContentScale.Fit
         )

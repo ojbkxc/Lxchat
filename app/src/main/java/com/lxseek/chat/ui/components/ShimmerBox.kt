@@ -29,13 +29,13 @@ fun ShimmerBox(
         initialValue = -300f,
         targetValue = 300f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
+            animation = tween(1500, easing = LinearEasing),
             repeatMode = RepeatMode.Restart,
         ),
         label = "shimmerX",
     )
     val baseColor = MaterialTheme.colorScheme.surfaceVariant
-    val highlightColor = MaterialTheme.colorScheme.surface
+    val highlightColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
     val brush = Brush.linearGradient(
         colors = listOf(baseColor, highlightColor, baseColor),
         start = Offset(xShimmer, 0f),

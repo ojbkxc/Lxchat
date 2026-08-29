@@ -264,7 +264,8 @@ fun ChatBottomBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .noOpBringIntoView()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                        // 输入框与工具栏/按钮之间 8dp 间距，左右 4dp 贴边
+                        .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     ComposerAttachmentMenu(

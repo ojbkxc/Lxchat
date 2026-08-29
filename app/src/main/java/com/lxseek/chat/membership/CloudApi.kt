@@ -28,11 +28,17 @@ interface CloudApi {
     /** 解绑设备。 */
     suspend fun deactivate(deviceId: String): Boolean
 
-    /** 创建支付订单（预留，以后云端生成订单）。 */
+    /**
+     * 创建支付订单（云端生成订单 + 支付 URL）。
+     *
+     * @param planId 套餐 ID（monthly/quarterly/half_year/yearly/lifetime），
+     *               空字符串表示回退旧逻辑（不传给服务端）。
+     */
     suspend fun createPaymentOrder(
         deviceId: String,
         tier: MembershipTier,
         amount: String,
+        planId: String = "",
     ): PaymentOrderResult?
 }
 
@@ -74,6 +80,29 @@ data class PaymentOrderResult(
     val outTradeNo: String,
     val paymentUrl: String,
 )
+
+/**
+ * 设备状态查询结果（用于卸载重装恢复）。
+ *
+ * App 启动时若本地无凭证，调 [RemoteCloudApi.deviceStatus] 查服务端：
+ * - [DeviceStatusResult.Active]：服务端有有效激活，返回重签凭证，恢复到本地。
+ * - [DeviceStatusResult.Inactive]：服务端无激活记录或已过期，按未激活处理。
+ * - [DeviceStatusResult.NetworkError]：网络错误，本次恢复失败（下次启动再试）。
+ */
+sealed class DeviceStatusResult {
+    /** 设备有有效激活，返回重签凭证。 */
+    data class Active(
+        val credential: SignedCredential,
+        val tier: String,
+        val expireAt: Long,
+    ) : DeviceStatusResult()
+
+    /** 设备无激活记录或已过期。 */
+    object Inactive : DeviceStatusResult()
+
+    /** 网络错误。 */
+    object NetworkError : DeviceStatusResult()
+}
 
 /**
  * 本地实现（现在用）。
@@ -168,6 +197,7 @@ class LocalCloudApi(
         deviceId: String,
         tier: MembershipTier,
         amount: String,
+        planId: String,
     ): PaymentOrderResult? {
         // 预留：现在返回 null（App 端自己构造支付 URL，见 SettingsMembershipPage 的 Yipay 升级区）。
         // 以后云端实现：云端生成订单 + 签名 + 返回支付 URL。
@@ -306,12 +336,37 @@ class RemoteCloudApi(
         return true
     }
 
-    /** 创建支付订单：仍然返回 null（App 端自己构造支付 URL）。 */
+    /**
+     * 创建支付订单 → POST /api/create_payment。
+     *
+     * 服务端生成订单 + 支付 URL，返回 `{"code":0,"payment_url":"...","out_trade_no":"..."}`。
+     * [planId] 非空时传给服务端，服务端按套餐定价；为空时回退旧逻辑（仅传 amount）。
+     */
     override suspend fun createPaymentOrder(
         deviceId: String,
         tier: MembershipTier,
         amount: String,
-    ): PaymentOrderResult? = null
+        planId: String,
+    ): PaymentOrderResult? = withContext(Dispatchers.IO) {
+        try {
+            val body = JSONObject().apply {
+                put(KEY_DEVICE_ID, deviceId)
+                if (planId.isNotEmpty()) put(KEY_PLAN_ID, planId)
+                put(KEY_TIER, tier.name)
+                put(KEY_AMOUNT, amount)
+            }
+            val resp = doPost(PATH_CREATE_PAYMENT, body) ?: return@withContext null
+            val code = resp.optInt(KEY_CODE, -1)
+            if (code != 0) return@withContext null
+            val paymentUrl = resp.optString(KEY_PAYMENT_URL, "")
+            val outTradeNo = resp.optString(KEY_OUT_TRADE_NO, "")
+            if (paymentUrl.isEmpty()) null
+            else PaymentOrderResult(outTradeNo = outTradeNo, paymentUrl = paymentUrl)
+        } catch (e: Exception) {
+            DebugLog.e(TAG, "createPaymentOrder failed", e)
+            null
+        }
+    }
 
     // ── RemoteCloudApi 特有方法 ─────────────────────────────────
 
@@ -337,6 +392,42 @@ class RemoteCloudApi(
             put(KEY_OUT_TRADE_NO, outTradeNo)
         }
         return postActivation(PATH_RENEW, body)
+    }
+
+    /**
+     * 查询设备激活状态（用于卸载重装恢复）。
+     *
+     * → POST /api/device_status
+     * 响应：`{"code":0,"active":true,"tier":"Premium","expire_at":123,"credential":{...}}`
+     * 或：`{"code":0,"active":false}`
+     *
+     * App 启动时若本地无凭证，调本方法查服务端：有有效激活则返回重签凭证，
+     * 调用方保存到本地完成恢复。
+     */
+    suspend fun deviceStatus(deviceId: String): DeviceStatusResult {
+        val body = JSONObject().apply { put(KEY_DEVICE_ID, deviceId) }
+        return withContext(Dispatchers.IO) {
+            try {
+                val resp = doPost(PATH_DEVICE_STATUS, body)
+                    ?: return@withContext DeviceStatusResult.Inactive
+                val code = resp.optInt(KEY_CODE, -1)
+                if (code != 0) return@withContext DeviceStatusResult.Inactive
+                val active = resp.optBoolean(KEY_ACTIVE, false)
+                if (!active) return@withContext DeviceStatusResult.Inactive
+                val credJson = resp.optJSONObject(KEY_CREDENTIAL)
+                    ?: return@withContext DeviceStatusResult.Inactive
+                val credential = SignedCredential.fromJson(credJson.toString())
+                    ?: return@withContext DeviceStatusResult.Inactive
+                val tier = resp.optString(KEY_TIER, "Premium")
+                val expireAt = resp.optLong(KEY_EXPIRE_AT, 0)
+                DeviceStatusResult.Active(credential, tier, expireAt)
+            } catch (_: IOException) {
+                DeviceStatusResult.NetworkError
+            } catch (e: Exception) {
+                DebugLog.e(TAG, "deviceStatus failed", e)
+                DeviceStatusResult.NetworkError
+            }
+        }
     }
 
     // ── 内部 helpers ─────────────────────────────────────────────
@@ -432,12 +523,19 @@ class RemoteCloudApi(
         private const val PATH_ACTIVATE_BY_ORDER = "/api/activate_by_order"
         private const val PATH_VERIFY = "/api/verify"
         private const val PATH_RENEW = "/api/renew"
+        private const val PATH_CREATE_PAYMENT = "/api/create_payment"
+        private const val PATH_DEVICE_STATUS = "/api/device_status"
 
         // 请求/响应字段名（与服务器端 Go 实现一致）
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_CODE = "code"
         private const val KEY_OUT_TRADE_NO = "out_trade_no"
         private const val KEY_CREDENTIAL = "credential"
+        private const val KEY_PLAN_ID = "plan_id"
+        private const val KEY_TIER = "tier"
+        private const val KEY_AMOUNT = "amount"
+        private const val KEY_PAYMENT_URL = "payment_url"
+        private const val KEY_ACTIVE = "active"
 
         private const val KEY_VALID = "valid"
         private const val KEY_EXPIRE_AT = "expire_at"

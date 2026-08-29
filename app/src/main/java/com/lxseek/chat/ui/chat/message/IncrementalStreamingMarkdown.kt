@@ -41,7 +41,8 @@ import kotlin.math.min
 
 private const val STREAM_TAIL_FADE_CODE_POINTS = 42
 private const val STREAM_TAIL_ALPHA_BANDS = 6
-private const val STREAM_TAIL_NEWEST_ALPHA = 0.38f
+// 流式尾部最新字形的最低不透明度，与上限 1.0 共同界定淡入区间 0.3 ↔ 1.0
+private const val STREAM_TAIL_NEWEST_ALPHA = 0.3f
 private const val STREAM_TAIL_ALPHA_PER_SECOND = 2f
 private const val STREAM_TAIL_FADE_TICK_MS = 40L
 private const val LONG_DOCUMENT_THRESHOLD_CHARS = 8_000

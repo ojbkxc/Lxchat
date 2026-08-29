@@ -87,6 +87,9 @@ internal fun UserMessageBubble(
         Surface(
             shape = shape,
             color = backgroundColor,
+            // Subtle elevation lifts the user bubble off the canvas, strengthening the
+            // visual separation from the borderless assistant messages alongside it.
+            shadowElevation = 2.dp,
             modifier = Modifier
                 .widthIn(max = maxBubbleWidth)
                 .then(contextAlpha)
@@ -134,7 +137,7 @@ internal fun UserMessageBubble(
                 }
             } else {
                 Column(
-                    modifier = Modifier.padding(12.dp).noOpBringIntoView(),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).noOpBringIntoView(),
                     horizontalAlignment = Alignment.Start
                 ) {
                     val hasMetaItems = message.attachmentMeta?.items?.isNotEmpty() == true

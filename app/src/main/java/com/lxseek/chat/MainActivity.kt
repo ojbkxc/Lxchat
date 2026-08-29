@@ -189,6 +189,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // 重装恢复：本地无凭证时查服务端 device_status，有有效激活则恢复到本地。
+            // 异步执行，不阻塞 UI 启动；恢复成功后刷新会员状态。
+            launch {
+                try {
+                    val activationManager = ActivationManager(RemoteCloudApi(applicationContext), applicationContext)
+                    if (!activationManager.hasActiveCredential()) {
+                        val deviceId = com.lxseek.chat.membership.DeviceIdCard.getDeviceId(applicationContext)
+                        val restored = withContext(Dispatchers.IO) {
+                            activationManager.restoreActivation(deviceId)
+                        }
+                        if (restored) {
+                            (application as LxChatApplication).container.membershipProvider.refresh()
+                            com.lxseek.chat.util.DebugLog.i("MainActivity", "Activation restored after reinstall")
+                        }
+                    }
+                } catch (e: Exception) {
+                    com.lxseek.chat.util.DebugLog.e("MainActivity", "restoreActivation failed", e)
+                }
+            }
+
             enableEdgeToEdge()
             // Remove navigation bar scrim so it blends with app content
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

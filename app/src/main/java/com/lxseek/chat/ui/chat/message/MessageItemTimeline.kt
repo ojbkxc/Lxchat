@@ -502,7 +502,8 @@ internal fun CompactSegmentBlock(
                                         Text(
                                             text = seg.content.replace('\n', ' '),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                            // 时间戳样式：alpha=0.5f 更柔和
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
@@ -534,16 +535,18 @@ internal fun CompactSegmentBlock(
                                 Text(
                                     text = toolSummary(seg),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    // 时间戳样式：alpha=0.5f 更柔和
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }
                         if (idx < segs.lastIndex) {
+                            // 分组分隔符：上下各 6dp 间距（共 12dp），outlineVariant 色更柔和
                             HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 2.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                                modifier = Modifier.padding(vertical = 6.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
                             )
                         }
                        }
@@ -844,7 +847,8 @@ private fun TimelineInfoSegmentCard(
                         Text(
                             text = summary,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            // 时间戳样式：alpha=0.5f 更柔和
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -883,7 +887,8 @@ internal fun StreamingThoughtPreviewText(
     content: String,
     streaming: Boolean,
 ) {
-    val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+    // 时间戳样式：alpha=0.5f 更柔和
+    val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
     val flat = remember(content) { content.replace('\n', ' ') }
     val annotated = remember(flat) { AnnotatedString(flat) }
     val faded = rememberStreamingGlyphFade(

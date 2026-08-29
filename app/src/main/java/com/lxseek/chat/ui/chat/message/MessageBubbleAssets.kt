@@ -138,16 +138,10 @@ internal fun rememberChatMarkdownAssets(
         inlineCode = ChatType.thoughtCode,
     )
 
-    val fg = MaterialTheme.colorScheme.onBackground
-    val bg = MaterialTheme.colorScheme.surface
-    // Composite fg at 0.1 alpha over bg to produce the exact opaque equivalent
-    val codeBg = remember(fg, bg) {
-        Color(
-            red   = fg.red   * 0.1f + bg.red   * 0.9f,
-            green = fg.green * 0.1f + bg.green * 0.9f,
-            blue  = fg.blue  * 0.1f + bg.blue  * 0.9f,
-        )
-    }
+    // Code block surface: surfaceVariant gives a clearer, theme-aware contrast
+    // against the surrounding message body than the previous fg/bg composite,
+    // and stays consistent across light/dark color schemes.
+    val codeBg = MaterialTheme.colorScheme.surfaceVariant
     val customMarkdownColors = markdownColor(
         codeBackground = codeBg,
         inlineCodeBackground = Color.Transparent,

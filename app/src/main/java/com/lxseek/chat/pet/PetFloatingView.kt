@@ -366,9 +366,23 @@ class PetFloatingView @JvmOverloads constructor(
             .build()
         val capWidth = layout.width.toFloat() + padX * 2
         val capHeight = layout.height.toFloat() + padY * 2
-        val cx = w / 2f
-        val left = (cx - capWidth / 2).coerceAtLeast(dp(TIP_EDGE_MARGIN_DP))
-        val right = (left + capWidth).coerceAtMost(w - dp(TIP_EDGE_MARGIN_DP))
+        // tip 气泡定位：默认窗口中心，贴边时偏移到屏幕可见区域中心，防止被屏幕边缘裁剪
+        val params = windowParams
+        val screenWidth = resources.displayMetrics.widthPixels
+        val edgeMargin = dp(TIP_EDGE_MARGIN_DP)
+        val cx = if (params != null && (params.x < 0 || params.x + w > screenWidth)) {
+            // 窗口部分在屏幕外，tip 中心移到可见区域中心（转换为窗口内坐标）
+            val visLeft = params.x.coerceAtLeast(0)
+            val visRight = (params.x + w).coerceAtMost(screenWidth)
+            (visLeft + visRight) / 2f - params.x
+        } else {
+            w / 2f
+        }
+        // 限制 tip 在屏幕可见区域内（贴边时窗口边缘在屏幕外，不能用窗口边缘做限制）
+        val minLeft = if (params != null && params.x < 0) (-params.x).toFloat() + edgeMargin else edgeMargin
+        val maxRight = if (params != null && params.x + w > screenWidth) (screenWidth - params.x).toFloat() - edgeMargin else w - edgeMargin
+        val left = (cx - capWidth / 2).coerceAtLeast(minLeft)
+        val right = (left + capWidth).coerceAtMost(maxRight)
         val actualWidth = right - left
         val top = dp(TIP_TOP_PADDING_DP)
         val bottom = top + capHeight

@@ -186,7 +186,7 @@ private fun TasksListPage(
                     modifier = Modifier.fillMaxWidth(),
                     shape = stackedShape(0, 2),
                     color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 0.dp,
+                    tonalElevation = 1.dp,
                 ) {
                     SettingsItem(
                         headlineContent = {
@@ -291,7 +291,7 @@ private fun TaskCard(
         modifier = Modifier.fillMaxWidth(),
         shape = shape,
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
+        tonalElevation = 1.dp,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 6.dp, top = 14.dp, bottom = 14.dp),
@@ -337,19 +337,35 @@ private fun TaskCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    text = when {
-                        isRunning -> stringResource(R.string.task_running)
-                        lastRunAt != null -> stringResource(R.string.task_last_run_at, formatDateTime(lastRunAt))
-                        else -> stringResource(R.string.task_never_run)
-                    },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (isRunning) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Spacer(Modifier.height(4.dp))
+                // 状态标签药丸：运行中=primaryContainer，已运行=tertiaryContainer，从未运行=errorContainer
+                val statusContainer = when {
+                    isRunning -> MaterialTheme.colorScheme.primaryContainer
+                    lastRunAt != null -> MaterialTheme.colorScheme.tertiaryContainer
+                    else -> MaterialTheme.colorScheme.errorContainer
+                }
+                val statusOnContainer = when {
+                    isRunning -> MaterialTheme.colorScheme.onPrimaryContainer
+                    lastRunAt != null -> MaterialTheme.colorScheme.onTertiaryContainer
+                    else -> MaterialTheme.colorScheme.onErrorContainer
+                }
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = statusContainer,
+                ) {
+                    Text(
+                        text = when {
+                            isRunning -> stringResource(R.string.task_running)
+                            lastRunAt != null -> stringResource(R.string.task_last_run_at, formatDateTime(lastRunAt))
+                            else -> stringResource(R.string.task_never_run)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusOnContainer,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                    )
+                }
             }
             Spacer(Modifier.width(8.dp))
             if (isRunning) {
@@ -401,7 +417,7 @@ private fun NewAutomationRow(
         modifier = Modifier.fillMaxWidth(),
         shape = shape,
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
+        tonalElevation = 1.dp,
     ) {
         Box(
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp),
@@ -426,18 +442,18 @@ private fun NewAutomationRow(
 }
 
 /**
- * Corner treatment for a vertically stacked list of cards — identical to what [SettingsGroup]
- * applies to its items (12dp on the outer edges, 4dp where two cards meet, 2dp between them),
- * so task rows and execution rows read as the same component as every settings card.
+ * Corner treatment for a vertically stacked list of cards — 16dp on the outer edges, 6dp where
+ * two cards meet, so task rows and execution rows read as the same component as every settings
+ * card while reading slightly more rounded and elevated than the legacy 12/4 stack.
  */
 internal fun stackedShape(index: Int, count: Int): RoundedCornerShape = when {
-    count <= 1 -> RoundedCornerShape(12.dp)
-    index == 0 -> RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-    index == count - 1 -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
-    else -> RoundedCornerShape(4.dp)
+    count <= 1 -> RoundedCornerShape(16.dp)
+    index == 0 -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
+    index == count - 1 -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+    else -> RoundedCornerShape(6.dp)
 }
 
-internal val STACK_GAP = 2.dp
+internal val STACK_GAP = 10.dp
 
 internal fun formatTaskCountdown(remainingMs: Long): String {
     val clampedMs = remainingMs.coerceAtLeast(0L)

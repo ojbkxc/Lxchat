@@ -72,6 +72,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -277,7 +278,7 @@ fun WelcomeScreen(
     val pagerState = rememberPagerState(pageCount = { pages.size })
     var exiting by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
-    val contentAlpha by animateFloatAsState(if (showContent) 1f else 0f, tween(600))
+    val contentAlpha by animateFloatAsState(if (showContent) 1f else 0f, tween(800))
 
     // Persist whatever the API Key page collected for the selected provider. Custom
     // providers register their base URL (creating the provider if new) plus key; the
@@ -358,8 +359,23 @@ fun WelcomeScreen(
         confirmButton = { TextButton(onClick = { showGgufError = false }) { Text(stringResource(R.string.ok)) } }
     )
 
-    AnimatedVisibility(visible = !exiting, exit = fadeOut(tween(300))) {
-        Box(modifier = Modifier.fillMaxSize().clearFocusOnTap()) {
+    AnimatedVisibility(visible = !exiting, exit = fadeOut(tween(400))) {
+        // 微妙的背景渐变，增加视觉层次而不分散注意力
+        val gradientTop = MaterialTheme.colorScheme.surface
+        val gradientBottom = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(gradientTop, gradientBottom),
+                        startY = 0f,
+                        endY = size.height
+                    )
+                )
+            }
+            .clearFocusOnTap()
+        ) {
             // No imePadding here: onboarding keeps a stable centered layout while
             // the keyboard is open; chat and settings surfaces handle IME insets.
             Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -449,19 +465,28 @@ fun WelcomeScreen(
                                     val page = pages[index]
                                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                         page.icon?.let { icon ->
-                                            Icon(
-                                                imageVector = icon,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(72.dp)
-                                            )
+                                            // 品牌图标：圆形容器 + 主色淡背景，强化视觉焦点
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(96.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = icon,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(48.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
 
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(32.dp))
 
                         // Title + description
                         Column(Modifier.fillMaxWidth().padding(horizontal = 32.dp).alpha(contentAlpha)) {
@@ -489,7 +514,7 @@ fun WelcomeScreen(
                                 TypewriterText(
                                     text = title,
                                     animationKey = "onboarding-title-$index",
-                                    style = MaterialTheme.typography.headlineMedium,
+                                    style = MaterialTheme.typography.headlineLarge,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Start,
                                     color = MaterialTheme.colorScheme.onSurface,
@@ -537,11 +562,11 @@ fun WelcomeScreen(
                     val last = pagerState.currentPage == pages.size - 1
                     val isWelcome = pagerState.currentPage == PAGE_WELCOME
                     if (isWelcome) {
-                        Button(onClick = { exiting = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), enabled = showContent, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+                        Button(onClick = { exiting = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), enabled = showContent, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
                             Text(stringResource(R.string.onboarding_start_now), modifier = Modifier.padding(vertical = 4.dp))
                         }
                         Spacer(Modifier.height(12.dp))
-                        TextButton(onClick = {
+                        OutlinedButton(onClick = {
                             scope.launch {
                                 if (motionPolicy.allowProgrammaticScrollMotion) {
                                     pagerState.animateScrollToPage(
@@ -555,7 +580,7 @@ fun WelcomeScreen(
                                     pagerState.scrollToPage(PAGE_PROVIDER)
                                 }
                             }
-                        }, Modifier.fillMaxWidth(), enabled = showContent) {
+                        }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), enabled = showContent) {
                             Text(stringResource(R.string.onboarding_connect_ai))
                         }
                     } else {
@@ -580,7 +605,7 @@ fun WelcomeScreen(
                                     }
                                 }
                             }
-                        }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), enabled = showContent, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+                        }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), enabled = showContent, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
                             Text(if (last) stringResource(R.string.onboarding_get_started) else stringResource(R.string.onboarding_continue), modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
@@ -614,9 +639,9 @@ internal fun ProviderPage(
     val maxProviderHeight = (LocalConfiguration.current.screenHeightDp * 0.5f).dp
     Surface(
         modifier = modifier.heightIn(max = maxProviderHeight),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
-        tonalElevation = 0.dp,
+        tonalElevation = 1.dp,
     ) {
         Box(Modifier.fillMaxWidth().drawBehind {
             if (scrollState.maxValue > 0) {
@@ -631,13 +656,13 @@ internal fun ProviderPage(
                 drawRoundRect(thumbColor, topLeft = Offset(barX, thumbY), size = Size(barW, thumbH), cornerRadius = CornerRadius(2.dp.toPx()))
             }
         }) {
-            Column(Modifier.verticalScroll(scrollState)) {
-                Spacer(Modifier.height(10.dp))
+            Column(Modifier.verticalScroll(scrollState).padding(horizontal = 24.dp)) {
+                Spacer(Modifier.height(16.dp))
                 providers.forEach { p ->
                     val iconRes = providerIcon(p)
                     Row(
                         Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(14.dp))
                             .clickable { onSelect(p) }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -658,7 +683,7 @@ internal fun ProviderPage(
                         )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
@@ -681,27 +706,27 @@ internal fun ApiKeyPage(
     modifier: Modifier,
     localModels: List<LocalChatModelConfig> = emptyList(),
 ) {
-    Surface(modifier, RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 0.dp) {
+    Surface(modifier, RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 1.dp) {
         if (provider == null) {
-            Column(Modifier.padding(32.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.onboarding_no_provider), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else if (provider == Constants.PROVIDER_LOCAL) {
             val label = if (isImporting) stringResource(R.string.onboarding_importing)
                 else localModels.lastOrNull()?.alias ?: stringResource(R.string.onboarding_import_gguf)
-            Column(Modifier.padding(32.dp).fillMaxWidth()) {
+            Column(Modifier.padding(24.dp).fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.AutoAwesome, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(32.dp))
                     Spacer(Modifier.width(12.dp))
                     Text(provider, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(Modifier.height(20.dp))
-                OutlinedButton(onClick = onImportGGUF, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), enabled = !isImporting) {
+                OutlinedButton(onClick = onImportGGUF, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), enabled = !isImporting) {
                     Text(label, modifier = Modifier.padding(vertical = 6.dp))
                 }
             }
         } else if (provider == Constants.PROVIDER_OLLAMA) {
-            Column(Modifier.padding(32.dp).fillMaxWidth().clearFocusOnTap()) {
+            Column(Modifier.padding(24.dp).fillMaxWidth().clearFocusOnTap()) {
                 val iconRes = providerIcon(provider)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (iconRes != 0) {
@@ -716,11 +741,11 @@ internal fun ApiKeyPage(
                 OutlinedTextField(
                     value = apiKeyText, onValueChange = onApiKeyChange, modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text(stringResource(R.string.onboarding_ollama_hint)) },
-                    singleLine = true, shape = RoundedCornerShape(12.dp),
+                    singleLine = true, shape = RoundedCornerShape(16.dp),
                 )
             }
         } else if (isCustom) {
-            Column(Modifier.padding(32.dp).fillMaxWidth().clearFocusOnTap()) {
+            Column(Modifier.padding(24.dp).fillMaxWidth().clearFocusOnTap()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Tune, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(32.dp))
                     Spacer(Modifier.width(12.dp))
@@ -735,7 +760,7 @@ internal fun ApiKeyPage(
                 OutlinedTextField(
                     value = baseUrlText, onValueChange = onBaseUrlChange, modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text(stringResource(R.string.onboarding_custom_base_url_hint), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    singleLine = true, shape = RoundedCornerShape(12.dp),
+                    singleLine = true, shape = RoundedCornerShape(16.dp),
                 )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
@@ -747,11 +772,11 @@ internal fun ApiKeyPage(
                             Icon(if (apiKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, stringResource(if (apiKeyVisible) R.string.onboarding_hide_key else R.string.onboarding_show_key), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
-                    singleLine = true, shape = RoundedCornerShape(12.dp),
+                    singleLine = true, shape = RoundedCornerShape(16.dp),
                 )
             }
         } else {
-            Column(Modifier.padding(32.dp).fillMaxWidth().clearFocusOnTap()) {
+            Column(Modifier.padding(24.dp).fillMaxWidth().clearFocusOnTap()) {
                 val iconRes = providerIcon(provider)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (iconRes != 0) {
@@ -772,7 +797,7 @@ internal fun ApiKeyPage(
                             Icon(if (apiKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, stringResource(if (apiKeyVisible) R.string.onboarding_hide_key else R.string.onboarding_show_key), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
-                    singleLine = true, shape = RoundedCornerShape(12.dp),
+                    singleLine = true, shape = RoundedCornerShape(16.dp),
                 )
             }
         }
@@ -788,13 +813,13 @@ internal fun ModelPage(
     onSelect: (String) -> Unit,
     modifier: Modifier,
 ) {
-    Surface(modifier, RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 0.dp) {
+    Surface(modifier, RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 1.dp) {
         if (models.isEmpty()) {
             // While a fetch is in flight show a quiet spinner instead of the empty
             // state, so the list never flashes "no models" then jumps into view.
             // Fixed-height slot keeps the card identical between both states, and
             // Crossfade fades the spinner in/out rather than popping.
-            Box(Modifier.fillMaxWidth().padding(32.dp).height(40.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxWidth().padding(24.dp).height(40.dp), contentAlignment = Alignment.Center) {
                 Crossfade(targetState = isLoading, animationSpec = tween(400), label = "modelLoading") { loading ->
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         if (loading) {
@@ -823,13 +848,13 @@ internal fun ModelPage(
                     drawRoundRect(thumbColor, topLeft = Offset(barX, thumbY), size = Size(barW, thumbH), cornerRadius = CornerRadius(2.dp.toPx()))
                 }
             }) {
-                Column(Modifier.verticalScroll(scrollState)) {
-                    Spacer(Modifier.height(10.dp))
+                Column(Modifier.verticalScroll(scrollState).padding(horizontal = 24.dp)) {
+                    Spacer(Modifier.height(16.dp))
                     models.forEach { m ->
                         val name = modelAliases[m] ?: com.lxseek.chat.model.ModelId.parse(m).apiModelName
                         Row(
                             Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(14.dp))
                                 .clickable { onSelect(m) }
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -844,7 +869,7 @@ internal fun ModelPage(
                             )
                         }
                     }
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(16.dp))
                 }
             }
         }
@@ -853,8 +878,8 @@ internal fun ModelPage(
 
 @Composable
 internal fun AutoBackupPage(enabled: Boolean, onToggle: (Boolean) -> Unit, modifier: Modifier) {
-    Surface(modifier, RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 0.dp) {
-        Column(Modifier.padding(32.dp).fillMaxWidth()) {
+    Surface(modifier, RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 1.dp) {
+        Column(Modifier.padding(24.dp).fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Schedule, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(32.dp))
                 Spacer(Modifier.width(12.dp))
@@ -862,7 +887,7 @@ internal fun AutoBackupPage(enabled: Boolean, onToggle: (Boolean) -> Unit, modif
             }
             Spacer(Modifier.height(20.dp))
             Row(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onToggle(!enabled) }.padding(horizontal = 8.dp, vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { onToggle(!enabled) }.padding(horizontal = 8.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {

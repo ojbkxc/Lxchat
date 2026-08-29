@@ -62,6 +62,10 @@ private data class RedemptionPayload(
  * [validate] when you want it enforced, or use [LocalMembershipProvider.redeemedNonces]
  * as the source of truth.
  */
+@Deprecated(
+    "Use cloud-based activation (ActivationManager) instead. " +
+        "Redemption codes are superseded by the unified activation-code system.",
+)
 class RedemptionCodeValidator(
     private val secretKey: ByteArray, // embedded in native layer later
 ) {

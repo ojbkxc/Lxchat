@@ -3,6 +3,7 @@ package com.lxseek.chat.ui.chat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.data.ConversationSettings
@@ -46,8 +48,17 @@ fun AdvancedSettingsDialog(
 
     AlertDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(28.dp),
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.advanced_generation_title), fontWeight = FontWeight.Bold) },
+        title = {
+            Text(
+                text = stringResource(R.string.advanced_generation_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
@@ -151,16 +162,25 @@ fun AdvancedSettingsDialog(
         },
         confirmButton = {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = {
-                    onResetToDefaults()
-                    contextWindow = null; temperature = null; maxTokens = null
-                    topP = null; frequencyPenalty = null; presencePenalty = null
-                }) { Text(stringResource(R.string.gen_reset)) }
+                TextButton(
+                    onClick = {
+                        onResetToDefaults()
+                        contextWindow = null; temperature = null; maxTokens = null
+                        topP = null; frequencyPenalty = null; presencePenalty = null
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                ) { Text(stringResource(R.string.gen_reset)) }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
                         Text(stringResource(R.string.provider_cancel))
                     }
-                    TextButton(onClick = { onSave(currentSettings()) }) {
+                    TextButton(
+                        onClick = { onSave(currentSettings()) },
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
                         Text(stringResource(R.string.provider_save))
                     }
                 }

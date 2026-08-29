@@ -121,7 +121,7 @@ fun LxChatEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         LxChatBrandMark(size = markSize)
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
@@ -133,11 +133,11 @@ fun LxChatEmptyState(
         Text(
             text = description,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
             textAlign = TextAlign.Center,
         )
         if (action != null) {
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,

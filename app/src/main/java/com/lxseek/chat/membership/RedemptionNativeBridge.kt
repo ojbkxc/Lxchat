@@ -15,6 +15,10 @@ package com.lxseek.chat.membership
  *  - [RESULT_INVALID]   — malformed code, base64 error, or signature mismatch
  *  - [RESULT_EXPIRED]   — signature valid but `expiresAt <= now`
  */
+@Deprecated(
+    "Cloud-based activation does not use native validation. " +
+        "Retained for backward compatibility with legacy redemption codes.",
+)
 object RedemptionNativeBridge {
     init { System.loadLibrary("redemption_native") }
 

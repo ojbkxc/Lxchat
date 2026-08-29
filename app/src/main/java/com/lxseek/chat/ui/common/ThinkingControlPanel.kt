@@ -1,6 +1,7 @@
 package com.lxseek.chat.ui.common
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -75,7 +76,8 @@ fun ThinkingControlPanel(
         if (budgetEnabled) showAdvanced = true
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    // 面板容器：animateContentSize 让折叠/展开平滑过渡（与内部 AnimatedVisibility 协同）
+    Column(modifier = modifier.fillMaxWidth().animateContentSize(animationSpec = tween(300))) {
         if (showHeader) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

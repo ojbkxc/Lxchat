@@ -1,6 +1,7 @@
 package com.lxseek.chat.ui.chat
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -19,7 +20,7 @@ import com.lxseek.chat.api.util.ContextWindowUsage
 import com.lxseek.chat.data.local.LoopEntity
 import com.lxseek.chat.data.ShellDeviceConfig
 import com.lxseek.chat.model.OpenAiServiceTiers
-import com.lxseek.chat.ui.chat.bottombar.CHAT_BOTTOM_BAR_OUTER_SHAPE
+
 import com.lxseek.chat.ui.chat.bottombar.ChatBottomBar
 import com.lxseek.chat.ui.chat.bottombar.ChatComposerState
 import com.lxseek.chat.ui.chat.bottombar.ConversationMention
@@ -137,7 +138,8 @@ internal fun ChatAppBottomBarSection(
                     }
                     .navigationBarsPadding()
                     .imePadding()
-                    .padding(8.dp),
+                    // 增大外边距，让底栏卡片与屏幕边缘有更多呼吸空间，更现代
+                    .padding(12.dp),
             ) {
                 LoopStatusBackdrop(
                     loop = currentLoop,
@@ -149,10 +151,13 @@ internal fun ChatAppBottomBarSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(if (isExpanded) Modifier.weight(1f) else Modifier),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 0.dp,
+                    // 输入框卡片化：用 surfaceVariant 背景增强卡片感，与消息列表形成微妙层次
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    // 微妙的 tonal elevation 增加层次感，避免硬阴影
+                    tonalElevation = 1.dp,
                     shadowElevation = 0.dp,
-                    shape = CHAT_BOTTOM_BAR_OUTER_SHAPE,
+                    // 圆角从 12dp 提升到 24dp，更圆润现代，符合当代 Material 设计趋势
+                    shape = RoundedCornerShape(24.dp),
                 ) {
                     Box(
                         contentAlignment = Alignment.BottomCenter,

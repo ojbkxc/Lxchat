@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -68,7 +69,7 @@ import com.lxseek.chat.ui.components.DialogWindowEdgeToEdge
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
 import com.lxseek.chat.R
 import com.lxseek.chat.model.ChatMessage
-import com.lxseek.chat.ui.theme.ChatType
+
 import com.lxseek.chat.util.noOpBringIntoView
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -319,7 +320,8 @@ internal fun SegmentDetailSheet(
                 ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    // 顶部圆角 24dp，更柔和的视觉过渡
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                     shadowElevation = 0.dp,
                     color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
@@ -352,31 +354,33 @@ internal fun SegmentDetailSheet(
                                     )
                                 }
                         ) {
-                            // Drag handle
+                            // 拖拽手柄：居中小条，32x4dp，outline 色，圆角 2dp
                             Box(
                                 modifier = Modifier.fillMaxWidth().height(28.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .width(36.dp).height(5.dp)
-                                        .clip(RoundedCornerShape(3.dp))
-                                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                                        .width(32.dp).height(4.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(MaterialTheme.colorScheme.outline)
                                 )
                             }
 
-                            // Fixed title
+                            // 固定标题：titleSmall + Medium，更精致的视觉层级
                             Text(
                                 text = titleOverride ?: if (selectedSegs.size > 1) compactSegmentTitle(selectedSegs, message, useLiveStatus = false)
                                     else if (seg.type == "tool") toolDisplayName(seg)
                                     else if (seg.type == "transcription") transcriptionLabel(liveSegs, selectedSegmentIndex)
                                     else stringResource(R.string.tool_thinking),
-                                style = ChatType.detailTitle,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
                             )
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 24.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                                // 用 outlineVariant 色更柔和
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                             )
                         }
 
@@ -422,45 +426,62 @@ internal fun SegmentDetailSheet(
                                     selectedSegs.forEachIndexed { index, detailSeg ->
                                         val detailIndex = selectedSegmentIndices.getOrNull(index)
                                             ?: liveSegs.indexOf(detailSeg).coerceAtLeast(0)
-                                        Text(
-                                            segmentDetailTitle(detailSeg, liveSegs, detailIndex),
-                                            style = ChatType.detailTitle,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.padding(
-                                                top = if (index == 0) 0.dp else 18.dp,
-                                                bottom = 8.dp,
-                                            ),
-                                        )
-                                        if (detailSeg.type == "tool") {
-                                            ToolDetailContent(
-                                                segment = detailSeg,
-                                                onMediaClick = onMediaClick,
-                                            )
-                                        } else if (
-                                            detailSeg.type == "transcription" &&
-                                            detailSeg.content.isBlank()
+                                        // 分段卡片：Surface 圆角 16dp，内边距 16dp
+                                        Surface(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(
+                                                    top = if (index == 0) 0.dp else 10.dp,
+                                                ),
+                                            shape = RoundedCornerShape(16.dp),
+                                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            tonalElevation = 0.dp,
                                         ) {
-                                            Text(
-                                                text = "Image transcription is empty.",
-                                                style = ChatType.body,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    .copy(alpha = 0.4f),
-                                            )
-                                        } else {
-                                            val detailIsStreaming =
-                                                isStreaming && index == selectedSegs.lastIndex
-                                            StreamingDetailMarkdownReveal(
-                                                revealKey = "${message.id}:$detailIndex",
-                                                content = detailSeg.content,
-                                                isStreaming = detailIsStreaming,
-                                                renderContext = markdownRenderContext,
-                                            )
+                                            Column(
+                                                modifier = Modifier.padding(16.dp)
+                                            ) {
+                                                // 标题：titleSmall + Medium
+                                                Text(
+                                                    segmentDetailTitle(detailSeg, liveSegs, detailIndex),
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    modifier = Modifier.padding(bottom = 8.dp),
+                                                )
+                                                if (detailSeg.type == "tool") {
+                                                    ToolDetailContent(
+                                                        segment = detailSeg,
+                                                        onMediaClick = onMediaClick,
+                                                    )
+                                                } else if (
+                                                    detailSeg.type == "transcription" &&
+                                                    detailSeg.content.isBlank()
+                                                ) {
+                                                    // 内容：bodyMedium + onSurfaceVariant
+                                                    Text(
+                                                        text = "Image transcription is empty.",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            .copy(alpha = 0.4f),
+                                                    )
+                                                } else {
+                                                    val detailIsStreaming =
+                                                        isStreaming && index == selectedSegs.lastIndex
+                                                    StreamingDetailMarkdownReveal(
+                                                        revealKey = "${message.id}:$detailIndex",
+                                                        content = detailSeg.content,
+                                                        isStreaming = detailIsStreaming,
+                                                        renderContext = markdownRenderContext,
+                                                    )
+                                                }
+                                            }
                                         }
                                         if (index < selectedSegs.lastIndex) {
                                             HorizontalDivider(
-                                                modifier = Modifier.padding(top = 18.dp),
+                                                modifier = Modifier.padding(top = 10.dp),
+                                                // 用 outlineVariant 色更柔和
                                                 color = MaterialTheme.colorScheme.outlineVariant
-                                                    .copy(alpha = 0.3f),
+                                                    .copy(alpha = 0.4f),
                                             )
                                         }
                                     }
@@ -473,9 +494,10 @@ internal fun SegmentDetailSheet(
                                     seg.type == "transcription" &&
                                     seg.content.isBlank()
                                 ) {
+                                    // 内容：bodyMedium + onSurfaceVariant
                                     Text(
                                         text = "Image transcription is empty.",
-                                        style = ChatType.body,
+                                        style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                             .copy(alpha = 0.4f),
                                     )

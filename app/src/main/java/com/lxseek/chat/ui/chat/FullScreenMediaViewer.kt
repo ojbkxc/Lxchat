@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import com.lxseek.chat.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
@@ -129,10 +130,10 @@ fun FullScreenMediaViewer(
                 Surface(
                     onClick = { closing = true },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    color = Color.Black.copy(alpha = 0.55f), // 半透明黑色背景
                     modifier = Modifier.shadow(8.dp, CircleShape)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.provider_close), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(48.dp).padding(12.dp))
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.provider_close), tint = Color.White, modifier = Modifier.size(48.dp).padding(12.dp))
                 }
             }
         }
@@ -200,13 +201,13 @@ private fun PdfPager(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    modifier = Modifier.shadow(8.dp, CircleShape)
+                    shape = RoundedCornerShape(20.dp), // 圆角矩形
+                    color = Color.Black.copy(alpha = 0.55f), // 半透明黑色背景
+                    modifier = Modifier.shadow(8.dp, RoundedCornerShape(20.dp))
                 ) {
                     Text(
                         "${pagerState.currentPage + 1} / ${pdfPages.size}",
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = Color.White,
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp)
                     )
@@ -215,10 +216,10 @@ private fun PdfPager(
                 Surface(
                     onClick = { onClose() },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    color = Color.Black.copy(alpha = 0.55f), // 半透明黑色背景
                     modifier = Modifier.shadow(8.dp, CircleShape)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.provider_close), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(48.dp).padding(12.dp))
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.provider_close), tint = Color.White, modifier = Modifier.size(48.dp).padding(12.dp))
                 }
             }
         }
@@ -236,7 +237,7 @@ private fun PdfPager(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                        .background(Color.Black.copy(alpha = 0.55f)) // 半透明黑色背景
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Checkbox(
@@ -248,7 +249,7 @@ private fun PdfPager(
                     Text(
                         "${pdfSelectedPages.size} / ${pdfPages.size} ${stringResource(R.string.pdf_selected)}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = Color.White,
                         modifier = Modifier.padding(end = 10.dp)
                     )
                 }
@@ -327,13 +328,13 @@ private fun MediaPager(
             ) {
                 if (urls.size > 1) {
                     Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        modifier = Modifier.shadow(8.dp, CircleShape)
+                        shape = RoundedCornerShape(20.dp), // 圆角矩形
+                        color = Color.Black.copy(alpha = 0.55f), // 半透明黑色背景
+                        modifier = Modifier.shadow(8.dp, RoundedCornerShape(20.dp))
                     ) {
                         Text(
                             "${pagerState.currentPage + 1} / ${urls.size}",
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = Color.White,
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp)
                         )
@@ -343,10 +344,10 @@ private fun MediaPager(
                 Surface(
                     onClick = { closing = true },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    color = Color.Black.copy(alpha = 0.55f), // 半透明黑色背景
                     modifier = Modifier.shadow(8.dp, CircleShape)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.provider_close), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(48.dp).padding(12.dp))
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.provider_close), tint = Color.White, modifier = Modifier.size(48.dp).padding(12.dp))
                 }
             }
         }
@@ -382,10 +383,10 @@ private fun SingleImage(
             Surface(
                 onClick = onClose,
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                color = Color.Black.copy(alpha = 0.55f), // 半透明黑色背景
                 modifier = Modifier.shadow(8.dp, CircleShape)
             ) {
-                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.provider_close), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(48.dp).padding(12.dp))
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.provider_close), tint = Color.White, modifier = Modifier.size(48.dp).padding(12.dp))
             }
         }
     }

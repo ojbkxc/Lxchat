@@ -160,13 +160,16 @@ internal fun MessageItem(
         Participant.ERROR -> MaterialTheme.colorScheme.onErrorContainer
     }
 
+    // Modern bubble geometry: a larger 18dp radius reads softer and more contemporary.
+    // The user bubble uses an asymmetric top-end corner (6dp) so it visually points
+    // toward the sender side, reinforcing left/right authorship at a glance.
     val shape = when (message.participant) {
-        Participant.USER -> RoundedCornerShape(12.dp)
-        Participant.MODEL -> RoundedCornerShape(12.dp)
-        Participant.ERROR -> RoundedCornerShape(12.dp)
+        Participant.USER -> RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp, topEnd = 6.dp)
+        Participant.MODEL -> RoundedCornerShape(18.dp)
+        Participant.ERROR -> RoundedCornerShape(18.dp)
     }
     val selectionRippleShape = when (message.participant) {
-        Participant.MODEL -> RoundedCornerShape(12.dp)
+        Participant.MODEL -> RoundedCornerShape(18.dp)
         else -> shape
     }
 

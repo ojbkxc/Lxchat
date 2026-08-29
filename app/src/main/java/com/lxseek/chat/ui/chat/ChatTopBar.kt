@@ -157,7 +157,8 @@ internal fun ChatTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
+                // 增大水平内边距，让顶栏内容有更多呼吸空间，更现代简洁
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp)
                 .height(52.dp),
         ) { targetSearchActive ->
             Row(
@@ -306,7 +307,8 @@ internal fun ChatTopBar(
                                     Text(
                                         text = stringResource(R.string.total_tokens, totalTokens),
                                         style = ChatType.micro,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        // 副标题（token 用量）用更淡的颜色，营造高级感的层次
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                         maxLines = 1
                                     )
                                 }
@@ -364,7 +366,8 @@ private fun ChatTopBarCapsule(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    // 胶囊圆角从 12dp 提升到 16dp，更圆润现代，与底栏卡片圆角呼应
+    val shape = RoundedCornerShape(16.dp)
     Surface(
         modifier = modifier,
         shape = shape,

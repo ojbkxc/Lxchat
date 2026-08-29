@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -189,7 +190,11 @@ internal fun TaskDetailPage(
         listState = listState,
         actions = {
             IconButton(enabled = isComplete, onClick = { leave() }) {
-                Icon(Icons.Default.Save, contentDescription = stringResource(R.string.task_save))
+                Icon(
+                    Icons.Default.Save,
+                    contentDescription = stringResource(R.string.task_save),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         },
         floatingActionButton = {
@@ -245,7 +250,7 @@ internal fun TaskDetailPage(
                     },
                 ),
             )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
         }
 
         item {
@@ -258,7 +263,7 @@ internal fun TaskDetailPage(
                 enabled = enabled,
                 onEnabledChange = { enabled = it },
             )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
         }
 
         item {
@@ -367,6 +372,12 @@ private fun LabeledField(
             minLines = if (singleLine) 1 else 4,
             isError = isError,
             shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+            ),
             modifier = Modifier.fillMaxWidth(),
             textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
         )

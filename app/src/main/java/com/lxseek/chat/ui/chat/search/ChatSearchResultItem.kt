@@ -1,6 +1,8 @@
 package com.lxseek.chat.ui.chat.search
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +14,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,8 +38,19 @@ internal fun SearchResultItem(
     query: String,
     onClick: () -> Unit
 ) {
-    val highlightColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+    // 关键词高亮：使用 primary 色作为文字颜色，叠加半透明 primaryContainer 底色增强可识别性
+    val highlightTextColor = MaterialTheme.colorScheme.primary
+    val highlightBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
     val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    // 按下态作为选中态视觉反馈，背景切换为 primaryContainer
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val containerColor = if (isPressed) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        Color.Transparent
+    }
 
     fun snippetAroundMatch(text: String, q: String, radius: Int = 20): String {
         val idx = text.lowercase().indexOf(q.lowercase())
@@ -56,7 +71,13 @@ internal fun SearchResultItem(
             var idx = lowerText.indexOf(lowerQuery, last)
             while (idx >= 0) {
                 append(text.substring(last, idx))
-                withStyle(SpanStyle(background = highlightColor, fontWeight = FontWeight.Bold)) {
+                withStyle(
+                    SpanStyle(
+                        color = highlightTextColor,
+                        background = highlightBgColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                ) {
                     append(text.substring(idx, idx + query.length))
                 }
                 last = idx + query.length
@@ -69,10 +90,14 @@ internal fun SearchResultItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        color = Color.Transparent,
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        color = containerColor,
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {

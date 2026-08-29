@@ -76,42 +76,41 @@ private fun DynamicScheme.toColorScheme(): ColorScheme {
     )
 }
 
-/** Minimal light scheme — ChatGPT / DeepSeek style.
+/** Minimal light scheme — Apple 系统配色风格。
  *
- *  Near-white surfaces, near-black ink, and a single restrained indigo accent.
- *  Colour is treated as neutral scaffolding rather than a brand statement, which
- *  deliberately breaks away from the AI-blue-purple homogenisation of the older
- *  dynamic presets. */
+ *  纯白卡片配以 Apple System Gray 6 略灰背景，主色采用 Apple Blue (#007AFF)，
+ *  辅以 Apple Purple / Green / Red 形成清新、柔和、高级的现代视觉。
+ *  分隔线使用 Apple Separator，整体克制而不失辨识度。 */
 fun minimalLightColorScheme(): ColorScheme = lightColorScheme(
-    primary = Color(0xFF4D6BFE),
+    primary = Color(0xFF007AFF),           // Apple Blue
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFEDEFFF),
-    onPrimaryContainer = Color(0xFF1C2B8C),
-    secondary = Color(0xFF6B6B6F),
+    primaryContainer = Color(0xFFE3F2FD),  // 浅蓝容器
+    onPrimaryContainer = Color(0xFF0D47A1),
+    secondary = Color(0xFF5856D6),         // Apple Purple
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFF0F0F2),
-    onSecondaryContainer = Color(0xFF1C1C1E),
-    tertiary = Color(0xFF5A5A60),
+    secondaryContainer = Color(0xFFEDEDF7),
+    onSecondaryContainer = Color(0xFF1E1E5E),
+    tertiary = Color(0xFF34C759),          // Apple Green
     onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFEDEDEF),
-    onTertiaryContainer = Color(0xFF1C1C1E),
-    error = Color(0xFFDC2626),
+    tertiaryContainer = Color(0xFFE8F8ED),
+    onTertiaryContainer = Color(0xFF1B5E20),
+    error = Color(0xFFFF3B30),             // Apple Red
     onError = Color(0xFFFFFFFF),
-    errorContainer = Color(0xFFFEE2E2),
-    onErrorContainer = Color(0xFF991B1B),
-    background = Color(0xFFFFFFFF),
-    onBackground = Color(0xFF1C1C1E),
-    surface = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFFDECEA),
+    onErrorContainer = Color(0xFFB71C1C),
+    background = Color(0xFFF2F2F7),        // Apple System Gray 6（略灰背景）
+    onBackground = Color(0xFF1C1C1E),      // Apple Label
+    surface = Color(0xFFFFFFFF),           // 纯白卡片
     onSurface = Color(0xFF1C1C1E),
-    surfaceVariant = Color(0xFFF7F7F8),
-    onSurfaceVariant = Color(0xFF6B6B6F),
-    outline = Color(0xFFE5E5EA),
-    outlineVariant = Color(0xFFEEEEF1),
+    surfaceVariant = Color(0xFFF2F2F7),    // Apple System Gray 6
+    onSurfaceVariant = Color(0xFF3C3C43),  // Apple Secondary Label
+    outline = Color(0xFFC6C6C8),           // Apple Separator
+    outlineVariant = Color(0xFFE5E5EA),    // Apple Separator Opaque
     scrim = Color(0xFF000000),
     inverseSurface = Color(0xFF1C1C1E),
     inverseOnSurface = Color(0xFFFFFFFF),
-    inversePrimary = Color(0xFF9DA6FF),
-    surfaceTint = Color(0xFF4D6BFE),
+    inversePrimary = Color(0xFF5E9EFF),    // 反相主色对应暗色方案
+    surfaceTint = Color(0xFF007AFF),
     surfaceContainerLowest = Color(0xFFFFFFFF),
     surfaceContainerLow = Color(0xFFFAFAFB),
     surfaceContainer = Color(0xFFF5F5F6),
@@ -119,79 +118,81 @@ fun minimalLightColorScheme(): ColorScheme = lightColorScheme(
     surfaceContainerHighest = Color(0xFFE9E9EC),
 )
 
-/** Minimal dark scheme — the light scheme's neutral mirror: near-black grey surfaces
- *  (not blue-purple) with the same restrained indigo accent. */
+/** Minimal dark scheme — Linear 暗色风格。
+ *
+ *  深邃而非纯黑的背景 (#0D0D0F)，柔和的蓝紫主色调，微妙的对比与层次。
+ *  卡片面略亮于背景以形成轻盈的浮起感，前景文字使用低饱和的浅灰，
+ *  整体氛围沉静、专注、不刺眼，适合长时间夜间阅读。 */
 fun minimalDarkColorScheme(): ColorScheme = darkColorScheme(
-    primary = Color(0xFF9DA6FF),
-    onPrimary = Color(0xFF1C2B8C),
-    primaryContainer = Color(0xFF2E3B7A),
-    onPrimaryContainer = Color(0xFFDEE0FF),
-    secondary = Color(0xFFC6C6CC),
-    onSecondary = Color(0xFF2E2E31),
-    secondaryContainer = Color(0xFF3A3A3E),
-    onSecondaryContainer = Color(0xFFE2E2E6),
-    tertiary = Color(0xFFC6C6CC),
-    onTertiary = Color(0xFF2E2E31),
-    tertiaryContainer = Color(0xFF3A3A3E),
-    onTertiaryContainer = Color(0xFFE2E2E6),
-    error = Color(0xFFF87171),
-    onError = Color(0xFF450A0A),
-    errorContainer = Color(0xFF7F1D1D),
-    onErrorContainer = Color(0xFFFEE2E2),
-    background = Color(0xFF131313),
-    onBackground = Color(0xFFEDEDED),
-    surface = Color(0xFF131313),
-    onSurface = Color(0xFFEDEDED),
-    surfaceVariant = Color(0xFF242424),
-    onSurfaceVariant = Color(0xFFC6C6CC),
-    outline = Color(0xFF3F3F42),
-    outlineVariant = Color(0xFF38383B),
+    primary = Color(0xFF5E9EFF),           // 柔和蓝
+    onPrimary = Color(0xFF0A1929),
+    primaryContainer = Color(0xFF1A3A5C),
+    onPrimaryContainer = Color(0xFFB0D6FF),
+    secondary = Color(0xFF8B89E8),         // 柔和紫
+    onSecondary = Color(0xFF1A1A3E),
+    secondaryContainer = Color(0xFF2A2A52),
+    onSecondaryContainer = Color(0xFFC8C7F0),
+    tertiary = Color(0xFF4ECD7A),          // 柔和绿
+    onTertiary = Color(0xFF0A2A14),
+    tertiaryContainer = Color(0xFF1A3D28),
+    onTertiaryContainer = Color(0xFFA0E8B8),
+    error = Color(0xFFFF6B6B),
+    onError = Color(0xFF3A0A0A),
+    errorContainer = Color(0xFF5C1A1A),
+    onErrorContainer = Color(0xFFFFB8B8),
+    background = Color(0xFF0D0D0F),        // 深邃背景（非纯黑）
+    onBackground = Color(0xFFE4E4E7),
+    surface = Color(0xFF1A1A1E),           // 卡片面
+    onSurface = Color(0xFFE4E4E7),
+    surfaceVariant = Color(0xFF252528),
+    onSurfaceVariant = Color(0xFF9E9EA3),
+    outline = Color(0xFF3A3A3E),
+    outlineVariant = Color(0xFF2A2A2E),
     scrim = Color(0xFF000000),
-    inverseSurface = Color(0xFFEDEDED),
-    inverseOnSurface = Color(0xFF131313),
-    inversePrimary = Color(0xFF4D6BFE),
-    surfaceTint = Color(0xFF9DA6FF),
-    surfaceContainerLowest = Color(0xFF101010),
-    surfaceContainerLow = Color(0xFF1A1A1A),
-    surfaceContainer = Color(0xFF1E1E1E),
-    surfaceContainerHigh = Color(0xFF262626),
-    surfaceContainerHighest = Color(0xFF2E2E2E),
+    inverseSurface = Color(0xFFE4E4E7),
+    inverseOnSurface = Color(0xFF1A1A1E),
+    inversePrimary = Color(0xFF007AFF),    // 反相主色对应亮色方案
+    surfaceTint = Color(0xFF5E9EFF),
+    surfaceContainerLowest = Color(0xFF08080A),
+    surfaceContainerLow = Color(0xFF111113),
+    surfaceContainer = Color(0xFF1A1A1E),
+    surfaceContainerHigh = Color(0xFF222226),
+    surfaceContainerHighest = Color(0xFF2A2A2E),
 )
 
-/** AMOLED true-black color scheme for OLED power savings.
+/** AMOLED true-black color scheme — 纯黑 AMOLED 省电方案。
  *
- *  Background and surface are pure #000000 so OLED panels can power off those pixels.
- *  The accent uses a low-saturation "misty indigo" (grey-tinted, not vivid blue) so it stays
- *  easy on the eyes at night, and containers stay near-black to avoid glare. Foreground tones
- *  are tuned for WCAG AA contrast against pure black. */
+ *  背景与卡片面保持纯黑 (#000000 / #0A0A0A) 以让 OLED 像素彻底断电，
+ *  其余配色与 minimalDarkColorScheme 保持一致（Linear 风格柔和蓝紫），
+ *  兼顾夜间护眼与 AMOLED 续航。 */
 fun amoledDarkColorScheme(): ColorScheme = darkColorScheme(
-    primary = Color(0xFF8E97C9),
-    onPrimary = Color(0xFF14151F),
-    primaryContainer = Color(0xFF2A2E45),
-    onPrimaryContainer = Color(0xFFD2D5EA),
-    secondary = Color(0xFFB8BCC8),
-    onSecondary = Color(0xFF16171C),
-    secondaryContainer = Color(0xFF26282F),
-    onSecondaryContainer = Color(0xFFDDE0EA),
-    tertiary = Color(0xFFBFBFBF),
-    onTertiary = Color(0xFF171717),
-    tertiaryContainer = Color(0xFF262626),
-    onTertiaryContainer = Color(0xFFE6E6E6),
-    error = Color(0xFFE88484),
-    onError = Color(0xFF2A0B0B),
-    errorContainer = Color(0xFF3A1616),
-    onErrorContainer = Color(0xFFF6DADA),
-    background = Color(0xFF000000),
-    onBackground = Color(0xFFE0E0E3),
-    surface = Color(0xFF000000),
-    onSurface = Color(0xFFE0E0E3),
-    surfaceVariant = Color(0xFF121212),
-    onSurfaceVariant = Color(0xFFC2C2C8),
-    outline = Color(0xFF8A8A90),
-    outlineVariant = Color(0xFF5A5A60),
+    primary = Color(0xFF5E9EFF),           // 柔和蓝（与 dark 一致）
+    onPrimary = Color(0xFF0A1929),
+    primaryContainer = Color(0xFF1A3A5C),
+    onPrimaryContainer = Color(0xFFB0D6FF),
+    secondary = Color(0xFF8B89E8),         // 柔和紫
+    onSecondary = Color(0xFF1A1A3E),
+    secondaryContainer = Color(0xFF2A2A52),
+    onSecondaryContainer = Color(0xFFC8C7F0),
+    tertiary = Color(0xFF4ECD7A),          // 柔和绿
+    onTertiary = Color(0xFF0A2A14),
+    tertiaryContainer = Color(0xFF1A3D28),
+    onTertiaryContainer = Color(0xFFA0E8B8),
+    error = Color(0xFFFF6B6B),
+    onError = Color(0xFF3A0A0A),
+    errorContainer = Color(0xFF5C1A1A),
+    onErrorContainer = Color(0xFFFFB8B8),
+    background = Color(0xFF000000),        // 纯黑背景（AMOLED 省电）
+    onBackground = Color(0xFFE4E4E7),
+    surface = Color(0xFF0A0A0A),           // 近黑卡片面
+    onSurface = Color(0xFFE4E4E7),
+    surfaceVariant = Color(0xFF252528),
+    onSurfaceVariant = Color(0xFF9E9EA3),
+    outline = Color(0xFF3A3A3E),
+    outlineVariant = Color(0xFF2A2A2E),
     scrim = Color(0xFF000000),
-    inverseSurface = Color(0xFFE0E0E3),
+    inverseSurface = Color(0xFFE4E4E7),
     inverseOnSurface = Color(0xFF000000),
-    inversePrimary = Color(0xFF8E97C9),
-    surfaceTint = Color(0xFF8E97C9),
+    inversePrimary = Color(0xFF007AFF),
+    surfaceTint = Color(0xFF5E9EFF),
 )

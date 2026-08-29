@@ -192,7 +192,7 @@ fun VideoPlayer(
                     },
                     modifier = Modifier
                         .size(72.dp)
-                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                        .background(Color.White.copy(alpha = 0.3f), CircleShape) // 圆形半透明白色背景
                 ) {
                     Icon(
                         if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -215,7 +215,7 @@ fun VideoPlayer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.5f), Color.Black.copy(alpha = 0.78f)))) // 底部渐变黑色半透明
                     .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
             ) {
                 // Time label
@@ -236,8 +236,8 @@ fun VideoPlayer(
                     onValueChangeFinished = { scheduleAutoHide() },
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
-                        thumbColor = Color.White,
-                        activeTrackColor = Color.White,
+                        thumbColor = MaterialTheme.colorScheme.primary, // primary 色
+                        activeTrackColor = MaterialTheme.colorScheme.primary, // primary 色
                         inactiveTrackColor = Color.White.copy(alpha = 0.3f)
                     )
                 )

@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -218,7 +219,13 @@ internal fun ComposerSendButton(
         },
         containerColor = containerColor,
         contentColor = contentColor,
-        modifier = Modifier.size(56.dp),
+        // 圆形发送按钮：48dp 直径，禁用态（有输入但无法发送）叠加 alpha=0.38f 明确视觉区分
+        modifier = Modifier
+            .size(48.dp)
+            .then(
+                if (fabIcon == ComposerActionIcon.SEND && !canSend) Modifier.alpha(0.38f)
+                else Modifier
+            ),
         shape = CircleShape,
         elevation = FloatingActionButtonDefaults.elevation(
             defaultElevation = if (canSend) 2.dp else 0.dp,
@@ -237,29 +244,29 @@ internal fun ComposerSendButton(
         ) { icon ->
             when (icon) {
                 ComposerActionIcon.STOPPING -> CircularProgressIndicator(
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(24.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 ComposerActionIcon.PENDING -> CircularProgressIndicator(
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(24.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 ComposerActionIcon.STOP -> Icon(
                     Icons.Default.Stop,
                     stringResource(R.string.action),
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(24.dp),
                 )
                 ComposerActionIcon.SEND -> Icon(
                     Icons.Default.ArrowUpward,
                     stringResource(R.string.action),
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(24.dp),
                 )
                 ComposerActionIcon.IDLE -> Icon(
                     Icons.Default.GraphicEq,
                     stringResource(R.string.action),
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }

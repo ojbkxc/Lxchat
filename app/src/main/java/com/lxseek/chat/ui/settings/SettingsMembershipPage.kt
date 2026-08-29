@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.membership.ActivationManager
@@ -62,6 +64,36 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/**
+ * 套餐选项（5档）。
+ *
+ * @param id 套餐 ID（传给服务端 /api/create_payment 的 plan_id）
+ * @param name 显示名称
+ * @param originalPrice 原价（划掉显示，如 "¥9.9"）
+ * @param price 促销价（醒目显示，如 "¥0.99"）
+ * @param perMonth 月均价（用于对比展示）
+ * @param amount 支付金额（元，字符串，传给支付网关，不含¥符号）
+ * @param days 套餐天数（仅用于本地展示）
+ */
+private data class PlanOption(
+    val id: String,
+    val name: String,
+    val originalPrice: String,
+    val price: String,
+    val perMonth: String,
+    val amount: String,
+    val days: Int,
+)
+
+/** 5 档套餐列表（限时特惠，全部一折）。 */
+private val PLANS = listOf(
+    PlanOption("monthly", "月度", "¥9.9", "¥0.99", "¥0.99/月", "0.99", 30),
+    PlanOption("quarterly", "季度", "¥19.9", "¥1.99", "¥0.66/月", "1.99", 90),
+    PlanOption("half_year", "半年", "¥49.9", "¥4.99", "¥0.83/月", "4.99", 180),
+    PlanOption("yearly", "年度", "¥88", "¥8.8", "¥0.73/月", "8.8", 365),
+    PlanOption("lifetime", "永久", "¥198", "¥19.8", "一次买断", "19.8", 36500),
+)
 
 /**
  * Membership settings page: status card + redemption code input + yipay upgrade entry.
@@ -230,38 +262,57 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
 
             if (status.tier == MembershipTier.Free || !status.isActive) {
                 item {
-                    YipayUpgradeSection(
-                        onUpgrade = { tier ->
-                            val amount = when (tier) {
-                                MembershipTier.Premium -> "0.30"
-                                MembershipTier.Pro -> "0.50"
-                                else -> return@YipayUpgradeSection
-                            }
-                            val config = YipayConfig.DEFAULT
-                            val manager = YipayPaymentManager()
-                            val outTradeNo = "lxchat_${System.currentTimeMillis()}"
-                            val returnUrl = "lxchat://yipay-callback"
-                            val paymentUrl = manager.buildPaymentUrl(
-                                config = config,
-                                outTradeNo = outTradeNo,
-                                amount = amount,
-                                returnUrl = returnUrl,
-                            )
-                            // Persist the pending order so onResume can ask the activation
-                            // server to confirm payment if the DeepLink callback is lost.
-                            // deviceId is included so activateByOrder can bind it to the credential.
-                            PendingOrderStore(context).save(
-                                PendingOrderStore.PendingOrder(
-                                    outTradeNo = outTradeNo,
-                                    tier = tier,
-                                    amount = amount,
-                                    timestamp = System.currentTimeMillis(),
-                                    deviceId = activationManager.getDeviceId(),
+                    PlanSelectionSection(
+
+                        onPaid = { plan ->
+                            // 1) 先尝试云端下单（/api/create_payment），服务端生成订单 + 支付 URL。
+                            //    cloudApi 是 RemoteCloudApi 时走网络；LocalCloudApi 返回 null。
+                            scope.launch {
+                                val orderResult = activationManager.createPaymentOrder(
+                                    tier = MembershipTier.Premium,
+                                    amount = plan.amount,
+                                    planId = plan.id,
                                 )
-                            )
-                            Toast.makeText(context, paymentRedirecting, Toast.LENGTH_SHORT).show()
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paymentUrl))
-                            context.startActivity(intent)
+                                if (orderResult != null) {
+                                    // 云端下单成功：保存 pending order，打开支付 URL。
+                                    PendingOrderStore(context).save(
+                                        PendingOrderStore.PendingOrder(
+                                            outTradeNo = orderResult.outTradeNo,
+                                            tier = MembershipTier.Premium,
+                                            amount = plan.amount,
+                                            timestamp = System.currentTimeMillis(),
+                                            deviceId = activationManager.getDeviceId(),
+                                        )
+                                    )
+                                    Toast.makeText(context, paymentRedirecting, Toast.LENGTH_SHORT).show()
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(orderResult.paymentUrl))
+                                    context.startActivity(intent)
+                                    return@launch
+                                }
+                                // 2) 回退：App 端自己构造 Yipay 支付 URL（旧逻辑）。
+                                val config = YipayConfig.DEFAULT
+                                val manager = YipayPaymentManager()
+                                val outTradeNo = "lxchat_${System.currentTimeMillis()}"
+                                val returnUrl = "lxchat://yipay-callback"
+                                val paymentUrl = manager.buildPaymentUrl(
+                                    config = config,
+                                    outTradeNo = outTradeNo,
+                                    amount = plan.amount,
+                                    returnUrl = returnUrl,
+                                )
+                                PendingOrderStore(context).save(
+                                    PendingOrderStore.PendingOrder(
+                                        outTradeNo = outTradeNo,
+                                        tier = MembershipTier.Premium,
+                                        amount = plan.amount,
+                                        timestamp = System.currentTimeMillis(),
+                                        deviceId = activationManager.getDeviceId(),
+                                    )
+                                )
+                                Toast.makeText(context, paymentRedirecting, Toast.LENGTH_SHORT).show()
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paymentUrl))
+                                context.startActivity(intent)
+                            }
                         },
                     )
                 }
@@ -386,6 +437,137 @@ private fun YipayUpgradeSection(onUpgrade: (MembershipTier) -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E57C2)),
         ) {
             Text(stringResource(R.string.membership_upgrade_pro), color = Color.White)
+        }
+    }
+}
+
+// Section C2: Plan selection (5 tiers)
+
+/**
+ * 5 档套餐选择卡片 + 立即支付按钮。
+ *
+ * 用户选中一个套餐后点"立即支付"，调 [ActivationManager.createPaymentOrder] 传对应 planId。
+ * 云端下单成功直接打开返回的支付 URL；失败回退到 App 端自己构造 Yipay URL（[onPaid] 内处理）。
+ */
+@Composable
+private fun PlanSelectionSection(
+
+    onPaid: (PlanOption) -> Unit,
+) {
+    // 默认选中月度套餐
+    var selectedPlanId by remember { mutableStateOf("monthly") }
+    val selectedPlan = PLANS.firstOrNull { it.id == selectedPlanId } ?: PLANS.first()
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = stringResource(R.string.membership_plan_select),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        // 限时特惠促销标签（红色醒目）
+        Text(
+            text = stringResource(R.string.membership_plan_promotion),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.error,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        PLANS.forEach { plan ->
+            PlanOptionCard(
+                plan = plan,
+                selected = plan.id == selectedPlanId,
+                onClick = { selectedPlanId = plan.id },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        Button(
+            onClick = { onPaid(selectedPlan) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB300)),
+        ) {
+            Text(
+                text = stringResource(R.string.membership_plan_pay_now) + " · " + selectedPlan.price,
+                color = Color.Black,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+/** 单个套餐选项卡片（RadioButton 风格）。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlanOptionCard(
+    plan: PlanOption,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val borderColor = if (selected) Color(0xFFFFB300) else MaterialTheme.colorScheme.outlineVariant
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = borderColor,
+        ),
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(
+                selected = selected,
+                onClick = onClick,
+                colors = androidx.compose.material3.RadioButtonDefaults.colors(
+                    selectedColor = Color(0xFFFFB300),
+                ),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            // 套餐名称
+            Text(
+                text = plan.name,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            // 原价划掉 + 促销价 + 月均价
+            Column(horizontalAlignment = Alignment.End) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 原价划掉
+                    Text(
+                        text = plan.originalPrice,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        textDecoration = TextDecoration.LineThrough,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // 促销价（醒目）
+                    Text(
+                        text = plan.price,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (selected) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Text(
+                    text = plan.perMonth,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

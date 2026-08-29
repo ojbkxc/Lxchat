@@ -220,7 +220,7 @@ internal fun ChatDrawerContent(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                FilledTonalButton(
+                Button(
                     onClick = {
                         focusManager.clearFocus()
                         onOpenTasks()
@@ -281,8 +281,8 @@ internal fun ChatDrawerContent(
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(48.dp)
-                                    .padding(vertical = 2.dp)
+                                    .height(52.dp)
+                                    .padding(vertical = 3.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .pointerInput(showMenu) {
                                         if (!showMenu) {
@@ -318,15 +318,26 @@ internal fun ChatDrawerContent(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(start = 10.dp, end = 16.dp),
+                                        .padding(start = 12.dp, end = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
+                                    if (isSelected) {
+                                        Box(
+                                            modifier = Modifier
+                                                .width(3.dp)
+                                                .height(18.dp)
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(MaterialTheme.colorScheme.primary)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
 
                                     Text(
                                         text = conversation.title,
                                         modifier = Modifier.weight(1f),
                                         maxLines = 1,
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Medium,
                                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))

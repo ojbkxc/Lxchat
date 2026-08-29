@@ -2,6 +2,7 @@ package com.lxseek.chat.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import kotlin.math.max
@@ -161,6 +163,8 @@ fun TypewriterText(
         return
     }
 
+    // 光标固定使用 primary 色闪烁，与文本基色解耦
+    val cursorColor = MaterialTheme.colorScheme.primary
     val animatedText = remember(
         text,
         visibleCodePoints,
@@ -168,6 +172,7 @@ fun TypewriterText(
         animationElapsedMs,
         cursor,
         baseColor,
+        cursorColor,
     ) {
         buildCursorTypingText(
             text = text,
@@ -176,6 +181,7 @@ fun TypewriterText(
             elapsedMs = animationElapsedMs,
             cursor = cursor,
             baseColor = baseColor,
+            cursorColor = cursorColor,
         )
     }
 
@@ -328,6 +334,7 @@ private fun buildCursorTypingText(
     elapsedMs: Long,
     cursor: TypewriterCursor,
     baseColor: Color,
+    cursorColor: Color = baseColor,
 ): AnnotatedString = buildAnnotatedString {
     if (completed) {
         append(text)
@@ -343,7 +350,8 @@ private fun buildCursorTypingText(
 
     val cursorStart = length
     append(cursor.glyph)
-    val cycleMs = 1_060L
+    // 闪烁周期 500ms：500ms 完成一个明 → 暗 → 明的完整循环
+    val cycleMs = 500L
     val halfCycleMs = cycleMs / 2L
     val phaseMs = elapsedMs.mod(cycleMs)
     val cursorAlpha =
@@ -353,7 +361,11 @@ private fun buildCursorTypingText(
             (phaseMs - halfCycleMs).toFloat() / halfCycleMs
         }
     addStyle(
-        SpanStyle(color = baseColor.copy(alpha = baseColor.alpha * cursorAlpha)),
+        // 光标使用 primary 色与等宽字体，alpha 在 0 ↔ 1 间随相位线性变化
+        SpanStyle(
+            color = cursorColor.copy(alpha = cursorColor.alpha * cursorAlpha),
+            fontFamily = FontFamily.Monospace
+        ),
         start = cursorStart,
         end = length,
     )
