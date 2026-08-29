@@ -21,11 +21,18 @@ import com.lxseek.chat.automation.WorkflowManager
 import com.lxseek.chat.grok.GrokXOAuthManager
 import com.lxseek.chat.tool.AutomationToolProvider
 import com.lxseek.chat.tool.AndroidAppControllerToolProvider
+import com.lxseek.chat.tool.ContactsToolProvider
+import com.lxseek.chat.tool.CalendarToolProvider
+import com.lxseek.chat.tool.NotificationToolProvider
+import com.lxseek.chat.tool.ScreenRecordToolProvider
+import com.lxseek.chat.tool.UsageStatsToolProvider
 import com.lxseek.chat.tool.McpToolProvider
+import com.lxseek.chat.tool.MetaToolProvider
 import com.lxseek.chat.mcp.McpRegistry
 import com.lxseek.chat.plugin.McpPlugin
 import com.lxseek.chat.plugin.BuiltinSkillsPlugin
 import com.lxseek.chat.plugin.NativeToolsPlugin
+import com.lxseek.chat.plugin.PermissionGatedToolProvider
 import com.lxseek.chat.plugin.PluginContext
 import com.lxseek.chat.plugin.PluginHost
 import com.lxseek.chat.sandbox.SandboxManagerFactory
@@ -285,6 +292,7 @@ class AppContainer(private val appContext: Context) {
      *  避免 pluginHost 与 skillLearnToolProvider 之间的循环 lazy 依赖。 */
     val skillHost: SkillHost by lazy { SkillHost() }
 
+
     val pluginHost: PluginHost by lazy {
         PluginHost(pluginContext, externalSkillHost = skillHost).also { host ->
             host.register(McpPlugin(mcpToolProvider))
@@ -299,6 +307,35 @@ class AppContainer(private val appContext: Context) {
                         subAgentToolProvider,
                         deviceToolProvider,
                         runtimeToolProvider,
+                        // P2 on-device data tools: contacts, calendar, notifications, screen record, usage stats.
+                        // Each degrades to a structured JSON error when its permission is missing.
+                        PermissionGatedToolProvider(
+                            application,
+                            contactsToolProvider,
+                            listOf(android.Manifest.permission.READ_CONTACTS),
+                        ),
+                        PermissionGatedToolProvider(
+                            application,
+                            calendarToolProvider,
+                            listOf(android.Manifest.permission.READ_CALENDAR),
+                        ),
+                        PermissionGatedToolProvider(
+                            application,
+                            notificationToolProvider,
+                            listOf(PermissionGatedToolProvider.NOTIFICATION_LISTENER),
+                        ),
+                        PermissionGatedToolProvider(
+                            application,
+                            screenRecordToolProvider,
+                            listOf(PermissionGatedToolProvider.MEDIA_PROJECTION),
+                        ),
+                        PermissionGatedToolProvider(
+                            application,
+                            usageStatsToolProvider,
+                            listOf(PermissionGatedToolProvider.USAGE_STATS),
+                        ),
+                        // Conversation-level meta tools: model can tune app config via tools.
+                        metaToolProvider,
                         // 系统清理/优化：root-only，仅在模块二进制存在时披露。
                         systemCleanToolProvider,
                         // 应用管理：root-only，按需调用 pm/am/cmd，无驻留服务。
@@ -389,6 +426,38 @@ class AppContainer(private val appContext: Context) {
     /** On-device status/control tools (battery, clipboard, sensors, apps, volume, etc.). */
     val deviceToolProvider: com.lxseek.chat.tool.DeviceToolProvider by lazy {
         com.lxseek.chat.tool.DeviceToolProvider(application)
+    }
+
+    /** Contacts (address book) CRUD + search backed by ContactsContract. */
+    val contactsToolProvider: ContactsToolProvider by lazy {
+        ContactsToolProvider(application)
+    }
+
+    /** Calendar events CRUD backed by the system CalendarProvider. */
+    val calendarToolProvider: CalendarToolProvider by lazy {
+        CalendarToolProvider(application)
+    }
+
+    /** Notification shade read/clear tools backed by LxNotificationListenerService. */
+    val notificationToolProvider: NotificationToolProvider by lazy {
+        NotificationToolProvider(application)
+    }
+
+    /** Screen recording (MediaProjection + MediaCodec + MediaMuxer) tools. */
+    val screenRecordToolProvider: ScreenRecordToolProvider by lazy {
+        ScreenRecordToolProvider(application)
+    }
+
+    /** App usage statistics (per-app foreground duration) backed by UsageStatsManager. */
+    val usageStatsToolProvider: UsageStatsToolProvider by lazy {
+        UsageStatsToolProvider(application)
+    }
+
+    /** Conversation-level meta tools: model can tune app config via tools. */
+    val metaToolProvider: MetaToolProvider by lazy {
+        // pluginHost is null to avoid a circular lazy dependency
+        // (pluginHost references metaToolProvider in its listOfNotNull).
+        MetaToolProvider(settingsRepository, skillHost, pluginHost = null)
     }
 
     /** IM gateway bridge: watches persisted config and exposes the active [com.lxseek.chat.im.MessageChannel]. */

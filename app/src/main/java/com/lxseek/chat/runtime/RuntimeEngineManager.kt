@@ -28,6 +28,13 @@ class RuntimeEngineManager(
     val packageManager: RuntimePackageManager = RuntimePackageManager(context)
     val processManager: RuntimeProcessManager = RuntimeProcessManager(context, scope)
 
+    /**
+     * Engine crash watchdog: 5s liveness poll + automatic restart with exponential backoff
+     * (5s -> 10s -> 20s -> 40s, capped 60s) and optional TCP port probe. START_STICKY-style
+     * supervision — the loop survives single restart failures. See [RuntimeWatchdog].
+     */
+    val watchdog: RuntimeWatchdog = RuntimeWatchdog(this, processManager, scope)
+
     /** 由 AppContainer 在 [com.lxseek.chat.plugin.market.PluginMarket] 创建后注入。 */
     @Volatile
     var market: com.lxseek.chat.plugin.market.PluginMarket? = null
@@ -86,6 +93,7 @@ class RuntimeEngineManager(
 
     /** 卸载引擎：先停进程，再删除文件。 */
     fun uninstallRuntime(engineId: String) {
+        watchdog.unwatch(engineId)
         processManager.stop(engineId)
         packageManager.removeEngine(engineId)
     }
@@ -159,6 +167,18 @@ class RuntimeEngineManager(
 
     /** 停止引擎。 */
     fun stop(engineId: String): Boolean = processManager.stop(engineId)
+
+    // ── 看门狗（崩溃自动重启） ─────────────────────────────
+
+    /** Begin supervising [engineId]; on crash it is restarted via [start]. */
+    fun startWatchdog(
+        engineId: String,
+        intervalMs: Long = 5_000L,
+        healthPort: Int? = null,
+    ) = watchdog.watch(engineId, RuntimeWatchdog.EngineConfig(intervalMs = intervalMs, healthPort = healthPort))
+
+    /** Stop supervising [engineId] (the engine itself keeps running). */
+    fun stopWatchdog(engineId: String) = watchdog.unwatch(engineId)
 
     /** 引擎状态快照。 */
     fun status(engineId: String): RuntimeStatus {

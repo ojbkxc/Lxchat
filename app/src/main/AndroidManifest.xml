@@ -47,6 +47,16 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
+    <!-- P2 on-device data tools: contacts / calendar / usage stats / screen record. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- Special permission: granted in Settings → Apps → Special access → Usage access. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+    <!-- MediaProjection foreground service type (API 34+). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
     <!-- Allows a visibility-safe preflight before using the platform capture contract. -->
     <queries>
         <intent>
@@ -215,6 +225,26 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- P2 notification_* tools: mirrors the system notification stream into NotificationBuffer
+             so NotificationToolProvider can list and clear notifications. User grants access in
+             Settings → Notifications → Notification access. -->
+        <service
+            android:name="com.lxseek.chat.tool.LxNotificationListenerService"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- P2 screen_record_* tools: foreground service holding an ongoing notification while
+             MediaProjection capture is in progress. Requires FOREGROUND_SERVICE_MEDIA_PROJECTION
+             on API 34+. -->
+        <service
+            android:name="com.lxseek.chat.tool.ScreenRecordService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
         <!-- Fires a scheduled task; internal only. -->
         <receiver

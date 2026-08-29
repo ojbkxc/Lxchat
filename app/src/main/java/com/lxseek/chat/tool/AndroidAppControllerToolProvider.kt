@@ -2,7 +2,11 @@ package com.lxseek.chat.tool
 
 import android.app.Application
 import android.content.Intent
+import android.graphics.BitmapFactory
+import android.util.DisplayMetrics
+import android.view.WindowManager
 import com.lxseek.chat.androidcontrol.AndroidUiControllerService
+import java.io.File
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
@@ -136,6 +140,34 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 parameters = ToolParameters(properties = emptyMap()),
             )),
             ToolDefinition(function = ToolFunction(
+                name = "android_see",
+                description = "Vision loop: capture the screen, overlay a numbered N×N grid (ids 1..N², " +
+                    "row-major from top-left), and optionally tap or swipe by grid id or fractional coordinate. " +
+                    "The model looks at the annotated screenshot (annotated_path) and the cell map (cells), then " +
+                    "calls this tool again with action=tap/swipe and grid_id (or fx/fy). action: 'look' only " +
+                    "captures+annotates; 'tap' captures+annotates and taps if grid_id/fx/fy given; 'swipe' " +
+                    "captures+annotates and swipes if from_grid_id+to_grid_id (or fx1/fy1/fx2/fy2) given. Use this " +
+                    "when android_read_ui cannot see the target (Canvas, WebView interior, game) but a screenshot can. " +
+                    "Requires the accessibility bridge (Android 11+ for capture).",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "instruction" to prop("string", "What to look for / do, e.g. 'tap the search button'. Echoed back so the model can reason."),
+                        "grid_size" to prop("integer", "Grid size N for an N×N overlay. Default 4."),
+                        "action" to prop("string", "look | tap | swipe. Default look."),
+                        "grid_id" to prop("integer", "For tap: grid cell id (1..N²) to tap."),
+                        "fx" to prop("number", "For tap: fractional x (0..1) of screen width."),
+                        "fy" to prop("number", "For tap: fractional y (0..1) of screen height."),
+                        "from_grid_id" to prop("integer", "For swipe: grid cell id to swipe from."),
+                        "to_grid_id" to prop("integer", "For swipe: grid cell id to swipe to."),
+                        "fx1" to prop("number", "For swipe: fractional start x (0..1)."),
+                        "fy1" to prop("number", "For swipe: fractional start y (0..1)."),
+                        "fx2" to prop("number", "For swipe: fractional end x (0..1)."),
+                        "fy2" to prop("number", "For swipe: fractional end y (0..1)."),
+                    ),
+                    required = listOf("instruction"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
                 name = "wechat_open_chat",
                 description = "Open WeChat and best-effort navigate to the chat with a contact by " +
                     "searching their name. Requires the accessibility bridge. Each step (open search, " +
@@ -157,7 +189,7 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         "android_open_app", "android_go_back", "android_go_home", "android_press_key" -> RiskLevel.LowRisk
         // Clicking/typing/swiping inside another app can cause real side effects (sending, posting).
         "android_click", "android_input", "android_focus_clear_text", "android_swipe",
-        "android_long_press", "wechat_open_chat", "android_screenshot" -> RiskLevel.Moderate
+        "android_long_press", "wechat_open_chat", "android_screenshot", "android_see" -> RiskLevel.Moderate
         else -> RiskLevel.ReadOnly
     }
 
@@ -181,6 +213,7 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 "android_go_back" -> goBackJson()
                 "android_go_home" -> goHomeJson()
                 "android_screenshot" -> screenshotJson()
+                "android_see" -> see(arguments)
                 "wechat_open_chat" -> wechatOpenChat(arguments)
                 else -> err("unknown_tool", "Unknown android tool: $name")
             }
@@ -484,6 +517,125 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 put("reason", "Screenshot needs Android 11 (API 30)+.")
             }.toString()
         }
+    }
+
+    /**
+     * android_see — vision loop: capture → overlay a numbered grid → return the annotated
+     * screenshot + cell map; if action is tap/swipe and coordinates are supplied, convert
+     * to pixels and dispatch the gesture. The multimodal LLM does the actual seeing; this
+     * tool only draws the grid and does the coordinate maths.
+     */
+    private fun see(arguments: String): String {
+        val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
+        val instruction = argString("instruction", arguments) ?: return err("no_instruction", "Missing instruction.")
+        val gridSize = argInt("grid_size", arguments)?.coerceIn(2, 12) ?: 4
+        val action = argString("action", arguments) ?: "look"
+        val (screenW, screenH) = screenSize()
+
+        // 1) Capture + annotate with a numbered grid.
+        val capture = svc.takeScreenshot(app.cacheDir)
+        val annotatedPath: String = when (capture) {
+            is AndroidUiControllerService.ScreenshotOutcome.Success -> {
+                val src = BitmapFactory.decodeFile(capture.path)
+                    ?: return err("decode_failed", "Could not decode screenshot.")
+                val annotated = VisionAssist.drawGridOverlay(src, gridSize)
+                src.recycle()
+                val file = File(app.cacheDir, "see_${System.currentTimeMillis()}.png")
+                file.outputStream().use { annotated.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, it) }
+                annotated.recycle()
+                file.absolutePath
+            }
+            is AndroidUiControllerService.ScreenshotOutcome.Failure ->
+                return buildJsonObject {
+                    put("type", "android_see"); put("status", "error"); put("error", "capture_failed")
+                    capture.reason?.let { put("reason", it) }
+                }.toString()
+            AndroidUiControllerService.ScreenshotOutcome.NotSupported ->
+                return buildJsonObject {
+                    put("type", "android_see"); put("status", "not_supported")
+                    put("reason", "Screenshot needs Android 11 (API 30)+.")
+                }.toString()
+        }
+
+        // 2) Cell map so the model can resolve ids without doing arithmetic.
+        val cells = buildJsonArray {
+            for (id in 1..gridSize * gridSize) {
+                val (cx, cy) = VisionAssist.gridToPixel(id, gridSize, screenW, screenH)
+                add(buildJsonObject { put("id", id); put("cx", cx); put("cy", cy) })
+            }
+        }
+
+        // 3) Optional action: convert grid id / fraction → pixels and dispatch.
+        var actionStatus: String? = null
+        var actionTarget: String? = null
+        var actionError: String? = null
+        when (action.lowercase()) {
+            "tap" -> {
+                val gridId = argInt("grid_id", arguments)
+                val fx = argDouble("fx", arguments); val fy = argDouble("fy", arguments)
+                if (gridId != null) {
+                    val (px, py) = VisionAssist.gridToPixel(gridId, gridSize, screenW, screenH)
+                    actionTarget = "grid_id=$gridId"
+                    actionStatus = if (svc.clickAt(px, py)) "ok" else "failed"
+                } else if (fx != null && fy != null) {
+                    val (px, py) = VisionAssist.fractionToPixel(fx, fy, screenW, screenH)
+                    actionTarget = "fx=$fx,fy=$fy"
+                    actionStatus = if (svc.clickAt(px, py)) "ok" else "failed"
+                } else {
+                    actionError = "Provide grid_id or fx/fy to tap. Look at annotated_path first."
+                }
+            }
+            "swipe" -> {
+                val fromId = argInt("from_grid_id", arguments); val toId = argInt("to_grid_id", arguments)
+                val fx1 = argDouble("fx1", arguments); val fy1 = argDouble("fy1", arguments)
+                val fx2 = argDouble("fx2", arguments); val fy2 = argDouble("fy2", arguments)
+                if (fromId != null && toId != null) {
+                    val a = VisionAssist.gridToPixel(fromId, gridSize, screenW, screenH)
+                    val b = VisionAssist.gridToPixel(toId, gridSize, screenW, screenH)
+                    actionTarget = "from=$fromId,to=$toId"
+                    actionStatus = if (svc.swipe(a.first, a.second, b.first, b.second)) "ok" else "failed"
+                } else if (fx1 != null && fy1 != null && fx2 != null && fy2 != null) {
+                    val a = VisionAssist.fractionToPixel(fx1, fy1, screenW, screenH)
+                    val b = VisionAssist.fractionToPixel(fx2, fy2, screenW, screenH)
+                    actionTarget = "fx1=$fx1,fy1=$fy1,fx2=$fx2,fy2=$fy2"
+                    actionStatus = if (svc.swipe(a.first, a.second, b.first, b.second)) "ok" else "failed"
+                } else {
+                    actionError = "Provide from_grid_id+to_grid_id or fx1/fy1/fx2/fy2 to swipe."
+                }
+            }
+            // "look" — capture only, no action.
+        }
+
+        return buildJsonObject {
+            put("type", "android_see")
+            put("status", "ok")
+            put("instruction", instruction)
+            put("action", action)
+            put("grid_size", gridSize)
+            put("screen_width", screenW)
+            put("screen_height", screenH)
+            put("annotated_path", annotatedPath)
+            put("cells", cells)
+            put("note", "Ids 1..N² row-major from top-left. Next: action=tap/swipe with grid_id or fx/fy (0..1).")
+            actionStatus?.let { put("action_status", it) }
+            actionTarget?.let { put("action_target", it) }
+            actionError?.let { put("action_error", it) }
+        }.toString()
+    }
+
+    /** Real screen size in pixels (deprecated path kept for broad API compatibility). */
+    private fun screenSize(): Pair<Int, Int> {
+        val wm = app.getSystemService(android.content.Context.WINDOW_SERVICE) as WindowManager
+        val metrics = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+        return metrics.widthPixels to metrics.heightPixels
+    }
+
+    private fun argDouble(key: String, arguments: String): Double? = try {
+        Json.decodeFromString<Map<String, JsonPrimitive>>(arguments.ifBlank { "{}" })[key]?.content?.trim()?.toDoubleOrNull()
+    } catch (_: Exception) {
+        null
     }
 
     /**

@@ -1939,6 +1939,31 @@
     <string name="tm_agent_swipe_desc">Swipe on the screen</string>
     <string name="tm_system_clean_label">Clean system</string>
     <string name="tm_system_clean_desc">Scan and clean system junk</string>
+
+    <!-- P2 on-device data tools: contacts / calendar / notifications / screen record / usage stats. -->
+    <string name="tm_group_p2_data">On-device data</string>
+    <string name="tm_contacts_list_label">List contacts</string>
+    <string name="tm_contacts_list_desc">Read contacts from the device address book</string>
+    <string name="tm_contacts_search_label">Search contacts</string>
+    <string name="tm_contacts_search_desc">Find contacts by name or phone number</string>
+    <string name="tm_contacts_create_label">Create contact</string>
+    <string name="tm_contacts_create_desc">Add a new contact to the address book</string>
+    <string name="tm_calendar_list_label">List calendars</string>
+    <string name="tm_calendar_list_desc">Show on-device calendar accounts</string>
+    <string name="tm_calendar_events_label">List events</string>
+    <string name="tm_calendar_events_desc">List calendar events with optional filters</string>
+    <string name="tm_calendar_create_label">Create event</string>
+    <string name="tm_calendar_create_desc">Add a new calendar event</string>
+    <string name="tm_notification_list_label">List notifications</string>
+    <string name="tm_notification_list_desc">Read active notifications from the system shade</string>
+    <string name="tm_notification_clear_label">Clear notification</string>
+    <string name="tm_notification_clear_desc">Dismiss a notification from the shade</string>
+    <string name="tm_screen_record_start_label">Start recording</string>
+    <string name="tm_screen_record_start_desc">Begin recording the device screen to MP4</string>
+    <string name="tm_screen_record_stop_label">Stop recording</string>
+    <string name="tm_screen_record_stop_desc">Stop screen recording and finalize the file</string>
+    <string name="tm_usage_stats_label">Usage stats</string>
+    <string name="tm_usage_stats_desc">Show per-app foreground usage duration</string>
 <string name="confirm">Confirm</string>
     <string name="ask_user_title">Agent Question</string>
     <string name="ask_user_other">Other (custom)</string>
