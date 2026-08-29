@@ -224,7 +224,7 @@ class PluginMarket(
                     localPath = localPath,
                 )
             }
-            MarketPluginKind.RUNTIME -> buildRuntimeInstallation(meta, requestedVersion)
+            MarketPluginKind.RUNTIME -> buildRuntimeInstallation(meta, requestedVersion, onLog = null)
         }
         host.register(buildPlugin(installation), initiallyEnabled = true)
         val updated = _installations.value + installation
