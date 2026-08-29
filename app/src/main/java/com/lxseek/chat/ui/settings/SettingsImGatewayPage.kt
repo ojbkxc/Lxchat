@@ -74,6 +74,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
@@ -97,13 +98,13 @@ fun SettingsImGatewayPage(
     val legacyConfig by viewModel.settings.imGatewayConfig.collectAsState()
     val scope = rememberCoroutineScope()
 
-    // T31: ImBridgeService ç”¨äºè¿æ¥æµ‹è¯•ï¼›ä» AppContainer å–å•ä¾‹ã€?
+    // T31: ImBridgeService ç”¨äºè¿æ¥æµ‹è¯•ï¼›ä» AppContainer å–å•ä¾‹ï¿½?
     val bridgeService = remember(context) {
         (context.applicationContext as LxChatApplication).container.imBridgeService
     }
-    // T31: Agent Preset å€™é€‰åˆ—è¡¨ï¼ˆæ¥è‡ªå…¨å±€ System Promptsï¼‰ã€?
+    // T31: Agent Preset å€™é€‰åˆ—è¡¨ï¼ˆæ¥è‡ªå…¨å±€ System Promptsï¼‰ï¿½?
     val systemPrompts by viewModel.settings.systemPrompts.collectAsState()
-    // å·²ç»‘å®šæœºå™¨äººè®¾ç½®é¢æ¿æ‰€éœ€ï¼šå¯ç”¨æ¨¡å‹åˆ—è¡¨ï¼ˆMap<providerName, List<modelName>>ï¼‰ã€?
+    // å·²ç»‘å®šæœºå™¨äººè®¾ç½®é¢æ¿æ‰€éœ€ï¼šå¯ç”¨æ¨¡å‹åˆ—è¡¨ï¼ˆMap<providerName, List<modelName>>ï¼‰ï¿½?
     val availableModels by viewModel.settings.availableModels.collectAsState()
 
     // Legacy fallback bot: shown only when the multi-config is empty and the legacy single
@@ -197,9 +198,9 @@ fun SettingsImGatewayPage(
     }
 }
 
-// ¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T
-// ©¤©¤ Merged from SettingsImGatewayMetadata.kt ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
-// ¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T
+// ï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½T
+// ï¿½ï¿½ï¿½ï¿½ Merged from SettingsImGatewayMetadata.kt ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+// ï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½T
 // â”€â”€ Platform display metadata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Emoji glyph used as a lightweight platform icon (per project icon-style preference). */
@@ -288,7 +289,7 @@ internal data class CredField(
 
 /** Credential fields shown in the bind form for [platform]. */
 internal fun ImPlatform.credentialFields(): List<CredField> = when (this) {
-    // å¾®ä¿¡èµ?iLink æ‰«ç ç»‘å®šï¼ˆWeixinBindingFlowï¼‰ï¼Œæ— éœ€æ‰‹åŠ¨é…ç½® base_url/tokenã€?
+    // å¾®ä¿¡ï¿½?iLink æ‰«ç ç»‘å®šï¼ˆWeixinBindingFlowï¼‰ï¼Œæ— éœ€æ‰‹åŠ¨é…ç½® base_url/tokenï¿½?
     ImPlatform.WECHAT -> emptyList()
     ImPlatform.WECOM -> listOf(
         CredField("corp_id", R.string.im_channel_field_corp_id, FieldKind.TEXT),
@@ -357,8 +358,8 @@ internal fun decodeCredentials(raw: String): Map<String, String> {
 
 /** Mask a secret for display: keep first 4 and last 4 chars, hide the middle. */
 internal fun maskSecret(value: String): String {
-    if (value.length <= 8) return "â€¢â€¢â€¢â€?
-    return value.take(4) + "â€¢â€¢â€¢â€? + value.takeLast(4)
+    if (value.length <= 8) return "â€¢â€¢â€¢â€¢"
+    return value.take(4) + "â€¢â€¢â€¢â€¢" + value.takeLast(4)
 }
 
 // â”€â”€ Build / summarize an ImGatewayConfig from form values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -367,7 +368,7 @@ internal fun maskSecret(value: String): String {
  * Build an [ImGatewayConfig] from the [values] entered for [platform], or null when required
  * fields are missing. A fresh [channelId] is generated so each bind creates a distinct bot.
  *
- * @param agentPreset é€‰ä¸­çš?Agent Preset IDï¼›ç©ºä¸²è¡¨ç¤ºè·Ÿéšé»˜è®¤ã€?
+ * @param agentPreset é€‰ä¸­ï¿½?Agent Preset IDï¼›ç©ºä¸²è¡¨ç¤ºè·Ÿéšé»˜è®¤ï¿½?
  */
 internal fun buildBotConfig(
     platform: ImPlatform,
@@ -481,9 +482,9 @@ internal fun botSummary(bot: ImGatewayConfig, platform: ImPlatform): Pair<String
     return title to subtitle
 }
 
-// ¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T
-// ©¤©¤ Merged from SettingsImGatewayCard.kt ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
-// ¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T
+// ï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½T
+// ï¿½ï¿½ï¿½ï¿½ Merged from SettingsImGatewayCard.kt ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+// ï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½T
 // â”€â”€ Platform card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
@@ -648,7 +649,7 @@ internal fun BotSummaryRow(
     val strSettings = stringResource(R.string.im_channel_settings)
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<ConnectionTestResult?>(null) }
-    // å·²ç»‘å®šæœºå™¨äººè®¾ç½®é¢æ¿é»˜è®¤æ”¶èµ·ï¼›ç‚¹å‡?âš™ï¸ è®¾ç½®æŒ‰é’®åˆ‡æ¢ã€?
+    // å·²ç»‘å®šæœºå™¨äººè®¾ç½®é¢æ¿é»˜è®¤æ”¶èµ·ï¼›ç‚¹ï¿½?âš™ï¸ è®¾ç½®æŒ‰é’®åˆ‡æ¢ï¿½?
     var settingsExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
@@ -701,7 +702,7 @@ internal fun BotSummaryRow(
                     Text(strTesting)
                 } else Text(strTestBtn)
             }
-            // âš™ï¸ è®¾ç½®æŒ‰é’®ï¼šå±•å¼€/æ”¶èµ·å·²ç»‘å®šæœºå™¨äººçš„è¯¦ç»†è®¾ç½®é¢æ¿ã€?
+            // âš™ï¸ è®¾ç½®æŒ‰é’®ï¼šå±•å¼€/æ”¶èµ·å·²ç»‘å®šæœºå™¨äººçš„è¯¦ç»†è®¾ç½®é¢æ¿ï¿½?
             TextButton(onClick = {
                 settingsExpanded = !settingsExpanded
                 DebugLog.d("ImGatewayUI", "settings toggle: ${bot.effectiveChannelId} expanded=$settingsExpanded")
@@ -740,7 +741,7 @@ internal fun BotSummaryRow(
                 )
             }
         }
-        // å·²ç»‘å®šæœºå™¨äººè®¾ç½®é¢æ¿ï¼šè‡ªåŠ¨å›å¤æ¨¡å?/ ä¸»åŠ¨æ¶ˆæ¯ / äººæ€§åŒ–æ¶ˆæ¯ã€?
+        // å·²ç»‘å®šæœºå™¨äººè®¾ç½®é¢æ¿ï¼šè‡ªåŠ¨å›å¤æ¨¡ï¿½?/ ä¸»åŠ¨æ¶ˆæ¯ / äººæ€§åŒ–æ¶ˆæ¯ï¿½?
         AnimatedVisibility(visible = settingsExpanded) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
             BotSettingsPanel(
@@ -748,7 +749,7 @@ internal fun BotSummaryRow(
                 availableModels = availableModels,
                 onSave = { updated ->
                     onUpdateBot(updated)
-                    // ä¿å­˜åè‡ªåŠ¨æ”¶èµ·ã€?
+                    // ä¿å­˜åè‡ªåŠ¨æ”¶èµ·ï¿½?
                     settingsExpanded = false
                 },
             )
@@ -756,9 +757,9 @@ internal fun BotSummaryRow(
     }
 }
 
-// ¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T
-// ©¤©¤ Merged from SettingsImGatewayBindForm.kt ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
-// ¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T
+// ï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½T
+// ï¿½ï¿½ï¿½ï¿½ Merged from SettingsImGatewayBindForm.kt ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+// ï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½Tï¿½T
 // â”€â”€ Bind form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
@@ -768,7 +769,7 @@ internal fun BindFormSection(
     onConfirm: (ImGatewayConfig) -> Unit,
     onCancel: () -> Unit,
 ) {
-    // å¾®ä¿¡èµ?iLink æ‰«ç ç»‘å®šæµç¨‹ï¼ˆWeixinBindingFlowï¼‰ï¼Œä¸ä½¿ç”¨è¡¨å•å­—æ®µã€?
+    // å¾®ä¿¡ï¿½?iLink æ‰«ç ç»‘å®šæµç¨‹ï¼ˆWeixinBindingFlowï¼‰ï¼Œä¸ä½¿ç”¨è¡¨å•å­—æ®µï¿½?
     if (platform == ImPlatform.WECHAT) {
         WeixinQrBindSection(onConfirm = onConfirm, onCancel = onCancel)
         return
@@ -783,7 +784,7 @@ internal fun BindFormSection(
     val showSecret = remember { mutableStateMapOf<String, Boolean>().apply { fields.forEach { put(it.key, false) } } }
     var validationError by remember { mutableStateOf(false) }
 
-    // T31: Agent Preset é€‰æ‹©çŠ¶æ€ã€‚ç©ºä¸?= è·Ÿéšé»˜è®¤ã€?
+    // T31: Agent Preset é€‰æ‹©çŠ¶æ€ã€‚ç©ºï¿½?= è·Ÿéšé»˜è®¤ï¿½?
     var selectedPreset by remember { mutableStateOf("") }
     var presetMenuExpanded by remember { mutableStateOf(false) }
     val strPresetLabel = stringResource(R.string.im_channel_agent_preset)
@@ -870,8 +871,8 @@ internal fun BindFormSection(
             )
         }
 
-        // T31: Agent Preset é€‰æ‹©å™¨ï¼ˆDropdownï¼‰ã€?
-        // å€™é€‰é¡¹ = "è·Ÿéšé»˜è®¤" + å…¨å±€ System Promptsï¼›é€‰ä¸­åå†™å…?selectedPresetï¼ˆç©ºä¸?è·Ÿéšé»˜è®¤ï¼‰ã€?
+        // T31: Agent Preset é€‰æ‹©å™¨ï¼ˆDropdownï¼‰ï¿½?
+        // å€™é€‰é¡¹ = "è·Ÿéšé»˜è®¤" + å…¨å±€ System Promptsï¼›é€‰ä¸­åå†™ï¿½?selectedPresetï¼ˆç©ºï¿½?è·Ÿéšé»˜è®¤ï¼‰ï¿½?
         Spacer(modifier = Modifier.height(4.dp))
         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             OutlinedTextField(
@@ -923,9 +924,9 @@ internal fun BindFormSection(
 // â”€â”€ å¾®ä¿¡ iLink æ‰«ç ç»‘å®š â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * å¾®ä¿¡ iLink æ‰«ç ç»‘å®š UIï¼šè¿›å…¥å³å¯åŠ¨ [WeixinBindingFlow.bind]ï¼Œæ˜¾ç¤ºäºŒç»´ç å›¾ç‰‡ â†?
- * è½®è¯¢æ‰«ç çŠ¶æ€?â†?æˆåŠŸåæ„å»?[ImGatewayConfig] å¹¶å›è°?[onConfirm]ã€?
- * åç¨‹åœ?[DisposableEffect] ä¸­å–æ¶ˆï¼Œé¿å…ç¦»å¼€ Composable åç»§ç»­è½®è¯¢ã€?
+ * å¾®ä¿¡ iLink æ‰«ç ç»‘å®š UIï¼šè¿›å…¥å³å¯åŠ¨ [WeixinBindingFlow.bind]ï¼Œæ˜¾ç¤ºäºŒç»´ç å›¾ç‰‡ ï¿½?
+ * è½®è¯¢æ‰«ç çŠ¶ï¿½?ï¿½?æˆåŠŸåæ„ï¿½?[ImGatewayConfig] å¹¶å›ï¿½?[onConfirm]ï¿½?
+ * åç¨‹ï¿½?[DisposableEffect] ä¸­å–æ¶ˆï¼Œé¿å…ç¦»å¼€ Composable åç»§ç»­è½®è¯¢ï¿½?
  */
 @Composable
 internal fun WeixinQrBindSection(
@@ -945,18 +946,18 @@ internal fun WeixinQrBindSection(
     val strFailed = stringResource(R.string.im_channel_wechat_qr_failed)
 
     fun startBind() {
-        DebugLog.d("WeixinQrBind", "startBind: å¼€å§‹æ‰«ç ç»‘å®šæµç¨?)
+        DebugLog.d("WeixinQrBind", "startBind: å¼€å§‹æ‰«ç ç»‘å®šæµç¨‹")
         bindJob?.cancel(); qrcodeUrl = null; statusText = null; errorMsg = null; loading = true
         val flow = WeixinBindingFlow()
         bindJob = scope.launch {
             flow.bind { event ->
                 when (event) {
                     is WeixinBindingFlow.Event.QrcodeReady -> {
-                        DebugLog.d("WeixinQrBind", "æ”¶åˆ°äºŒç»´ç ?URL: ${event.qrcodeUrl}")
+                        DebugLog.d("WeixinQrBind", "æ”¶åˆ°äºŒç»´ç  URL: ${event.qrcodeUrl}")
                         loading = false; qrcodeUrl = event.qrcodeUrl; statusText = strWaiting
                     }
                     is WeixinBindingFlow.Event.StatusChanged -> {
-                        DebugLog.d("WeixinQrBind", "æ‰«ç çŠ¶æ€å˜åŒ? ${event.status}")
+                        DebugLog.d("WeixinQrBind", "æ‰«ç çŠ¶æ€å˜åŒ–: ${event.status}")
                         statusText = when (event.status) {
                             "wait" -> strWaiting; "scaned" -> strScanned; "confirmed" -> strConfirming
                             "need_verifycode" -> strVerify; else -> event.status
@@ -1005,7 +1006,7 @@ internal fun WeixinQrBindSection(
                 }
             }
             errorMsg != null -> {
-                Text(text = "â?, style = MaterialTheme.typography.displaySmall)
+                Text(text = "âŒ", style = MaterialTheme.typography.displaySmall)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(text = stringResource(R.string.im_channel_wechat_qr_failed), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(4.dp))
