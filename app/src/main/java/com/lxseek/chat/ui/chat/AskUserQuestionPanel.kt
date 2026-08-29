@@ -142,7 +142,7 @@ fun AskUserQuestionPanel(
                             }
                         }
                         Spacer(Modifier.size(8.dp))
-                        Text("其他（自定义）", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.ask_user_other), style = MaterialTheme.typography.bodyMedium)
                     }
                     if (showOther) {
                         Spacer(Modifier.height(6.dp))
@@ -181,7 +181,7 @@ fun AskUserQuestionPanel(
                     }
                     onConfirm(answers)
                 },
-            ) { Text("确认") }
+            ) { Text(stringResource(R.string.confirm)) }
         },
         dismissButton = {
             TextButton(

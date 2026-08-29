@@ -413,12 +413,12 @@ private fun TrustedPeerItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = stringResource(R.string.settings_remote_first_trusted, formatTime(peer.firstSeenAt)),
+                text = stringResource(R.string.settings_remote_first_trusted, formatTime(peer.firstSeenAt, stringResource(R.string.settings_remote_unknown))),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = stringResource(R.string.settings_remote_last_active, formatTime(peer.lastSeenAt)),
+                text = stringResource(R.string.settings_remote_last_active, formatTime(peer.lastSeenAt, stringResource(R.string.settings_remote_unknown))),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -573,9 +573,9 @@ private fun shortenId(id: String): String {
     return id.take(12) + "…" + id.takeLast(4)
 }
 
-/** Format a millisecond timestamp as "yyyy-MM-dd HH:mm"; "未知" for non-positive. */
-private fun formatTime(ts: Long): String {
-    if (ts <= 0) return "未知"
+/** Format a millisecond timestamp as "yyyy-MM-dd HH:mm"; [unknownLabel] for non-positive. */
+private fun formatTime(ts: Long, unknownLabel: String): String {
+    if (ts <= 0) return unknownLabel
     return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(ts))
 }
 

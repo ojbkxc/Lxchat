@@ -265,7 +265,7 @@ internal fun ChatDrawerContent(
                 ) {
                     Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("全局搜索", style = ChatType.drawerButton)
+                    Text(stringResource(R.string.drawer_global_search), style = ChatType.drawerButton)
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -576,7 +576,7 @@ private fun GlobalSearchDialog(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("搜索所有对话中的消息") },
+                    placeholder = { Text(stringResource(R.string.drawer_search_hint)) },
                     singleLine = true,
                     leadingIcon = {
                         Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))

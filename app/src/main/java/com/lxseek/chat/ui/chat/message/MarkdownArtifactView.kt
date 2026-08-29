@@ -115,13 +115,14 @@ private val NoTitledWebViewClient = object : WebViewClient() {}
 private fun MermaidArtifactView(code: String, modifier: Modifier) {
     val context = LocalContext.current
     val state = remember { mutableStateOf<MermaidLoadState>(MermaidLoadState.Loading) }
+    val mermaidEngineError = MermaidLoadState.Error(stringResource(R.string.markdown_mermaid_engine_error))
     LaunchedEffect(context, code, state.value is MermaidLoadState.Ready) {
         if (!MermaidEngine.isDownloaded(context)) {
             state.value = MermaidLoadState.Downloading
             if (MermaidEngine.ensure(context)) {
                 state.value = MermaidLoadState.Ready
             } else {
-                state.value = MermaidLoadState.Error("图表引擎未就绪（需联网下载一次，下载失败）")
+                state.value = mermaidEngineError
             }
         }
     }
