@@ -27,7 +27,9 @@ enum class FeatureCategory {
  * It encodes four design principles:
  *
  * 1. **Openness** — core capabilities ([FeatureCategory.CORE]) are free; the
- *    gate never blocks basic operation of the agent.
+ *    gate never blocks basic operation of the agent. Since Lxchat is a BYOK
+ *    terminal (users bring their own API keys), the gate never charges for
+ *    "API cost" — only for feature value (automation, multi-model, etc.).
  * 2. **Practical privilege** — paid tiers unlock genuinely useful advanced
  *    features (automation, multi-model, plugin marketplace) rather than
  *    artificial limits on core flows.
@@ -44,39 +46,72 @@ class FeatureTierMapper {
 
     /** Stable tool-name → category registry. */
     private val toolToCategory: Map<String, FeatureCategory> = buildMap {
-        // CORE (Free) — foundational device and system capabilities.
+        // CORE (Free) — foundational capabilities, always available.
         listOf(
-            "file_read",
-            "file_write",
-            "file_list",
-            "shell",
-            "app_launch",
-            "app_info",
-            "contacts",
-            "calendar",
-            "notifications",
+            // Device & system
+            "file_read", "file_write", "file_list",
+            "shell", "app_launch", "app_info",
+            "contacts", "calendar", "notifications",
+            // Web
+            "web_search", "web_fetch",
+            // Memory (manual)
+            "memory_read", "memory_manual", "active_memory",
+            // Voice (offline)
+            "voice_conversation", "offline_asr", "offline_tts",
+            // Basic pet
+            "basic_pet",
+            // IM (1 binding)
+            "im_bind_one",
+            // Plugin browse only
+            "plugin_browse",
+            // Data rights
+            "data_export", "data_import",
+            // Network basic
+            "proxy",
+            // Misc
+            "grok_login", "slash_commands", "system_clean",
         ).forEach { put(it, FeatureCategory.CORE) }
 
-        // EXTENDED (Premium) — productivity multipliers.
+        // EXTENDED (Premium) — productivity multipliers & auto-evolution.
         listOf(
-            "screen_record",
-            "usage_stats",
-            "automation",
-            "workflow",
-            "image_generate",
-            "vision_analyze",
+            // From original EXTENDED
+            "screen_record", "usage_stats",
+            "automation", "workflow",
+            "image_generate", "vision_analyze",
+            // Moved from ADVANCED to EXTENDED
+            "multi_model", "auxiliary_models",
+            // New: advanced generation
+            "thinking_budget", "context_compact",
+            // New: advanced tools
+            "local_sandbox", "device_control",
+            // New: IM multi-binding
+            "im_multi_bind", "im_proactive", "im_multi_channel",
+            // New: cloud voice
+            "cloud_whisper", "provider_tts",
+            // New: pet premium
+            "pet_all_characters", "pet_custom",
+            // New: auto-evolution
+            "auto_memory", "rag_search", "auto_cache",
+            // New: data & network
+            "auto_backup", "dns_encrypt",
         ).forEach { put(it, FeatureCategory.EXTENDED) }
 
-        // ADVANCED (Pro) — power-user and integration tooling.
+        // ADVANCED (Pro) — power-user, developer & integration tooling.
         listOf(
-            "meta_tools",
-            "skill_market",
-            "plugin_install",
-            "multi_model",
-            "auxiliary_models",
-            "quota_pool",
-            "credential_vault",
-            "config_management",
+            // Kept from original
+            "meta_tools", "quota_pool", "credential_vault", "config_management",
+            // Plugin install (browse is free, install is Pro)
+            "skill_market", "plugin_install",
+            // New: advanced routing
+            "smart_routing",
+            // New: developer tools
+            "adb_shell", "runtime_engine",
+            // New: SMS command
+            "sms_command",
+            // New: IM unlimited & management
+            "im_unlimited", "im_management",
+            // New: enterprise integration
+            "remote_device", "ai_office",
         ).forEach { put(it, FeatureCategory.ADVANCED) }
 
         // ENTERPRISE (Pro today, Enterprise tier in the future).
@@ -88,12 +123,12 @@ class FeatureTierMapper {
         ).forEach { put(it, FeatureCategory.ENTERPRISE) }
     }
 
-    /** Category → minimum required tier. */
+    /** Category → minimum required tier. Only two tiers: Free and Premium (paid). */
     private val categoryToTier: Map<FeatureCategory, MembershipTier> = mapOf(
         FeatureCategory.CORE to MembershipTier.Free,
         FeatureCategory.EXTENDED to MembershipTier.Premium,
-        FeatureCategory.ADVANCED to MembershipTier.Pro,
-        FeatureCategory.ENTERPRISE to MembershipTier.Pro,
+        FeatureCategory.ADVANCED to MembershipTier.Premium,
+        FeatureCategory.ENTERPRISE to MembershipTier.Premium,
     )
 
     /** All registered tool names in insertion order. */

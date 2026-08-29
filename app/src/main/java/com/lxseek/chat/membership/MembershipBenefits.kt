@@ -47,51 +47,49 @@ object MembershipBenefits {
             price = "¥0",
             durationDays = 0,
             features = listOf(
-                "Core tools",
-                "Basic chat",
-                "Single model",
-                "5 tools per session",
+                "Core chat & streaming",
+                "BYOK: bring your own API keys",
+                "Web search & file tools",
+                "Manual memory & active memory",
+                "Voice conversation (offline)",
+                "1 IM account binding",
+                "Plugin marketplace browsing",
+                "Basic desktop pet (DADA)",
             ),
             highlighted = false,
         ),
         MembershipPlan(
             tier = MembershipTier.Premium,
             displayName = "Premium",
-            price = "¥19.9",
+            price = "¥0.99",
             durationDays = 30,
             features = listOf(
-                "Extended tools",
-                "Multi-model",
-                "Unlimited tools",
-                "Screen recording",
-                "Automation",
+                "Everything in Free, plus:",
+                "Multi-model & smart routing",
+                "Auto context compression",
+                "Image generation & vision",
+                "Full automation (cron/workflow/trigger)",
+                "Unlimited IM & proactive messages",
+                "Auto memory evolution & RAG search",
+                "All desktop pets + custom image",
+                "Cloud Whisper & provider TTS",
+                "Plugin install & marketplace",
+                "ADB Shell & SMS command",
+                "Runtime engines (Node/Python/ffmpeg)",
+                "Auto backup & DNS encryption",
             ),
             highlighted = true,
         ),
-        MembershipPlan(
-            tier = MembershipTier.Pro,
-            displayName = "Pro",
-            price = "¥49.9",
-            durationDays = 30,
-            features = listOf(
-                "Advanced tools",
-                "Plugin marketplace",
-                "Auxiliary models",
-                "Config management",
-                "Priority support",
-            ),
-            highlighted = false,
-        ),
     )
 
-    /** Returns all membership plans in tier order (Free → Premium → Pro). */
+    /** Returns all membership plans in tier order (Free → Premium). */
     fun getPlans(): List<MembershipPlan> = plans
 
     /**
      * Returns the plan for [tier], or null if no plan is defined.
      *
-     * Returns null for [MembershipTier.Enterprise] today; callers should handle
-     * the null case by hiding the purchase CTA for that tier.
+     * Returns null for [MembershipTier.Pro] and [MembershipTier.Enterprise] today;
+     * callers should handle the null case by hiding the purchase CTA for that tier.
      */
     fun getPlan(tier: MembershipTier): MembershipPlan? =
         plans.firstOrNull { it.tier == tier }

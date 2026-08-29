@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
@@ -109,7 +111,11 @@ private val PLANS = listOf(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
+fun SettingsMembershipPage(
+    viewModel: ChatViewModel,
+    onBack: () -> Unit,
+    onNavigateToAbout: () -> Unit = {},
+) {
     val status by viewModel.membership.status.collectAsState()
 
     val scope = rememberCoroutineScope()
@@ -134,6 +140,10 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     // Renewal state.
     var isRenewing by remember { mutableStateOf(false) }
     var renewMessage by remember { mutableStateOf<String?>(null) }
+
+    // Restore state: free user with no local credential — may be a reinstall.
+    var isRestoring by remember { mutableStateOf(false) }
+    var restoreMessage by remember { mutableStateOf<String?>(null) }
 
     BackHandler { onBack() }
 
@@ -190,6 +200,30 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         }
                     },
                 )
+            }
+
+            // Restore: free user with no local credential — may be a reinstall.
+            if (status.tier == MembershipTier.Free && !activationManager.hasActiveCredential()) {
+                item {
+                    RestoreMembershipSection(
+                        isRestoring = isRestoring,
+                        message = restoreMessage,
+                        onRestore = {
+                            scope.launch {
+                                isRestoring = true
+                                restoreMessage = null
+                                val success = activationManager.restoreActivation(activationManager.getDeviceId())
+                                restoreMessage = if (success) {
+                                    viewModel.membership.refresh()
+                                    context.getString(R.string.membership_restore_success)
+                                } else {
+                                    context.getString(R.string.membership_restore_failed)
+                                }
+                                isRestoring = false
+                            }
+                        },
+                    )
+                }
             }
 
             // Free trial: only show when inactive and not used before.
@@ -260,7 +294,11 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             }
 
 
-            if (status.tier == MembershipTier.Free || !status.isActive) {
+            // 套餐选择：免费用户、未激活、或非永久激活用户（可续费叠加时间）
+            // 永久激活用户不显示（不需要再买）
+            val isLifetime = status.isActive && (status.expiryTimestamp == null ||
+                (status.expiryTimestamp ?: 0L) > System.currentTimeMillis() + 36500L * 24L * 60L * 60L * 1000L)
+            if (!isLifetime) {
                 item {
                     PlanSelectionSection(
 
@@ -328,6 +366,24 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     ) {
                         Text(stringResource(R.string.membership_revoke))
                     }
+                }
+            }
+
+            // About entry at the bottom.
+            item {
+                OutlinedButton(
+                    onClick = onNavigateToAbout,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.about_title))
                 }
             }
         }
@@ -685,6 +741,45 @@ private fun ActivationResultFeedback(result: ActivationResult) {
 }
 
 // Section F: Free trial (3 days)
+
+/** Restore membership section: re-activate via device ID after reinstall. */
+@Composable
+private fun RestoreMembershipSection(
+    isRestoring: Boolean,
+    message: String?,
+    onRestore: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = stringResource(R.string.membership_restore_title),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = onRestore,
+            enabled = !isRestoring,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = if (isRestoring) {
+                    stringResource(R.string.membership_restoring)
+                } else {
+                    stringResource(R.string.membership_restore_button)
+                },
+            )
+        }
+        message?.let {
+            Spacer(modifier = Modifier.height(8.dp))
+            val color = if (it == stringResource(R.string.membership_restore_success)) {
+                Color(0xFF2E7D32)
+            } else {
+                Color(0xFFC62828)
+            }
+            Text(text = it, color = color, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
 
 /** Free trial section (3 days). */
 @Composable
