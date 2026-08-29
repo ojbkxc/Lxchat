@@ -24,6 +24,8 @@ class PendingOrderStore(context: Context) {
         val tier: MembershipTier,
         val amount: String,
         val timestamp: Long,
+        /** 设备身份证，激活时需要带给服务器。 */
+        val deviceId: String = "",
     )
 
     private val prefs = context.applicationContext
@@ -36,6 +38,7 @@ class PendingOrderStore(context: Context) {
             put(KEY_TIER, order.tier.name)
             put(KEY_AMOUNT, order.amount)
             put(KEY_TIMESTAMP, order.timestamp)
+            put(KEY_DEVICE_ID, order.deviceId)
         }
         prefs.edit().putString(KEY_PENDING, json.toString()).apply()
     }
@@ -50,6 +53,8 @@ class PendingOrderStore(context: Context) {
                 tier = MembershipTier.parse(json.getString(KEY_TIER)),
                 amount = json.getString(KEY_AMOUNT),
                 timestamp = json.getLong(KEY_TIMESTAMP),
+                // 旧版本存储没有 deviceId 字段，容错读取为空串。
+                deviceId = json.optString(KEY_DEVICE_ID, ""),
             )
         } catch (_: Exception) {
             null
@@ -74,6 +79,7 @@ class PendingOrderStore(context: Context) {
         private const val KEY_TIER = "tier"
         private const val KEY_AMOUNT = "amount"
         private const val KEY_TIMESTAMP = "timestamp"
+        private const val KEY_DEVICE_ID = "deviceId"
 
         /** Orders are considered stale 10 minutes after submission. */
         private const val EXPIRY_MILLIS = 10L * 60L * 1000L

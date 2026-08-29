@@ -50,12 +50,12 @@ import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.membership.ActivationManager
 import com.lxseek.chat.membership.ActivationResult
-import com.lxseek.chat.membership.LocalCloudApi
 import com.lxseek.chat.membership.LocalMembershipProvider
 import com.lxseek.chat.membership.MembershipStatus
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.membership.PendingOrderStore
 import com.lxseek.chat.membership.RedemptionResult
+import com.lxseek.chat.membership.RemoteCloudApi
 import com.lxseek.chat.membership.YipayConfig
 import com.lxseek.chat.membership.YipayPaymentManager
 import com.lxseek.chat.viewmodel.ChatViewModel
@@ -87,14 +87,24 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val paymentRedirecting = stringResource(R.string.membership_payment_redirecting)
 
-    // 设备身份证 + 激活码体系：本地实现 LocalCloudApi，封装在 ActivationManager 中。
-    // 以后云端部署后只需把 LocalCloudApi 换成 RemoteCloudApi，UI 无需改动。
+    // 设备身份证 + 激活码体系：用 RemoteCloudApi 调远程激活服务（activate.lxseek.com）。
+    // LocalCloudApi 保留作为离线兜底（无网络时本地验证签名），但主路径走远程。
     val activationManager = remember {
-        ActivationManager(LocalCloudApi(context), context)
+        ActivationManager(RemoteCloudApi(context), context)
     }
     var activationCodeInput by remember { mutableStateOf("") }
     var activationResult by remember { mutableStateOf<ActivationResult?>(null) }
     var isActivating by remember { mutableStateOf(false) }
+
+    // 免费试用状态
+    var isTrialing by remember { mutableStateOf(false) }
+    var trialMessage by remember { mutableStateOf<String?>(null) }
+    // 本地标记：是否已用过免费试用。只读一次（试用成功后 status.tier 变化会让试用区消失）。
+    val trialUsed = remember { activationManager.isTrialUsed() }
+
+    // 续费状态
+    var isRenewing by remember { mutableStateOf(false) }
+    var renewMessage by remember { mutableStateOf<String?>(null) }
 
     BackHandler { onBack() }
 
@@ -153,6 +163,73 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 )
             }
 
+            // 免费试用 3 天：仅在未激活且未用过试用时显示。
+            if ((status.tier == MembershipTier.Free || !status.isActive) && !trialUsed) {
+                item {
+                    FreeTrialSection(
+                        isTrialing = isTrialing,
+                        message = trialMessage,
+                        onTrial = {
+                            scope.launch {
+                                isTrialing = true
+                                trialMessage = null
+                                val result = activationManager.trial()
+                                trialMessage = when (result) {
+                                    is ActivationResult.Success -> {
+                                        viewModel.membership.refresh()
+                                        context.getString(R.string.membership_trial_success)
+                                    }
+                                    ActivationResult.NetworkError ->
+                                        context.getString(R.string.membership_activate_network_error)
+                                    else -> context.getString(R.string.membership_trial_failed)
+                                }
+                                isTrialing = false
+                            }
+                        },
+                    )
+                }
+            }
+
+            // 续费：已激活但快到期（3 天内）时显示。
+            if (status.isActive && isExpiringSoon(status)) {
+                item {
+                    RenewMembershipSection(
+                        isRenewing = isRenewing,
+                        message = renewMessage,
+                        onRenew = { tier ->
+                            val amount = when (tier) {
+                                MembershipTier.Premium -> "0.30"
+                                MembershipTier.Pro -> "0.50"
+                                else -> return@RenewMembershipSection
+                            }
+                            val config = YipayConfig.DEFAULT
+                            val manager = YipayPaymentManager()
+                            val outTradeNo = "lxchat_renew_${System.currentTimeMillis()}"
+                            val returnUrl = "lxchat://yipay-callback"
+                            val paymentUrl = manager.buildPaymentUrl(
+                                config = config,
+                                outTradeNo = outTradeNo,
+                                amount = amount,
+                                returnUrl = returnUrl,
+                            )
+                            // 保存 PendingOrder（带 deviceId），onResume 兜底查询用。
+                            PendingOrderStore(context).save(
+                                PendingOrderStore.PendingOrder(
+                                    outTradeNo = outTradeNo,
+                                    tier = tier,
+                                    amount = amount,
+                                    timestamp = System.currentTimeMillis(),
+                                    deviceId = activationManager.getDeviceId(),
+                                )
+                            )
+                            Toast.makeText(context, paymentRedirecting, Toast.LENGTH_SHORT).show()
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paymentUrl))
+                            context.startActivity(intent)
+                        },
+                    )
+                }
+            }
+
             item {
                 RedemptionCodeSection(
                     code = codeInput,
@@ -193,14 +270,16 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                 amount = amount,
                                 returnUrl = returnUrl,
                             )
-                            // Persist the pending order so onResume can query the gateway
-                            // if the DeepLink callback is lost.
+                            // Persist the pending order so onResume can ask the activation
+                            // server to confirm payment if the DeepLink callback is lost.
+                            // deviceId is included so activateByOrder can bind it to the credential.
                             PendingOrderStore(context).save(
                                 PendingOrderStore.PendingOrder(
                                     outTradeNo = outTradeNo,
                                     tier = tier,
                                     amount = amount,
                                     timestamp = System.currentTimeMillis(),
+                                    deviceId = activationManager.getDeviceId(),
                                 )
                             )
                             Toast.makeText(context, paymentRedirecting, Toast.LENGTH_SHORT).show()
@@ -522,3 +601,111 @@ private fun ActivationResultFeedback(result: ActivationResult) {
         }
     }
 }
+
+// ── Section F: Free trial (3 days) ─────────────────────────────
+
+/**
+ * 免费试用 3 天区。
+ *
+ * 仅在未激活且未用过试用时显示。点击后调 [ActivationManager.trial]，
+ * 服务器签发 3 天 Premium 凭证。
+ */
+@Composable
+private fun FreeTrialSection(
+    isTrialing: Boolean,
+    message: String?,
+    onTrial: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = stringResource(R.string.membership_trial_button),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onTrial,
+            enabled = !isTrialing,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+        ) {
+            Text(
+                text = if (isTrialing) {
+                    stringResource(R.string.membership_trial_in_progress)
+                } else {
+                    stringResource(R.string.membership_trial_button)
+                },
+                color = Color.White,
+            )
+        }
+        message?.let {
+            Spacer(modifier = Modifier.height(8.dp))
+            val color = if (it == stringResource(R.string.membership_trial_success)) {
+                Color(0xFF2E7D32)
+            } else {
+                Color(0xFFC62828)
+            }
+            Text(
+                text = it,
+                color = color,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+// ── Section G: Renew membership ────────────────────────────────
+
+/**
+ * 续费区：已激活但快到期时显示。
+ *
+ * 点击后发起易支付支付 → DeepLink 回调 → 服务器确认 → 续费。
+ */
+@Composable
+private fun RenewMembershipSection(
+    isRenewing: Boolean,
+    message: String?,
+    onRenew: (MembershipTier) -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = stringResource(R.string.membership_renew_button),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = { onRenew(MembershipTier.Premium) },
+            enabled = !isRenewing,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB300)),
+        ) {
+            Text(
+                text = if (isRenewing) {
+                    stringResource(R.string.membership_renewing)
+                } else {
+                    stringResource(R.string.membership_renew_button)
+                },
+                color = Color.Black,
+            )
+        }
+        message?.let {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+/** True if the membership expires within [RENEW_THRESHOLD_DAYS] days. */
+private fun isExpiringSoon(status: MembershipStatus): Boolean {
+    val expiry = status.expiryTimestamp ?: return false
+    val remaining = expiry - System.currentTimeMillis()
+    return remaining in 0..(RENEW_THRESHOLD_DAYS * MILLIS_PER_DAY)
+}
+
+private const val RENEW_THRESHOLD_DAYS = 3L
+private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L

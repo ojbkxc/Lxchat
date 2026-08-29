@@ -216,6 +216,59 @@ object HttpClient {
         .dns(encryptedDnsResolver())
         .build()
 
+    /**
+     * Dedicated client for the activation server (activate.lxseek.com).
+     *
+     * Hardened with:
+     * - **Certificate pinning** — pins the SHA-256 hash of the server's leaf cert
+     *   (or a CA in its chain). Blocks MITM proxies even if the device trusts a
+     *   rogue CA. The placeholder hash below is a 32-zero SHA-256; replace with
+     *   the real pin captured via `openssl s_client` or OkHttp's
+     *   `CertificatePinner.pin()` before release. With the placeholder, pinning
+     *   is effectively disabled (no cert will match), so set [ACTIVATION_PIN_ENABLED]
+     *   to true only after the real hash is in place.
+     * - **Short timeouts** (10 s) — activation is a quick request/response, not a
+     *   long-running stream.
+     * - **Same DNS / proxy** setup as [client] for consistency.
+     */
+    val activationClient: OkHttpClient = run {
+        val pinner = if (ACTIVATION_PIN_ENABLED) {
+            okhttp3.CertificatePinner.Builder()
+                .add(
+                    ACTIVATION_HOST,
+                    // SHA-256 pin of the activation server's certificate.
+                    // Replace this placeholder with the real pin:
+                    //   val cert = ... // X509Certificate from the server
+                    //   val pin = okhttp3.CertificatePinner.pin(cert.publicKey)
+                    "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                )
+                .build()
+        } else {
+            okhttp3.CertificatePinner.DEFAULT
+        }
+        OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .proxySelector(proxySelector)
+            .proxyAuthenticator(proxyAuthenticator)
+            .dns(encryptedDnsResolver())
+            .certificatePinner(pinner)
+            .build()
+    }
+
+    /** Hostname of the activation server (used for certificate pinning). */
+    private const val ACTIVATION_HOST = "activate.lxseek.com"
+
+    /**
+     * Toggle for certificate pinning on [activationClient].
+     *
+     * Set to true after [ACTIVATION_PIN_HASH] is replaced with the real SHA-256 pin
+     * of the activation server's certificate. With the placeholder hash, pinning
+     * would reject every cert, so this defaults to false.
+     */
+    private const val ACTIVATION_PIN_ENABLED = false
+
     /** Custom DNS resolver installed by the app (e.g. [EncryptedDns]), or the system resolver.
      *  Read live at every lookup so enabling/changing DNS protection takes effect without a rebuild. */
     @Volatile private var dnsResolver: Dns? = null

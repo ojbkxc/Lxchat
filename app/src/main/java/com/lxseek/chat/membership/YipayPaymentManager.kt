@@ -126,7 +126,16 @@ class YipayPaymentManager {
      * Calls `GET {gatewayUrl}/api.php?act=order&pid=...&key=...&out_trade_no=...`.
      * Runs on an IO dispatcher with short timeouts. Returns null on network/parse
      * failure; otherwise a [QueryResult] where `code==1 && status==1` means paid.
+     *
+     * @deprecated 不再直接调易支付查询 API。商户密钥（merchantKey）不应留在 App 端，
+     * 且 DeepLink 回调可被伪造。新流程改为调 [RemoteCloudApi.activateByOrder]，
+     * 由激活服务器（activate.lxseek.com）后端查询易支付订单确认真正已支付后签发凭证。
+     * 保留本方法仅供离线调试/旧路径兼容，生产环境不应调用。
      */
+    @Deprecated(
+        "Use RemoteCloudApi.activateByOrder instead — merchant key must not live in the App.",
+        ReplaceWith("RemoteCloudApi(context).activateByOrder(deviceId, outTradeNo)"),
+    )
     suspend fun queryOrderStatus(config: YipayConfig, outTradeNo: String): QueryResult? =
         withContext(Dispatchers.IO) {
             try {
@@ -176,11 +185,14 @@ class YipayPaymentManager {
 /**
  * Result of processing a Yipay callback DeepLink, surfaced to the UI via a StateFlow
  * (see [com.lxseek.chat.MainActivity]). [Idle] is the resting state; the UI consumes
- * [Success]/[Failed] and resets to [Idle].
+ * [Success]/[Failed] and resets to [Idle]. [Confirming] is an intermediate state shown
+ * while the server confirms the payment (1–3 s typically).
  */
 sealed class YipayCallbackResult {
     /** No callback processed yet / already consumed. */
     object Idle : YipayCallbackResult()
+    /** Callback signature verified; server is confirming the payment before activating. */
+    object Confirming : YipayCallbackResult()
     /** Callback verified and membership activated. */
     data class Success(val tier: MembershipTier) : YipayCallbackResult()
     /** Signature mismatch, missing params, or non-success trade status. */

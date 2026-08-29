@@ -57,8 +57,11 @@ import com.lxseek.chat.ui.settings.RatingForm
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lxseek.chat.data.SettingsManager
+import com.lxseek.chat.membership.ActivationManager
+import com.lxseek.chat.membership.ActivationResult
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.membership.PendingOrderStore
+import com.lxseek.chat.membership.RemoteCloudApi
 import com.lxseek.chat.membership.YipayCallbackResult
 import com.lxseek.chat.membership.YipayConfig
 import com.lxseek.chat.membership.YipayPaymentManager
@@ -352,8 +355,20 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Parse + verify the Yipay callback, then activate membership on success.
-     * The result is published to [yipayCallbackResult] for the UI to display.
+     * Parse + verify the Yipay callback signature, then ask the activation server to
+     * confirm the payment and issue a signed credential.
+     *
+     * Flow: parse callback → verify MD5 signature → check trade status →
+     *       publish [YipayCallbackResult.Confirming] →
+     *       RemoteCloudApi.activateByOrder(deviceId, outTradeNo) →
+     *       server queries the gateway, confirms paid, returns credential →
+     *       publish [YipayCallbackResult.Success].
+     *
+     * The signature check alone is NOT enough to activate: a user can forge a
+     * DeepLink URL with valid-looking params. The server must independently query
+     * the payment gateway to confirm the order is actually paid. This is why we
+     * never call [com.lxseek.chat.membership.LocalMembershipProvider.applyYipayPurchase]
+     * directly from the callback anymore.
      */
     private fun handleYipayCallback(uri: Uri) {
         val config = YipayConfig.DEFAULT
@@ -373,31 +388,43 @@ class MainActivity : ComponentActivity() {
             yipayCallbackResult.value = YipayCallbackResult.Failed
             return
         }
-        // Map amount → tier (Premium ¥0.30 / Pro ¥0.50) and activate.
+        // Signature valid → ask server to confirm payment & activate.
+        // Map amount → tier for UI feedback only; the server is the source of truth.
         val tier = mapMoneyToTier(params.money)
-        val container = (application as LxChatApplication).container
         val store = PendingOrderStore(this)
+        val activationManager = ActivationManager(RemoteCloudApi(this), this)
+        yipayCallbackResult.value = YipayCallbackResult.Confirming
         lifecycleScope.launch {
             // Don't double-activate if the onResume fallback already succeeded.
             if (yipayCallbackResult.value is YipayCallbackResult.Success) {
                 store.clear()
                 return@launch
             }
-            container.membershipProvider.applyYipayPurchase(
-                tier = tier,
-                durationDays = YIPAY_MEMBERSHIP_DURATION_DAYS,
-            )
-            yipayCallbackResult.value = YipayCallbackResult.Success(tier)
-            store.clear()
+            val result = activationManager.activateByOrder(params.outTradeNo)
+            when (result) {
+                is ActivationResult.Success -> {
+                    yipayCallbackResult.value = YipayCallbackResult.Success(tier)
+                    store.clear()
+                    // Refresh membership status so the UI reflects the new tier.
+                    (application as LxChatApplication).container.membershipProvider.refresh()
+                }
+                else -> {
+                    yipayCallbackResult.value = YipayCallbackResult.Failed
+                }
+            }
         }
     }
 
     /**
      * Fallback for lost DeepLink callbacks: when the App returns to the foreground with a
-     * pending Yipay order, query the gateway directly and activate membership if paid.
+     * pending Yipay order, ask the activation server to confirm the payment and activate.
      *
      * Skipped when a callback already succeeded (DeepLink beat us to it) — the store is
      * cleared and we do nothing. Expired orders (older than 10 min) are also cleared.
+     *
+     * Unlike the old path which queried the Yipay gateway directly (requiring the merchant
+     * key in the App), this now calls [RemoteCloudApi.activateByOrder] so the server does
+     * the gateway query. The merchant key never lives in the App.
      */
     private fun checkPendingYipayOrder() {
         val store = PendingOrderStore(this)
@@ -411,23 +438,28 @@ class MainActivity : ComponentActivity() {
             store.clear()
             return
         }
-        val config = YipayConfig.DEFAULT
-        val manager = YipayPaymentManager()
+        val activationManager = ActivationManager(RemoteCloudApi(this), this)
+        if (yipayCallbackResult.value !is YipayCallbackResult.Confirming) {
+            yipayCallbackResult.value = YipayCallbackResult.Confirming
+        }
         lifecycleScope.launch {
-            val result = manager.queryOrderStatus(config, pending.outTradeNo)
-            if (result == null || result.code != 1 || result.status != 1) return@launch
-            // A DeepLink may have arrived between get() and the response — re-check.
-            if (yipayCallbackResult.value is YipayCallbackResult.Success) {
+            val result = activationManager.activateByOrder(pending.outTradeNo)
+            if (result is ActivationResult.Success) {
+                // A DeepLink may have arrived between get() and the response — re-check.
+                if (yipayCallbackResult.value is YipayCallbackResult.Success) {
+                    store.clear()
+                    return@launch
+                }
+                yipayCallbackResult.value = YipayCallbackResult.Success(pending.tier)
                 store.clear()
-                return@launch
+                (application as LxChatApplication).container.membershipProvider.refresh()
+            } else {
+                // Activation failed (server didn't confirm payment or network error).
+                // Reset to Idle so the user can retry; keep the pending order for onResume retry.
+                if (yipayCallbackResult.value is YipayCallbackResult.Confirming) {
+                    yipayCallbackResult.value = YipayCallbackResult.Idle
+                }
             }
-            val container = (application as LxChatApplication).container
-            container.membershipProvider.applyYipayPurchase(
-                tier = pending.tier,
-                durationDays = YIPAY_MEMBERSHIP_DURATION_DAYS,
-            )
-            yipayCallbackResult.value = YipayCallbackResult.Success(pending.tier)
-            store.clear()
         }
     }
 
@@ -501,7 +533,7 @@ fun MainNavigation(
     val snackbarHostState = remember { SnackbarHostState() }
     var snackbarVersion by remember { mutableIntStateOf(0) }
 
-    // Yipay payment callback → Snackbar feedback (success / failed).
+    // Yipay payment callback → Snackbar feedback (success / failed / confirming).
     val yipayResult by yipayCallbackResult.collectAsState()
     LaunchedEffect(yipayResult) {
         when (yipayResult) {
@@ -512,6 +544,9 @@ fun MainNavigation(
             YipayCallbackResult.Failed -> {
                 snackbarHostState.showSnackbar(appContext.getString(R.string.membership_payment_failed))
                 onYipayCallbackConsumed()
+            }
+            YipayCallbackResult.Confirming -> {
+                snackbarHostState.showSnackbar(appContext.getString(R.string.membership_payment_confirming))
             }
             YipayCallbackResult.Idle -> Unit
         }
