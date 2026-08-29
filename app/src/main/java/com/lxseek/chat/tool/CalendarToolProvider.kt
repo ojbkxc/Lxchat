@@ -375,7 +375,7 @@ class CalendarToolProvider(private val app: Application) : ToolProvider {
             put(CalendarContract.Events.EVENT_LOCATION, argString("location", arguments) ?: "")
             put(CalendarContract.Events.DTSTART, startMillis)
             put(CalendarContract.Events.DTEND, endMillis)
-            put(CalendarContract.Events.ALL_DAY, if (allDay) 1 else 0)
+            put(CalendarContract.Events.ALL_DAY, if (allDay == true) 1 else 0)
             put(CalendarContract.Events.EVENT_TIMEZONE, java.util.TimeZone.getDefault().id)
         }
         val eventUri = resolver.insert(CalendarContract.Events.CONTENT_URI, values)
@@ -410,7 +410,7 @@ class CalendarToolProvider(private val app: Application) : ToolProvider {
                 put(CalendarContract.Attendees.ATTENDEE_NAME, email.substringBefore('@'))
                 put(CalendarContract.Attendees.ATTENDEE_RELATIONSHIP, CalendarContract.Attendees.RELATIONSHIP_ATTENDEE)
                 put(CalendarContract.Attendees.ATTENDEE_TYPE, CalendarContract.Attendees.TYPE_NONE)
-                put(CalendarContract.Attendees.ATTENDEE_STATUS, CalendarContract.Attendees.STATUS_NONE)
+                put(CalendarContract.Attendees.ATTENDEE_STATUS, 0)  // STATUS_NONE = 0
             }
             try {
                 resolver.insert(CalendarContract.Attendees.CONTENT_URI, v)
@@ -684,5 +684,5 @@ class CalendarToolProvider(private val app: Application) : ToolProvider {
         put("type", "calendar_error")
         put("error", code)
         if (!message.isNullOrBlank()) put("message", message)
-    }
+    }.toString()
 }

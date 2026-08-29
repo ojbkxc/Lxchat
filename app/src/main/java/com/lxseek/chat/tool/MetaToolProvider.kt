@@ -12,12 +12,14 @@ import com.lxseek.chat.plugin.PluginHost
 import com.lxseek.chat.skill.SkillHost
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.viewmodel.GenerationContext
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 
 /**
  * Conversation-level meta tools: let the model tune the app configuration
@@ -261,8 +263,8 @@ class MetaToolProvider(
                 userPrependItems = emptyList(),
                 userPostpendItems = emptyList(),
             )
-            "pet_enabled" -> settings.savePetOverlayEnabled(value.toBooleanStrict())
-            "pet_character" -> settings.savePetOverlayCharacter(value)
+            "pet_enabled" -> runBlocking { settings.savePetOverlayEnabled(value.toBooleanStrict()) }
+            "pet_character" -> runBlocking { settings.savePetOverlayCharacter(value) }
         }
     }
 
@@ -335,9 +337,9 @@ class MetaToolProvider(
         val matrix = permissionMatrix ?: return err("not_supported", "Permission matrix is not configured")
         return buildJsonObject {
             put("type", "permission_matrix")
-            put("tools") {
+            putJsonObject("tools") {
                 for ((name, perm) in matrix.getMatrix()) {
-                    put(name) {
+                    putJsonObject(name) {
                         put("enabled", perm.enabled)
                         put("requiresMembership", perm.requiresMembership.name)
                         put("requiresApproval", perm.requiresApproval)

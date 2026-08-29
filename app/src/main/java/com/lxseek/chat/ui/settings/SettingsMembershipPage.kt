@@ -87,7 +87,9 @@ fun SettingsMembershipPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val paymentRedirecting = stringResource(R.string.membership_payment_redirecting)
 
-    // 璁惧韬唤璇?+ 婵€娲荤爜浣撶郴锛氱敤 RemoteCloudApi 璋冭繙绋嬫縺娲绘湇鍔★紙activate.lxseek.com锛夈€?    // LocalCloudApi 淇濈暀浣滀负绂荤嚎鍏滃簳锛堟棤缃戠粶鏃舵湰鍦伴獙璇佺鍚嶏級锛屼絾涓昏矾寰勮蛋杩滅▼銆?    val activationManager = remember {
+    // Device ID + activation code: use RemoteCloudApi to call remote activation server.
+    // LocalCloudApi is only for offline fallback (local verification when no network).
+    val activationManager = remember {
         ActivationManager(RemoteCloudApi(context), context)
     }
     var activationCodeInput by remember { mutableStateOf("") }

@@ -150,8 +150,8 @@ class YipayPaymentManager {
                         code = parsed.code,
                         status = parsed.status ?: 0,
                         money = parsed.money.orEmpty(),
-                        tradeNo = parsed.tradeNo.orEmpty(),
-                        outTradeNo = parsed.outTradeNo.orEmpty(),
+                        tradeNo = parsed.trade_no.orEmpty(),
+                        outTradeNo = parsed.out_trade_no.orEmpty(),
                     )
                 }
             } catch (_: Exception) {

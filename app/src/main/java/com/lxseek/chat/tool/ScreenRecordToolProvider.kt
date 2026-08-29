@@ -628,7 +628,12 @@ internal class ScreenRecordEngine(
         if (!running && releaseLatch.count == 0L) return true
         stopRequested = true
         try {
-            codec?.signalEndOfStream()
+            codec?.let { c ->
+                val index = c.dequeueInputBuffer(0)
+                if (index >= 0) {
+                    c.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                }
+            }
         } catch (e: Exception) {
             DebugLog.w(TAG, "signalEndOfStream failed", e)
         }

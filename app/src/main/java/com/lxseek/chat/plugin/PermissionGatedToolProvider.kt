@@ -62,7 +62,7 @@ class PermissionGatedToolProvider(
     private fun hasNotificationListenerAccess(): Boolean {
         val flat = Settings.Secure.getString(
             app.contentResolver,
-            Settings.Secure.ENABLED_NOTIFICATION_LISTENERS,
+            "enabled_notification_listeners",
         ) ?: return false
         val target = ComponentName(app, "com.lxseek.chat.tool.LxNotificationListenerService")
         return flat.split(":").any { entry ->

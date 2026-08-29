@@ -15,7 +15,15 @@ data class SandboxConfig(
     val maxMemoryBytes: Long? = null,
     val allowedPaths: List<String> = emptyList(),
     val blockedCommands: List<String> = DEFAULT_BLOCKED_COMMANDS,
-)
+) {
+    companion object {
+        val DEFAULT_BLOCKED_COMMANDS: List<String> = listOf(
+            "rm", "rmdir", "del", "format", "mkfs", "dd", "sudo", "su",
+            "reboot", "shutdown", "halt", "kill", "killall",
+            "chmod", "chown", "mount", "umount",
+        )
+    }
+}
 
 /**
  * Result of a sandboxed execution.

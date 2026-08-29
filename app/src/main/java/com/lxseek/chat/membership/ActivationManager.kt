@@ -65,7 +65,8 @@ class ActivationManager(
      * 娉ㄦ剰锛氳繖瑕佹眰鏈嶅姟鍣ㄧ鍙戝嚟璇佹椂鐢ㄧ殑 HMAC 瀵嗛挜涓?[LocalCloudApi] 鐨勫瘑閽ヤ竴鑷淬€?     * 褰撳墠鏄繃娓℃柟妗堬紱鍚庣画鏈嶅姟鍣ㄦ敼鐢?RSA 闈炲绉扮鍚嶅悗锛孾SignedCredential] 闇€瑕?     * 鍔?RSA 楠岃瘉鏀寔锛屽眾鏃剁绾块獙璇佹敼鐢ㄥ叕閽ャ€?     */
     suspend fun verifyLocal(): VerifyResult {
         val deviceId = DeviceIdCard.getDeviceId(context)
-        // 濮嬬粓鐢?LocalCloudApi 鍋氱绾块獙璇侊紝鍗充娇 cloudApi 鏄?RemoteCloudApi銆?        return LocalCloudApi(context).verify(deviceId)
+        // Always use LocalCloudApi for offline verification, even if cloudApi is RemoteCloudApi.
+        return LocalCloudApi(context).verify(deviceId)
     }
 
     /**
