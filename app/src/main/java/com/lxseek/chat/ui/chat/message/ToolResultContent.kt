@@ -112,7 +112,7 @@ internal fun ToolDetailContent(
                 presentation.kind == ToolKind.SHELL_JOB_GET
             ) {
                 ShellResult(presentation)
-                return
+                return@Column
             }
             when (presentation.state) {
                 ToolPresentationState.CALLING -> ToolActiveContent(
