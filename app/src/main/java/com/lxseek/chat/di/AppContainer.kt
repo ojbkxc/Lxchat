@@ -19,6 +19,7 @@ import com.lxseek.chat.automation.TaskExecutionEngine
 import com.lxseek.chat.automation.TaskManager
 import com.lxseek.chat.automation.WorkflowManager
 import com.lxseek.chat.grok.GrokXOAuthManager
+import com.lxseek.chat.openai.OpenAIXOAuthManager
 import com.lxseek.chat.tool.AutomationToolProvider
 import com.lxseek.chat.tool.AndroidAppControllerToolProvider
 import com.lxseek.chat.tool.ContactsToolProvider
@@ -262,6 +263,11 @@ class AppContainer(private val appContext: Context) {
     /** Grok(x.ai) 官方账号登录。登录产出的 access token 写入 [Constants.PROVIDER_GROK] 的活动 API Key。 */
     val grokXOAuthManager: GrokXOAuthManager by lazy {
         GrokXOAuthManager(appContext, settingsRepository, appScope)
+    }
+
+    /** ChatGPT(OpenAI) 官方账号登录。登录产出的 access token 写入 [Constants.PROVIDER_CHATGPT] 的活动 API Key。 */
+    val openAIXOAuthManager: OpenAIXOAuthManager by lazy {
+        OpenAIXOAuthManager(appContext, settingsRepository, appScope)
     }
 
     /** Serializes every foreground/background generation touching the same conversation. */

@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import com.lxseek.chat.R
+import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.notification.ContactMapping
 import com.lxseek.chat.notification.NotificationReplyConfig
 import com.lxseek.chat.notification.NotificationReplyStore
@@ -77,6 +78,7 @@ import kotlinx.coroutines.launch
 fun NotificationReplySettingsPage(
     viewModel: ChatViewModel,
     onBack: () -> Unit,
+    onNavigateToMembership: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -86,6 +88,10 @@ fun NotificationReplySettingsPage(
 
     // 可用模型列表（provider -> models），与 BotSettingsPanel 一致的扁平化策略。
     val availableModels by viewModel.settings.availableModels.collectAsState()
+
+    // 会员状态：用于门控高级子功能（邮箱推送、Bark 推送等）。
+    val membershipStatus by viewModel.membership.status.collectAsState()
+    val isPremium = membershipStatus.isActive && membershipStatus.tier == MembershipTier.Premium
 
     // 本地编辑态（进入页面 / 配置变更时从 config 填充）。
     var enabled by remember(config) { mutableStateOf(config.enabled) }
@@ -644,7 +650,10 @@ fun NotificationReplySettingsPage(
         SmsCommandSection(viewModel)
 
         // ── Reply Channel Section (merged from ReplyChannelSettingsPage) ──
-        ReplyChannelSection()
+        ReplyChannelSection(
+            isPremium = isPremium,
+            onUpgradeClick = onNavigateToMembership,
+        )
     }
 }
 

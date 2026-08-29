@@ -14,4 +14,13 @@ import com.lxseek.chat.util.Constants
 class GrokXProvider : BaseOpenAiProvider() {
     override val name: String = Constants.PROVIDER_GROK
     override val defaultBaseUrl: String = "https://api.x.ai/v1"
+
+    companion object {
+        /** Preset Grok model list (aligned with cc-haha-main grokOfficialProvider.ts). */
+        val PRESET_MODELS = listOf(
+            "grok-4.6",
+            "grok-4.5",
+            "grok-composer-2.5-fast",
+        )
+    }
 }

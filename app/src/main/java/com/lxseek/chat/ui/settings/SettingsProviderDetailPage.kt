@@ -41,8 +41,12 @@ import com.lxseek.chat.LxChatApplication
 import com.lxseek.chat.data.ApiKeyEntry
 import com.lxseek.chat.data.CustomProviderNamePolicy
 import com.lxseek.chat.data.LocalChatModelConfig
+import com.lxseek.chat.api.openai.GrokXProvider
+import com.lxseek.chat.api.openai.OpenAIXProvider
 import com.lxseek.chat.grok.GrokLoginPhase
 import com.lxseek.chat.grok.GrokXOAuthManager
+import com.lxseek.chat.openai.OpenAILoginPhase
+import com.lxseek.chat.openai.OpenAIXOAuthManager
 import com.lxseek.chat.ui.components.CustomEndpointProtocolSelector
 import com.lxseek.chat.ui.components.clearFocusOnTap
 import com.lxseek.chat.util.Constants
@@ -385,6 +389,59 @@ fun SettingsProviderDetailPage(
                                 DebugLog.e("GrokOAuth", "open browser failed", e)
                             }
                         },
+                        onLoginSuccess = {
+                            // 先保存预置模型列表(立即可用),再异步拉取远端模型列表(成功则覆盖)。
+                            val presetModels = GrokXProvider.PRESET_MODELS.map { "${Constants.PROVIDER_GROK}:$it" }
+                            scope.launch {
+                                try {
+                                    viewModel.settings.saveAvailableModels(Constants.PROVIDER_GROK, presetModels)
+                                } catch (e: Exception) {
+                                    DebugLog.e("GrokOAuth", "save preset models failed", e)
+                                }
+                                try {
+                                    viewModel.fetchModelsForProvider(Constants.PROVIDER_GROK)
+                                } catch (e: Exception) {
+                                    // 拉取失败时保留预置模型列表,不报错。
+                                    DebugLog.e("GrokOAuth", "fetch remote models failed", e)
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+
+            // ChatGPT 官方账号登录(OpenAI)。产出的 access token 自动写入 [Constants.PROVIDER_CHATGPT] 的 API Key。
+            if (!isLocal && currentName == Constants.PROVIDER_CHATGPT) {
+                val openAIManager = (context.applicationContext as? LxChatApplication)?.container?.openAIXOAuthManager
+                if (openAIManager != null) {
+                    ChatGPTOAuthSettingsSection(
+                        manager = openAIManager,
+                        openBrowser = { uri ->
+                            try {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                )
+                            } catch (e: Exception) {
+                                DebugLog.e("ChatGPTOAuth", "open browser failed", e)
+                            }
+                        },
+                        onLoginSuccess = {
+                            // 先保存预置模型列表(立即可用),再异步拉取远端模型列表(成功则覆盖)。
+                            val presetModels = OpenAIXProvider.PRESET_MODELS.map { "${Constants.PROVIDER_CHATGPT}:$it" }
+                            scope.launch {
+                                try {
+                                    viewModel.settings.saveAvailableModels(Constants.PROVIDER_CHATGPT, presetModels)
+                                } catch (e: Exception) {
+                                    DebugLog.e("ChatGPTOAuth", "save preset models failed", e)
+                                }
+                                try {
+                                    viewModel.fetchModelsForProvider(Constants.PROVIDER_CHATGPT)
+                                } catch (e: Exception) {
+                                    // 拉取失败时保留预置模型列表,不报错。
+                                    DebugLog.e("ChatGPTOAuth", "fetch remote models failed", e)
+                                }
+                            }
+                        },
                     )
                 }
             }
@@ -665,6 +722,7 @@ fun SettingsProviderDetailPage(
 private fun GrokOAuthSettingsSection(
     manager: GrokXOAuthManager,
     openBrowser: (android.net.Uri) -> Unit,
+    onLoginSuccess: () -> Unit = {},
 ) {
     val loginState by manager.loginState.collectAsState()
     val phase = loginState.phase
@@ -680,6 +738,7 @@ private fun GrokOAuthSettingsSection(
             GrokLoginPhase.SUCCESS -> {
                 launchingNow = false
                 showError = null
+                onLoginSuccess()
             }
             GrokLoginPhase.FAILED -> {
                 launchingNow = false
@@ -773,4 +832,121 @@ private fun accountStatusDescription(phase: GrokLoginPhase, loggedIn: Boolean): 
     phase == GrokLoginPhase.FAILED -> stringResource(R.string.settings_grok_desc_failed)
     loggedIn -> stringResource(R.string.settings_grok_desc_bound)
     else -> stringResource(R.string.settings_grok_desc_no_key)
+}
+
+/** ChatGPT(OpenAI) 官方账号登录卡片:登录 / 状态展示 / 登出 / 失败提示。 */
+@Composable
+private fun ChatGPTOAuthSettingsSection(
+    manager: OpenAIXOAuthManager,
+    openBrowser: (android.net.Uri) -> Unit,
+    onLoginSuccess: () -> Unit = {},
+) {
+    val loginState by manager.loginState.collectAsState()
+    val phase = loginState.phase
+    val email = manager.currentEmail()
+    val loggedIn = manager.isLoggedIn() || phase == OpenAILoginPhase.SUCCESS
+    val scope = rememberCoroutineScope()
+    var launchingNow by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(phase) {
+        when (phase) {
+            OpenAILoginPhase.IN_PROGRESS -> launchingNow = true
+            OpenAILoginPhase.SUCCESS -> {
+                launchingNow = false
+                showError = null
+                onLoginSuccess()
+            }
+            OpenAILoginPhase.FAILED -> {
+                launchingNow = false
+                showError = loginState.message
+            }
+            OpenAILoginPhase.IDLE -> { /* 初始态 */ }
+        }
+    }
+
+    SettingsGroup(
+        title = stringResource(R.string.settings_chatgpt_login_title),
+        items = buildList {
+            add {
+                SettingsItem(
+                    headlineContent = {
+                        Text(
+                            if (loggedIn) (email?.let { stringResource(R.string.settings_chatgpt_logged_in_as, it) } ?: stringResource(R.string.settings_chatgpt_logged_in))
+                            else stringResource(R.string.settings_chatgpt_login_hint),
+                            fontWeight = FontWeight.Medium,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            openAIAccountStatusDescription(phase, loggedIn),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        )
+                    },
+                    leadingContent = {
+                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            if (launchingNow) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text(
+                                    "✦",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = if (loggedIn) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                )
+                            }
+                        }
+                    },
+                )
+                showError?.let { err ->
+                    add {
+                        Text(
+                            err,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+            }
+            add {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (!loggedIn && !launchingNow) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val uri = manager.startLogin()
+                                    if (uri != null) openBrowser(uri)
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) { Text(stringResource(R.string.settings_chatgpt_login_button)) }
+                    } else if (launchingNow) {
+                        Button(
+                            onClick = {},
+                            enabled = false,
+                            modifier = Modifier.weight(1f),
+                        ) { Text(stringResource(R.string.settings_chatgpt_waiting_auth)) }
+                    } else {
+                        TextButton(
+                            onClick = { manager.logout() },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        ) { Text(stringResource(R.string.settings_chatgpt_logout)) }
+                    }
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun openAIAccountStatusDescription(phase: OpenAILoginPhase, loggedIn: Boolean): String = when {
+    phase == OpenAILoginPhase.IN_PROGRESS -> stringResource(R.string.settings_chatgpt_desc_auth)
+    phase == OpenAILoginPhase.FAILED -> stringResource(R.string.settings_chatgpt_desc_failed)
+    loggedIn -> stringResource(R.string.settings_chatgpt_desc_bound)
+    else -> stringResource(R.string.settings_chatgpt_desc_no_key)
 }

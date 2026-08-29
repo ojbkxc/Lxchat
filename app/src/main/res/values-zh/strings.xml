@@ -1542,6 +1542,11 @@
     <string name="reply_channel_select">回复时启用的渠道</string>
     <string name="reply_channel_select_desc">选中的渠道会在微信之外同时收到每条 AI 回复</string>
 
+    <!-- 会员门控：Free 用户在 Premium 专属子功能上看到的锁定遮罩。 -->
+    <string name="membership_gated_locked">已锁定</string>
+    <string name="membership_gated_upgrade_hint">升级到 Premium 解锁此功能</string>
+    <string name="membership_gated_upgrade_button">升级</string>
+
     <!-- SMS 命令系统：接收 smsf# 命令并在手机本地执行。 -->
     <string name="settings_sms_command">SMS 命令</string>
     <string name="settings_sms_command_desc">通过短信 smsf# 命令控制手机</string>
@@ -1914,6 +1919,17 @@
     <string name="settings_grok_desc_failed">登录失败，可尝试重新登录。</string>
     <string name="settings_grok_desc_bound">已绑定账号，可直接使用 Grok 模型，token 到期前会自动刷新。</string>
     <string name="settings_grok_desc_no_key">无需手动填写 API Key，登录后自动写入。</string>
+    <string name="settings_chatgpt_login_title">ChatGPT 官方账号登录 (OpenAI)</string>
+    <string name="settings_chatgpt_logged_in_as">已登录：%1$s</string>
+    <string name="settings_chatgpt_logged_in">已登录 ChatGPT 官方账号</string>
+    <string name="settings_chatgpt_login_hint">使用 ChatGPT 账号登录</string>
+    <string name="settings_chatgpt_login_button">用 ChatGPT 账号登录</string>
+    <string name="settings_chatgpt_waiting_auth">等待浏览器授权…</string>
+    <string name="settings_chatgpt_logout">退出登录</string>
+    <string name="settings_chatgpt_desc_auth">请在浏览器中完成 OpenAI 账号授权，然后返回 LxChat。</string>
+    <string name="settings_chatgpt_desc_failed">登录失败，可尝试重新登录。</string>
+    <string name="settings_chatgpt_desc_bound">已绑定账号，可直接使用 ChatGPT 模型，token 到期前会自动刷新。</string>
+    <string name="settings_chatgpt_desc_no_key">无需手动填写 API Key，登录后自动写入。</string>
     <string name="cron_last_run">上次执行：%1$s</string>
     <string name="cron_preset_daily_9">每天 9:00</string>
     <string name="cron_preset_daily_8_12_18">每天 8/12/18 点</string>

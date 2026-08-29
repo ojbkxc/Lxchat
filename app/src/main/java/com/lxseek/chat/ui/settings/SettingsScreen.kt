@@ -418,7 +418,11 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
 
                 "runtime_status" -> SettingsRuntimeStatusPage(viewModel, onBack = { selectedCategory = null })
                 "im_gateway" -> SettingsImGatewayPage(viewModel, onBack = { selectedCategory = null })
-                "notification_reply" -> NotificationReplySettingsPage(viewModel, onBack = { selectedCategory = null })
+                "notification_reply" -> NotificationReplySettingsPage(
+                    viewModel,
+                    onBack = { selectedCategory = null },
+                    onNavigateToMembership = { selectedCategory = "membership" },
+                )
                 "cron" -> CronSettingsPage(viewModel, onBack = { selectedCategory = null })
 
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })
