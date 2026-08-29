@@ -967,6 +967,9 @@
     <string name="membership_plan_promotion">Limited Time Offer — 90% Off</string>
     <string name="membership_restore_success">Membership restored</string>
     <string name="membership_restore_failed">No activation record found</string>
+    <string name="membership_restore_title">Restore Membership</string>
+    <string name="membership_restore_button">Restore existing membership online</string>
+    <string name="membership_restoring">Restoring…</string>
     <string name="market_section_installed">Installed</string>
     <string name="market_section_catalog">Catalog</string>
     <string name="market_no_sources_title">No market sources</string>

@@ -1702,6 +1702,9 @@
     <string name="membership_plan_promotion">限时特惠 全部一折</string>
     <string name="membership_restore_success">已恢复会员状态</string>
     <string name="membership_restore_failed">未找到激活记录</string>
+    <string name="membership_restore_title">恢复会员</string>
+    <string name="membership_restore_button">联网恢复已有会员</string>
+    <string name="membership_restoring">正在恢复…</string>
 
     <!-- ── Missing translations: IM multi-channel management ─────────────────────── -->
     <string name="im_channels_title">IM 渠道管理</string>

@@ -401,7 +401,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                     onOpenOnlineMarket = { selectedCategory = "online_market" },
                 )
 
-                "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null })
+                "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null }, onNavigateToAbout = { selectedCategory = "about" })
                 "online_market" -> SettingsPluginMarketPage(
                     viewModel,
                     onBack = { selectedCategory = null },
