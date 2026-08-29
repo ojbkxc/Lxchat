@@ -17,16 +17,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import com.lxseek.chat.ui.motion.MotionAwareLinearProgressIndicator as LinearProgressIndicator
 import androidx.compose.material3.TextButton
@@ -75,17 +68,12 @@ internal fun ChatTopBar(
     searchQuery: String = "",
     searchMatchIndex: Int = -1,
     searchMatchCount: Int = 0,
-    conversationActionsEnabled: Boolean = false,
     onNavigateBack: (() -> Unit)? = null,
     onOpenDrawer: () -> Unit,
     onSearchQueryChange: (String) -> Unit = {},
     onSearchPrevious: () -> Unit = {},
     onSearchNext: () -> Unit = {},
     onSearchDismiss: () -> Unit = {},
-    onSearchClick: () -> Unit = {},
-    onSystemPromptClick: () -> Unit,
-    onForkConversation: () -> Unit = {},
-    onShareConversation: () -> Unit = {},
     onNewChat: () -> Unit,
     shareSelectionActive: Boolean = false,
     shareSelectionCount: Int = 0,
@@ -102,7 +90,6 @@ internal fun ChatTopBar(
         )
         return
     }
-    var moreMenuOpen by remember { mutableStateOf(false) }
     val allowSpatialTransitions = LocalLxChatMotionPolicy.current.allowSpatialTransitions
     val searchFocusRequester = remember { FocusRequester() }
     LaunchedEffect(searchActive) {
@@ -342,69 +329,6 @@ internal fun ChatTopBar(
                         Spacer(modifier = Modifier.width(5.dp))
                         IconButton(onClick = onNewChat, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_chat), modifier = Modifier.size(24.dp))
-                        }
-                        Box {
-                            IconButton(
-                                onClick = {
-                                    moreMenuOpen = true
-                                },
-                                modifier = Modifier.size(48.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.MoreVert,
-                                    contentDescription = stringResource(R.string.options),
-                                    modifier = Modifier.size(24.dp),
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = moreMenuOpen,
-                                onDismissRequest = { moreMenuOpen = false },
-                                shape = RoundedCornerShape(12.dp),
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                tonalElevation = 6.dp,
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.conversation_search)) },
-                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                                    enabled = conversationActionsEnabled,
-                                    onClick = {
-                                        moreMenuOpen = false
-                                        onSearchClick()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.system_prompt)) },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Psychology, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        moreMenuOpen = false
-                                        onSystemPromptClick()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.conversation_fork)) },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.CallSplit, contentDescription = null)
-                                    },
-                                    enabled = conversationActionsEnabled,
-                                    onClick = {
-                                        moreMenuOpen = false
-                                        onForkConversation()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.conversation_share)) },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Share, contentDescription = null)
-                                    },
-                                    enabled = conversationActionsEnabled,
-                                    onClick = {
-                                        moreMenuOpen = false
-                                        onShareConversation()
-                                    },
-                                )
-                            }
                         }
                         Spacer(modifier = Modifier.width(5.dp))
                     }

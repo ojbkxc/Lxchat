@@ -176,7 +176,8 @@ internal fun ChatSystemPromptDialog(
 @Composable
 internal fun ChatAdvancedSettingsDialog(
     viewModel: ChatViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSystemPromptClick: () -> Unit = {},
 ) {
     val currentConversationId by viewModel.currentConversationId.collectAsState()
     val conversationSettings by viewModel.settings.conversationSettings.collectAsState()
@@ -201,6 +202,7 @@ internal fun ChatAdvancedSettingsDialog(
     AdvancedSettingsDialog(
         overrides = overrides,
         globalDefaults = defaults,
+        onSystemPromptClick = onSystemPromptClick,
         onSave = { settings ->
             if (currentId != null) {
                 viewModel.settings.setConversationSettings(currentId, settings)

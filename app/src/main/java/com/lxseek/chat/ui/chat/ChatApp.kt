@@ -453,9 +453,6 @@ fun ChatApp(
                         searchQuery = conversationSearchQuery,
                         searchMatchIndex = conversationSearchMatchIndex,
                         searchMatchCount = conversationSearchMatches.size,
-                        conversationActionsEnabled =
-                            !isNewChatMode && currentConversationId != null && !isLoading &&
-                                !shareSelectionActive,
                         shareSelectionActive = shareSelectionActive,
                         shareSelectionCount = selectedShareMessageIds.size,
                         shareAllSelected = selectedShareMessageIds.isNotEmpty() &&
@@ -486,18 +483,6 @@ fun ChatApp(
                         onSearchDismiss = {
                             conversationInteraction.dismissSearch()
                             focusManager.clearFocus()
-                        },
-                        onSearchClick = {
-                            conversationInteraction.activateSearch()
-                        },
-                        onSystemPromptClick = dialogState::showPrompt,
-                        onForkConversation = {
-                            viewModel.forkConversationFrom()
-                        },
-                        onShareConversation = {
-                            conversationInteraction.dismissSearch()
-                            focusManager.clearFocus()
-                            conversationInteraction.activateShareSelection()
                         },
                         onNewChat = {
                             if (!isNewChatMode) {

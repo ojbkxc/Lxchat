@@ -31,13 +31,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import com.lxseek.chat.R
+import com.lxseek.chat.membership.MembershipTier
+import com.lxseek.chat.model.ModelId
 import com.lxseek.chat.ui.settings.datacontrol.SettingsDataControlPage
+import com.lxseek.chat.util.Constants
 import com.lxseek.chat.viewmodel.ChatViewModel
 
 /** When true, [SettingsGroup] inside a [SettingsGroupColumn] suppresses its own bottom padding
@@ -304,6 +308,43 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
     val membershipStatus by viewModel.membership.status.collectAsState()
     val hasMembership = membershipStatus.isActive
 
+    // Value previews: read current values so each row can show what's configured.
+    val selectedModel by viewModel.settings.selectedModel.collectAsState()
+    val modelAliases by viewModel.settings.modelAliases.collectAsState()
+    val appLanguage by viewModel.settings.appLanguage.collectAsState()
+    val themeMode by viewModel.settings.themeMode.collectAsState()
+    val proxyEnabled by viewModel.settings.proxyEnabled.collectAsState()
+    val proxyHost by viewModel.settings.proxyHost.collectAsState()
+    val proxyPort by viewModel.settings.proxyPort.collectAsState()
+    val maxContextWindow by viewModel.settings.maxContextWindow.collectAsState()
+
+    /** Current-value preview for a settings row, or null when the row has no concise value. */
+    @Composable
+    fun settingsPreview(key: String): String? = when (key) {
+        "appearance" -> when (themeMode) {
+            "LIGHT" -> stringResource(R.string.theme_mode_light)
+            "DARK" -> stringResource(R.string.theme_mode_dark)
+            "AMOLED" -> stringResource(R.string.theme_mode_amoled)
+            else -> stringResource(R.string.theme_mode_follow_device)
+        }
+        "language" -> when (appLanguage) {
+            "zh" -> stringResource(R.string.language_native_zh)
+            "en" -> "English"
+            else -> stringResource(R.string.language_system_default)
+        }
+        "provider" -> ModelId.parse(selectedModel).providerName
+            .takeUnless { it == Constants.PROVIDER_UNKNOWN || it.isBlank() }
+        "models" -> modelAliases[selectedModel] ?: ModelId.parse(selectedModel).apiModelName
+        "context" -> "${maxContextWindow / 1000}k"
+        "proxy" -> if (proxyEnabled) "$proxyHost:$proxyPort" else null
+        "membership" -> when (membershipStatus.tier) {
+            MembershipTier.Premium -> stringResource(R.string.membership_status_premium)
+            MembershipTier.Pro -> stringResource(R.string.membership_status_pro)
+            else -> stringResource(R.string.membership_status_free)
+        }
+        else -> null
+    }
+
     LaunchedEffect(isSyncingModels) {
         if (isSyncingModels) {
             viewModel.emitSnackbar(fetchingModelsMessage)
@@ -468,58 +509,83 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                         )
                                     }
-                                    group.items.forEachIndexed { index, cat ->
-                                        val isLastItem = index == group.items.lastIndex
-                                        val itemEnabled = !cat.requiresMembership || hasMembership
-                                        val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable(enabled = itemEnabled) { selectedCategory = cat.key }
-                                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            if (cat.iconRes != null) {
-                                                Icon(
-                                                    painter = painterResource(cat.iconRes),
-                                                    contentDescription = null,
-                                                    tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
-                                                    modifier = Modifier.size(24.dp),
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = checkNotNull(cat.icon),
-                                                    contentDescription = null,
-                                                    tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
-                                                    modifier = Modifier.size(24.dp),
-                                                )
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                        ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                    ) {
+                                        Column(modifier = Modifier.fillMaxWidth()) {
+                                            group.items.forEachIndexed { index, cat ->
+                                                val isLastItem = index == group.items.lastIndex
+                                                val itemEnabled = !cat.requiresMembership || hasMembership
+                                                val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                                val preview = settingsPreview(cat.key)
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable(enabled = itemEnabled) { selectedCategory = cat.key }
+                                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    if (cat.iconRes != null) {
+                                                        Icon(
+                                                            painter = painterResource(cat.iconRes),
+                                                            contentDescription = null,
+                                                            tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
+                                                            modifier = Modifier.size(24.dp),
+                                                        )
+                                                    } else {
+                                                        Icon(
+                                                            imageVector = checkNotNull(cat.icon),
+                                                            contentDescription = null,
+                                                            tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
+                                                            modifier = Modifier.size(24.dp),
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.width(16.dp))
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                            text = stringResource(cat.titleRes),
+                                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                                            color = if (itemEnabled) MaterialTheme.colorScheme.onSurface else disabledColor,
+                                                        )
+                                                        Spacer(modifier = Modifier.height(3.dp))
+                                                        Text(
+                                                            text = stringResource(cat.descriptionRes),
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant else disabledColor
+                                                        )
+                                                    }
+                                                    if (preview != null) {
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                            text = preview,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant else disabledColor,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            modifier = Modifier.widthIn(max = 120.dp),
+                                                        )
+                                                    }
+                                                    Icon(
+                                                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                                        contentDescription = null,
+                                                        tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
+                                                    )
+                                                }
+                                                if (!isLastItem) {
+                                                    HorizontalDivider(
+                                                        thickness = 0.5.dp,
+                                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                                    )
+                                                }
                                             }
-                                            Spacer(modifier = Modifier.width(16.dp))
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = stringResource(cat.titleRes),
-                                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                                                    color = if (itemEnabled) MaterialTheme.colorScheme.onSurface else disabledColor,
-                                                )
-                                                Spacer(modifier = Modifier.height(3.dp))
-                                                Text(
-                                                    text = stringResource(cat.descriptionRes),
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant else disabledColor
-                                                )
-                                            }
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                                contentDescription = null,
-                                                tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
-                                            )
-                                        }
-                                        if (!isLastItem) {
-                                            HorizontalDivider(
-                                                thickness = 0.5.dp,
-                                                color = MaterialTheme.colorScheme.outlineVariant,
-                                                modifier = Modifier.padding(horizontal = 16.dp),
-                                            )
                                         }
                                     }
                                 }

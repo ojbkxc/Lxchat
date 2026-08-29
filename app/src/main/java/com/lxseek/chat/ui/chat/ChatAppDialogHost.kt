@@ -120,7 +120,14 @@ internal fun ChatAppDialogHost(
     }
 
     if (state.advancedVisible) {
-        ChatAdvancedSettingsDialog(viewModel = viewModel, onDismiss = state::dismissAdvanced)
+        ChatAdvancedSettingsDialog(
+            viewModel = viewModel,
+            onDismiss = state::dismissAdvanced,
+            onSystemPromptClick = {
+                state.dismissAdvanced()
+                state.showPrompt()
+            },
+        )
     }
 
     if (state.manualCompactVisible) {

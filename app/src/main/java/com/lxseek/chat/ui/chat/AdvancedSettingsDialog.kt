@@ -4,6 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +25,8 @@ fun AdvancedSettingsDialog(
     globalDefaults: ConversationSettings,
     onSave: (ConversationSettings) -> Unit,
     onResetToDefaults: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSystemPromptClick: () -> Unit = {}
 ) {
     var contextWindow by remember { mutableStateOf(overrides.contextWindow) }
     var temperature by remember { mutableStateOf(overrides.temperature) }
@@ -50,6 +54,37 @@ fun AdvancedSettingsDialog(
             ) {
                 val fmt2: (Float) -> String = { v -> String.format(Locale.US, "%.2f", v) }
                 val gDefaults = globalDefaults
+
+                // System prompt entry — opens the per-conversation prompt selector.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onSystemPromptClick)
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Psychology,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.system_prompt),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
 
                 // Context Window
                 AdvancedParamRow(
