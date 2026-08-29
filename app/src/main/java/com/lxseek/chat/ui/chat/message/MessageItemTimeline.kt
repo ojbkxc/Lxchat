@@ -245,7 +245,7 @@ internal fun CompactSegmentBlock(
     autoExpansionActive: Boolean = false,
     modifier: Modifier = Modifier,
     topPaddingExtra: Dp = 0.dp,
-    bottomPaddingExtra: Dp = 6.dp,
+    bottomPaddingExtra: Dp = 2.dp,
     onSegmentClick: (Int) -> Unit,
     onHeaderClick: (() -> Unit)? = null,
     opensDetailSheet: Boolean = false,
@@ -322,7 +322,7 @@ internal fun CompactSegmentBlock(
             transitionSpec = { tween(500) },
             label = "compactSegmentPad",
         ) { expanded ->
-            if (expanded) 12.dp else 4.dp
+            if (expanded) 12.dp else 2.dp
         }
         animatedPadding
     } else if (
@@ -333,7 +333,7 @@ internal fun CompactSegmentBlock(
     ) {
         12.dp
     } else {
-        4.dp
+        2.dp
     }
     LaunchedEffect(expansionTransition, expansionKey) {
         var observedRunning = false
@@ -654,7 +654,7 @@ internal fun TimelineSegmentsContent(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = if (index == 0) 0.dp else 6.dp),
+                                    .padding(top = if (index == 0) 0.dp else 4.dp),
                             ) {
                                 StreamingMarkdownDocument(
                                     content = seg.content,
