@@ -13,6 +13,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.util.Log
 import android.util.AttributeSet
 import android.view.Choreographer
 import android.view.MotionEvent
@@ -529,7 +530,7 @@ class PetFloatingView @JvmOverloads constructor(
     private fun updateWindowLayout(params: WindowManager.LayoutParams) {
         try {
             context.getSystemService(Context.WINDOW_SERVICE)?.let { wm -> (wm as WindowManager).updateViewLayout(this, params) }
-        } catch (_: IllegalArgumentException) { }
+        } catch (e: IllegalArgumentException) { Log.d("PetFloatingView", "updateViewLayout failed (view not attached)", e) }
     }
 
     private fun snapToNearestEdge(params: WindowManager.LayoutParams) {
@@ -563,7 +564,7 @@ class PetFloatingView @JvmOverloads constructor(
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
-        try { context.startActivity(intent) } catch (_: Exception) { }
+        try { context.startActivity(intent) } catch (e: Exception) { Log.w("PetFloatingView", "launchApp failed", e) }
     }
 
     private companion object {

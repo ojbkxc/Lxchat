@@ -1066,7 +1066,7 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
                     Uri.parse("package:${app.packageName}"),
                 ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 app.startActivity(intent)
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Log.d(\"DeviceTool\", \"operation failed\", e) }
             return err("requires_write_settings", "Screen brightness needs WRITE_SETTINGS; grant page opened.")
         }
         return try {

@@ -133,7 +133,7 @@ fun SettingsSandboxPage(
             val confirmed = sandboxManager.isAvailable()
             if (available != confirmed) available = confirmed
             if (available) sandboxManager.refreshPackageList()
-        } catch (_: Exception) {}
+        } catch (e: Exception) { Log.d(\"SettingsSandbox\", \"operation failed\", e) }
     }
 
     // When a user-initiated rootfs install finishes, re-check availability and surface any error.

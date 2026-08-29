@@ -1,0 +1,3130 @@
+[
+  {
+    "file": "com/lxseek/chat/MainActivity.kt",
+    "line": 110,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "runBlocking: blocks thread",
+    "code": "val langCode = kotlinx.coroutines.runBlocking {"
+  },
+  {
+    "file": "com/lxseek/chat/MainActivity.kt",
+    "line": 161,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "LxChatForegroundService.createChannel(this)"
+  },
+  {
+    "file": "com/lxseek/chat/MainActivity.kt",
+    "line": 572,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val info = updateDialogData!!"
+  },
+  {
+    "file": "com/lxseek/chat/MainActivity.kt",
+    "line": 1067,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "com.lxseek.chat.ui.chat.TextFileViewer(content = savedContent!!, fileName = savedName!!, onClose = { viewModel.clearPrev"
+  },
+  {
+    "file": "com/lxseek/chat/adb/ShizukuManager.kt",
+    "line": 69,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/adb/ShizukuManager.kt",
+    "line": 77,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) { shellService = null }"
+  },
+  {
+    "file": "com/lxseek/chat/adb/ShizukuManager.kt",
+    "line": 184,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) { shellService = null }"
+  },
+  {
+    "file": "com/lxseek/chat/adb/ShizukuManager.kt",
+    "line": 196,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 72,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun dumpCurrentUi(maxNodes: Int = 160): List<UiNodeSnapshot> = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 96,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun clickByLabel(label: String): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 110,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun focusAndInput(text: String, targetHint: String?): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 136,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun clickAt(x: Int, y: Int): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 144,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun longPressAt(x: Int, y: Int): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 152,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun swipe(fromX: Int, fromY: Int, toX: Int, toY: Int, durationMs: Long = 300L): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 161,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun swipeDirection(direction: String): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 176,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun pressGlobalKey(key: String): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 189,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun clearFocusedText(): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 201,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun goBack(): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 205,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun goHome(): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 209,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun activePackage(): String? = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 213,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun isConnected(): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 346,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Direct Looper access",
+    "code": "val handler = Handler(Looper.getMainLooper())"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 356,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "private fun windowRect(): Rect? = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/api/DuckDuckGoScraper.kt",
+    "line": 217,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val response = client.newCall(request).execute()"
+  },
+  {
+    "file": "com/lxseek/chat/api/EncryptedDns.kt",
+    "line": 124,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { java.net.URI(url).host?.lowercase() }.getOrNull() == h"
+  },
+  {
+    "file": "com/lxseek/chat/api/HttpClient.kt",
+    "line": 399,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val response = call.execute()"
+  },
+  {
+    "file": "com/lxseek/chat/api/HttpClient.kt",
+    "line": 459,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val response = newCall(requestBuilder.build(), callTimeoutMillis).execute()"
+  },
+  {
+    "file": "com/lxseek/chat/api/HttpClient.kt",
+    "line": 503,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val response = newCall(requestBuilder.build(), callTimeoutMillis).execute()"
+  },
+  {
+    "file": "com/lxseek/chat/api/HttpClient.kt",
+    "line": 538,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val response = newCall(requestBuilder.build(), callTimeoutMillis).execute()"
+  },
+  {
+    "file": "com/lxseek/chat/api/HttpClient.kt",
+    "line": 563,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val response = newCall(requestBuilder.build(), callTimeoutMillis).execute()"
+  },
+  {
+    "file": "com/lxseek/chat/api/LlamaEngine.kt",
+    "line": 4,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "runBlocking: blocks thread",
+    "code": "import kotlinx.coroutines.runBlocking"
+  },
+  {
+    "file": "com/lxseek/chat/api/LlamaEngine.kt",
+    "line": 32,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "runBlocking: blocks thread",
+    "code": "return runBlocking {"
+  },
+  {
+    "file": "com/lxseek/chat/api/LlamaEngine.kt",
+    "line": 39,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "runBlocking: blocks thread",
+    "code": "return@runBlocking texts.map { null }"
+  },
+  {
+    "file": "com/lxseek/chat/api/ModelFetchFailure.kt",
+    "line": 51,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val parsed = runCatching { modelFetchErrorJson.parseToJsonElement(body) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
+    "line": 322,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "json.parseToJsonElement(msg.toolCall!!.arguments) as? JsonObject"
+  },
+  {
+    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
+    "line": 328,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "id = msg.toolCall!!.toolCallId,"
+  },
+  {
+    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
+    "line": 329,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "name = msg.toolCall!!.toolName,"
+  },
+  {
+    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
+    "line": 332,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "thoughtSignature = msg.toolCall!!.signature"
+  },
+  {
+    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
+    "line": 353,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val response = buildGeminiFunctionResponse(msg.toolCall!!.result)"
+  },
+  {
+    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
+    "line": 357,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "id = msg.toolCall!!.toolCallId,"
+  },
+  {
+    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
+    "line": 358,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "name = msg.toolCall!!.toolName,"
+  },
+  {
+    "file": "com/lxseek/chat/api/local/LocalProvider.kt",
+    "line": 340,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "runBlocking: blocks thread",
+    "code": "kotlinx.coroutines.runBlocking { releaseEngine() }"
+  },
+  {
+    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
+    "line": 154,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val toolId = msg.toolCall!!.toolCallId ?: buildToolCallId(msg.toolCall!!.toolName, msg.toolCall!!.arguments)"
+  },
+  {
+    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
+    "line": 155,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val argsObj = try { json.parseToJsonElement(msg.toolCall!!.arguments) as? JsonObject } catch (_: Exception) { JsonObject"
+  },
+  {
+    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
+    "line": 163,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "function = OpenAiFunctionCall(name = msg.toolCall!!.toolName, arguments = argsObj ?: JsonObject(emptyMap()))"
+  },
+  {
+    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
+    "line": 184,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "content = msg.toolCall!!.result,"
+  },
+  {
+    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
+    "line": 185,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "toolName = msg.toolCall!!.toolName,"
+  },
+  {
+    "file": "com/lxseek/chat/api/openai/ToolCallTextParser.kt",
+    "line": 142,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "return (runCatching { Json.parseToJsonElement(raw) }.getOrNull() as? JsonObject)?.toString()"
+  },
+  {
+    "file": "com/lxseek/chat/api/router/RateLimiterRegistry.kt",
+    "line": 49,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "}!!.limiter"
+  },
+  {
+    "file": "com/lxseek/chat/api/router/RateLimiterRegistry.kt",
+    "line": 70,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "}!!.semaphore"
+  },
+  {
+    "file": "com/lxseek/chat/api/util/MessageConverter.kt",
+    "line": 93,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val tc = msg.toolCall!!"
+  },
+  {
+    "file": "com/lxseek/chat/api/util/MessageConverter.kt",
+    "line": 121,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val tc = msg.toolCall!!"
+  },
+  {
+    "file": "com/lxseek/chat/api/util/RequestFormatValidation.kt",
+    "line": 50,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val value = runCatching { root[field]?.jsonPrimitive?.content }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/automation/ConversationExecutionCoordinator.kt",
+    "line": 82,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val entry = synchronized(monitor) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/ConversationExecutionCoordinator.kt",
+    "line": 100,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val wasGranted = synchronized(monitor) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/ConversationExecutionCoordinator.kt",
+    "line": 132,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val next = synchronized(monitor) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/ConversationExecutionCoordinator.kt",
+    "line": 173,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "internal fun trackedConversationCount(): Int = synchronized(monitor) { entries.size }"
+  },
+  {
+    "file": "com/lxseek/chat/automation/MultiAgentCoordinator.kt",
+    "line": 164,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(_tasks) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/TaskExecutionEngine.kt",
+    "line": 108,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": ") = synchronized(foregroundBridgeLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/TaskExecutionEngine.kt",
+    "line": 113,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun detachForegroundSendBridge(owner: Any) = synchronized(foregroundBridgeLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/TaskExecutionEngine.kt",
+    "line": 119,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "private fun currentForegroundSendBridge() = synchronized(foregroundBridgeLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/TaskManager.kt",
+    "line": 522,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val running = synchronized(reservationMonitor) { taskId in reservedTaskIds }"
+  },
+  {
+    "file": "com/lxseek/chat/automation/TaskManager.kt",
+    "line": 532,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "private fun reserve(taskId: String): Boolean = synchronized(reservationMonitor) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/TaskManager.kt",
+    "line": 538,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "private fun release(taskId: String) = synchronized(reservationMonitor) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/WorkflowManager.kt",
+    "line": 150,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "private fun reserve(workflowId: String): Boolean = synchronized(this) {"
+  },
+  {
+    "file": "com/lxseek/chat/automation/WorkflowManager.kt",
+    "line": 156,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "private fun release(workflowId: String) = synchronized(this) {"
+  },
+  {
+    "file": "com/lxseek/chat/cron/CronScheduler.kt",
+    "line": 105,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "fun tryParse(expr: String): CronExpression? = runCatching { parse(expr) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/ActivityJournal.kt",
+    "line": 65,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.decodeFromString<ActivityEntry>(line) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/ActivityJournal.kt",
+    "line": 75,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.decodeFromString<ActivityEntry>(line) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/AutoBackupManager.kt",
+    "line": 203,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "nm.createNotificationChannel(channel)"
+  },
+  {
+    "file": "com/lxseek/chat/data/DataExporter.kt",
+    "line": 300,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { Json.decodeFromString<AttachmentMeta>(it) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/DataExporter.kt",
+    "line": 332,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { Json.decodeFromString<List<SelectedAttachment>>(raw) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/DataImporter.kt",
+    "line": 319,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { importJson.decodeFromString<ImportManifest>(raw) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/NativeBackupMediaPolicy.kt",
+    "line": 24,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.decodeFromString<AttachmentMeta>(it) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/NativeRunArchivePolicy.kt",
+    "line": 44,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { snapshot.endReason?.let(RunEndReason::valueOf) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/PeerTrustStore.kt",
+    "line": 76,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val size: Int get() = synchronized(lock) { peers.size }"
+  },
+  {
+    "file": "com/lxseek/chat/data/PeerTrustStore.kt",
+    "line": 79,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun get(deviceId: String): PeerInfo? = synchronized(lock) { peers[deviceId] }"
+  },
+  {
+    "file": "com/lxseek/chat/data/PeerTrustStore.kt",
+    "line": 82,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun list(): List<PeerInfo> = synchronized(lock) { peers.values.toList() }"
+  },
+  {
+    "file": "com/lxseek/chat/data/PeerTrustStore.kt",
+    "line": 94,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun trustOnFirstUse(deviceId: String, peerInfo: PeerInfo): TrustResult = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/data/PeerTrustStore.kt",
+    "line": 123,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun verifyPeer(deviceId: String, publicKey: ByteArray): TrustResult = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/data/PeerTrustStore.kt",
+    "line": 141,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun removeTrust(deviceId: String): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/data/PeerTrustStore.kt",
+    "line": 148,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun clear() = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/data/PortableSettingsArchive.kt",
+    "line": 243,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { runCatching { json.decodeFromJsonElement<List<EmbeddingModelConfig>>(it) }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/data/PortableSettingsArchive.kt",
+    "line": 250,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "json.decodeFromJsonElement<List<EmbeddingModelConfig>>(remoteModelsElement!!)"
+  },
+  {
+    "file": "com/lxseek/chat/data/PortableSettingsArchive.kt",
+    "line": 327,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { runCatching { json.decodeFromJsonElement<List<ShellDeviceConfig>>(it) }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/data/PortableSettingsArchive.kt",
+    "line": 365,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { runCatching { json.decodeFromJsonElement<List<McpServerConfig>>(it) }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/data/PortableSettingsArchive.kt",
+    "line": 476,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.decodeFromJsonElement<T>(element) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/SettingsModelPreferenceStore.kt",
+    "line": 327,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "ids[newProvider] = ids.remove(oldProvider)!!"
+  },
+  {
+    "file": "com/lxseek/chat/data/repository/ConversationRepository.kt",
+    "line": 572,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { Json.decodeFromString<AttachmentMeta>(raw) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/data/repository/ConversationRepository.kt",
+    "line": 616,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { raw -> runCatching { Json.decodeFromString<AttachmentMeta>(raw) }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImBridgeService.kt",
+    "line": 79,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "fun currentChannel(): MessageChannel? = activeChannels.values.firstOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 47,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ImPlatform.TELEGRAM -> TelegramChannel(config)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 52,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "config.token.isNotBlank() -> WeixinChannel(config, cacheDir = cacheDir)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 53,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "config.baseUrl.isNotBlank() -> GatewayChannel(config)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 58,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ImPlatform.LARK -> FeishuChannel(config)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 59,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ImPlatform.DINGTALK -> DingtalkChannel(config)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 60,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ImPlatform.WECOM -> WecomChannel(config)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 61,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ImPlatform.QQ -> QqChannel(config)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 62,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ImPlatform.DISCORD -> DiscordChannel(config)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 63,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ImPlatform.SLACK -> SlackChannel(config)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImChannelFactory.kt",
+    "line": 66,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ImPlatform.WHATSAPP -> WhatsappChannel(config)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImCommandProcessor.kt",
+    "line": 226,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "val config = configForChannel(channelKey)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImPollingReceiver.kt",
+    "line": 128,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "pollChannel(channelKey, channel)"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImPollingReceiver.kt",
+    "line": 282,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val lxchatConvId = if (bindValid) existingBind!!"
+  },
+  {
+    "file": "com/lxseek/chat/im/ImPollingReceiver.kt",
+    "line": 531,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "val config = configForChannel(channelKey)"
+  },
+  {
+    "file": "com/lxseek/chat/im/dingtalk/DingtalkStreamApi.kt",
+    "line": 288,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val root = runCatching { json.parseToJsonElement(resp.body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/dingtalk/DingtalkStreamApi.kt",
+    "line": 332,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val envelope = runCatching { json.parseToJsonElement(frame).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/dingtalk/DingtalkStreamApi.kt",
+    "line": 334,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val headers = envelope[\"headers\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/dingtalk/DingtalkStreamApi.kt",
+    "line": 339,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { it.jsonPrimitive.contentOrNull }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/dingtalk/DingtalkStreamApi.kt",
+    "line": 340,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?: runCatching { it.toString() }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/dingtalk/DingtalkStreamApi.kt",
+    "line": 342,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val data = runCatching { json.parseToJsonElement(dataRaw).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/dingtalk/DingtalkStreamApi.kt",
+    "line": 346,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val text = data[\"text\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/dingtalk/DingtalkStreamApi.kt",
+    "line": 387,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/discord/DiscordGatewayApi.kt",
+    "line": 126,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/discord/DiscordGatewayApi.kt",
+    "line": 306,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuChannel.kt",
+    "line": 252,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "mention[\"id\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 197,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val bot = root[\"bot\"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: JsonObject(emptyMap())"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 303,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val data = root[\"data\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 307,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val keys = data[\"keys\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 310,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { v.jsonPrimitive.contentOrNull }.getOrNull()?.let { k to it }"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 342,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val envelope = runCatching { json.parseToJsonElement(frame).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 348,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val header = envelope[\"header\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 351,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val event = envelope[\"event\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 354,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val message = event[\"message\"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: return null"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 362,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val sender = event[\"sender\"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: JsonObject(emptyMap())"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 363,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val senderId = sender[\"sender_id\"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: JsonObject(emptyMap())"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 368,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val mentions = message[\"mentions\"]?.let { runCatching { it.jsonArray }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 369,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.mapNotNull { runCatching { it.jsonObject }.getOrNull() } ?: emptyList()"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 399,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val parsed = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return \"\""
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 453,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/feishu/FeishuLarkApi.kt",
+    "line": 579,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/office/OfficeConnectorApi.kt",
+    "line": 332,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val response = call.execute()"
+  },
+  {
+    "file": "com/lxseek/chat/im/office/OfficeJobExecutor.kt",
+    "line": 185,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(queued) { queued.remove(jobId) }"
+  },
+  {
+    "file": "com/lxseek/chat/im/office/OfficeJobExecutor.kt",
+    "line": 194,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(queued) { queued.clear() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/office/OfficeJobExecutor.kt",
+    "line": 357,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "api.failJob(jobId, leaseToken!!, buildJsonObject {"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
+    "line": 101,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
+    "line": 169,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
+    "line": 361,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
+    "line": 408,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "\"C2C_MESSAGE_CREATE\" -> handleMessageCreate(data, isGroup = false, event = event!!)"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
+    "line": 409,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "\"GROUP_AT_MESSAGE_CREATE\" -> handleMessageCreate(data, isGroup = true, event = event!!)"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
+    "line": 485,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val obj = runCatching { element.jsonObject }.getOrNull() ?: continue"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
+    "line": 487,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
+    "line": 489,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
+    "line": 491,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqChannel.kt",
+    "line": 176,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { it.jsonPrimitive.contentOrNull }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/qq/QqChannel.kt",
+    "line": 178,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { it.jsonPrimitive.contentOrNull }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/slack/SlackChannel.kt",
+    "line": 330,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val files = runCatching { event[\"files\"]?.jsonArray }.getOrNull() ?: return \"\""
+  },
+  {
+    "file": "com/lxseek/chat/im/slack/SlackChannel.kt",
+    "line": 344,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "this?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/slack/SlackSocketModeApi.kt",
+    "line": 112,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/slack/SlackSocketModeApi.kt",
+    "line": 148,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val envelope = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramBotApi.kt",
+    "line": 132,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 145,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val obj = runCatching { update.jsonObject }.getOrNull() ?: continue"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 155,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val obj = runCatching { update.jsonObject }.getOrNull() ?: continue"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 158,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val message = obj[\"message\"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: continue"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 180,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val chat = message[\"chat\"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: return"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 194,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val from = message[\"from\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 227,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val replyTo = message[\"reply_to_message\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 229,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val from = replyTo[\"from\"]?.let { runCatching { it.jsonObject }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 237,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val entities = message[\"entities\"]?.let { runCatching { it.jsonArray }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 240,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val e = runCatching { entity.jsonObject }.getOrNull() ?: continue"
+  },
+  {
+    "file": "com/lxseek/chat/im/telegram/TelegramChannel.kt",
+    "line": 244,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val mention = runCatching { text.substring(offset, offset + length) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/wecom/WecomBotApi.kt",
+    "line": 208,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val root = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return null"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinChannel.kt",
+    "line": 329,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val decoded = runCatching { URLDecoder.decode(last.substringBefore('?'), \"UTF-8\") }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinChannel.kt",
+    "line": 835,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinChannel.kt",
+    "line": 845,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun get(name: String): ByteArray? = synchronized(lock) { map[name] }"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinChannel.kt",
+    "line": 847,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun names(): List<String> = synchronized(lock) { map.keys.toList() }"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinIlinkApi.kt",
+    "line": 500,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val finalHost = runCatching { URI(url).host?.lowercase() }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 68,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "if (spec.kind == WeixinMediaKind.IMAGE && spec.thumbBytes != null && spec.thumbBytes!!.isNotEmpty()) {"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 70,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val tEncrypted = encryptWeixinMedia(spec.thumbBytes!!, tKey)"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 74,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "rawMd5 = md5Hex(spec.thumbBytes!!),"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 75,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "rawSize = spec.thumbBytes!!.size,"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 89,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "put(\"thumb_rawsize\", thumb!!.rawSize)"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 90,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "put(\"thumb_rawfilemd5\", thumb!!.rawMd5)"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 91,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "put(\"thumb_filesize\", thumb!!.encrypted.size)"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 120,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "thumb!!.aesKeyHex.toByteArray(Charsets.UTF_8), Base64.NO_WRAP,"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 122,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "uploadCdn(thumbUploadParam, \"${filekey}_thumb\", thumb!!.encrypted, thumbAesKeyB64)"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 135,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "put(\"thumb_size\", thumb!!.encrypted.size)"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 211,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val host = runCatching { URI(url).host?.lowercase() }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
+    "line": 221,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val response = api.client.newCall(request).execute()"
+  },
+  {
+    "file": "com/lxseek/chat/im/whatsapp/WhatsappCloudApi.kt",
+    "line": 244,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/im/whatsapp/WhatsappCloudApi.kt",
+    "line": 260,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val root = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull() ?: return null to null"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 370,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(stateLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 394,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(stateLock) { pendingResponses.remove(requestId) }"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 406,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(stateLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 421,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(stateLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 438,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val selected = synchronized(stateLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 459,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(stateLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 491,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(stateLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 545,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val target = synchronized(stateLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 600,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(stateLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 625,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(stateLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 724,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val parsed = runCatching { parseJsonRpcEnvelope(event.data, json) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
+    "line": 732,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val parsed = runCatching { parseJsonRpcEnvelope(event.data, json) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpModels.kt",
+    "line": 188,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpOAuth.kt",
+    "line": 85,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpRegistry.kt",
+    "line": 91,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpRegistry.kt",
+    "line": 110,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val runtime = synchronized(lock) { runtimes[descriptor.serverId] }"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpRegistry.kt",
+    "line": 144,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.parseToJsonElement(text) }.getOrNull() =="
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpRegistry.kt",
+    "line": 196,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val targets = synchronized(lock) { runtimes.values.toList() }"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpRegistry.kt",
+    "line": 228,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val runtime = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpRegistry.kt",
+    "line": 281,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpRegistry.kt",
+    "line": 392,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpRegistry.kt",
+    "line": 427,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) { runtimes[runtime.config.id] === runtime }"
+  },
+  {
+    "file": "com/lxseek/chat/mcp/McpRegistry.kt",
+    "line": 435,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val uri = runCatching { java.net.URI(value) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/metrics/ScoreFeedbackLoop.kt",
+    "line": 72,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(scoreBook) {"
+  },
+  {
+    "file": "com/lxseek/chat/metrics/ScoreFeedbackLoop.kt",
+    "line": 83,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(scoreBook) {"
+  },
+  {
+    "file": "com/lxseek/chat/metrics/ScoreFeedbackLoop.kt",
+    "line": 92,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(scoreBook) {"
+  },
+  {
+    "file": "com/lxseek/chat/metrics/ScoreFeedbackLoop.kt",
+    "line": 104,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(scoreBook) {"
+  },
+  {
+    "file": "com/lxseek/chat/pet/PetFloatingView.kt",
+    "line": 532,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "} catch (_: IllegalArgumentException) { }"
+  },
+  {
+    "file": "com/lxseek/chat/pet/PetFloatingView.kt",
+    "line": 566,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { context.startActivity(intent) } catch (_: Exception) { }"
+  },
+  {
+    "file": "com/lxseek/chat/pet/PetOverlayController.kt",
+    "line": 93,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "PetOverlayWindowService.createChannel(context)"
+  },
+  {
+    "file": "com/lxseek/chat/pet/PetOverlayWindowService.kt",
+    "line": 58,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "createChannel(this)"
+  },
+  {
+    "file": "com/lxseek/chat/pet/PetOverlayWindowService.kt",
+    "line": 367,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "manager.createNotificationChannel(channel)"
+  },
+  {
+    "file": "com/lxseek/chat/plugin/adapters/OpenCodeConfigParser.kt",
+    "line": 122,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { arr.getString(i) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/plugin/adapters/OpenCodePluginAdapter.kt",
+    "line": 111,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { requiredArr.getString(i) }.getOrNull()?.let { required.add(it) }"
+  },
+  {
+    "file": "com/lxseek/chat/plugin/adapters/OpenCodeThemeAdapter.kt",
+    "line": 67,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { Color.parseColor(hex) }.getOrNull()?.let { result[key] = it }"
+  },
+  {
+    "file": "com/lxseek/chat/plugin/adapters/OpenCodeThemeAdapter.kt",
+    "line": 78,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "return runCatching { Color.parseColor(ref) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/plugin/adapters/ToolPkgAdapter.kt",
+    "line": 61,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { adaptOrThrow(zipFile, overrideId) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/plugin/adapters/ToolPkgAdapter.kt",
+    "line": 185,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val obj = runCatching { json.parseToJsonElement(metadataJson).jsonObject }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/qs/AccessibilityTileService.kt",
+    "line": 23,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Direct Looper access",
+    "code": "private val main = Handler(Looper.getMainLooper())"
+  },
+  {
+    "file": "com/lxseek/chat/qs/AgentToggleTileService.kt",
+    "line": 26,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Direct Looper access",
+    "code": "private val main = Handler(Looper.getMainLooper())"
+  },
+  {
+    "file": "com/lxseek/chat/qs/PetToggleTileService.kt",
+    "line": 26,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Direct Looper access",
+    "code": "private val main = Handler(Looper.getMainLooper())"
+  },
+  {
+    "file": "com/lxseek/chat/runtime/RuntimeEngineManager.kt",
+    "line": 133,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "ensureDependencyRoot(manifest.requiresEngine!!)?.absolutePath"
+  },
+  {
+    "file": "com/lxseek/chat/runtime/RuntimeToolProvider.kt",
+    "line": 405,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val el = runCatching { json.parseToJsonElement(raw) }.getOrNull() ?: return emptyMap()"
+  },
+  {
+    "file": "com/lxseek/chat/runtime/RuntimeToolProvider.kt",
+    "line": 414,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val el = raw?.let { runCatching { json.parseToJsonElement(it) }.getOrNull() } ?: return emptyList()"
+  },
+  {
+    "file": "com/lxseek/chat/service/AutomationForegroundInfo.kt",
+    "line": 52,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "createChannel(context)"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 61,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun acquire(owner: String): ForegroundServiceLeaseTransition = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 78,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun startRequestFailed(ownerToRollback: String? = null) = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 85,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun release(owner: String): ForegroundServiceLeaseTransition = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 103,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun serviceCommandReceived(startId: Int): ForegroundServiceLeaseAction = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 125,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun serviceDestroyed() = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 134,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun completeServiceDestroyed(): ForegroundServiceLeaseAction = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 147,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun size(): Int = synchronized(lock) { owners.size }"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 149,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun lifecycleState(): ForegroundServiceLifecycleState = synchronized(lock) { lifecycleState }"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 163,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Direct Looper access",
+    "code": "private val mainHandler = Handler(Looper.getMainLooper())"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 259,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "manager.createNotificationChannel(channel)"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 266,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "createCompletionChannel(context)"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 301,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "manager.createNotificationChannel(channel)"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 340,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "createChannel(this)"
+  },
+  {
+    "file": "com/lxseek/chat/service/LxChatForegroundService.kt",
+    "line": 398,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Direct Looper access",
+    "code": "if (Looper.myLooper() == Looper.getMainLooper()) {"
+  },
+  {
+    "file": "com/lxseek/chat/service/RemoteDeviceSession.kt",
+    "line": 205,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val r = sshClient!!.executeCommand(command, wd, timeoutMs)"
+  },
+  {
+    "file": "com/lxseek/chat/service/RemoteDeviceSession.kt",
+    "line": 225,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val client = shellClient!!"
+  },
+  {
+    "file": "com/lxseek/chat/skill/SkillHost.kt",
+    "line": 49,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(this) {"
+  },
+  {
+    "file": "com/lxseek/chat/skill/SkillHost.kt",
+    "line": 60,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(this) {"
+  },
+  {
+    "file": "com/lxseek/chat/skill/SkillHost.kt",
+    "line": 82,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(this) {"
+  },
+  {
+    "file": "com/lxseek/chat/skill/SkillHost.kt",
+    "line": 91,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun usageSnapshot(): List<SkillUsage> = synchronized(this) {"
+  },
+  {
+    "file": "com/lxseek/chat/skill/SkillToolProvider.kt",
+    "line": 193,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val raw = runCatching { obj[param.name]?.jsonPrimitive?.contentOrNull }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/sms/SmsCommandExecutorService.kt",
+    "line": 232,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ensureChannel()"
+  },
+  {
+    "file": "com/lxseek/chat/sms/SmsCommandExecutorService.kt",
+    "line": 264,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "manager.createNotificationChannel(channel)"
+  },
+  {
+    "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
+    "line": 467,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "else -> e.message!!"
+  },
+  {
+    "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
+    "line": 497,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val secondaryResult = recognizeWithModel(secondaryModel!!, audioBytes, \"secondary\")"
+  },
+  {
+    "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
+    "line": 693,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
+    "line": 722,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
+    "line": 755,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
+    "line": 772,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingLock) { stopStreamingSessionInternal() }"
+  },
+  {
+    "file": "com/lxseek/chat/tool/DeviceToolProvider.kt",
+    "line": 703,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "val ch = NotificationChannel(channelId, \"Device Tools\", NotificationManager.IMPORTANCE_DEFAULT)"
+  },
+  {
+    "file": "com/lxseek/chat/tool/DeviceToolProvider.kt",
+    "line": 705,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "nm.createNotificationChannel(ch)"
+  },
+  {
+    "file": "com/lxseek/chat/tool/DeviceToolProvider.kt",
+    "line": 1069,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "} catch (_: Exception) { }"
+  },
+  {
+    "file": "com/lxseek/chat/tool/DeviceToolProvider.kt",
+    "line": 1129,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "Thread.sleep: blocks thread",
+    "code": "Thread.sleep(duration * 1000L)"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ImageGenToolProvider.kt",
+    "line": 150,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun add(conversationId: String, path: String) = synchronized(pending) {"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ImageGenToolProvider.kt",
+    "line": 154,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun drain(conversationId: String): List<String> = synchronized(pending) {"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ImportedToolProvider.kt",
+    "line": 77,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.decodeFromJsonElement(ImportedTool.serializer(), el) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ImportedToolProvider.kt",
+    "line": 163,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { json.decodeFromJsonElement(ImportedTool.serializer(), el) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/tool/MetaToolProvider.kt",
+    "line": 15,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "runBlocking: blocks thread",
+    "code": "import kotlinx.coroutines.runBlocking"
+  },
+  {
+    "file": "com/lxseek/chat/tool/MetaToolProvider.kt",
+    "line": 266,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "runBlocking: blocks thread",
+    "code": "\"pet_enabled\" -> runBlocking { settings.savePetOverlayEnabled(value.toBooleanStrict()) }"
+  },
+  {
+    "file": "com/lxseek/chat/tool/MetaToolProvider.kt",
+    "line": 267,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "runBlocking: blocks thread",
+    "code": "\"pet_character\" -> runBlocking { settings.savePetOverlayCharacter(value) }"
+  },
+  {
+    "file": "com/lxseek/chat/tool/RagToolProvider.kt",
+    "line": 173,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val centerIdx = if (centerId != null) indexMap[centerId]!! else (range.first + range.last) / 2"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 147,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(sessionLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 182,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(sessionLock) { sessions[id] = RecordingSession(id, engine, output) }"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 190,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(sessionLock) { sessions.remove(id) }"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 212,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(sessionLock) { sessions.remove(session.id) }"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 246,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "private fun pickSession(id: String?): RecordingSession? = synchronized(sessionLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 377,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun isRecording(): Boolean = synchronized(sessionLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 411,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ensureChannel()"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 440,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "val ch = NotificationChannel(CHANNEL_ID, \"Screen Recording\", NotificationManager.IMPORTANCE_LOW)"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 442,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "nm.createNotificationChannel(ch)"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 516,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(this) {"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 707,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { c.stop() } catch (_: Exception) {}"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 708,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { c.release() } catch (_: Exception) {}"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 715,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { v.release() } catch (_: Exception) {}"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 723,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { m.release() } catch (_: Exception) {}"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
+    "line": 728,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { mediaProjection.stop() } catch (_: Exception) {}"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ShellDurableJobExecutor.kt",
+    "line": 109,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val result = runCatching { Json.parseToJsonElement(raw) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ShellDurableJobExecutor.kt",
+    "line": 260,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val result = runCatching { Json.parseToJsonElement(raw) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/tool/ToolPermissionMatrix.kt",
+    "line": 135,
+    "severity": "LOW",
+    "category": "style",
+    "description": "Suppressed unused warning",
+    "code": "private fun isInitiallyEnabled(@Suppress(\"UNUSED_PARAMETER\") toolName: String): Boolean = true"
+  },
+  {
+    "file": "com/lxseek/chat/trigger/TriggerExecutorService.kt",
+    "line": 142,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ensureChannel()"
+  },
+  {
+    "file": "com/lxseek/chat/trigger/TriggerExecutorService.kt",
+    "line": 174,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "manager.createNotificationChannel(channel)"
+  },
+  {
+    "file": "com/lxseek/chat/ui/chat/message/ToolPresentation.kt",
+    "line": 227,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "return runCatching { json.parseToJsonElement(value) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/ui/motion/LxChatMotionPolicy.kt",
+    "line": 77,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Direct Looper access",
+    "code": "val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsAppearancePage.kt",
+    "line": 116,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "} catch (_: Exception) {}"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsDeviceControlPage.kt",
+    "line": 625,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "else runCatching { BitmapFactory.decodeFile(path) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsDeviceControlPage.kt",
+    "line": 635,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "bitmap = bitmap!!.asImageBitmap(),"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsGenerationPage.kt",
+    "line": 480,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { ttsContext.startActivity(webIntent) } catch (_: Throwable) {}"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt",
+    "line": 143,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val effectiveBots = if (bots.isEmpty() && isLegacyForThis) listOf(legacyBot!!) else bots"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt",
+    "line": 999,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "content = qrcodeUrl!!,"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt",
+    "line": 1005,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "Text(text = statusText!!, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt",
+    "line": 1013,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "Text(text = errorMsg!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsMcpPage.kt",
+    "line": 674,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val uri = runCatching { java.net.URI(value.trim()) }.getOrNull() ?: return false"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsOfficeConnectorPage.kt",
+    "line": 93,
+    "severity": "LOW",
+    "category": "style",
+    "description": "Suppressed unused warning",
+    "code": "@Suppress(\"UNUSED_PARAMETER\") viewModel: ChatViewModel,"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsProviderDetailPage.kt",
+    "line": 534,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "viewModel.modelManager.addLocalChatModel(LocalChatModelConfig(modelId = id, alias = modelAlias.ifBlank { id }, localFile"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsReplySections.kt",
+    "line": 392,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ChannelToggleRow(label = stringResource(R.string.reply_channel_telegram), checked = ReplyChannelConfig.CHANNEL_TELEGRAM "
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsReplySections.kt",
+    "line": 393,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ChannelToggleRow(label = stringResource(R.string.reply_channel_bark), checked = ReplyChannelConfig.CHANNEL_BARK in selec"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsReplySections.kt",
+    "line": 394,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "ChannelToggleRow(label = stringResource(R.string.reply_channel_email), checked = ReplyChannelConfig.CHANNEL_EMAIL in sel"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsRuntimeStatusPage.kt",
+    "line": 265,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "market.installRuntimeInternal(meta!!)"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsSandboxPage.kt",
+    "line": 136,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "} catch (_: Exception) {}"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/SettingsSandboxPage.kt",
+    "line": 158,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { diskUsageMB = sandboxManager.getDiskUsageMB() } catch (_: Exception) {}"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
+    "line": 305,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "text = { Text(invalidImportMessage!!) },"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
+    "line": 317,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "manifest = importManifest!!,"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
+    "line": 318,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "preview = importPreview!!,"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
+    "line": 332,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val preview = claudeImportPreview!!"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
+    "line": 435,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val result = claudeImportResult!!"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
+    "line": 469,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val preview = gptImportPreview!!"
+  },
+  {
+    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
+    "line": 570,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val result = gptImportResult!!"
+  },
+  {
+    "file": "com/lxseek/chat/ui/theme/Color.kt",
+    "line": 37,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "val seedArgb = seedColors[preset]!!.toInt()"
+  },
+  {
+    "file": "com/lxseek/chat/util/AppLog.kt",
+    "line": 22,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(entries) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/AppLog.kt",
+    "line": 30,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(entries) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/AppLog.kt",
+    "line": 38,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val matched = synchronized(entries) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/AppLog.kt",
+    "line": 48,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun clear() { synchronized(entries) { entries.clear() } }"
+  },
+  {
+    "file": "com/lxseek/chat/util/CrashReporter.kt",
+    "line": 71,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "return runCatching { f.readText() }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/util/CrashReporter.kt",
+    "line": 84,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val obj = runCatching { JSONObject(reportJson) }.getOrNull() ?: JSONObject()"
+  },
+  {
+    "file": "com/lxseek/chat/util/NetworkMonitor.kt",
+    "line": 68,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { cm.unregisterNetworkCallback(cb) } catch (_: Throwable) {}"
+  },
+  {
+    "file": "com/lxseek/chat/util/ProgressThrottle.kt",
+    "line": 51,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/ProgressThrottle.kt",
+    "line": 68,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/ProgressThrottle.kt",
+    "line": 87,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/ProgressThrottle.kt",
+    "line": 96,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/RateLimiter.kt",
+    "line": 29,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(bucket) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/RateLimiter.kt",
+    "line": 44,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(bucket) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/ShellClient.kt",
+    "line": 68,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "DebugLog.e(\"ShellClient\", lastError!!)"
+  },
+  {
+    "file": "com/lxseek/chat/util/ShellClient.kt",
+    "line": 82,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "DebugLog.e(\"ShellClient\", lastError!!)"
+  },
+  {
+    "file": "com/lxseek/chat/util/ShellClient.kt",
+    "line": 90,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "DebugLog.w(\"ShellClient\", lastError!!)"
+  },
+  {
+    "file": "com/lxseek/chat/util/SshClient.kt",
+    "line": 129,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "Thread.sleep: blocks thread",
+    "code": "try { Thread.sleep(100) } catch (_: InterruptedException) { break }"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 63,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Direct Looper access",
+    "code": "private val mainHandler = Handler(Looper.getMainLooper())"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 113,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(logBuffer) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 134,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(logBuffer) { for (e in logBuffer) sb.append(e).append('\\n') }"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 138,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun clearLog() { synchronized(logBuffer) { logBuffer.clear() } }"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 144,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { tts?.stop(); tts?.shutdown() } catch (_: Throwable) {}"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 204,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { appCtx.unbindService(this) } catch (_: Throwable) {}"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 345,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { tts?.shutdown() } catch (_: Throwable) {}"
+  },
+  {
+    "file": "com/lxseek/chat/util/UpdateChecker.kt",
+    "line": 59,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val customResponse = client.newCall(customRequest).execute()"
+  },
+  {
+    "file": "com/lxseek/chat/util/UpdateChecker.kt",
+    "line": 88,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "execute() without exception handling",
+    "code": "val response = client.newCall(request).execute()"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/AttachmentOrphanSweeper.kt",
+    "line": 41,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { Json.decodeFromString<AttachmentMeta>(json) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationForkShareService.kt",
+    "line": 367,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { raw -> runCatching { Json.decodeFromString<List<MessageSegment>>(raw) }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationForkShareService.kt",
+    "line": 427,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { raw -> runCatching { Json.decodeFromString<AttachmentMeta>(raw) }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationForkShareService.kt",
+    "line": 457,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { raw -> runCatching { Json.decodeFromString<List<MessageSegment>>(raw) }.getOrNull() }"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 99,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun captureUiToken(): Long = synchronized(genLock) { resources.captureUiToken() }"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 105,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun isCurrentToken(uiToken: Long): Boolean = synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 113,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "): RunBindingOutcome = synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 140,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun currentRunId(): String? = synchronized(genLock) { runState.identityOrNull()?.runId }"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 179,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(genLock) { resources.appendCompactPreview(identity, delta) }"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 194,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun acquireForSend(): Long? = synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 203,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "applyActivatedSlotLocked(transition.newState.identityOrNull()!!, loading = false)"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 212,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun tryAcquireForReplacement(): Long? = synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 221,
+    "severity": "HIGH",
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "applyActivatedSlotLocked(transition.newState.identityOrNull()!!, loading = true)"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 241,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val accepted = synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 253,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val abandonedStoppingLaunch = synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 274,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val accepted = synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 349,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun deferNextQueueDrain() = synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 353,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun consumeQueueDrainPermission(): Boolean = synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 359,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(genLock) { resources.streamUpdate(uiToken, msg) }"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 362,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(genLock) { resources.loadingChange(uiToken, value) }"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 365,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 499,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 515,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val job = synchronized(genLock) { resources.currentGenerationJob() }"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
+    "line": 634,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(genLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationRenderStore.kt",
+    "line": 44,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingHandoffLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationRenderStore.kt",
+    "line": 56,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingHandoffLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationRenderStore.kt",
+    "line": 70,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingHandoffLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationRenderStore.kt",
+    "line": 85,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingHandoffLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationRenderStore.kt",
+    "line": 94,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingHandoffLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationRenderStore.kt",
+    "line": 149,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingHandoffLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationRenderStore.kt",
+    "line": 165,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingHandoffLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationRenderStore.kt",
+    "line": 191,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamingHandoffLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationStateRegistry.kt",
+    "line": 93,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(uiCallbackLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationStateRegistry.kt",
+    "line": 114,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(uiCallbackLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationStateRegistry.kt",
+    "line": 131,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(uiCallbackLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/ConversationStateRegistry.kt",
+    "line": 204,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(uiCallbackLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/QueuedGuidanceStore.kt",
+    "line": 89,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/QueuedGuidanceStore.kt",
+    "line": 95,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun remove(id: String): QueuedSend? = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/QueuedGuidanceStore.kt",
+    "line": 102,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun claim(): GuidanceBatchLease? = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/QueuedGuidanceStore.kt",
+    "line": 113,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/QueuedGuidanceStore.kt",
+    "line": 126,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun disposePending(): List<QueuedSend> = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/RegenerationTransitionCoordinator.kt",
+    "line": 56,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "): RegenerationTransitionRequest? = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/RegenerationTransitionCoordinator.kt",
+    "line": 71,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/RegenerationTransitionCoordinator.kt",
+    "line": 82,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/RegenerationTransitionCoordinator.kt",
+    "line": 96,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val transition = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/RegenerationTransitionCoordinator.kt",
+    "line": 104,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun isAnimating(requestId: Long): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/RegenerationTransitionCoordinator.kt",
+    "line": 110,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun markCommitted(requestId: Long): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/RegenerationTransitionCoordinator.kt",
+    "line": 118,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun complete(requestId: Long): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/RegenerationTransitionCoordinator.kt",
+    "line": 130,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "val requestId = synchronized(lock) { active?.request?.id } ?: return"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/UiMessageProjection.kt",
+    "line": 97,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "runCatching { Json.decodeFromString<AttachmentMeta>(raw) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/VoiceConversationController.kt",
+    "line": 431,
+    "severity": "HIGH",
+    "category": "exception",
+    "description": "Empty catch block: exception swallowed",
+    "code": "try { audioCaptureManager.cancelCapture() } catch (e: Throwable) {}"
+  }
+]
