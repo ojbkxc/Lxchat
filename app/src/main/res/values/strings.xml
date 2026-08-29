@@ -889,13 +889,13 @@
     <string name="model_alias_label">Alias</string>
 
     <!-- Settings - Group Labels -->
-    <string name="settings_group_memory_data">Memory &amp; Data</string>
     <string name="settings_group_appearance_language">Appearance &amp; Language</string>
-    <string name="settings_group_services">Services</string>
+    <string name="settings_group_models_generation">Models &amp; Generation</string>
     <string name="settings_group_responses">Responses</string>
+    <string name="settings_group_capabilities">Capabilities</string>
+    <string name="settings_group_access_automation">Integrations &amp; Automation</string>
+    <string name="settings_group_data_system">Data &amp; System</string>
     <string name="settings_group_tools">Tools</string>
-    <string name="settings_group_advanced">Advanced</string>
-    <string name="settings_group_about">About</string>
     <string name="settings_plugins">Plugins &amp; Skills</string>
     <string name="settings_plugins_desc">Manage extensions, skills, and marketplace</string>
     <string name="settings_market">Market</string>
@@ -954,6 +954,17 @@
     <string name="membership_payment_confirming">Confirming payment with server…</string>
     <string name="membership_payment_not_paid">Payment not confirmed by server</string>
     <string name="membership_trial_in_progress">Activating trial…</string>
+    <!-- 5-tier plan selection -->
+    <string name="membership_plan_monthly">Monthly</string>
+    <string name="membership_plan_quarterly">Quarterly</string>
+    <string name="membership_plan_half_year">Half Year</string>
+    <string name="membership_plan_yearly">Yearly</string>
+    <string name="membership_plan_lifetime">Lifetime</string>
+    <string name="membership_plan_select">Select Plan</string>
+    <string name="membership_plan_pay_now">Pay Now</string>
+    <string name="membership_plan_promotion">Limited Time Offer — 90% Off</string>
+    <string name="membership_restore_success">Membership restored</string>
+    <string name="membership_restore_failed">No activation record found</string>
     <string name="market_section_installed">Installed</string>
     <string name="market_section_catalog">Catalog</string>
     <string name="market_no_sources_title">No market sources</string>

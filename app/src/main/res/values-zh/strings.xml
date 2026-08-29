@@ -1167,13 +1167,13 @@
     <string name="pdf_selected">已选择</string>
 
     <!-- Settings - Group Labels -->
-    <string name="settings_group_memory_data">记忆与数据</string>
     <string name="settings_group_appearance_language">外观与语言</string>
-    <string name="settings_group_services">服务</string>
+    <string name="settings_group_models_generation">模型与生成</string>
     <string name="settings_group_responses">回复</string>
+    <string name="settings_group_capabilities">能力与执行</string>
+    <string name="settings_group_access_automation">接入与自动化</string>
+    <string name="settings_group_data_system">数据与系统</string>
     <string name="settings_group_tools">工具</string>
-    <string name="settings_group_advanced">高级功能</string>
-    <string name="settings_group_about">关于</string>
     <string name="rating_category">评分</string>
 
     <!-- About -->
@@ -1689,6 +1689,17 @@
     <string name="membership_payment_confirming">正在向服务器确认付款…</string>
     <string name="membership_payment_not_paid">服务器未确认付款</string>
     <string name="membership_trial_in_progress">正在激活试用…</string>
+    <!-- 5档套餐选择 -->
+    <string name="membership_plan_monthly">月度</string>
+    <string name="membership_plan_quarterly">季度</string>
+    <string name="membership_plan_half_year">半年</string>
+    <string name="membership_plan_yearly">年度</string>
+    <string name="membership_plan_lifetime">永久</string>
+    <string name="membership_plan_select">选择套餐</string>
+    <string name="membership_plan_pay_now">立即支付</string>
+    <string name="membership_plan_promotion">限时特惠 全部一折</string>
+    <string name="membership_restore_success">已恢复会员状态</string>
+    <string name="membership_restore_failed">未找到激活记录</string>
 
     <!-- ── Missing translations: IM multi-channel management ─────────────────────── -->
     <string name="im_channels_title">IM 渠道管理</string>

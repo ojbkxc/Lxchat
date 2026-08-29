@@ -75,21 +75,32 @@ fun SettingsGroup(
 ) {
     val effectiveBottom = if (LocalSettingsGroupSpacing.current) 0.dp else bottomPadding
     Column(modifier = modifier.fillMaxWidth().padding(bottom = effectiveBottom)) {
+        // 分组标题：更小更轻的字体，类似 iOS section header
         Text(
             text = title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
-        Column(modifier = Modifier.fillMaxWidth()) {
-            items.forEachIndexed { index, item ->
-                item()
-                if (index != items.lastIndex) {
-                    HorizontalDivider(
-                        thickness = 1.dp,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
+        // 卡片包裹：圆角 + 微妙的 tonal elevation，营造 iOS 设置卡片的层次感
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 1.dp,
+            shadowElevation = 0.dp,
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                items.forEachIndexed { index, item ->
+                    item()
+                    if (index != items.lastIndex) {
+                        // 更细更柔和的分割线，缩进以贴合卡片内边距
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    }
                 }
             }
         }
@@ -103,14 +114,23 @@ fun SettingsIconContent(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 2.dp),
-            )
+            // 图标圆角背景容器（iOS 设置风格）：用 primaryContainer 作底，图标用 onPrimaryContainer
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f), content = content)
         }
@@ -127,12 +147,12 @@ fun SettingsItem(
     leadingSpacing: Dp = 16.dp,
     endPadding: Dp = 16.dp,
 ) {
-    val verticalPadding = if (supportingContent == null) 12.dp else 16.dp
+    val verticalPadding = if (supportingContent == null) 14.dp else 16.dp
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(
-                start = 16.dp,
+                start = 20.dp,
                 end = endPadding,
                 top = verticalPadding,
                 bottom = verticalPadding,
@@ -239,27 +259,36 @@ private data class SettingsGroupData(
 )
 
 private val settingsGroups = listOf(
-    // Group 1 — Appearance & Language (high-frequency, promoted to top)
+    // Group 1 — 外观与语言
     SettingsGroupData(titleRes = R.string.settings_group_appearance_language, items = listOf(
         SettingsCategory("appearance", R.string.settings_appearance, R.string.settings_appearance_desc, Icons.Default.Palette),
         SettingsCategory("language", R.string.language_title, R.string.language_desc, Icons.Default.Translate),
     )),
-    // Group 2 — Models & Service (core configuration)
-    SettingsGroupData(titleRes = R.string.settings_group_services, items = listOf(
+    // Group 2 — 模型与生成（转录作为媒体模型能力归入本组）
+    SettingsGroupData(titleRes = R.string.settings_group_models_generation, items = listOf(
         SettingsCategory("provider", R.string.settings_provider, R.string.settings_provider_desc, Icons.Default.Cloud),
         SettingsCategory("models", R.string.settings_models, R.string.settings_models_desc, Icons.Default.Chat),
         SettingsCategory("model_plaza", R.string.settings_model_plaza, R.string.settings_model_plaza_desc, Icons.Default.AutoAwesome),
         SettingsCategory("generation", R.string.settings_generation, R.string.settings_generation_desc, Icons.Default.Tune),
+        SettingsCategory("transcription", R.string.settings_transcription, R.string.settings_transcription_desc, Icons.Default.ImageSearch),
     )),
-    // Group 3 — Prompts & Context (response control)
+    // Group 3 — 回复与内容（通知回复归入回复类）
     SettingsGroupData(titleRes = R.string.settings_group_responses, items = listOf(
         SettingsCategory("prompts", R.string.settings_prompts, R.string.settings_prompts_desc, Icons.Default.Psychology),
         SettingsCategory("context", R.string.context_title, R.string.context_desc, Icons.Default.Memory),
         SettingsCategory("routing", R.string.settings_complexity_routing, R.string.settings_complexity_routing_desc, Icons.Default.Route),
         SettingsCategory("titlegen", R.string.settings_title_gen, R.string.settings_title_gen_desc, Icons.Default.Edit),
+        SettingsCategory("notification_reply", R.string.settings_notification_reply, R.string.settings_notification_reply_desc, Icons.Default.Notifications),
     )),
-    // Group 4 — Tools & Integration (5 items, was 3 + search/shell/automation from Advanced)
-    SettingsGroupData(titleRes = R.string.settings_group_tools, items = listOf(
+    // Group 4 — 能力与执行（本机执行环境归拢）
+    SettingsGroupData(titleRes = R.string.settings_group_capabilities, items = listOf(
+        SettingsCategory("device_control", R.string.settings_device_control, R.string.settings_device_control_desc, Icons.Default.Android),
+        SettingsCategory("runtime_status", R.string.settings_runtime_status, R.string.settings_runtime_status_desc, Icons.Default.Speed),
+        SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Terminal),
+    )),
+    // Group 5 — 接入与自动化（连接/插件/代理/任务归位，proxy 归入网络接入）
+    SettingsGroupData(titleRes = R.string.settings_group_access_automation, items = listOf(
+        SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
         SettingsCategory(
             "mcp",
             R.string.mcp_title,
@@ -268,27 +297,15 @@ private val settingsGroups = listOf(
         ),
         SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
         SettingsCategory("search", R.string.search_title, R.string.search_desc, Icons.Default.Search),
-        SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Terminal),
-        SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
-    )),
-    // Group 5 — Data & Memory (merged multimodal/transcription + network/proxy)
-    SettingsGroupData(titleRes = R.string.settings_group_memory_data, items = listOf(
-        SettingsCategory("memory", R.string.settings_memory, R.string.settings_memory_desc, Icons.Default.Description),
-        SettingsCategory("datacontrol", R.string.settings_data_control, R.string.settings_data_control_desc, Icons.Default.Storage),
-        SettingsCategory("transcription", R.string.settings_transcription, R.string.settings_transcription_desc, Icons.Default.ImageSearch),
-        SettingsCategory("logs", R.string.settings_logs, R.string.settings_logs_desc, Icons.Default.ReceiptLong),
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
-    )),
-    // Group 6 — Advanced (remaining 5 from the former 8-item Advanced group)
-    SettingsGroupData(titleRes = R.string.settings_group_advanced, items = listOf(
-        SettingsCategory("device_control", R.string.settings_device_control, R.string.settings_device_control_desc, Icons.Default.Android),
-        SettingsCategory("runtime_status", R.string.settings_runtime_status, R.string.settings_runtime_status_desc, Icons.Default.Speed),
-        SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
-        SettingsCategory("notification_reply", R.string.settings_notification_reply, R.string.settings_notification_reply_desc, Icons.Default.Notifications),
+        SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
         SettingsCategory("cron", R.string.settings_cron, R.string.settings_cron_desc, Icons.Default.Schedule),
     )),
-    // Group 7 — About (merged insights/statistics + membership)
-    SettingsGroupData(titleRes = R.string.settings_group_about, items = listOf(
+    // Group 6 — 数据与系统
+    SettingsGroupData(titleRes = R.string.settings_group_data_system, items = listOf(
+        SettingsCategory("memory", R.string.settings_memory, R.string.settings_memory_desc, Icons.Default.Description),
+        SettingsCategory("datacontrol", R.string.settings_data_control, R.string.settings_data_control_desc, Icons.Default.Storage),
+        SettingsCategory("logs", R.string.settings_logs, R.string.settings_logs_desc, Icons.Default.ReceiptLong),
         SettingsCategory("about", R.string.settings_about, R.string.settings_about_desc, Icons.Default.Info),
         SettingsCategory("statistics", R.string.settings_statistics, R.string.settings_statistics_desc, Icons.Default.BarChart),
         SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
