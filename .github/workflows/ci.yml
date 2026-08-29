@@ -67,7 +67,7 @@ jobs:
           else
             echo "PASS $GITHUB_SHA" > ci-logs/build-status.txt
           fi
-          git add ci-logs/
+          git add -f ci-logs/
           git commit -m "ci report $GITHUB_SHA" -q 2>/dev/null
           git push --force origin ci-logs 2>&1 | tail -2
           exit $CODE
