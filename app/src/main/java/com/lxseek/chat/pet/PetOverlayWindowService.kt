@@ -82,8 +82,14 @@ class PetOverlayWindowService : Service() {
                 val sizeScale = runCatching {
                     PetOverlayController.getSizeScale(this@PetOverlayWindowService)
                 }.getOrDefault(1.0f)
-                addFloatingView(sizeScale)
-                applyCharacterAsync()
+                // Load character and spritesheet BEFORE adding the view to avoid flash
+                val character = runCatching {
+                    PetOverlayController.getCharacter(this@PetOverlayWindowService)
+                }.getOrDefault(PetCharacter.HUHU)
+                val sheet = if (character.hasSpritesheet) {
+                    withContext(Dispatchers.IO) { loadSpritesheet(character) }
+                } else null
+                addFloatingView(sizeScale, character, sheet)
                 loadCustomImageAsync()
             }
         } else {
@@ -95,7 +101,7 @@ class PetOverlayWindowService : Service() {
         return START_STICKY
     }
 
-    private fun addFloatingView(sizeScale: Float) {
+    private fun addFloatingView(sizeScale: Float, character: PetCharacter, sheet: Bitmap?) {
         // Guard against a duplicate add if multiple onStartCommand launches race before the first
         // one sets floatingView (scope is single-threaded Main, but two launches can queue up).
         if (floatingView != null) return
@@ -123,6 +129,8 @@ class PetOverlayWindowService : Service() {
         }
         val view = PetFloatingView(this).apply {
             bindWindowParams(params)
+            setCharacter(character)
+            setSpritesheet(sheet)
         }
         try {
             wm.addView(view, params)
