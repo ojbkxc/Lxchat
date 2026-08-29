@@ -98,13 +98,13 @@ fun SettingsImGatewayPage(
     val legacyConfig by viewModel.settings.imGatewayConfig.collectAsState()
     val scope = rememberCoroutineScope()
 
-    // T31: ImBridgeService 用于连接测试；从 AppContainer 取单例�?
+    // T31: ImBridgeService 用于连接测试；从 AppContainer 取单例。
     val bridgeService = remember(context) {
         (context.applicationContext as LxChatApplication).container.imBridgeService
     }
-    // T31: Agent Preset 候选列表（来自全局 System Prompts）�?
+    // T31: Agent Preset 候选列表（来自全局 System Prompts）。
     val systemPrompts by viewModel.settings.systemPrompts.collectAsState()
-    // 已绑定机器人设置面板所需：可用模型列表（Map<providerName, List<modelName>>）�?
+    // 已绑定机器人设置面板所需：可用模型列表（Map<providerName, List<modelName>>）。
     val availableModels by viewModel.settings.availableModels.collectAsState()
 
     // Legacy fallback bot: shown only when the multi-config is empty and the legacy single
@@ -198,9 +198,9 @@ fun SettingsImGatewayPage(
     }
 }
 
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
-// ���� Merged from SettingsImGatewayMetadata.kt ������������������������������������������������������������
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
+// ────────────────────────────────────────────────
+// Merged from SettingsImGatewayMetadata.kt
+// ────────────────────────────────────────────────
 // ── Platform display metadata ──────────────────────────────────────────────
 
 /** Emoji glyph used as a lightweight platform icon (per project icon-style preference). */
@@ -289,7 +289,7 @@ internal data class CredField(
 
 /** Credential fields shown in the bind form for [platform]. */
 internal fun ImPlatform.credentialFields(): List<CredField> = when (this) {
-    // 微信�?iLink 扫码绑定（WeixinBindingFlow），无需手动配置 base_url/token�?
+    // 微信：iLink 扫码绑定（WeixinBindingFlow），无需手动配置 base_url/token。
     ImPlatform.WECHAT -> emptyList()
     ImPlatform.WECOM -> listOf(
         CredField("corp_id", R.string.im_channel_field_corp_id, FieldKind.TEXT),
@@ -368,7 +368,7 @@ internal fun maskSecret(value: String): String {
  * Build an [ImGatewayConfig] from the [values] entered for [platform], or null when required
  * fields are missing. A fresh [channelId] is generated so each bind creates a distinct bot.
  *
- * @param agentPreset 选中�?Agent Preset ID；空串表示跟随默认�?
+ * @param agentPreset 选中的 Agent Preset ID；空串表示跟随默认。
  */
 internal fun buildBotConfig(
     platform: ImPlatform,
@@ -482,9 +482,9 @@ internal fun botSummary(bot: ImGatewayConfig, platform: ImPlatform): Pair<String
     return title to subtitle
 }
 
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
-// ���� Merged from SettingsImGatewayCard.kt ��������������������������������������������������������������������
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
+// ────────────────────────────────────────────────
+// Merged from SettingsImGatewayCard.kt
+// ────────────────────────────────────────────────
 // ── Platform card ──────────────────────────────────────────────────────────
 
 @Composable
@@ -649,7 +649,7 @@ internal fun BotSummaryRow(
     val strSettings = stringResource(R.string.im_channel_settings)
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<ConnectionTestResult?>(null) }
-    // 已绑定机器人设置面板默认收起；点�?⚙️ 设置按钮切换�?
+    // 已绑定机器人设置面板默认收起；点击 ⚙️ 设置按钮切换。
     var settingsExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
@@ -702,7 +702,7 @@ internal fun BotSummaryRow(
                     Text(strTesting)
                 } else Text(strTestBtn)
             }
-            // ⚙️ 设置按钮：展开/收起已绑定机器人的详细设置面板�?
+            // ⚙️ 设置按钮：展开/收起已绑定机器人的详细设置面板。
             TextButton(onClick = {
                 settingsExpanded = !settingsExpanded
                 DebugLog.d("ImGatewayUI", "settings toggle: ${bot.effectiveChannelId} expanded=$settingsExpanded")
@@ -741,7 +741,7 @@ internal fun BotSummaryRow(
                 )
             }
         }
-        // 已绑定机器人设置面板：自动回复模�?/ 主动消息 / 人性化消息�?
+        // 已绑定机器人设置面板：自动回复模式 / 主动消息 / 人性化消息。
         AnimatedVisibility(visible = settingsExpanded) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
             BotSettingsPanel(
@@ -749,7 +749,7 @@ internal fun BotSummaryRow(
                 availableModels = availableModels,
                 onSave = { updated ->
                     onUpdateBot(updated)
-                    // 保存后自动收起�?
+                    // 保存后自动收起。
                     settingsExpanded = false
                 },
             )
@@ -757,9 +757,9 @@ internal fun BotSummaryRow(
     }
 }
 
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
-// ���� Merged from SettingsImGatewayBindForm.kt ������������������������������������������������������������
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
+// ────────────────────────────────────────────────
+// Merged from SettingsImGatewayBindForm.kt
+// ────────────────────────────────────────────────
 // ── Bind form ──────────────────────────────────────────────────────────────
 
 @Composable
@@ -769,7 +769,7 @@ internal fun BindFormSection(
     onConfirm: (ImGatewayConfig) -> Unit,
     onCancel: () -> Unit,
 ) {
-    // 微信�?iLink 扫码绑定流程（WeixinBindingFlow），不使用表单字段�?
+    // 微信：iLink 扫码绑定流程（WeixinBindingFlow），不使用表单字段。
     if (platform == ImPlatform.WECHAT) {
         WeixinQrBindSection(onConfirm = onConfirm, onCancel = onCancel)
         return
@@ -784,7 +784,7 @@ internal fun BindFormSection(
     val showSecret = remember { mutableStateMapOf<String, Boolean>().apply { fields.forEach { put(it.key, false) } } }
     var validationError by remember { mutableStateOf(false) }
 
-    // T31: Agent Preset 选择状态。空�?= 跟随默认�?
+    // T31: Agent Preset 选择状态。空串 = 跟随默认。
     var selectedPreset by remember { mutableStateOf("") }
     var presetMenuExpanded by remember { mutableStateOf(false) }
     val strPresetLabel = stringResource(R.string.im_channel_agent_preset)
@@ -871,8 +871,8 @@ internal fun BindFormSection(
             )
         }
 
-        // T31: Agent Preset 选择器（Dropdown）�?
-        // 候选项 = "跟随默认" + 全局 System Prompts；选中后写�?selectedPreset（空�?跟随默认）�?
+        // T31: Agent Preset 选择器（Dropdown）。
+        // 候选项 = "跟随默认" + 全局 System Prompts；选中后写入 selectedPreset（空串跟随默认）。
         Spacer(modifier = Modifier.height(4.dp))
         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             OutlinedTextField(
@@ -924,9 +924,9 @@ internal fun BindFormSection(
 // ── 微信 iLink 扫码绑定 ────────────────────────────────────────────────────
 
 /**
- * 微信 iLink 扫码绑定 UI：进入即启动 [WeixinBindingFlow.bind]，显示二维码图片 �?
- * 轮询扫码状�?�?成功后构�?[ImGatewayConfig] 并回�?[onConfirm]�?
- * 协程�?[DisposableEffect] 中取消，避免离开 Composable 后继续轮询�?
+ * 微信 iLink 扫码绑定 UI：进入即启动 [WeixinBindingFlow.bind]，显示二维码图片。
+ * 轮询扫码状态，成功后构建 [ImGatewayConfig] 并回调 [onConfirm]。
+ * 协程在 [DisposableEffect] 中取消，避免离开 Composable 后继续轮询。
  */
 @Composable
 internal fun WeixinQrBindSection(

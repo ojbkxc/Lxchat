@@ -622,9 +622,9 @@ internal fun McpLabeledField(
     }
 }
 
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
-// ���� Merged from SettingsMcpEditor.kt ������������������������������������������������������������������������������
-// �T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T�T
+// ────────────────────────────────────────────────
+// Merged from SettingsMcpEditor.kt
+// ────────────────────────────────────────────────
 internal data class McpEditorRoute(
     val initial: McpServerConfig,
     val isNew: Boolean,
