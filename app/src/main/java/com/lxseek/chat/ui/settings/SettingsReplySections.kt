@@ -379,7 +379,7 @@ internal fun ReplyChannelSection(
                 OutlinedTextField(value = emailSmtpHost, onValueChange = { emailSmtpHost = it }, singleLine = true, label = { Text(stringResource(R.string.reply_channel_email_smtp_host)) }, placeholder = { Text("smtp.qq.com") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(value = emailSmtpPort, onValueChange = { emailSmtpPort = it.filter(Char::isDigits).take(5) }, singleLine = true, label = { Text(stringResource(R.string.reply_channel_email_smtp_port)) }, placeholder = { Text("465") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(value = emailSmtpPort, onValueChange = { emailSmtpPort = it.filter(Char::isDigit).take(5) }, singleLine = true, label = { Text(stringResource(R.string.reply_channel_email_smtp_port)) }, placeholder = { Text("465") }, modifier = Modifier.weight(1f))
                     Box(modifier = Modifier.weight(1f)) {
                         OutlinedTextField(value = stringResource(securityLabel(emailSmtpSecurity)), onValueChange = { }, readOnly = true, singleLine = true, label = { Text(stringResource(R.string.reply_channel_email_smtp_security)) }, trailingIcon = { IconButton(onClick = { emailSecurityMenuExpanded = true }) { Icon(Icons.Default.ExpandMore, contentDescription = null) } }, modifier = Modifier.fillMaxWidth())
                         DropdownMenu(expanded = emailSecurityMenuExpanded, onDismissRequest = { emailSecurityMenuExpanded = false }) {
@@ -396,30 +396,7 @@ internal fun ReplyChannelSection(
             }
         }
     }
-                Switch(checked = emailEnabled, onCheckedChange = { emailEnabled = it })
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(value = emailFrom, onValueChange = { onEmailFromChanged(it) }, singleLine = true, label = { Text(stringResource(R.string.reply_channel_email_from)) }, placeholder = { Text("xxx@qq.com") }, supportingText = { Text(stringResource(R.string.reply_channel_email_from_hint)) }, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(value = emailSmtpHost, onValueChange = { emailSmtpHost = it }, singleLine = true, label = { Text(stringResource(R.string.reply_channel_email_smtp_host)) }, placeholder = { Text("smtp.qq.com") }, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(value = emailSmtpPort, onValueChange = { emailSmtpPort = it.filter(Char::isDigit).take(5) }, singleLine = true, label = { Text(stringResource(R.string.reply_channel_email_smtp_port)) }, placeholder = { Text("465") }, modifier = Modifier.weight(1f))
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(value = stringResource(securityLabel(emailSmtpSecurity)), onValueChange = { }, readOnly = true, singleLine = true, label = { Text(stringResource(R.string.reply_channel_email_smtp_security)) }, trailingIcon = { IconButton(onClick = { emailSecurityMenuExpanded = true }) { Icon(Icons.Default.ExpandMore, contentDescription = null) } }, modifier = Modifier.fillMaxWidth())
-                    DropdownMenu(expanded = emailSecurityMenuExpanded, onDismissRequest = { emailSecurityMenuExpanded = false }) {
-                        ReplyChannelConfig.EMAIL_SECURITY_OPTIONS.forEach { s ->
-                            DropdownMenuItem(text = { Text(stringResource(securityLabel(s))) }, onClick = { emailSmtpSecurity = s; emailSecurityMenuExpanded = false })
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(value = emailPassword, onValueChange = { emailPassword = it }, singleLine = true, visualTransformation = PasswordVisualTransformation(), label = { Text(stringResource(R.string.reply_channel_email_password)) }, supportingText = { Text(stringResource(R.string.reply_channel_email_password_hint)) }, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(value = emailDefaultTo, onValueChange = { emailDefaultTo = it }, singleLine = true, label = { Text(stringResource(R.string.reply_channel_email_default_to)) }, supportingText = { Text(stringResource(R.string.reply_channel_email_default_to_hint)) }, modifier = Modifier.fillMaxWidth())
-        }
-    }
+
 
     Spacer(Modifier.height(12.dp))
 
