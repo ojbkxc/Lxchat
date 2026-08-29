@@ -40,6 +40,7 @@ import androidx.annotation.StringRes
 import com.lxseek.chat.R
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.model.ModelId
+import com.lxseek.chat.model.apiModelName
 import com.lxseek.chat.ui.settings.datacontrol.SettingsDataControlPage
 import com.lxseek.chat.util.Constants
 import com.lxseek.chat.viewmodel.ChatViewModel
