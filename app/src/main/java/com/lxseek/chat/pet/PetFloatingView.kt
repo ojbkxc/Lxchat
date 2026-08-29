@@ -15,6 +15,7 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.text.Layout
 import android.text.StaticLayout
+import android.text.TextPaint
 import android.util.Log
 import android.util.AttributeSet
 import android.view.Choreographer
@@ -101,7 +102,7 @@ class PetFloatingView @JvmOverloads constructor(
 
     // ---- Status-tip bubble ----
     private val tipBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = TIP_BG_COLOR; style = Paint.Style.FILL }
-    private val tipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val tipTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = TIP_TEXT_COLOR; textSize = dp(TIP_TEXT_SIZE_DP); textAlign = Paint.Align.CENTER
     }
     private val tipArrowPath = Path()
@@ -616,7 +617,7 @@ class PetFloatingView @JvmOverloads constructor(
         const val PET_WHITE = 0xFFFFFFFF.toInt()
         const val NANOS_PER_MS = 1_000_000L
 
-        const val TIP_BG_COLOR = 0x801F2937
+        const val TIP_BG_COLOR = 0x801F2937.toInt()
         const val TIP_TEXT_COLOR = 0xFFFFFFFF.toInt()
         const val TIP_TEXT_SIZE_DP = 13f
         const val TIP_HORIZONTAL_PADDING_DP = 10f
