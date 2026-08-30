@@ -24,6 +24,9 @@ import java.io.File
 
 private const val TTS_START_GRACE_MS = 5_000L
 private const val SYSTEM_FINAL_TIMEOUT_MS = 10_000L
+// After the system recognizer reports end-of-speech, wait this long for its final
+// result before forcing finalization — some OEM recognizers never deliver it alone.
+private const val END_OF_SPEECH_FINAL_GRACE_MS = 1_200L
 private const val TAG = "VoiceConvCtrl"
 // AudioCaptureManager's RMS of normal speech sits around 0.05-0.25 (16-bit PCM / Short.MAX),
 // which is barely visible in the voiceprint. This boost maps it to a 0.25-1.0 display range
@@ -513,12 +516,29 @@ class VoiceConversationController(
     private fun startAudioCapture(onComplete: (File) -> Unit) {
         captureJob?.cancel()
         captureJob = scope.launch {
+            // Conversation mode: record-then-transcribe engines (vosk/whisper/auto) have no
+            // endpointing of their own — feed the raw amplitude into the VAD so the turn
+            // auto-converts to text once the user falls silent, instead of recording forever.
+            val vad = if (_mode.value == Mode.CONVERSATION) {
+                StreamingVAD(
+                    onSpeechEnd = { segmentMs ->
+                        Log.i(TAG, "Conversation VAD: speech ended (${segmentMs}ms), auto-stopping capture")
+                        if (active && _state.value == State.LISTENING) {
+                            stopCaptureAndTranscribe()
+                        }
+                    },
+                )
+            } else {
+                null
+            }
             try {
                 val captureFlow = audioCaptureManager.startCapture()
                 captureFlow.collect { chunk ->
                     if (!active) return@collect
+                    val rawAmp = audioCaptureManager.amplitude.value
                     // Boost the RMS into a 0-1 display range so the voiceprint visibly moves.
-                    _amplitude.value = (audioCaptureManager.amplitude.value * AMPLITUDE_BOOST).coerceIn(0f, 1f)
+                    _amplitude.value = (rawAmp * AMPLITUDE_BOOST).coerceIn(0f, 1f)
+                    vad?.feedAmplitude(rawAmp)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -735,6 +755,25 @@ class VoiceConversationController(
                             stopSystemWatchdog = null
                             speechRecognizerManager.stopListening()
                             handleTranscriptionResult(result.text)
+                        }
+                        is SpeechRecognizerManager.RecognitionResult.EndOfSpeech -> {
+                            // Some system recognizers report end-of-speech but never deliver
+                            // the final result on their own; force finalization so the
+                            // utterance converts to text instead of hanging in LISTENING.
+                            if (active && _mode.value == Mode.CONVERSATION &&
+                                _state.value == State.LISTENING
+                            ) {
+                                stopSystemWatchdog?.cancel()
+                                stopSystemWatchdog = scope.launch {
+                                    delay(END_OF_SPEECH_FINAL_GRACE_MS)
+                                    if (active && currentEngine == "system" &&
+                                        _state.value == State.LISTENING
+                                    ) {
+                                        Log.i(TAG, "System ASR: no final after end-of-speech, forcing stop")
+                                        stopCaptureAndTranscribe()
+                                    }
+                                }
+                            }
                         }
                         is SpeechRecognizerManager.RecognitionResult.Error -> {
                             Log.w(TAG, "System ASR error: ${result.message} (code=${result.code})")

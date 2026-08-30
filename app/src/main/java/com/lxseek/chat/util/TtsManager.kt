@@ -18,12 +18,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -99,6 +102,18 @@ object TtsManager {
     @Volatile private var netPlayer: MediaPlayer? = null
     private val networkScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private const val NET_SPEECH_PATH = "/audio/speech"
+
+    // ── Streaming read-aloud queue (sentence-by-sentence during generation) ──
+    // System TTS appends natively via QUEUE_ADD; provider TTS chunks are synthesized and
+    // played strictly in order by a single consumer coroutine.
+    private val streamLock = Any()
+    private val streamChannel = Channel<String>(Channel.UNLIMITED)
+    private var streamConsumerJob: Job? = null
+    @Volatile private var streamRate = 1.0f
+    /** Utterances buffered while the system engine is still initializing. */
+    private val pendingStreamUtterances = ArrayDeque<Triple<String, String, Float>>()
+    /** Enqueued-but-not-yet-finished utterances; keeps isPlaying true across a queued stream. */
+    @Volatile private var activeUtterances = 0
 
     private fun log(level: String, msg: String) {
         val ts = logTimeFormat.format(Date())
@@ -329,16 +344,35 @@ object TtsManager {
             log("D", "init SUCCESS with engine=$engineLabel, engines=${tts?.engines?.map { it.name }}")
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) { log("D", "onStart $utteranceId"); _isPlaying.value = true }
-                override fun onDone(utteranceId: String?) { log("D", "onDone $utteranceId"); watchdogJob?.cancel(); watchdogJob = null; _isPlaying.value = false }
+                override fun onDone(utteranceId: String?) {
+                    log("D", "onDone $utteranceId"); watchdogJob?.cancel(); watchdogJob = null; onUtteranceFinished()
+                }
                 @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String?) { log("D", "onError $utteranceId"); watchdogJob?.cancel(); watchdogJob = null; _isPlaying.value = false }
-                override fun onError(utteranceId: String?, errorCode: Int) { log("E", "onError $utteranceId code=$errorCode"); watchdogJob?.cancel(); watchdogJob = null; _isPlaying.value = false }
+                override fun onError(utteranceId: String?) {
+                    log("D", "onError $utteranceId"); watchdogJob?.cancel(); watchdogJob = null; onUtteranceFinished()
+                }
+                override fun onError(utteranceId: String?, errorCode: Int) {
+                    log("E", "onError $utteranceId code=$errorCode"); watchdogJob?.cancel(); watchdogJob = null; onUtteranceFinished()
+                }
             })
             pendingText?.let { text ->
                 pendingText = null
                 val lang = pendingLanguage; val rate = pendingRate
                 log("D", "flushing pendingText on main thread")
                 mainHandler.post { speakInternal(text, lang, rate) }
+            }
+            // Flush any sentences that arrived while the engine was still initializing.
+            synchronized(streamLock) {
+                if (pendingStreamUtterances.isNotEmpty()) {
+                    val buffered = pendingStreamUtterances.toList()
+                    pendingStreamUtterances.clear()
+                    log("D", "flushing ${buffered.size} buffered stream utterances")
+                    mainHandler.post {
+                        buffered.forEach { (text, lang, rate) ->
+                            speakInternal(text, lang, rate, queueAdd = true)
+                        }
+                    }
+                }
             }
         } else {
             log("E", "init FAILED for engine=$engineLabel status=$status")
@@ -366,6 +400,62 @@ object TtsManager {
     }
 
     /**
+     * Streaming read-aloud: queue one sentence-style chunk without interrupting what is
+     * already playing. System TTS appends natively via QUEUE_ADD; provider TTS chunks are
+     * synthesized and played strictly in order by a single consumer coroutine.
+     */
+    fun speakQueued(text: String, language: String = "system", rate: Float = 1.0f): Boolean {
+        if (text.isBlank()) { log("D", "speakQueued: text is blank"); return false }
+        val trimmed = text.trim()
+        val config = networkTtsConfig?.invoke()
+        if (config != null) {
+            streamRate = rate
+            ensureStreamConsumer()
+            streamChannel.trySend(trimmed)
+            _isPlaying.value = true
+            return true
+        }
+        if (!initialized || tts == null) {
+            appContext?.let { init(it) }
+            log("D", "speakQueued: buffering until engine init")
+            synchronized(streamLock) { pendingStreamUtterances.addLast(Triple(trimmed, language, rate)) }
+            return true
+        }
+        return speakInternal(trimmed, language, rate, queueAdd = true)
+    }
+
+    /** Single ordered consumer for provider-backed streaming chunks. */
+    private fun ensureStreamConsumer() {
+        synchronized(streamLock) {
+            if (streamConsumerJob?.isActive == true) return
+            streamConsumerJob = networkScope.launch {
+                for (chunk in streamChannel) {
+                    val config = networkTtsConfig?.invoke()
+                    if (config == null) {
+                        // Provider TTS switched off mid-stream; drop the remaining queue.
+                        _isPlaying.value = false
+                        continue
+                    }
+                    _isPlaying.value = true
+                    val audio = synthesizeNetSpeech(chunk, streamRate, config)
+                    if (audio != null) {
+                        playNetAudio(audio, streamRate)
+                    }
+                    if (streamChannel.isEmpty) _isPlaying.value = false
+                }
+            }
+        }
+    }
+
+    private fun onUtteranceFinished() {
+        activeUtterances--
+        if (activeUtterances <= 0) {
+            activeUtterances = 0
+            _isPlaying.value = false
+        }
+    }
+
+    /**
      * Provider-backed TTS: synthesize the text over the network (OpenAI-compatible
      * `POST /audio/speech`) and stream the returned audio via [MediaPlayer]. Keeps [isPlaying]
      * in sync so the existing chat / voice-conversation observers behave identically to system TTS.
@@ -381,6 +471,7 @@ object TtsManager {
                 return@launch
             }
             playNetAudio(audio, rate)
+            _isPlaying.value = false
         }
         return true
     }
@@ -435,7 +526,10 @@ object TtsManager {
         }
     }
 
-    private fun playNetAudio(file: File, rate: Float) {
+    /** Play one synthesized chunk and suspend until it completes (or fails / is cancelled). */
+    private suspend fun playNetAudio(file: File, rate: Float) = suspendCancellableCoroutine { cont ->
+        var settled = false
+        fun settle() { if (!settled) { settled = true; cont.resume(Unit) } }
         try {
             netPlayer?.let { runCatching { it.release() } }
             val mp = MediaPlayer()
@@ -454,24 +548,31 @@ object TtsManager {
             }
             mp.setOnCompletionListener {
                 log("D", "Network TTS onCompletion")
-                _isPlaying.value = false
                 runCatching { file.delete() }
                 if (netPlayer === it) netPlayer = null
                 runCatching { it.release() }
+                settle()
             }
             mp.setOnErrorListener { _, _, _ ->
                 log("E", "Network TTS playback error")
-                _isPlaying.value = false
                 runCatching { file.delete() }
                 if (netPlayer === mp) netPlayer = null
                 runCatching { mp.release() }
+                settle()
                 true
             }
             netPlayer = mp
             mp.prepareAsync()
+            cont.invokeOnCancellation {
+                runCatching { mp.stop() }
+                runCatching { mp.release() }
+                runCatching { file.delete() }
+                if (netPlayer === mp) netPlayer = null
+            }
         } catch (e: Exception) {
             log("E", "Network TTS playback init exception: ${e.message}")
-            _isPlaying.value = false
+            runCatching { file.delete() }
+            settle()
         }
     }
 
@@ -482,7 +583,7 @@ object TtsManager {
         return if (base.endsWith(NET_SPEECH_PATH)) base else "$base$NET_SPEECH_PATH"
     }
 
-    private fun speakInternal(text: String, language: String, rate: Float): Boolean {
+    private fun speakInternal(text: String, language: String, rate: Float, queueAdd: Boolean = false): Boolean {
         val engine = tts ?: run { log("E", "speakInternal: engine is null"); _lastSpeakResult.value = "ERROR:no_engine"; return false }
         val locale = when (language) { "en" -> Locale.US; "zh" -> Locale.SIMPLIFIED_CHINESE; else -> Locale.getDefault() }
         val langResult = engine.setLanguage(locale)
@@ -497,16 +598,22 @@ object TtsManager {
             if (fb == TextToSpeech.LANG_NOT_SUPPORTED || fb == TextToSpeech.LANG_MISSING_DATA) engine.setLanguage(Locale.US)
         }
         engine.setSpeechRate(rate.coerceIn(0.5f, 2.0f))
-        val speakResult = engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, UUID.randomUUID().toString())
+        val queueMode = if (queueAdd) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+        val speakResult = engine.speak(text, queueMode, null, UUID.randomUUID().toString())
         val speakStr = if (speakResult == TextToSpeech.SUCCESS) "SUCCESS" else "ERROR:$speakResult"
-        log("D", "speak result=$speakStr textLen=${text.length} text='${text.take(80)}'")
+        log("D", "speak result=$speakStr queue=$queueMode textLen=${text.length} text='${text.take(80)}'")
         _lastSpeakResult.value = speakStr
         if (speakResult != TextToSpeech.SUCCESS) { _isPlaying.value = false; return false }
+        // Count at enqueue time so isPlaying stays true across a queued sentence stream;
+        // QUEUE_FLUSH replaces everything, so reset the count instead of accumulating.
+        if (queueAdd) activeUtterances++ else activeUtterances = 1
+        _isPlaying.value = true
         watchdogJob?.cancel()
         watchdogJob = watchdogScope.launch {
             delay(WATCHDOG_TIMEOUT_MS)
             if (_isPlaying.value) {
                 log("E", "Watchdog timeout (${WATCHDOG_TIMEOUT_MS}ms) — forcing isPlaying=false")
+                activeUtterances = 0
                 _isPlaying.value = false
             }
         }
@@ -525,6 +632,10 @@ object TtsManager {
     fun stop() {
         watchdogJob?.cancel(); watchdogJob = null; tts?.stop()
         netPlayer?.let { runCatching { it.stop() }; runCatching { it.release() } }; netPlayer = null
+        // Drop chunks still waiting in the streaming queue and zero the counter, so a Stop
+        // mid-stream doesn't leave stale utterances playing or isPlaying stuck true.
+        while (streamChannel.tryReceive().isSuccess) { /* drain */ }
+        activeUtterances = 0
         _isPlaying.value = false
     }
     fun shutdown() {
@@ -533,6 +644,9 @@ object TtsManager {
         initialized = false; _isAvailable.value = false; _isPlaying.value = false; _langMissingData.value = false
         _lastInitStatus.value = "IDLE"; _lastSpeakResult.value = ""; _lastLanguageResult.value = ""
         pendingText = null
+        while (streamChannel.tryReceive().isSuccess) { /* drain */ }
+        synchronized(streamLock) { pendingStreamUtterances.clear() }
+        activeUtterances = 0
     }
 
     fun getDiagnosticInfo(): TtsDiagnosticInfo {

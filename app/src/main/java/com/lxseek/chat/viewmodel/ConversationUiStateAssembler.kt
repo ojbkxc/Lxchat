@@ -67,6 +67,12 @@ internal class ConversationUiStateAssembler(
         .map { snapshot -> snapshot.allMessages.sumOf { it.tokenCount } }
         .stateIn(scope, SharingStarted.Eagerly, 0)
 
+    /** Live streaming overlay of the OPEN conversation; emits on every streamed token. */
+    val streamingMessage: StateFlow<ChatMessage?> = renderStore.snapshot
+        .map { snapshot -> snapshot.streamingMessage }
+        .distinctUntilChanged()
+        .stateIn(scope, SharingStarted.Eagerly, null)
+
     private val _loadedMessagesConversationId = MutableStateFlow<String?>(null)
     val loadedMessagesConversationId: StateFlow<String?> =
         _loadedMessagesConversationId.asStateFlow()

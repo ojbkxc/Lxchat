@@ -27,6 +27,7 @@ import com.lxseek.chat.model.AttachmentItem
 import com.lxseek.chat.model.ChatConversation
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.MessageStatus
+import com.lxseek.chat.model.Participant
 import com.lxseek.chat.model.apiModelName
 import com.lxseek.chat.model.SelectedAttachment
 import com.lxseek.chat.sandbox.SandboxManager
@@ -533,6 +534,12 @@ class ChatViewModel(
             _ttsPlayingMessageId, _snackbarMessage, viewModelScope, showFailureSnackbar,
         )
 
+    /** Sentence-level streaming read-aloud; see [StreamingTtsSpeaker]. */
+    private val streamingTtsSpeaker = StreamingTtsSpeaker(
+        language = { settings.ttsLanguage.value },
+        rate = { settings.ttsSpeechRate.value },
+    )
+
     /** PDF / text-file preview state (see [MediaPreviewState]). */
     private val mediaPreview = MediaPreviewState()
     val previewPdfPages: StateFlow<List<String>> get() = mediaPreview.pdfPages
@@ -578,7 +585,13 @@ class ChatViewModel(
                 if ((voiceStreaming || (settings.ttsEnabled.value && settings.ttsAutoPlay.value)) &&
                     conversationId == currentConversationId.value
                 ) {
-                    playTtsForMessage(message.id, message.text)
+                    if (streamingTtsSpeaker.spokeFor == message.id) {
+                        // Incremental read-aloud already played the head mid-stream; append only
+                        // the tail instead of flushing and replaying the whole message.
+                        streamingTtsSpeaker.onStreamEnd(message.id, message.text)
+                    } else {
+                        playTtsForMessage(message.id, message.text)
+                    }
                 }
             }
             state.onQueueDrainRequested = { settledState ->
@@ -803,6 +816,22 @@ class ChatViewModel(
                     // cancel any playing indicator so the UI doesn't stick on a mute Pause icon.
                     TtsManager.stop()
                     _ttsPlayingMessageId.value = null
+                }
+            }
+        }
+        // Streaming read-aloud: queue each finished sentence of the open conversation's reply
+        // while generation is still running, so playback starts immediately instead of only
+        // after the whole message commits (see onStreamCommit above).
+        viewModelScope.launch {
+            conversationUi.streamingMessage.collect { message ->
+                if (message == null || message.participant != Participant.MODEL) return@collect
+                val enabled = voiceConversation.isConversationStreaming() ||
+                    (settings.ttsEnabled.value && settings.ttsAutoPlay.value)
+                if (!enabled) return@collect
+                if (message.text.isBlank()) return@collect
+                streamingTtsSpeaker.onStreamText(message.id, message.text)
+                if (streamingTtsSpeaker.spokeFor == message.id) {
+                    _ttsPlayingMessageId.value = message.id
                 }
             }
         }

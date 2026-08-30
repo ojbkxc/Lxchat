@@ -1,5 +1,6 @@
 package com.lxseek.chat.ui.chat
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -78,6 +79,10 @@ internal fun VoiceConversationOverlay(
 ) {
     val isActive = state != VoiceConversationController.State.IDLE
     if (!isActive) return
+
+    // Back press exits the voice session gracefully (same as the X button) instead of
+    // leaving the chat page underneath.
+    BackHandler { onExit() }
 
     val title = stringResource(R.string.voice_conversation_title)
     val stateText = when (state) {
