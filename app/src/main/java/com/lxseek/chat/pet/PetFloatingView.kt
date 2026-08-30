@@ -368,45 +368,53 @@ class PetFloatingView @JvmOverloads constructor(
         val w = width
         val padX = dp(TIP_HORIZONTAL_PADDING_DP)
         val padY = dp(TIP_VERTICAL_PADDING_DP)
-        val maxTextWidth = w - padX * 2 - dp(TIP_EDGE_MARGIN_DP) * 2
+        val edgeMargin = dp(TIP_EDGE_MARGIN_DP)
+        // Compute the on-screen usable width first (window may extend past screen edges),
+        // so the StaticLayout is built with the true available width and never overflows.
+        val params = windowParams
+        val screenWidth = resources.displayMetrics.widthPixels
+        val minLeft = if (params != null && params.x < 0) (-params.x).toFloat() + edgeMargin else edgeMargin
+        val maxRight = if (params != null && params.x + w > screenWidth) (screenWidth - params.x).toFloat() - edgeMargin else w - edgeMargin
+        val availableWidth = (maxRight - minLeft).coerceAtLeast(0f)
+        val maxTextWidth = (availableWidth - padX * 2).coerceAtLeast(0f)
         if (maxTextWidth <= 0f) return
         val tipText = text.toString()
-        // StaticLayout handles multi-line wrapping automatically.
         val layout = StaticLayout.Builder.obtain(tipText, 0, tipText.length, tipTextPaint, maxTextWidth.toInt())
             .setAlignment(Layout.Alignment.ALIGN_CENTER)
             .setLineSpacing(0f, 1f)
             .setIncludePad(false)
             .build()
-        val capWidth = layout.width.toFloat() + padX * 2
+        // layout.width is the constructor width, NOT the rendered text width — measure the
+        // widest line so the bubble hugs the text instead of spanning the whole window.
+        var textWidth = 0f
+        for (i in 0 until layout.lineCount) {
+            textWidth = maxOf(textWidth, layout.getLineWidth(i))
+        }
+        // Bubble hugs the text: width = widest line + padding, clamped to the usable width.
+        val capWidth = (textWidth + padX * 2).coerceAtMost(availableWidth)
         val capHeight = layout.height.toFloat() + padY * 2
-        // tip 气泡定位：默认窗口中心，贴边时偏移到屏幕可见区域中心，防止被屏幕边缘裁剪
-        val params = windowParams
-        val screenWidth = resources.displayMetrics.widthPixels
-        val edgeMargin = dp(TIP_EDGE_MARGIN_DP)
+        // Tip center: window center, shifted to the visible-area center when partially off-screen.
         val cx = if (params != null && (params.x < 0 || params.x + w > screenWidth)) {
-            // 窗口部分在屏幕外，tip 中心移到可见区域中心（转换为窗口内坐标）
             val visLeft = params.x.coerceAtLeast(0)
             val visRight = (params.x + w).coerceAtMost(screenWidth)
             (visLeft + visRight) / 2f - params.x
         } else {
             w / 2f
         }
-        // 限制 tip 在屏幕可见区域内（贴边时窗口边缘在屏幕外，不能用窗口边缘做限制）
-        val minLeft = if (params != null && params.x < 0) (-params.x).toFloat() + edgeMargin else edgeMargin
-        val maxRight = if (params != null && params.x + w > screenWidth) (screenWidth - params.x).toFloat() - edgeMargin else w - edgeMargin
-        val left = (cx - capWidth / 2).coerceAtLeast(minLeft)
-        val right = (left + capWidth).coerceAtMost(maxRight)
+        // Bubble position: centered on cx, clamped so it never leaves the visible area.
+        val left = (cx - capWidth / 2).coerceIn(minLeft, (maxRight - capWidth).coerceAtLeast(minLeft))
+        val right = left + capWidth
         val actualWidth = right - left
-        // Position the tip bubble just above the pet (not at the window top),
+        // Position the bubble just above the pet (not at the window top),
         // so it stays close regardless of tipSlotHeight.
         val petTop = bubbleCenterY - bubbleRadius()
         val top = (petTop - capHeight - dp(TIP_ARROW_OVERLAP_DP)).coerceAtLeast(dp(TIP_TOP_PADDING_DP))
         val bottom = top + capHeight
         val rect = RectF(left, top, right, bottom)
         canvas.drawRoundRect(rect, capHeight / 2, capHeight / 2, tipBgPaint)
-        // Draw multi-line text centered within the capsule.
-        // Clamp text width to actualWidth to prevent overflow when bubble is clipped.
-        val textLeft = left + (actualWidth - layout.width.toFloat()).coerceAtMost(0f) / 2f + padX
+        // Center the layout within the bubble: text sits at the bubble's horizontal center
+        // because the layout centers each line inside its own (wider) layout width.
+        val textLeft = left + actualWidth / 2f - layout.width / 2f
         canvas.save()
         canvas.translate(textLeft, top + padY)
         layout.draw(canvas)
@@ -674,7 +682,7 @@ class PetFloatingView @JvmOverloads constructor(
 
         const val TIP_BG_COLOR = 0x801F2937.toInt()
         const val TIP_TEXT_COLOR = 0xFFFFFFFF.toInt()
-        const val TIP_TEXT_SIZE_DP = 11f
+        const val TIP_TEXT_SIZE_DP = 10f
         const val TIP_HORIZONTAL_PADDING_DP = 12f
         const val TIP_VERTICAL_PADDING_DP = 6f
         const val TIP_TOP_PADDING_DP = 4f
