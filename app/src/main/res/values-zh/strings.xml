@@ -553,9 +553,11 @@
     <!-- Settings - ADB Shell Page -->
     <string name="settings_adb_shell">ADB Shell</string>
     <string name="settings_adb_shell_desc">本地 ADB 命令执行</string>
-    <!-- Settings - Sandbox menu entry (the page itself reuses sandbox_title) -->
-    <string name="settings_sandbox">本地沙箱</string>
-    <string name="settings_sandbox_desc">PRoot 隔离环境</string>
+    <!-- Settings - Sandbox menu entry (the page itself reuses sandbox_title).
+         三个运行时引擎（Python / Node.js / FFmpeg）现在都跑在 proot 沙箱里，
+         所以沙箱页面同时展示它们的就绪状态，菜单名改为"沙箱与运行时"。 -->
+    <string name="settings_sandbox">沙箱与运行时</string>
+    <string name="settings_sandbox_desc">Linux 沙箱与运行时引擎管理</string>
     <string name="adb_status">状态</string>
     <string name="adb_root_detected">已检测到 Root</string>
     <string name="adb_root_not_detected">无 Root</string>
@@ -611,6 +613,13 @@
     <string name="sandbox_mgmt_title">沙箱管理</string>
     <string name="sandbox_env">环境信息</string>
     <string name="sandbox_alpine_version">Alpine Linux</string>
+    <!-- 沙箱页面顶部的运行时引擎分区。三个引擎（Python / Node.js / FFmpeg）
+         现在都跑在 proot 沙箱里，所以在这里展示就绪状态，不再单列菜单入口。 -->
+    <string name="sandbox_runtime_engines">运行时引擎</string>
+    <string name="sandbox_runtime_ready">✅ 已就绪</string>
+    <string name="sandbox_runtime_not_ready">⚠️ 未就绪</string>
+    <string name="sandbox_runtime_provided_by">由 Linux 沙箱提供（proot + Alpine）</string>
+    <string name="sandbox_runtime_install_sandbox_first">⚠️ 需先安装 Linux 沙箱</string>
     <string name="sandbox_disk_usage">磁盘使用</string>
     <string name="sandbox_snackbar_installed">已安装 %s</string>
     <string name="sandbox_snackbar_install_failed">安装失败: %s</string>

@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lxseek.chat.R
+import com.lxseek.chat.runtime.RuntimeEnginePlugin
 import com.lxseek.chat.sandbox.openSandboxRoot
 import com.lxseek.chat.sandbox.SandboxManager
 import com.lxseek.chat.sandbox.SandboxSharedStorageAccess
@@ -174,6 +175,22 @@ fun SettingsSandboxPage(
         listState = listState,
         floatingActionButton = { if (showDocFab) DocumentationFab("sandbox.md") }
     ) {
+            // ═══ Runtime engines (provided by this sandbox) ═══
+            // Python / Node.js / FFmpeg all run inside the proot sandbox, so their
+            // readiness is reported here instead of on a separate page. They share
+            // one backing sandbox, so a single isAvailableSync() check covers all
+            // three engines.
+            item {
+                SettingsGroup(
+                    title = stringResource(R.string.sandbox_runtime_engines),
+                    items = listOf(
+                        { RuntimeEngineSandboxRow(engineId = "runtime-python", sandboxReady = available) },
+                        { RuntimeEngineSandboxRow(engineId = "runtime-node", sandboxReady = available) },
+                        { RuntimeEngineSandboxRow(engineId = "runtime-ffmpeg", sandboxReady = available) },
+                    ),
+                )
+            }
+
             // ═══ Dashboard ═══
                 item {
                     SettingsGroup(title = stringResource(R.string.sandbox_env), items = listOf({
@@ -717,6 +734,49 @@ fun SettingsSandboxPage(
             dismissButton = {
                 TextButton(onClick = { resetConfirm = false }) { Text(stringResource(R.string.cancel)) }
             }
+        )
+    }
+}
+
+/**
+ * Read-only row showing a single runtime engine's sandbox readiness. The engine
+ * (Python / Node.js / FFmpeg) is provided by the proot + Alpine sandbox rather
+ * than a market-installed package, so there is no version picker and no
+ * install/uninstall flow — we only report whether the backing sandbox is ready.
+ *
+ * Mirrors [SettingsRuntimeStatusPage]'s PythonSandboxRow design: engine name on
+ * the left with a "provided by sandbox" caption, readiness badge on the right.
+ */
+@Composable
+private fun RuntimeEngineSandboxRow(engineId: String, sandboxReady: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = RuntimeEnginePlugin.engineDisplayName(engineId),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = stringResource(
+                    if (sandboxReady) R.string.sandbox_runtime_provided_by
+                    else R.string.sandbox_runtime_install_sandbox_first
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = stringResource(
+                if (sandboxReady) R.string.sandbox_runtime_ready
+                else R.string.sandbox_runtime_not_ready
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (sandboxReady) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.error,
         )
     }
 }
