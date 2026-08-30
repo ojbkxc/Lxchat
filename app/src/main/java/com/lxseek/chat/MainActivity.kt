@@ -394,18 +394,10 @@ class MainActivity : ComponentActivity() {
             yipayCallbackResult.value = YipayCallbackResult.Failed
             return
         }
-        // Verify signature AND trade status.
-        if (!manager.verifyCallback(config, params)) {
-            yipayCallbackResult.value = YipayCallbackResult.Failed
-            return
-        }
-        val verifier = com.lxseek.chat.membership.YipayCallbackVerifier(config.merchantKey)
-        if (!verifier.isTradeSuccess(params)) {
-            yipayCallbackResult.value = YipayCallbackResult.Failed
-            return
-        }
-        // Signature valid 鈫?ask server to confirm payment & activate.
-        // Map amount 鈫?tier for UI feedback only; the server is the source of truth.
+        // Skip signature verification — merchant key must not live in the App.
+        // The server independently queries the payment gateway to confirm the order
+        // is actually paid, so a forged DeepLink cannot activate without a real payment.
+        // Map amount → tier for UI feedback only; the server is the source of truth.
         val tier = mapMoneyToTier(params.money)
         val store = PendingOrderStore(this)
         val activationManager = ActivationManager(RemoteCloudApi(this), this)
