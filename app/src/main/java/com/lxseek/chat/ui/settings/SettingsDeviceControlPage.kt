@@ -285,7 +285,7 @@ fun PetSettingsSection(viewModel: ChatViewModel) {
                                             PetOverlayController.refreshSize(context)
                                         }
                                     },
-                                    valueRange = 0.5f..1.0f,
+                                    valueRange = 0.5f..1.3f,
                                     steps = 9,
                                     modifier = Modifier.weight(1f),
                                 )

@@ -43,7 +43,7 @@ object PetOverlayController {
     suspend fun getImagePath(context: Context): String =
         settings(context).petOverlayImagePath.first()
 
-    /** Returns the persisted size scale (0.5~1.0); defaults to 1.0 (largest). */
+    /** Returns the persisted size scale (0.5~1.3); defaults to 1.0 (largest before the 30% bump). */
     suspend fun getSizeScale(context: Context): Float =
         settings(context).petOverlaySizeScale.first()
 

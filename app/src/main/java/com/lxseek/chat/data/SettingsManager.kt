@@ -794,7 +794,7 @@ class SettingsManager(private val context: Context) {
     }
     suspend fun savePetOverlayEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_OVERLAY_ENABLED] = enabled } }
     suspend fun savePetOverlayImagePath(path: String) { context.dataStore.edit { it[PET_OVERLAY_IMAGE_PATH] = path } }
-    suspend fun savePetOverlaySizeScale(scale: Float) { context.dataStore.edit { it[PET_OVERLAY_SIZE_SCALE] = scale.coerceIn(0.5f, 1.0f) } }
+    suspend fun savePetOverlaySizeScale(scale: Float) { context.dataStore.edit { it[PET_OVERLAY_SIZE_SCALE] = scale.coerceIn(0.5f, 1.3f) } }
     suspend fun savePetOverlayCharacter(character: String) {
         context.dataStore.edit { it[PET_OVERLAY_CHARACTER] = PetCharacter.fromKey(character).prefKey }
     }
