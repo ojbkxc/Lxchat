@@ -152,7 +152,10 @@ fun SettingsPluginsListPage(
                     info.manifest.name.contains(query, ignoreCase = true) ||
                         info.manifest.description?.contains(query, ignoreCase = true) == true
                 }
-                filtered.sortedWith(compareByDescending { it.enabled }.thenBy { it.manifest.name })
+                filtered.sortedWith(
+                    compareByDescending<com.lxseek.chat.plugin.PluginHost.PluginInfo> { it.enabled }
+                        .thenBy { it.manifest.name },
+                )
             } else {
                 emptyList()
             }
