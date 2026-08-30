@@ -143,7 +143,10 @@ fun SettingsPluginsListPage(
                     info.skill.name.contains(query, ignoreCase = true) ||
                         info.skill.description.contains(query, ignoreCase = true)
                 }
-                filtered.sortedWith(compareByDescending { it.enabled }.thenBy { it.skill.name })
+                filtered.sortedWith(
+                    compareByDescending<com.lxseek.chat.skill.SkillHost.SkillInfo> { it.enabled }
+                        .thenBy { it.skill.name },
+                )
             } else {
                 emptyList()
             }
