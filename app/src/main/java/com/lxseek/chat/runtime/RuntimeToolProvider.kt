@@ -105,6 +105,22 @@ class RuntimeToolProvider(
             ?: return error(engineId, "engine_not_found", "市场目录中不存在引擎「$engineId」，可用 all_runtimes_status 查看")
         val version = args["version"]?.takeIf(String::isNotBlank)
         return try {
+            // runtime-python 改为通过 sandbox（proot + Alpine rootfs）安装 python3，
+            // 不再用 glibc ld-linux 直接加载二进制（Android 上各种不兼容）。
+            if (engineId == "runtime-python") {
+                val sandbox = manager.sandbox ?: throw IllegalStateException("Sandbox 不可用，请先安装 Linux 沙箱")
+                if (!sandbox.isAvailable()) {
+                    sandbox.install()
+                    if (!sandbox.isAvailable()) throw IllegalStateException("Sandbox 安装失败")
+                }
+                sandbox.apkInstall("python3")
+                return buildJsonObject {
+                    put("ok", true)
+                    put("engine_id", engineId)
+                    put("action", "market_install")
+                    put("message", "Python3 已通过沙箱安装")
+                }.toString()
+            }
             val market = manager.market ?: throw IllegalStateException("市场服务不可用")
             market.installRuntimeInternal(meta, version)
             buildJsonObject {
@@ -207,24 +223,60 @@ class RuntimeToolProvider(
         val engineId = requiredEngineId(args) ?: return errorJson("missing_engine_id", "缺少 engine_id")
         val argv = parseArgv(args["argv"])
         if (argv.isEmpty()) return error(engineId, "missing_argv", "缺少 argv（参数数组）")
+        val timeoutMs = (args["timeout_ms"]?.toLongOrNull() ?: 60_000L).coerceIn(1_000, 300_000)
         return try {
-            val envMap = manager.ensureStarted(engineId, null, null)
-            val root = manager.packageManager.versionRoot(engineId, manager.installationOf(engineId)?.version.orEmpty())
-            val binary = File(root, binaryName(engineId)).absolutePath
-            val timeoutMs = (args["timeout_ms"]?.toLongOrNull() ?: 60_000L).coerceIn(1_000, 300_000)
-            val result = runProcessOnce(listOf(binary) + argv, envMap, root, timeoutMs)
-            buildJsonObject {
-                put("ok", result.isSuccess)
-                put("engine_id", engineId)
-                put("exit_code", result.exitCode)
-                put("timed_out", result.timedOut)
-                if (result.output.isNotBlank()) put("output", result.output)
-                if (!result.isSuccess) put("message", "退出码 ${result.exitCode}${if (result.timedOut) "，超时" else ""}")
-            }.toString()
+            // 对 runtime-python / webnovel 引擎，通过 sandbox（proot + Alpine rootfs）执行 python3，
+            // 不再用 glibc ld-linux 直接加载二进制（Android 上各种不兼容）。
+            if (engineId == "runtime-python" || engineId == RuntimeEngineType.PYTHON_WEB_NOVEL) {
+                execPythonInSandbox(engineId, argv, timeoutMs)
+            } else {
+                // 其他引擎（node/ffmpeg）保持原有逻辑
+                val envMap = manager.ensureStarted(engineId, null, null)
+                val root = manager.packageManager.versionRoot(engineId, manager.installationOf(engineId)?.version.orEmpty())
+                val binary = File(root, binaryName(engineId)).absolutePath
+                val result = runProcessOnce(listOf(binary) + argv, envMap, root, timeoutMs)
+                buildJsonObject {
+                    put("ok", result.isSuccess)
+                    put("engine_id", engineId)
+                    put("exit_code", result.exitCode)
+                    put("timed_out", result.timedOut)
+                    if (result.output.isNotBlank()) put("output", result.output)
+                    if (!result.isSuccess) put("message", "退出码 ${result.exitCode}${if (result.timedOut) "，超时" else ""}")
+                }.toString()
+            }
         } catch (e: Exception) {
             error(engineId, "exec_failed", e.message ?: "执行失败")
         }
     }
+
+    /** 通过 sandbox（proot + Alpine rootfs）执行 Python。 */
+    private suspend fun execPythonInSandbox(engineId: String, argv: List<String>, timeoutMs: Long): String {
+        val sandbox = manager.sandbox ?: throw IllegalStateException("Sandbox 不可用，请先安装 Linux 沙箱")
+        // 确保 sandbox 可用
+        if (!sandbox.isAvailable()) {
+            sandbox.install()
+            if (!sandbox.isAvailable()) throw IllegalStateException("Sandbox 安装失败")
+        }
+        // 确保 python3 已安装
+        sandbox.apkInstall("python3")
+        // 构建命令：python3 + argv
+        val cmd = buildString {
+            append("python3")
+            argv.forEach { arg -> append(" "); append(shellQuote(arg)) }
+        }
+        val result = sandbox.executeCommand(cmd, timeoutMs = timeoutMs.toInt())
+        return buildJsonObject {
+            put("ok", result.exitCode == 0)
+            put("engine_id", engineId)
+            put("exit_code", result.exitCode)
+            if (result.stdout.isNotBlank()) put("output", result.stdout)
+            if (result.stderr.isNotBlank()) put("stderr", result.stderr)
+            if (result.exitCode != 0) put("message", "退出码 ${result.exitCode}")
+        }.toString()
+    }
+
+    /** Shell 引号转义。 */
+    private fun shellQuote(s: String): String = "'${s.replace("'", "'\\''")}'"
 
     /**
      * inkos 网文创作 SKILL（非独立 RUNTIME 引擎，依赖 Node.js 运行时）：引擎未运行时自动拉起
@@ -319,43 +371,54 @@ class RuntimeToolProvider(
             )
         }
         return try {
-            // 自动拉起引擎 + 依赖的 runtime-python，并强制版本满足 python >= 3.10 约束。
-            val envMap = manager.ensureStarted(
-                engineId,
-                null,
-                RuntimeRequirement(runtime = "python", minVersion = "3.10"),
-            )
+            // 通过 sandbox（proot + Alpine rootfs）执行 python3，不再用 glibc ld-linux 直接加载。
+            val sandbox = manager.sandbox ?: throw IllegalStateException("Sandbox 不可用，请先安装 Linux 沙箱")
+            if (!sandbox.isAvailable()) {
+                sandbox.install()
+                if (!sandbox.isAvailable()) throw IllegalStateException("Sandbox 安装失败")
+            }
+            sandbox.apkInstall("python3")
+            // 获取 webnovel 引擎安装目录中的 adapter.py
             val installation = manager.installationOf(engineId) ?: throw IllegalStateException("引擎未安装")
             val root = manager.packageManager.versionRoot(engineId, installation.version)
             val manifest = manager.packageManager.readManifest(engineId, installation.version)
-            val depRoot = manager.ensureDependencyRoot("runtime-python")
-                ?: throw IllegalStateException("依赖的 runtime-python 不可用")
-            val pythonBin = File(depRoot, "python").absolutePath
-            // 适配器入口：manifest.entry 指向 {root}/scripts/adapter.py。
-            val adapter = File(root, manifest?.entry ?: "scripts/adapter.py").absolutePath
+            val adapterFile = File(root, manifest?.entry ?: "scripts/adapter.py")
+            // 把 adapter.py 复制到 sandbox home（executeCommand 默认 workdir 即 home）
+            val sandboxHome = sandbox.getSandboxHomeDir() ?: throw IllegalStateException("Sandbox home 不可用")
+            val targetAdapter = File(sandboxHome, "webnovel_adapter.py")
+            adapterFile.copyTo(targetAdapter, overwrite = true)
+            // 也复制 scripts 目录（adapter 可能依赖其他 .py 文件）
+            val scriptsDir = File(root, "scripts")
+            if (scriptsDir.isDirectory) {
+                val targetScripts = File(sandboxHome, "scripts")
+                targetScripts.mkdirs()
+                scriptsDir.listFiles()?.forEach { it.copyTo(File(targetScripts, it.name), overwrite = true) }
+            }
+            // 构建命令：先 export 模型环境变量，再执行 python3。
+            // executeCommand 通过 /bin/sh -c 执行，export 会注入 python 子进程；
+            // workdir 默认为 sandbox home，故用相对路径引用 adapter。
+            val envPrefix = modelEnv.entries.joinToString("; ") { "export ${it.key}=${shellQuote(it.value)}" }
+            val cmd = buildString {
+                if (envPrefix.isNotBlank()) append(envPrefix).append("; ")
+                append("python3 -X utf8 webnovel_adapter.py")
+                append(" --action "); append(shellQuote(action))
+                append(" --params "); append(shellQuote(params))
+            }
             val timeoutMs = (args["timeout_ms"]?.toLongOrNull() ?: 180_000L).coerceIn(10_000, 600_000)
-            val result = runProcessOnce(
-                listOf(pythonBin, "-X", "utf8", adapter, "--action", action, "--params", params),
-                envMap,
-                root,
-                timeoutMs,
-            )
+            val result = sandbox.executeCommand(cmd, timeoutMs = timeoutMs.toInt())
             // 适配器输出为 JSON；尽量透传。失败时给出可读信息。
             buildJsonObject {
-                put("ok", result.isSuccess)
+                put("ok", result.exitCode == 0)
                 put("engine_id", engineId)
                 put("action", "webnovel_$action")
                 put("exit_code", result.exitCode)
-                if (result.timedOut) {
-                    put("timed_out", true)
-                    put("message", "创作仍在进行，可稍后 webnovel query 查询状态")
-                    if (result.output.isNotBlank()) put("output", result.output)
-                } else if (result.isSuccess) {
-                    parseWebNovelJson(result.output)?.let { put("result", it) }
-                        ?: put("output", result.output)
+                if (result.exitCode == 0) {
+                    parseWebNovelJson(result.stdout)?.let { put("result", it) }
+                        ?: put("output", result.stdout)
                 } else {
                     put("message", "执行失败，退出码 ${result.exitCode}")
-                    if (result.output.isNotBlank()) put("output", result.output)
+                    if (result.stdout.isNotBlank()) put("output", result.stdout)
+                    if (result.stderr.isNotBlank()) put("stderr", result.stderr)
                 }
             }.toString()
         } catch (e: Exception) {

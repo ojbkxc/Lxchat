@@ -155,7 +155,16 @@ class PetFloatingView @JvmOverloads constructor(
         stopFrameLoop()
     }
 
-    fun bindWindowParams(params: WindowManager.LayoutParams) { windowParams = params }
+    fun bindWindowParams(params: WindowManager.LayoutParams) {
+        // Allow the window to extend outside the screen bounds so the pet can snap flush against
+        // the left/right edges. Without FLAG_LAYOUT_NO_LIMITS the WindowManager clamps the window
+        // x/y to the visible screen, which leaves the pet offset by half of (windowWidth - petWidth)
+        // and never truly reaches the edge. The tip-bubble drawing already handles the
+        // "window partly off-screen" case (see drawTipBubble), so this flag is safe and does not
+        // affect touch pass-through (which is handled at the View level via onTouchEvent).
+        params.flags = params.flags or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        windowParams = params
+    }
 
     /** Sets the actual pet size in pixels. The window may be wider than this to fit tip text. */
     fun setPetSize(sizePx: Int) {
@@ -515,6 +524,12 @@ class PetFloatingView @JvmOverloads constructor(
             val dy = event.y - bubbleCenterY
             if (hypot(dx, dy) > bubbleRadius()) return false
         }
+        // Shrink the tap target: only the central [TAP_TARGET_RADIUS_RATIO] of the pet radius
+        // responds to touches. The outer ring passes through to the app below so taps near the
+        // pet's edges (transparent atlas padding, sprite outline fringe) don't trigger a drag or
+        // app launch by accident. This is independent of the visual size and the transparent-pixel
+        // pass-through above, and only narrows the hit region for DOWN events.
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && isOutsideTapTarget(event.x, event.y)) return false
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 cancelSnapAnimation()
@@ -553,6 +568,21 @@ class PetFloatingView @JvmOverloads constructor(
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    /**
+     * Returns true if the touch point falls outside the shrunken tap target.
+     *
+     * Only the central [TAP_TARGET_RADIUS_RATIO] of the pet radius responds to touches; the
+     * outer ring passes through to the app below so taps near the pet's edges don't trigger a
+     * drag or app launch by accident. The check is centered on the pet body ([petCenterX],
+     * [bubbleCenterY]) and scaled by [bubbleRadius], so it works for both the Canvas bubble
+     * and the spritesheet frame (which shares the same center and is sized from [petSizePx]).
+     */
+    private fun isOutsideTapTarget(x: Float, y: Float): Boolean {
+        val dx = x - petCenterX
+        val dy = y - bubbleCenterY
+        return hypot(dx, dy) > bubbleRadius() * TAP_TARGET_RADIUS_RATIO
     }
 
     /**
@@ -672,5 +702,11 @@ class PetFloatingView @JvmOverloads constructor(
         const val OVERLAY_ALPHA = 178
         const val SNAP_DURATION_MS = 300L
         const val SNAP_INTERPOLATOR_FACTOR = 1.5f
+
+        // Fraction of the bubble radius that responds to taps; touches outside this central
+        // circle pass through to the app below. 0.6 keeps the pet body tappable while letting
+        // the outer 40% (transparent atlas padding + sprite fringe) pass through, reducing
+        // accidental drags/launches when the user taps near the pet's edges.
+        const val TAP_TARGET_RADIUS_RATIO = 0.6f
     }
 }

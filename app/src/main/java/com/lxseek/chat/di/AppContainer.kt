@@ -403,7 +403,7 @@ class AppContainer(private val appContext: Context) {
 
     /** 运行时引擎编排器：下载/解压/启停/版本约束/进程空闲回收。 */
     val runtimeEngineManager: com.lxseek.chat.runtime.RuntimeEngineManager by lazy {
-        com.lxseek.chat.runtime.RuntimeEngineManager(appContext, settingsRepository, appScope)
+        com.lxseek.chat.runtime.RuntimeEngineManager(appContext, settingsRepository, appScope, sandboxManagerFactory)
     }
 
     /** 运行时引擎的 AI 工具集（market_install / runtime_start / novel_inkos 等），常驻披露。 */

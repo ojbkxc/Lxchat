@@ -134,6 +134,15 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
         onBack = onBack,
         floatingActionButton = { if (showDocFab) DocumentationFab("appearance.md") }
     ) {
+            // ── Desktop Pet (kept at the top of the appearance page so it is the first thing
+            // users see/toggle when customizing the look) ──
+            Text(
+                text = stringResource(R.string.pet_section_title),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+            PetSettingsSection(viewModel)
             SettingsGroupColumn {
                 // ── App Name ──
                 SettingsGroup(
@@ -680,14 +689,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     }
                 )
             }
-            // ── Desktop Pet ──
-            Text(
-                text = stringResource(R.string.pet_section_title),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-            PetSettingsSection(viewModel)
+
             if (showDocFab) { Spacer(modifier = Modifier.height(80.dp)) }
     }
 

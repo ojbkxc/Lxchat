@@ -59,6 +59,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.membership.ActivationManager
 import com.lxseek.chat.membership.ActivationResult
+import com.lxseek.chat.membership.LocalMembershipProvider
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.membership.PendingOrderStore
 import com.lxseek.chat.membership.RemoteCloudApi
@@ -413,8 +414,15 @@ class MainActivity : ComponentActivity() {
                 is ActivationResult.Success -> {
                     yipayCallbackResult.value = YipayCallbackResult.Success(tier)
                     store.clear()
-                    // Refresh membership status so the UI reflects the new tier.
-                    (application as LxChatApplication).container.membershipProvider.refresh()
+                    // 把凭证信息写入 DataStore，让 MembershipProvider.refresh() 能读到新状态。
+                    // activateByOrder 只把凭证存到 SharedPreferences，而 refresh() 从 DataStore 读取，
+                    // 两者不同步会导致激活后 UI 仍显示免费版，这里用 applyCredential 显式同步。
+                    val provider = (application as LxChatApplication).container.membershipProvider
+                    if (provider is LocalMembershipProvider) {
+                        provider.applyCredential(result.credential)
+                    } else {
+                        provider.refresh()
+                    }
                 }
                 else -> {
                     yipayCallbackResult.value = YipayCallbackResult.Failed
@@ -460,7 +468,13 @@ class MainActivity : ComponentActivity() {
                 }
                 yipayCallbackResult.value = YipayCallbackResult.Success(pending.tier)
                 store.clear()
-                (application as LxChatApplication).container.membershipProvider.refresh()
+                // 把凭证信息写入 DataStore，让 MembershipProvider.refresh() 能读到新状态。
+                val provider = (application as LxChatApplication).container.membershipProvider
+                if (provider is LocalMembershipProvider) {
+                    provider.applyCredential(result.credential)
+                } else {
+                    provider.refresh()
+                }
             } else {
                 // Activation failed (server didn't confirm payment or network error).
                 // Reset to Idle so the user can retry; keep the pending order for onResume retry.

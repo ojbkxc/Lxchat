@@ -174,6 +174,24 @@ fun SettingsMembershipPage(
             item {
                 DeviceIdCardSection(
                     deviceIdDisplay = activationManager.getDeviceIdDisplay(),
+                    // 已是付费版时不显示联网激活按钮
+                    showRestoreButton = !status.isActive,
+                    isRestoring = isRestoring,
+                    restoreMessage = restoreMessage,
+                    onRestore = {
+                        scope.launch {
+                            isRestoring = true
+                            restoreMessage = null
+                            val success = activationManager.restoreActivation(activationManager.getDeviceId())
+                            restoreMessage = if (success) {
+                                viewModel.membership.refresh()
+                                context.getString(R.string.membership_restore_success)
+                            } else {
+                                context.getString(R.string.membership_restore_failed)
+                            }
+                            isRestoring = false
+                        }
+                    },
                 )
             }
 
@@ -630,9 +648,22 @@ private fun PlanOptionCard(
 
 // Section D: Device ID card (read-only display)
 
-/** Device ID display section (read-only). */
+/**
+ * Device ID display section (read-only).
+ *
+ * 当 [showRestoreButton] 为 true（即用户当前不是付费版）时，在设备身份证右边显示
+ * "联网激活"按钮：调 [ActivationManager.restoreActivation] 用设备 ID 查服务端恢复凭证。
+ * 按钮点击后显示 loading（[isRestoring]），成功显示"激活成功"，失败显示"未找到激活记录"。
+ */
 @Composable
-private fun DeviceIdCardSection(deviceIdDisplay: String) {
+private fun DeviceIdCardSection(
+    deviceIdDisplay: String,
+    showRestoreButton: Boolean = false,
+    isRestoring: Boolean = false,
+    restoreMessage: String? = null,
+    onRestore: () -> Unit = {},
+) {
+    val successText = stringResource(R.string.membership_restore_success)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -640,23 +671,55 @@ private fun DeviceIdCardSection(deviceIdDisplay: String) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.membership_device_id),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = deviceIdDisplay,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.membership_device_id_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.membership_device_id),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = deviceIdDisplay,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.membership_device_id_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (showRestoreButton) {
+                    OutlinedButton(
+                        onClick = onRestore,
+                        enabled = !isRestoring,
+                    ) {
+                        Text(
+                            text = if (isRestoring) {
+                                stringResource(R.string.membership_restoring)
+                            } else {
+                                stringResource(R.string.membership_restore_button)
+                            },
+                        )
+                    }
+                }
+            }
+            // 联网激活结果反馈
+            if (showRestoreButton && restoreMessage != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val color = if (restoreMessage == successText) {
+                    Color(0xFF2E7D32) // green
+                } else {
+                    Color(0xFFC62828) // red
+                }
+                Text(
+                    text = restoreMessage,
+                    color = color,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
     }
 }

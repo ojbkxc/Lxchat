@@ -107,8 +107,9 @@ class PetOverlayWindowService : Service() {
         if (floatingView != null) return
         val wm = windowManager ?: return
         val density = resources.displayMetrics.density
-        // SIZE_DP is the maximum (100%); scale it down per the user preference (0.5~1.0).
-        val effectiveSizeDp = SIZE_DP * sizeScale.coerceIn(0.5f, 1.0f)
+        // SIZE_DP is the maximum (100%); scale it per the user preference (0.5~1.3, allowing 30%
+        // oversize beyond the baseline so users can make the pet noticeably bigger).
+        val effectiveSizeDp = SIZE_DP * sizeScale.coerceIn(0.5f, 1.3f)
         val sizePx = (effectiveSizeDp * density).toInt()
         // Reserve headroom above the bubble for the status-tip capsule (PetFloatingView reads it
         // as h - petSizePx and draws the transient message capsule there). The empty strip is

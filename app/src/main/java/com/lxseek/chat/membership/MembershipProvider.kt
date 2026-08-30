@@ -131,6 +131,26 @@ class LocalMembershipProvider(
         refresh()
     }
 
+    /**
+     * 直接用云端凭证更新会员状态（激活/恢复后调用）。
+     *
+     * 与 [applyYipayPurchase] 不同，此方法直接用凭证中的 tier 和 expiryTimestamp，
+     * 不重新计算过期时间，确保与服务器返回的凭证完全一致。
+     *
+     * 解决 activateByOrder 把凭证存到 SharedPreferences 而 [refresh] 从 DataStore 读取
+     * 导致两者不同步的问题：激活成功后调用本方法把凭证的 tier/expiry 写入 DataStore，
+     * 这样 [refresh] 能读到新的付费状态。
+     */
+    suspend fun applyCredential(credential: SignedCredential) {
+        settingsManager.membership.saveStatus(
+            tier = credential.tier,
+            expiryTimestamp = credential.expiryTimestamp,
+            source = credential.source,
+            isActive = true,
+        )
+        refresh()
+    }
+
     /** Revoke membership and clear all persisted state. */
     suspend fun revoke() {
         settingsManager.membership.clear()

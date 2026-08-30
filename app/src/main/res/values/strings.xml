@@ -246,6 +246,14 @@
     <string name="settings_title_gen_desc">Auto-generate conversation titles</string>
     <string name="settings_transcription">Image Transcription</string>
     <string name="settings_transcription_desc">Use a vision model to describe images for non-vision models</string>
+    <string name="settings_voice_service">Voice Service</string>
+    <string name="settings_voice_service_desc">TTS, STT, and voice settings hub</string>
+    <string name="settings_feature_model_config">Feature Model Config</string>
+    <string name="settings_feature_model_config_desc">Bind models to features like chat, image, and speech</string>
+    <string name="settings_permission">Permission Management</string>
+    <string name="settings_permission_desc">Granular permissions for system capabilities</string>
+    <string name="settings_system_status">System Status</string>
+    <string name="settings_system_status_desc">Diagnostics for device, storage, and services</string>
     <string name="settings_memory">Memory</string>
     <string name="settings_memory_desc">Active memory and saved files</string>
     <string name="search_title">Conversation Search</string>
@@ -900,6 +908,8 @@
     <string name="settings_group_capabilities">Capabilities</string>
     <string name="settings_group_access_automation">Integrations &amp; Automation</string>
     <string name="settings_group_data_system">Data &amp; System</string>
+    <string name="settings_group_voice">Voice</string>
+    <string name="settings_group_system">System</string>
     <string name="settings_group_tools">Tools</string>
     <string name="settings_plugins">Plugins &amp; Skills</string>
     <string name="settings_plugins_desc">Manage extensions, skills, and marketplace</string>

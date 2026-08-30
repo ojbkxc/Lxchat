@@ -303,6 +303,14 @@
     <string name="settings_title_gen_desc">自动生成对话标题</string>
     <string name="settings_transcription">图像转述</string>
     <string name="settings_transcription_desc">使用视觉模型为无视觉能力的模型描述图片内容</string>
+    <string name="settings_voice_service">语音服务</string>
+    <string name="settings_voice_service_desc">语音合成、语音识别和语音设置统一入口</string>
+    <string name="settings_feature_model_config">功能模型配置</string>
+    <string name="settings_feature_model_config_desc">为聊天、图像、语音等功能绑定模型</string>
+    <string name="settings_permission">权限管理</string>
+    <string name="settings_permission_desc">系统能力的分级权限管理</string>
+    <string name="settings_system_status">系统状态</string>
+    <string name="settings_system_status_desc">设备、存储和服务诊断</string>
     <string name="settings_memory">记忆</string>
     <string name="settings_memory_desc">活跃记忆和已保存文件</string>
     <string name="search_title">对话搜索</string>
@@ -1178,6 +1186,8 @@
     <string name="settings_group_capabilities">能力与执行</string>
     <string name="settings_group_access_automation">接入与自动化</string>
     <string name="settings_group_data_system">数据与系统</string>
+    <string name="settings_group_voice">语音</string>
+    <string name="settings_group_system">系统</string>
     <string name="settings_group_tools">工具</string>
     <string name="rating_category">评分</string>
 

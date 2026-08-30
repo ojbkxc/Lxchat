@@ -264,6 +264,10 @@ private val settingsGroups = listOf(
         SettingsCategory("appearance", R.string.settings_appearance, R.string.settings_appearance_desc, Icons.Default.Palette),
         SettingsCategory("language", R.string.language_title, R.string.language_desc, Icons.Default.Translate),
     )),
+    // Group 1.5 — 语音（统一入口，所有用户可见）
+    SettingsGroupData(titleRes = R.string.settings_group_voice, items = listOf(
+        SettingsCategory("voice_service", R.string.settings_voice_service, R.string.settings_voice_service_desc, Icons.Default.Mic),
+    )),
     // Group 2 — 模型与生成（转录作为媒体模型能力归入本组）
     SettingsGroupData(titleRes = R.string.settings_group_models_generation, items = listOf(
         SettingsCategory("provider", R.string.settings_provider, R.string.settings_provider_desc, Icons.Default.Cloud),
@@ -271,6 +275,7 @@ private val settingsGroups = listOf(
         SettingsCategory("model_plaza", R.string.settings_model_plaza, R.string.settings_model_plaza_desc, Icons.Default.AutoAwesome),
         SettingsCategory("generation", R.string.settings_generation, R.string.settings_generation_desc, Icons.Default.Tune),
         SettingsCategory("transcription", R.string.settings_transcription, R.string.settings_transcription_desc, Icons.Default.ImageSearch),
+        SettingsCategory("feature_model_config", R.string.settings_feature_model_config, R.string.settings_feature_model_config_desc, Icons.Default.Category, requiresMembership = true),
     )),
     // Group 3 — 回复与内容（通知回复归入回复类）
     SettingsGroupData(titleRes = R.string.settings_group_responses, items = listOf(
@@ -311,6 +316,11 @@ private val settingsGroups = listOf(
         SettingsCategory("about", R.string.settings_about, R.string.settings_about_desc, Icons.Default.Info),
         SettingsCategory("statistics", R.string.settings_statistics, R.string.settings_statistics_desc, Icons.Default.BarChart),
         SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
+    )),
+    // Group 7 — 系统（权限与诊断，所有用户可见）
+    SettingsGroupData(titleRes = R.string.settings_group_system, items = listOf(
+        SettingsCategory("permission", R.string.settings_permission, R.string.settings_permission_desc, Icons.Default.Lock),
+        SettingsCategory("system_status", R.string.settings_system_status, R.string.settings_system_status_desc, Icons.Default.Assessment),
     )),
 )
 
@@ -456,6 +466,16 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "appearance" -> SettingsAppearancePage(viewModel, onBack = { selectedCategory = null })
                 "about" -> SettingsAboutPage(viewModel, onBack = { selectedCategory = null })
                 "logs" -> SettingsLogsPage(viewModel, onBack = { selectedCategory = null })
+
+                "voice_service" -> SettingsVoiceServicePage(
+                    onBack = { selectedCategory = null },
+                    onOpenTts = { selectedCategory = "generation" },
+                    onOpenStt = { selectedCategory = "generation" },
+                    onOpenVoiceSettings = { selectedCategory = "generation" },
+                )
+                "feature_model_config" -> SettingsFeatureModelConfigPage(viewModel, onBack = { selectedCategory = null })
+                "permission" -> SettingsPermissionPage(onBack = { selectedCategory = null })
+                "system_status" -> SettingsSystemStatusPage(viewModel, onBack = { selectedCategory = null })
                 else -> {
                     // Build searchable entries from every group so the search field can filter them.
                     val searchableItems = settingsGroups.flatMap { group ->
@@ -505,7 +525,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable(enabled = itemEnabled) { selectedCategory = item.route; searchQuery = "" }
+                                            .clickable { if (item.requiresMembership && !hasMembership) { selectedCategory = "membership"; searchQuery = "" } else { selectedCategory = item.route; searchQuery = "" } }
                                             .padding(horizontal = 16.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -523,11 +543,19 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                 color = if (itemEnabled) MaterialTheme.colorScheme.onSurface else disabledColor,
                                             )
                                         }
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                            contentDescription = null,
-                                            tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
-                                        )
+                                        if (item.requiresMembership && !hasMembership) {
+                                            Icon(
+                                                Icons.Default.Lock,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                            )
+                                        } else {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                                contentDescription = null,
+                                                tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
+                                            )
+                                        }
                                     }
                                     HorizontalDivider(
                                         thickness = 0.5.dp,
@@ -569,7 +597,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                 Row(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
-                                                        .clickable(enabled = itemEnabled) { selectedCategory = cat.key }
+                                                        .clickable { if (cat.requiresMembership && !hasMembership) selectedCategory = "membership" else selectedCategory = cat.key }
                                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
@@ -613,11 +641,19 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                             modifier = Modifier.widthIn(max = 120.dp),
                                                         )
                                                     }
-                                                    Icon(
-                                                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                                        contentDescription = null,
-                                                        tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
-                                                    )
+                                                    if (cat.requiresMembership && !hasMembership) {
+                                                        Icon(
+                                                            Icons.Default.Lock,
+                                                            contentDescription = null,
+                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                                        )
+                                                    } else {
+                                                        Icon(
+                                                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                                            contentDescription = null,
+                                                            tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
+                                                        )
+                                                    }
                                                 }
                                                 if (!isLastItem) {
                                                     HorizontalDivider(

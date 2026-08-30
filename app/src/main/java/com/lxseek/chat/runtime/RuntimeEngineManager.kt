@@ -24,7 +24,14 @@ class RuntimeEngineManager(
     private val context: Context,
     val settings: SettingsRepository,
     private val scope: CoroutineScope,
+    sandboxFactory: com.lxseek.chat.sandbox.SandboxManagerFactory? = null,
 ) {
+    /** Sandbox factory exposed to RuntimeToolProvider for proot-based Python execution. */
+    val sandboxFactory: com.lxseek.chat.sandbox.SandboxManagerFactory? = sandboxFactory
+
+    /** Lazily-created sandbox instance (proot + Alpine rootfs) for Python runtime. */
+    val sandbox: com.lxseek.chat.sandbox.SandboxManager? by lazy { sandboxFactory?.create() }
+
     val packageManager: RuntimePackageManager = RuntimePackageManager(context)
     val processManager: RuntimeProcessManager = RuntimeProcessManager(context, scope)
 
@@ -187,6 +194,19 @@ class RuntimeEngineManager(
 
     /** 引擎状态快照。 */
     fun status(engineId: String): RuntimeStatus {
+        // runtime-python is provided by the sandbox (proot + Alpine rootfs) and no longer
+        // goes through the market installation pipeline, so its availability is derived from
+        // the sandbox instead of the market installation records.
+        if (engineId == "runtime-python") {
+            val sandboxReady = sandbox?.isAvailableSync() == true
+            return RuntimeStatus(
+                engineId = engineId,
+                installed = sandboxReady,
+                installedVersion = if (sandboxReady) "sandbox" else null,
+                installedVersions = if (sandboxReady) listOf("sandbox") else emptyList(),
+                running = false, // python is executed on demand, no resident process
+            )
+        }
         val installation = installationOf(engineId)
         val version = installation?.version
         val installedVersions = packageManager.installedVersions(engineId)

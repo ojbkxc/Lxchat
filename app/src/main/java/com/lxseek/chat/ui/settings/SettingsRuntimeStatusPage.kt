@@ -245,6 +245,18 @@ fun SettingsRuntimeStatusPage(
             )
         } else {
             known.forEach { engineId ->
+                // runtime-python is provided by the Linux sandbox (proot + Alpine rootfs)
+                // instead of the market installation pipeline: render a dedicated card with
+                // no version picker and no install/uninstall actions.
+                if (engineId == "runtime-python") {
+                    val pythonStatus = runtimeEngineManager.status(engineId)
+                    PythonSandboxRow(
+                        engineId = engineId,
+                        sandboxReady = pythonStatus.installed,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    return@forEach
+                }
                 val status = runtimeEngineManager.status(engineId)
                 val meta = catalog.firstOrNull { it.id == engineId }
                 val isInstalling = engineId in installingEngines
@@ -492,6 +504,39 @@ private fun EngineRow(
     }
 }
 
+/**
+ * Dedicated card for runtime-python: the Python runtime is provided by the Linux sandbox
+ * (proot + Alpine rootfs) rather than a market-installed package, so there is no version
+ * picker and no install/uninstall flow. We only report sandbox readiness.
+ */
+@Composable
+private fun PythonSandboxRow(
+    engineId: String,
+    sandboxReady: Boolean,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = RuntimeEnginePlugin.engineDisplayName(engineId),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = if (sandboxReady) "✅ 已就绪（沙箱提供）" else "⚠️ 需先安装 Linux 沙箱",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (sandboxReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "由 Linux 沙箱提供（proot + Alpine）",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 @Composable
 private fun VersionSelector(
     engineId: String,
@@ -522,21 +567,8 @@ private fun VersionSelector(
             onDismissRequest = { expanded = false },
         ) {
             versions.forEach { v ->
-                val recommended = engineId == "runtime-python" && v == "3.12.7"
                 DropdownMenuItem(
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(v)
-                            if (recommended) {
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = stringResource(R.string.runtime_engine_version_recommended),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    },
+                    text = { Text(v) },
                     leadingIcon = if (v == selected) {
                         {
                             Icon(
