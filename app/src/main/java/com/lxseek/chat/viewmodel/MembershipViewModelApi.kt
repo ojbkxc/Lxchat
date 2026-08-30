@@ -47,4 +47,8 @@ class MembershipViewModelApi(
 
     /** Re-hydrate status from DataStore (e.g. after external changes). */
     suspend fun refresh() = provider.refresh()
+
+    /** Apply a cloud credential directly to DataStore (after activation/restore), then refresh. */
+    suspend fun applyCredential(credential: com.lxseek.chat.membership.SignedCredential) =
+        provider.applyCredential(credential)
 }

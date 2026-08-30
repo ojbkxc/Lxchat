@@ -1117,8 +1117,10 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
         }
         val duration = (argInt("durationSeconds", arguments) ?: 10).coerceIn(1, 60)
         val out = java.io.File(app.cacheDir, "record_${System.currentTimeMillis()}.aac")
+        val recorder = MediaRecorder()
+        var prepared = false
+        var started = false
         return try {
-            val recorder = MediaRecorder()
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
             recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
@@ -1126,11 +1128,10 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
             recorder.setAudioSamplingRate(44_100)
             recorder.setOutputFile(out.absolutePath)
             recorder.prepare()
+            prepared = true
             recorder.start()
+            started = true
             Thread.sleep(duration * 1000L)
-            recorder.stop()
-            recorder.reset()
-            recorder.release()
             buildJsonObject {
                 put("type", "device_record")
                 put("status", "ok")
@@ -1142,6 +1143,20 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
             err("permission_denied", e.message)
         } catch (e: Exception) {
             err("record_failed", e.message)
+        } finally {
+            // Always release the recorder + camera mic to avoid leaking hardware resources
+            // when stop() throws (e.g. record too short) or the coroutine is cancelled.
+            try {
+                if (started) recorder.stop()
+            } catch (_: Exception) {
+                // stop() throws if nothing was recorded; ignore and still release.
+            }
+            try {
+                if (prepared) recorder.reset()
+            } catch (_: Exception) { }
+            try {
+                recorder.release()
+            } catch (_: Exception) { }
         }
     }
 

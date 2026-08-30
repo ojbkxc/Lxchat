@@ -582,8 +582,9 @@ fun ChatApp(
                                 streamingTailWithinAttachThreshold =
                                     isWithinAbsoluteBottomAttachThreshold,
                                 programmaticScrollActive =
-                                    animatedScrollRequest?.conversationId ==
-                                        currentConversationId,
+                                    animatedScrollRequest != null &&
+                                        animatedScrollRequest.conversationId ==
+                                            currentConversationId,
                                 streamingTailController = streamingTailController,
                                 streamingIndicatorVisible =
                                     isLoading &&

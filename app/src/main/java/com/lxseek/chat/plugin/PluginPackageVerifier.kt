@@ -139,8 +139,14 @@ class PluginPackageVerifier(
     /** Check for zip slip (path traversal) vulnerability.
      *  Returns true only when [entryPath] resolves inside [targetDir]. */
     private fun isSafePath(entryPath: String, targetDir: File): Boolean {
+        val targetCanonical = targetDir.canonicalPath
         val targetPath = File(targetDir, entryPath).canonicalPath
-        return targetPath.startsWith(targetDir.canonicalPath)
+        // Exact match is safe (target dir itself); otherwise require a separator so
+        // "/foo/bar" does not falsely contain "/foo/barbaz" (prefix without boundary).
+        if (targetPath == targetCanonical) return true
+        val sep = File.separator
+        val targetWithSep = if (targetCanonical.endsWith(sep)) targetCanonical else targetCanonical + sep
+        return targetPath.startsWith(targetWithSep)
     }
 
     private companion object {

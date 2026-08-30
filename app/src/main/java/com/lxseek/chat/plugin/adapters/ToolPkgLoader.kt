@@ -66,7 +66,11 @@ class ToolPkgLoader(private val cacheDir: File) {
                 if (entry.isDirectory) continue
                 val out = File(dest, entry.name)
                 val canonicalOut = out.canonicalFile
-                if (!canonicalOut.startsWith(canonicalDest)) continue // zip-slip guard
+                // Zip-slip guard: require an exact match or a separator boundary so
+                // "/cache/pluginId" does not falsely contain "/cache/pluginId_evil".
+                if (canonicalOut != canonicalDest &&
+                    !canonicalOut.path.startsWith(canonicalDest.path + File.separator)
+                ) continue
                 out.parentFile?.mkdirs()
                 zip.getInputStream(entry).use { input ->
                     FileOutputStream(out).use { output -> input.copyTo(output) }

@@ -84,18 +84,18 @@ class ActivationManager(
      * 服务端返回重签凭证 → 保存到本地完成恢复。
      *
      * @param deviceId 设备 ID（[DeviceIdCard.getDeviceId]）
-     * @return true 表示恢复成功
+     * @return 恢复成功时返回凭证，否则返回 null
      */
-    suspend fun restoreActivation(deviceId: String): Boolean {
+    suspend fun restoreActivation(deviceId: String): SignedCredential? {
         // 只有 RemoteCloudApi 支持 deviceStatus
-        val remote = cloudApi as? RemoteCloudApi ?: return false
+        val remote = cloudApi as? RemoteCloudApi ?: return null
         return when (val result = remote.deviceStatus(deviceId)) {
             is DeviceStatusResult.Active -> {
                 // 保存恢复的凭证到本地（与 LocalCloudApi/RemoteCloudApi 共用同一 prefs）
                 saveCredential(result.credential)
-                true
+                result.credential
             }
-            else -> false
+            else -> null
         }
     }
 

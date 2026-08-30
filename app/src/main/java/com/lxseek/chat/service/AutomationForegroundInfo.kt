@@ -87,7 +87,9 @@ object AutomationForegroundInfo {
 
     private fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val manager = context.getSystemService(NotificationManager::class.java)
+        // getSystemService may return null on some environments; fail safe instead
+        // of NPE-ing on manager.createNotificationChannel(...).
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,

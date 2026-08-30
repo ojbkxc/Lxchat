@@ -175,9 +175,10 @@ class SshClient(
         limit: Long = 0
     ): String = withSftp { sftp ->
         try {
-            val inputStream = sftp.get(path)
-            val bytes = inputStream.readBytes()
-            inputStream.close()
+            // use {} guarantees the SFTP input stream is closed even when readBytes()
+            // throws (network error, partial read) — previously a raw close() was
+            // skipped on exception, leaking the channel-side stream handle.
+            val bytes = sftp.get(path).use { it.readBytes() }
             val start = offset.coerceIn(0, bytes.size.toLong()).toInt()
             val end = if (limit > 0) {
                 minOf(start + limit, bytes.size.toLong()).toInt()

@@ -4,6 +4,7 @@ import com.lxseek.chat.adb.ShizukuManager
 
 import com.lxseek.chat.data.ShellDeviceConfig
 import com.lxseek.chat.util.ShellClient
+import com.lxseek.chat.util.ShellQuote
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -37,7 +38,11 @@ internal class AdbShellBackend(
         // so "adb shell ls" should become "ls". Handles both space and tab separators.
         val strippedCmd = cmd.removePrefix("adb shell ").removePrefix("adb\tshell\t").trim()
         val effectiveCmd = if (strippedCmd.isNotBlank() && strippedCmd != cmd.trim()) strippedCmd else cmd
-        val actualCmd = if (workdir.isNotBlank()) "cd $workdir && $effectiveCmd" else effectiveCmd
+        val actualCmd = if (workdir.isNotBlank()) {
+            "cd ${ShellQuote.quote(ShellQuote.sanitize(workdir))} && $effectiveCmd"
+        } else {
+            effectiveCmd
+        }
         return if (rootAvailable) {
             executeRoot(actualCmd, cmd, timeoutMs)
         } else {
@@ -48,18 +53,33 @@ internal class AdbShellBackend(
     private fun executeRoot(actualCmd: String, cmd: String, timeoutMs: Int): String {
         return try {
             val p = Runtime.getRuntime().exec(arrayOf("su", "-c", actualCmd))
+            // Read stdout/stderr on worker threads BEFORE waitFor to avoid the classic
+            // deadlock where a full pipe buffer blocks the child while we wait for it.
+            val stdoutHolder = arrayOf("")
+            val stderrHolder = arrayOf("")
+            val stdoutThread = Thread {
+                stdoutHolder[0] = try { p.inputStream.bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
+            }.also { it.start() }
+            val stderrThread = Thread {
+                stderrHolder[0] = try { p.errorStream.bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
+            }.also { it.start() }
             val waitOk = p.waitFor(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            val output = p.inputStream.bufferedReader().use { it.readText() } +
-                p.errorStream.bufferedReader().use { it.readText() }
+            if (!waitOk) {
+                // Timed out: revoke the child so it does not leak as a background process.
+                p.destroyForcibly()
+            }
+            stdoutThread.join(1_000)
+            stderrThread.join(1_000)
+            val output = stdoutHolder[0] + stderrHolder[0]
             // 镜像到进程内日志源，方便在设置页直接看到 root 执行的命令与结果。
             com.lxseek.chat.adb.AdbLog.log(
-                "root> $cmd  → exit=${if (waitOk) p.exitValue() else -1} out=${output.trim().take(200)}",
+                "root> $cmd  → exit=${if (waitOk) runCatching { p.exitValue() }.getOrDefault(-1) else -1} out=${output.trim().take(200)}",
             )
             buildJsonObject {
                 put("type", "execute_shell_command")
                 put("server", "ADB Shell (root)")
                 put("command", cmd)
-                put("exit_code", if (waitOk) p.exitValue() else -1)
+                put("exit_code", if (waitOk) runCatching { p.exitValue() }.getOrDefault(-1) else -1)
                 put("output", output.trimEnd())
             }.toString()
         } catch (e: Exception) {
@@ -115,11 +135,12 @@ internal class AdbShellBackend(
     // ── File operations (implemented via shell commands) ─────
 
     override suspend fun fileRead(path: String, offset: Long, limit: Long): String {
+        val safePath = ShellQuote.quote(ShellQuote.sanitize(path))
         val cmd = if (offset > 0 || limit > 0) {
             val count = if (limit > 0) limit else Long.MAX_VALUE
-            "dd if=\"$path\" bs=1 skip=$offset count=$count 2>/dev/null"
+            "dd if=$safePath bs=1 skip=$offset count=$count 2>/dev/null"
         } else {
-            "cat \"$path\""
+            "cat $safePath"
         }
         val raw = executeCommand(cmd, "", 30000)
         return try {
@@ -138,8 +159,11 @@ internal class AdbShellBackend(
     }
 
     override suspend fun fileWrite(path: String, content: String): String? {
-        // Use a heredoc to avoid shell-escaping issues with arbitrary content.
-        val cmd = "cat > \"$path\" <<'__LXADB_EOF__'\n$content\n__LXADB_EOF__"
+        // Use a heredoc with a delimiter that cannot appear in content, to avoid
+        // shell-escaping issues AND early-termination injection via a forged marker.
+        val marker = uniqueHeredocMarker(content)
+        val safePath = ShellQuote.quote(ShellQuote.sanitize(path))
+        val cmd = "cat > $safePath <<'$marker'\n$content\n$marker"
         val raw = executeCommand(cmd, "", 30000)
         return try {
             val obj = Json.parseToJsonElement(raw).jsonObject
@@ -153,7 +177,9 @@ internal class AdbShellBackend(
 
     override suspend fun fileGlob(pattern: String, basePath: String, depth: Int?): Result<List<String>> {
         val depthArg = if (depth != null && depth > 0) "-maxdepth $depth" else ""
-        val cmd = "find \"$basePath\" -name \"$pattern\" $depthArg 2>/dev/null"
+        val safeBase = ShellQuote.quote(ShellQuote.sanitize(basePath))
+        val safePattern = ShellQuote.quote(ShellQuote.sanitize(pattern))
+        val cmd = "find $safeBase -name $safePattern $depthArg 2>/dev/null"
         val raw = executeCommand(cmd, "", 30000)
         return try {
             val obj = Json.parseToJsonElement(raw).jsonObject
@@ -169,8 +195,10 @@ internal class AdbShellBackend(
         basePath: String,
         fileGlob: String,
     ): Result<List<ShellClient.GrepMatch>> {
-        val includeArg = if (fileGlob.isNotBlank()) "--include=\"$fileGlob\"" else ""
-        val cmd = "grep -rn \"$pattern\" \"$basePath\" $includeArg 2>/dev/null"
+        val safeBase = ShellQuote.quote(ShellQuote.sanitize(basePath))
+        val safePattern = ShellQuote.quote(ShellQuote.sanitize(pattern))
+        val includeArg = if (fileGlob.isNotBlank()) "--include=${ShellQuote.quote(ShellQuote.sanitize(fileGlob))}" else ""
+        val cmd = "grep -rn $safePattern $safeBase $includeArg 2>/dev/null"
         val raw = executeCommand(cmd, "", 30000)
         return try {
             val obj = Json.parseToJsonElement(raw).jsonObject
@@ -188,6 +216,21 @@ internal class AdbShellBackend(
             Result.success(matches)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Returns a heredoc marker that does not appear as a line in [content],
+     * preventing early-termination of the heredoc by a forged marker line.
+     */
+    private fun uniqueHeredocMarker(content: String): String {
+        val base = "__LXADB_EOF__"
+        if (!content.lines().contains(base)) return base
+        var i = 1
+        while (true) {
+            val candidate = "${base}_$i"
+            if (!content.lines().contains(candidate)) return candidate
+            i++
         }
     }
 

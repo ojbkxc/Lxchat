@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
@@ -188,6 +187,11 @@ class PetFloatingView @JvmOverloads constructor(
     fun setSpritesheet(bitmap: Bitmap?) {
         spritesheetBitmap = bitmap
         animStartNanos = System.nanoTime()
+        // Restart the frame loop when a non-null spritesheet is attached. The loop may have
+        // stopped itself earlier (spritesheetBitmap was null in the FrameCallback guard), so
+        // without this call only the first frame would ever render — applyCharacterAsync
+        // hits this path when swapping characters on an already-attached view.
+        if (bitmap != null && isAttachedToWindow) scheduleNextFrame()
         invalidate()
     }
 

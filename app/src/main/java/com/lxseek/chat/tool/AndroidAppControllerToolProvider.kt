@@ -540,10 +540,13 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                     ?: return err("decode_failed", "Could not decode screenshot.")
                 val annotated = VisionAssist.drawGridOverlay(src, gridSize)
                 src.recycle()
-                val file = File(app.cacheDir, "see_${System.currentTimeMillis()}.png")
-                file.outputStream().use { annotated.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, it) }
-                annotated.recycle()
-                file.absolutePath
+                try {
+                    val file = File(app.cacheDir, "see_${System.currentTimeMillis()}.png")
+                    file.outputStream().use { annotated.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, it) }
+                    file.absolutePath
+                } finally {
+                    annotated.recycle()
+                }
             }
             is AndroidUiControllerService.ScreenshotOutcome.Failure ->
                 return buildJsonObject {

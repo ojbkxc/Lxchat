@@ -81,7 +81,7 @@ fun VideoPlayer(
         internalClosing = true
     }
 
-    val player = remember {
+    val player = remember(uri) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
             prepare()

@@ -606,11 +606,14 @@ class VoskTranscriber(private val context: Context) {
             while (entry != null) {
                 val newFile = File(destDir, entry.name)
 
-                // Zip Slip protection: reject entries that escape the destination directory
+                // Zip Slip protection: reject entries that escape the destination directory.
+                // Require an exact match or a separator boundary so "/foo/bar" does not
+                // falsely contain "/foo/barbaz" (prefix without path boundary).
                 val canonicalDestDir = destDir.canonicalFile
                 val canonicalTargetFile = newFile.canonicalFile
-                if (!canonicalTargetFile.startsWith(canonicalDestDir)) {
-
+                if (canonicalTargetFile != canonicalDestDir &&
+                    !canonicalTargetFile.path.startsWith(canonicalDestDir.path + File.separator)
+                ) {
                     throw SecurityException("Zip Slip detected: entry '${entry.name}' escapes target directory $destDir")
                 }
 

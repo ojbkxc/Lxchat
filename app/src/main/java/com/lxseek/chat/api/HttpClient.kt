@@ -507,7 +507,7 @@ object HttpClient {
         return response.use {
             TextResponse(
                 code = it.code,
-                body = it.body.string(),
+                body = it.body?.string().orEmpty(),
                 isSuccessful = it.isSuccessful,
             )
         }

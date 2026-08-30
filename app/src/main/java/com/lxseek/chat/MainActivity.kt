@@ -2,7 +2,6 @@ package com.lxseek.chat
 
 import com.lxseek.chat.BuildConfig
 import android.Manifest
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -197,11 +196,16 @@ class MainActivity : ComponentActivity() {
                     val activationManager = ActivationManager(RemoteCloudApi(applicationContext), applicationContext)
                     if (!activationManager.hasActiveCredential()) {
                         val deviceId = com.lxseek.chat.membership.DeviceIdCard.getDeviceId(applicationContext)
-                        val restored = withContext(Dispatchers.IO) {
+                        val credential = withContext(Dispatchers.IO) {
                             activationManager.restoreActivation(deviceId)
                         }
-                        if (restored) {
-                            (application as LxChatApplication).container.membershipProvider.refresh()
+                        if (credential != null) {
+                            val provider = (application as LxChatApplication).container.membershipProvider
+                            if (provider is LocalMembershipProvider) {
+                                provider.applyCredential(credential)
+                            } else {
+                                provider.refresh()
+                            }
                             com.lxseek.chat.util.DebugLog.i("MainActivity", "Activation restored after reinstall")
                         }
                     }

@@ -19,6 +19,10 @@ object EmbeddingIndexer {
     }
 
     fun cosineSimilarity(a: FloatArray, b: FloatArray): Float {
+        // 维度不一致时（例如用户切换 embedding 模型后查询历史向量），
+        // 直接计算会抛出 ArrayIndexOutOfBoundsException 或返回错误结果。
+        // 返回 0 相似度，让调用方的阈值过滤自然丢弃这些不匹配项。
+        if (a.size != b.size) return 0f
         var dot = 0f
         var normA = 0f
         var normB = 0f

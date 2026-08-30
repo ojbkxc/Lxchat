@@ -3,6 +3,7 @@ package com.lxseek.chat.tool
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Process-scoped holder for agent task plans. One plan per task id.
@@ -19,8 +20,11 @@ class PlanStateHolder {
     }
 
     fun updatePlan(taskId: String, transformer: (AgentTaskPlan) -> AgentTaskPlan) {
-        val current = _plans.value[taskId] ?: return
-        _plans.value = _plans.value + (taskId to transformer(current))
+        // Atomically update so concurrent updates don't lose changes (read-modify-write race).
+        _plans.update { plans ->
+            val current = plans[taskId] ?: return@update plans
+            plans + (taskId to transformer(current))
+        }
     }
 
     fun clearPlan(taskId: String) {

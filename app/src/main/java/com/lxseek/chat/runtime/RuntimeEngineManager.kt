@@ -272,7 +272,9 @@ class RuntimeEngineManager(
         if (!depRoot.isNullOrBlank()) {
             env["RUNTIME_DEPENDENCY_ROOT"] = depRoot
             // 简化脚本侧引用原生命令环境：注入 python 可执行路径。
-            if (manifest.type.lowercase() == "python-webnovel" || manifest.type.lowercase() == "webnovel") {
+            // Compute once — manifest.type.lowercase() is reused below.
+            val typeLower = manifest.type.lowercase()
+            if (typeLower == "python-webnovel" || typeLower == "webnovel") {
                 env["PYTHON_BIN"] = File(depRoot, "python").absolutePath
             }
         }

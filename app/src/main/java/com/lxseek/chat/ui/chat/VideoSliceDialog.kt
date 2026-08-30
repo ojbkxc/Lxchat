@@ -81,13 +81,17 @@ fun VideoSliceDialog(
                     retriever.setDataSource(context, android.net.Uri.parse(videoUri))
                     val bitmap = retriever.frameAtTime
                     bitmap?.let {
-                        Bitmap.createScaledBitmap(
-                            it,
-                            512,
-                            (512f * it.height / it.width).roundToInt(),
-                            true,
-                        ).also { scaled ->
-                            if (scaled !== bitmap) bitmap.recycle()
+                        if (it.width <= 0 || it.height <= 0) {
+                            it
+                        } else {
+                            Bitmap.createScaledBitmap(
+                                it,
+                                512,
+                                (512f * it.height / it.width).roundToInt(),
+                                true,
+                            ).also { scaled ->
+                                if (scaled !== bitmap) bitmap.recycle()
+                            }
                         }
                     }
                 } finally {

@@ -122,11 +122,22 @@ class SystemCleanToolProvider : ToolProvider {
     private fun runRoot(cmd: String, timeoutMs: Int = TIMEOUT_DEFAULT): RootResult {
         return try {
             val p = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+            // Read stdout/stderr on worker threads BEFORE waitFor to avoid the classic
+            // deadlock where a full pipe buffer blocks the child while we wait for it.
+            val stdoutHolder = arrayOf("")
+            val stderrHolder = arrayOf("")
+            val stdoutThread = Thread {
+                stdoutHolder[0] = try { p.inputStream.bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
+            }.also { it.start() }
+            val stderrThread = Thread {
+                stderrHolder[0] = try { p.errorStream.bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
+            }.also { it.start() }
             val waitOk = p.waitFor(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            val output = (p.inputStream.bufferedReader().use { it.readText() } +
-                p.errorStream.bufferedReader().use { it.readText() }).trim()
-            val exitCode = if (waitOk) p.exitValue() else -1
-            if (!waitOk) p.destroy()
+            if (!waitOk) p.destroyForcibly()
+            stdoutThread.join(1_000)
+            stderrThread.join(1_000)
+            val output = (stdoutHolder[0] + stderrHolder[0]).trim()
+            val exitCode = if (waitOk) runCatching { p.exitValue() }.getOrDefault(-1) else -1
             RootResult(exitCode, output)
         } catch (e: Exception) {
             RootResult(-1, "error: ${e.message}")
@@ -165,7 +176,8 @@ class SystemCleanToolProvider : ToolProvider {
     private fun ncdu(arguments: String): String {
         val args = parseToolArgs(arguments)
         val path = arg(args, "path").ifBlank { "/sdcard" }
-        val cmd = "$BIN_PATH --ncdu \"$path\""
+        val safePath = com.lxseek.chat.util.ShellQuote.quote(com.lxseek.chat.util.ShellQuote.sanitize(path))
+        val cmd = "$BIN_PATH --ncdu $safePath"
         return result("system_clean_ncdu", cmd, runRoot(cmd, TIMEOUT_CLEAN))
     }
 
@@ -181,9 +193,11 @@ class SystemCleanToolProvider : ToolProvider {
         if (pkg.isBlank()) {
             return jsonError("system_clean_app_dir", "package is required (e.g. com.example.app)")
         }
-        val cmd = "$BIN_PATH --clear-app-cust \"$pkg\""
+        val safePkg = com.lxseek.chat.util.ShellQuote.quote(com.lxseek.chat.util.ShellQuote.sanitize(pkg))
+        val cmd = "$BIN_PATH --clear-app-cust $safePkg"
         return result("system_clean_app_dir", cmd, runRoot(cmd, TIMEOUT_CLEAN))
     }
+
 
     private fun runDiskGc(arguments: String): String {
         val args = parseToolArgs(arguments)
@@ -203,7 +217,9 @@ class SystemCleanToolProvider : ToolProvider {
         val cmd = when (mode) {
             "system" -> "$BIN_PATH --dexoat-system"
             "reset" -> "$BIN_PATH --dexoat-reset"
-            else -> "$BIN_PATH --dexoat-custom \"$mode\""
+            // Whitelist known custom modes; reject anything else to prevent shell injection.
+            "speed", "speed-profile", "everything" -> "$BIN_PATH --dexoat-custom ${com.lxseek.chat.util.ShellQuote.quote(mode)}"
+            else -> return jsonError("system_clean_dexoat", "mode must be system, speed, speed-profile, everything or reset")
         }
         return result("system_clean_dexoat", cmd, runRoot(cmd, TIMEOUT_CLEAN))
     }
@@ -246,18 +262,38 @@ class SystemCleanToolProvider : ToolProvider {
         if (!Regex("[\\w-]+").matches(name)) {
             return jsonError("system_clean_timed_task", "name may only contain letters, digits, '-' and '_'")
         }
+        // Validate time format to prevent config injection via newlines/special chars.
+        if (!Regex("\\d+/[DHM]").matches(time)) {
+            return jsonError("system_clean_timed_task", "time must be like 1/D, 6/H or 30/M")
+        }
         val window = arg(args, "window").ifBlank { null }
         val notification = arg(args, "notification").ifBlank { null }
+        // Build the conf body, stripping any newline characters from scalar fields to
+        // prevent config-file injection (a crafted value could add extra keys).
         val conf = buildString {
             append("time=").append(time).append('\n')
             append("date=0").append('\n')
-            append("run=").append(run).append('\n')
-            window?.let { append("in=").append(it).append('\n') }
-            notification?.let { append("post=").append(it).append('\n') }
+            append("run=").append(run.replace('\n', ' ')).append('\n')
+            window?.let { append("in=").append(it.replace('\n', ' ')).append('\n') }
+            notification?.let { append("post=").append(it.replace('\n', ' ')).append('\n') }
         }
+        // Use a heredoc marker that cannot appear as a line in conf, preventing early termination.
+        val marker = uniqueConfMarker(conf)
         val path = "$TIMED_DIR/$name.conf"
-        val cmd = "mkdir -p $TIMED_DIR && cat > \"$path\" <<'LXCONF_EOF'\n${conf}LXCONF_EOF"
+        val cmd = "mkdir -p $TIMED_DIR && cat > \"$path\" <<'$marker'\n${conf}$marker"
         return result("system_clean_timed_task", "create $path", runRoot(cmd, TIMEOUT_DEFAULT))
+    }
+
+    /** Returns a heredoc marker that does not appear as a line in [conf]. */
+    private fun uniqueConfMarker(conf: String): String {
+        val base = "LXCONF_EOF"
+        if (!conf.lines().contains(base)) return base
+        var i = 1
+        while (true) {
+            val candidate = "${base}_$i"
+            if (!conf.lines().contains(candidate)) return candidate
+            i++
+        }
     }
 
     private fun timedTaskDelete(args: Map<String, JsonElement>): String {

@@ -265,6 +265,9 @@ class ShellToolProvider(
         val args = parseToolArgs(arguments)
         val command = arg(args, "command")
         if (command.isBlank()) return jsonError("execute_shell_command", "no_command")
+        CommandSafetyGuard.blockedReason(command)?.let {
+            return jsonError("execute_shell_command", it, command = command)
+        }
         val serverName = arg(args, "server")
         val background = boolArg(args, "background")
         val foregroundMaxMs = Constants.TOOL_EXECUTION_TIMEOUT_MS.toInt()
@@ -469,6 +472,10 @@ class ShellToolProvider(
         val command = arg(args, "command")
         if (command.isBlank()) {
             emit(ToolExecutionEvent.Completed(jsonError("execute_shell_command", "no_command")))
+            return@flow
+        }
+        CommandSafetyGuard.blockedReason(command)?.let {
+            emit(ToolExecutionEvent.Completed(jsonError("execute_shell_command", it, command = command)))
             return@flow
         }
         val serverName = arg(args, "server")

@@ -370,17 +370,24 @@ class PetOverlayWindowService : Service() {
 
         fun createChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-            val manager = context.getSystemService(NotificationManager::class.java)
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.pet_overlay_channel_name),
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = context.getString(R.string.pet_overlay_channel_desc)
-                setShowBadge(false)
-                setSound(null, null)
+            // Guard against null manager on exotic OEM ROMs — same defensive pattern as
+            // LxChatForegroundService.createChannel. A missing channel simply means the
+            // service notification will use the default channel, which is acceptable.
+            val manager = context.getSystemService(NotificationManager::class.java) ?: return
+            try {
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    context.getString(R.string.pet_overlay_channel_name),
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = context.getString(R.string.pet_overlay_channel_desc)
+                    setShowBadge(false)
+                    setSound(null, null)
+                }
+                manager.createNotificationChannel(channel)
+            } catch (e: Throwable) {
+                DebugLog.w(TAG, "Failed to create pet overlay notification channel", e)
             }
-            manager.createNotificationChannel(channel)
         }
 
         /**

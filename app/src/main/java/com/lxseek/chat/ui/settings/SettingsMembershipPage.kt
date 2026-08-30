@@ -42,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,6 +99,18 @@ private val PLANS = listOf(
 )
 
 /**
+ * Map a plan id to the membership tier it grants on successful payment.
+ *
+ * Centralized so the server request ([ActivationManager.createPaymentOrder]) and the
+ * local pending-order record stay in sync. All promotional plans currently grant
+ * Premium; upgrade individual entries here if a plan should grant Pro/Enterprise.
+ */
+private fun planTier(planId: String): MembershipTier = when (planId) {
+    "monthly", "quarterly", "half_year", "yearly", "lifetime" -> MembershipTier.Premium
+    else -> MembershipTier.Premium
+}
+
+/**
  * Membership settings page: status card + redemption code input + yipay upgrade entry.
  *
  * Three sections rendered in a [LazyColumn]:
@@ -127,7 +140,7 @@ fun SettingsMembershipPage(
     val activationManager = remember {
         ActivationManager(RemoteCloudApi(context), context)
     }
-    var activationCodeInput by remember { mutableStateOf("") }
+    var activationCodeInput by rememberSaveable { mutableStateOf("") }
     var activationResult by remember { mutableStateOf<ActivationResult?>(null) }
     var isActivating by remember { mutableStateOf(false) }
 
@@ -182,9 +195,9 @@ fun SettingsMembershipPage(
                         scope.launch {
                             isRestoring = true
                             restoreMessage = null
-                            val success = activationManager.restoreActivation(activationManager.getDeviceId())
-                            restoreMessage = if (success) {
-                                viewModel.membership.refresh()
+                            val credential = activationManager.restoreActivation(activationManager.getDeviceId())
+                            restoreMessage = if (credential != null) {
+                                viewModel.membership.applyCredential(credential)
                                 context.getString(R.string.membership_restore_success)
                             } else {
                                 context.getString(R.string.membership_restore_failed)
@@ -230,9 +243,9 @@ fun SettingsMembershipPage(
                             scope.launch {
                                 isRestoring = true
                                 restoreMessage = null
-                                val success = activationManager.restoreActivation(activationManager.getDeviceId())
-                                restoreMessage = if (success) {
-                                    viewModel.membership.refresh()
+                                val credential = activationManager.restoreActivation(activationManager.getDeviceId())
+                                restoreMessage = if (credential != null) {
+                                    viewModel.membership.applyCredential(credential)
                                     context.getString(R.string.membership_restore_success)
                                 } else {
                                     context.getString(R.string.membership_restore_failed)
@@ -324,8 +337,10 @@ fun SettingsMembershipPage(
                             // 1) 先尝试云端下单（/api/create_payment），服务端生成订单 + 支付 URL。
                             //    cloudApi 是 RemoteCloudApi 时走网络；LocalCloudApi 返回 null。
                             scope.launch {
+                                // Map the selected plan to the membership tier it grants.
+                                val tier = planTier(plan.id)
                                 val orderResult = activationManager.createPaymentOrder(
-                                    tier = MembershipTier.Premium,
+                                    tier = tier,
                                     amount = plan.amount,
                                     planId = plan.id,
                                 )
@@ -334,7 +349,7 @@ fun SettingsMembershipPage(
                                     PendingOrderStore(context).save(
                                         PendingOrderStore.PendingOrder(
                                             outTradeNo = orderResult.outTradeNo,
-                                            tier = MembershipTier.Premium,
+                                            tier = tier,
                                             amount = plan.amount,
                                             timestamp = System.currentTimeMillis(),
                                             deviceId = activationManager.getDeviceId(),
@@ -359,7 +374,7 @@ fun SettingsMembershipPage(
                                 PendingOrderStore(context).save(
                                     PendingOrderStore.PendingOrder(
                                         outTradeNo = outTradeNo,
-                                        tier = MembershipTier.Premium,
+                                        tier = tier,
                                         amount = plan.amount,
                                         timestamp = System.currentTimeMillis(),
                                         deviceId = activationManager.getDeviceId(),
@@ -529,7 +544,7 @@ private fun PlanSelectionSection(
     onPaid: (PlanOption) -> Unit,
 ) {
     // 默认选中月度套餐
-    var selectedPlanId by remember { mutableStateOf("monthly") }
+    var selectedPlanId by rememberSaveable { mutableStateOf("monthly") }
     val selectedPlan = PLANS.firstOrNull { it.id == selectedPlanId } ?: PLANS.first()
 
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {

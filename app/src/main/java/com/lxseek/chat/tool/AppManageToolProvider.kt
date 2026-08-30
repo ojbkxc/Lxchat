@@ -161,11 +161,22 @@ class AppManageToolProvider : ToolProvider {
     private fun runRoot(cmd: String, timeoutMs: Int = TIMEOUT_DEFAULT): RootResult {
         return try {
             val p = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+            // Read stdout/stderr on worker threads BEFORE waitFor to avoid the classic
+            // deadlock where a full pipe buffer blocks the child while we wait for it.
+            val stdoutHolder = arrayOf("")
+            val stderrHolder = arrayOf("")
+            val stdoutThread = Thread {
+                stdoutHolder[0] = try { p.inputStream.bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
+            }.also { it.start() }
+            val stderrThread = Thread {
+                stderrHolder[0] = try { p.errorStream.bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
+            }.also { it.start() }
             val waitOk = p.waitFor(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            val output = (p.inputStream.bufferedReader().use { it.readText() } +
-                p.errorStream.bufferedReader().use { it.readText() }).trim()
-            val exitCode = if (waitOk) p.exitValue() else -1
-            if (!waitOk) p.destroy()
+            if (!waitOk) p.destroyForcibly()
+            stdoutThread.join(1_000)
+            stderrThread.join(1_000)
+            val output = (stdoutHolder[0] + stderrHolder[0]).trim()
+            val exitCode = if (waitOk) runCatching { p.exitValue() }.getOrDefault(-1) else -1
             RootResult(exitCode, output)
         } catch (e: Exception) {
             RootResult(-1, "error: ${e.message}")
@@ -192,7 +203,8 @@ class AppManageToolProvider : ToolProvider {
             "third", "user" -> " -3"
             else -> ""
         }
-        val grep = filter?.let { " | grep -i \"$it\"" } ?: ""
+        // Quote the filter to prevent shell injection via crafted substrings.
+        val grep = filter?.let { " | grep -i ${com.lxseek.chat.util.ShellQuote.quote(it)}" } ?: ""
         val cmd = "pm list packages$flag$grep"
         return result("app_list", cmd, runRoot(cmd, TIMEOUT_DEFAULT))
     }

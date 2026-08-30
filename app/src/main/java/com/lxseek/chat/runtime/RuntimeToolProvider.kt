@@ -6,19 +6,12 @@ import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.tool.RiskLevel
 import com.lxseek.chat.tool.ToolDescriptor
-import com.lxseek.chat.tool.ToolExecutionResult
 import com.lxseek.chat.tool.ToolProvider
 import com.lxseek.chat.tool.ToolTier
 import com.lxseek.chat.viewmodel.GenerationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import java.io.File
@@ -116,7 +109,11 @@ class RuntimeToolProvider(
                     sandbox.install()
                     if (!sandbox.isAvailable()) throw IllegalStateException("Sandbox 安装失败")
                 }
-                sandbox.apkInstall(sandboxPackage)
+                // Check the apk install result — apkInstall returns false on failure (e.g.
+                // network error, package not found in repo). Without this check the tool
+                // would report success even when the package was never actually installed.
+                val installed = sandbox.apkInstall(sandboxPackage)
+                if (!installed) throw IllegalStateException("沙箱安装 $sandboxPackage 失败")
                 return buildJsonObject {
                     put("ok", true)
                     put("engine_id", engineId)
@@ -238,7 +235,12 @@ class RuntimeToolProvider(
             } else {
                 // Other engines (e.g. inkos via NODE_INKOS) keep the resident-process path.
                 val envMap = manager.ensureStarted(engineId, null, null)
-                val root = manager.packageManager.versionRoot(engineId, manager.installationOf(engineId)?.version.orEmpty())
+                // ensureStarted guarantees the engine is installed, but a concurrent uninstall
+                // could race us between ensureStarted and installationOf — fail with a clear
+                // error instead of building a bogus path with an empty version string.
+                val installation = manager.installationOf(engineId)
+                    ?: return error(engineId, "not_installed", "引擎「$engineId」未安装或已被卸载")
+                val root = manager.packageManager.versionRoot(engineId, installation.version)
                 val binary = File(root, binaryName(engineId)).absolutePath
                 val result = runProcessOnce(listOf(binary) + argv, envMap, root, timeoutMs)
                 buildJsonObject {

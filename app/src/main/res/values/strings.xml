@@ -10,8 +10,6 @@
     <string name="files">Files</string>
     <string name="select_model">Select Model</string>
     <string name="no_model_selected">No model selected</string>
-    <string name="collapse">Collapse</string>
-    <string name="expand">Expand</string>
     <string name="settings">Settings</string>
     <string name="tools">Tools</string>
     <string name="tools_group_common">Common</string>
@@ -151,7 +149,6 @@
     <string name="asr_engine_vosk">Vosk (Offline)</string>
     <string name="asr_engine_whisper">Whisper (Cloud)</string>
     <string name="asr_voice_language">Recognition Language</string>
-    <string name="asr_voice_language_desc">Vosk/Whisper recognition language (e.g. en, zh)</string>
     <string name="vosk_models_title">Vosk Models</string>
     <string name="vosk_model_download">Download</string>
     <string name="vosk_model_delete">Delete</string>
@@ -165,13 +162,7 @@
     <string name="asr_remote_api_key">API Key</string>
     <string name="asr_remote_model">Model</string>
     <string name="asr_remote_transcribing">Transcribing…</string>
-    <string name="asr_diagnostics_title">ASR Diagnostics</string>
     <string name="asr_engine_status">Engine: %1$s | Session: %2$s</string>
-    <string name="asr_copy_log">Copy ASR Log</string>
-    <string name="asr_save_to_downloads">Save to Downloads</string>
-    <string name="asr_no_logs_yet">No ASR logs recorded yet</string>
-    <string name="asr_clear_log">Clear ASR Log</string>
-    <string name="asr_log_cleared">ASR log cleared</string>
     <string name="toast_select_model_first">Please select a model first</string>
     <string name="network_unavailable">Network unavailable, please check your connection</string>
     <string name="voice_conversation_listening">Listening…</string>
@@ -179,7 +170,6 @@
     <string name="voice_conversation_speaking">Speaking…</string>
     <string name="voice_conversation_tap_to_speak">Tap to speak</string>
     <string name="voice_conversation_tap_to_stop">Tap to stop</string>
-    <string name="voice_conversation_not_available">Speech recognition not available on this device</string>
     <string name="voice_conversation_mic_permission">Microphone permission is required for voice conversation</string>
     <string name="voice_conversation_exit">Exit voice conversation</string>
     <string name="voice_conversation_title">Voice Conversation</string>
@@ -222,7 +212,6 @@
     <string name="no_system_prompt">None</string>
 
     <!-- Drawer -->
-    <string name="conversations">Conversations</string>
     <string name="conversation_unread_generation">Unread generated response</string>
     <string name="new_chat">New Chat</string>
 
@@ -240,8 +229,6 @@
     <string name="settings_models_desc">Enable, disable, and configure AI models</string>
     <string name="settings_generation">Generation</string>
     <string name="settings_generation_desc">LLM parameters and context window</string>
-    <string name="settings_web_search">Web Search</string>
-    <string name="settings_web_search_desc">Configure web search tool for all providers</string>
     <string name="settings_title_gen">Title Generation</string>
     <string name="settings_title_gen_desc">Auto-generate conversation titles</string>
     <string name="settings_transcription">Image Transcription</string>
@@ -279,9 +266,7 @@
     <string name="custom_provider_add_title">Add Provider</string>
     <string name="custom_provider_protocol_label">API format</string>
     <string name="custom_provider_empty">No custom provider added</string>
-    <string name="settings_group_multimodal">Multimodal</string>
     <string name="settings_image_gen">Image Generation</string>
-    <string name="settings_image_gen_desc">Generate images from a text prompt</string>
     <string name="image_gen_enable">Enable Image Generation</string>
     <string name="image_gen_enable_desc">Let the model create images via a tool call</string>
     <string name="image_gen_model">Image Model</string>
@@ -294,11 +279,8 @@
     <string name="speech_model_none">No provider model selected</string>
     <string name="speech_models_empty">Sync provider models on the Providers page, then pick one here</string>
     <string name="asr_provider_model_title">Provider ASR Model</string>
-    <string name="asr_provider_model_desc">Use a synced provider model for online speech recognition</string>
     <string name="tts_provider_model_title">Provider TTS Model</string>
-    <string name="tts_provider_model_desc">Use a synced provider model for online speech synthesis</string>
     <string name="tts_provider_voice">Provider Voice</string>
-    <string name="tts_provider_voice_desc">Voice used by the provider TTS engine</string>
     <string name="tool_generate_image">Generate Image</string>
     <string name="tool_generating_image">Generating image…</string>
     <string name="tool_generated_image">Generated image</string>
@@ -451,15 +433,7 @@
     <string name="tts_install_data">Install TTS Data</string>
     <string name="tts_install_data_desc">Language data missing. Tap to install.</string>
     <string name="tts_install">Install</string>
-    <string name="tts_engine_info">TTS Engine</string>
-    <string name="tts_no_engine">No TTS engine found</string>
-    <string name="tts_export_log">Export Log</string>
-    <string name="tts_copy_log">Copy Log</string>
-    <string name="tts_save_to_downloads">Save to Downloads</string>
     <string name="log_clear">Clear Logs</string>
-    <string name="voice_log_section_title">Voice Logs</string>
-    <string name="voice_log_tts_subtitle">TTS Log</string>
-    <string name="voice_log_asr_subtitle">ASR Log</string>
     <string name="tts_install_google_tts">Install Google TTS</string>
     <string name="tts_install_google_tts_desc">No engine working? Install Google TTS from Play Store.</string>
     <string name="tts_install_google">Install</string>
@@ -699,7 +673,6 @@
     <string name="appearance_title">Appearance</string>
     <string name="appearance_interface">Interface</string>
     <string name="settings_app_name">App name</string>
-    <string name="settings_app_name_desc">Customize the name displayed in the top bar</string>
     <string name="settings_app_name_hint">Enter app name</string>
     <string name="settings_app_name_reset">Reset to default</string>
     <string name="android_controller_service_label">LxChat App Control</string>
@@ -851,7 +824,6 @@
     <string name="plaza_model_added">Added</string>
     <string name="plaza_no_models">No models available for this provider</string>
     <string name="plaza_show_models">Show models</string>
-    <string name="plaza_configured_models">Configured models: %1$d</string>
     <string name="conversation_list_header">Showing %1$d conversations (messages %2$d-%3$d).</string>
     <string name="conversation_list_more">Use a higher offset to see more conversations.</string>
     <string name="conversation_read_header">Conversation: %1$s (%2$d messages)</string>
@@ -943,21 +915,11 @@
     <string name="membership_source_redemption">Source: Redemption Code</string>
     <string name="membership_source_yipay">Source: Yipay</string>
     <string name="membership_upgrade_prompt">Upgrade to unlock more features</string>
-    <string name="membership_redeem_code_hint">Enter redemption code</string>
-    <string name="membership_redeem_section_title">Redemption Code</string>
-    <string name="membership_redeem_button">Redeem</string>
-    <string name="membership_redeem_success">Membership activated!</string>
-    <string name="membership_redeem_invalid">Invalid code: %1$s</string>
-    <string name="membership_redeem_expired">Code has expired</string>
-    <string name="membership_redeem_already_used">Code already used</string>
     <string name="membership_upgrade_premium">Upgrade to Premium</string>
     <string name="membership_upgrade_pro">Upgrade to Pro</string>
-    <string name="membership_payment_coming_soon">Payment integration coming soon</string>
     <string name="membership_payment_redirecting">Redirecting to payment…</string>
     <string name="membership_payment_success">Payment successful, membership activated</string>
     <string name="membership_payment_failed">Payment verification failed</string>
-    <string name="membership_payment_premium_price">¥0.30</string>
-    <string name="membership_payment_pro_price">¥0.50</string>
     <string name="membership_revoke">Revoke Membership</string>
     <string name="membership_device_id">Device ID</string>
     <string name="membership_device_id_desc">Bound to activation code, one code per device</string>
@@ -971,21 +933,12 @@
     <string name="membership_activate_network_error">Network error, please retry</string>
     <string name="membership_trial_button">Try 3 days free</string>
     <string name="membership_trial_success">Trial activated: 3 days Premium</string>
-    <string name="membership_trial_used">Trial already used</string>
     <string name="membership_trial_failed">Trial activation failed</string>
     <string name="membership_renew_button">Renew membership</string>
     <string name="membership_renewing">Renewing…</string>
-    <string name="membership_renew_success">Renewal successful</string>
-    <string name="membership_renew_failed">Renewal failed</string>
     <string name="membership_payment_confirming">Confirming payment with server…</string>
-    <string name="membership_payment_not_paid">Payment not confirmed by server</string>
     <string name="membership_trial_in_progress">Activating trial…</string>
     <!-- 5-tier plan selection -->
-    <string name="membership_plan_monthly">Monthly</string>
-    <string name="membership_plan_quarterly">Quarterly</string>
-    <string name="membership_plan_half_year">Half Year</string>
-    <string name="membership_plan_yearly">Yearly</string>
-    <string name="membership_plan_lifetime">Lifetime</string>
     <string name="membership_plan_select">Select Plan</string>
     <string name="membership_plan_pay_now">Pay Now</string>
     <string name="membership_plan_promotion">Limited Time Offer — 90% Off</string>
@@ -1005,9 +958,7 @@
     <string name="market_source_url">Index URL</string>
     <string name="market_source_url_placeholder">https://example.com/index.json</string>
     <string name="market_refresh">Refresh</string>
-    <string name="market_refreshing">Refreshing…</string>
     <string name="market_install">Install</string>
-    <string name="market_installing">Installing…</string>
     <string name="market_installed">Installed</string>
     <string name="market_uninstall">Uninstall</string>
     <string name="market_uninstall_message">Remove this plugin and its local files?</string>
@@ -1016,38 +967,10 @@
     <string name="market_kind_toolpkg">ToolPkg</string>
     <string name="market_kind_runtime">Runtime</string>
     <string name="market_catalog_empty">No plugins found</string>
-
-    <string name="settings_runtime_engines">Runtime Engines</string>
-    <string name="settings_runtime_engines_desc">Download and manage Node / Python / ffmpeg runtimes; the AI starts and stops them on demand</string>
-    <string name="runtime_engines_hint">Engines install on demand and auto-start when the AI creates content, then auto-stop after 10 minutes idle. Downloading and start/stop are risky actions — a confirmation appears whenever the AI triggers them.</string>
-    <string name="runtime_engine_status_not_installed">Not installed</string>
-    <string name="runtime_engine_status_installed">Installed %1$s</string>
-    <string name="runtime_engine_status_running">Running</string>
-    <string name="runtime_engine_status_stopped">Stopped</string>
-    <string name="runtime_engine_action_install">Install</string>
-    <string name="runtime_engine_action_start">Start</string>
-    <string name="runtime_engine_action_stop">Stop</string>
-    <string name="runtime_engine_action_uninstall">Uninstall</string>
-    <string name="runtime_engine_status_installing">Installing…</string>
-    <string name="runtime_engine_action_installing">Installing…</string>
-    <string name="runtime_engine_refresh">Refresh</string>
-    <string name="runtime_engine_version_pick">Version: %1$s</string>
-    <string name="runtime_engine_version_latest">Latest</string>
-    <string name="runtime_engine_version_recommended">Recommended</string>
-    <string name="runtime_engine_no_manager">Runtime engine module unavailable</string>
-    <string name="runtime_engine_op_start">Start</string>
-    <string name="runtime_engine_op_install">Install</string>
-    <string name="runtime_engine_op_uninstall">Uninstall</string>
-    <string name="runtime_engine_err_network">Network error: %1$s</string>
-    <string name="runtime_engine_err_state">State error: %1$s</string>
-    <string name="runtime_engine_err_param">Parameter error: %1$s</string>
-    <string name="runtime_engine_err_unknown">Unknown error: %1$s</string>
-    <string name="runtime_engine_op_failed">%1$s failed: %2$s</string>
     <string name="market_installed_ok">Plugin installed</string>
     <string name="market_uninstalled_ok">Plugin uninstalled</string>
     <string name="market_operation_failed">Operation failed</string>
     <string name="market_sources">Market sources</string>
-    <string name="market_sources_desc">Manage plugin market sources</string>
     <string name="market_sources_empty">No market sources</string>
     <string name="market_source_error">Source error</string>
     <string name="market_source_delete">Delete source</string>
@@ -1103,9 +1026,6 @@
     <!-- Logs -->
     <string name="settings_logs">Logs</string>
     <string name="settings_logs_desc">Consolidated voice (TTS + ASR) and unified (ADB shell + all app) logs</string>
-    <string name="logs_app_log_title">App Log (All Modules)</string>
-    <string name="logs_tts_log_title">TTS Log</string>
-    <string name="logs_asr_log_title">ASR / Vosk Diagnostics</string>
     <string name="logs_voice_log_title">Voice Log (TTS + ASR)</string>
     <string name="logs_unified_log_title">All Logs (ADB Shell + App)</string>
     <string name="logs_copy">Copy</string>
@@ -1292,8 +1212,6 @@
     <string name="pet_overlay_channel_desc">Kept alive while the desktop-pet bubble is active</string>
     <string name="pet_overlay_notification_title">Desktop pet is active</string>
     <string name="pet_overlay_notification_text">Tap to open LxChat</string>
-    <string name="settings_pet_overlay">Desktop pet</string>
-    <string name="settings_pet_overlay_desc">Floating bubble that opens LxChat from any app</string>
     <string name="pet_overlay_howto">A draggable bubble floats above other apps. Tap it to open LxChat, drag it to move it around the screen. Uses the \"Display over other apps\" permission.</string>
     <string name="pet_overlay_enabled">Show desktop pet</string>
     <string name="pet_overlay_enabled_desc">Enable a floating bubble over other apps</string>
@@ -1311,16 +1229,11 @@
     <string name="pet_overlay_size_desc">Adjust the display size of the desktop pet</string>
     <string name="pet_section_title">Desktop Pet</string>
     <string name="pet_group_builtin_title">Built-in pets</string>
-    <string name="pet_character_label">Pet appearance</string>
     <string name="pet_character_classic">Classic (default bubble)</string>
     <string name="pet_character_dada">Dada</string>
     <string name="pet_character_huhu">Huhu</string>
     <string name="pet_character_bubu">Bubu</string>
     <string name="pet_character_huihui">Huihui</string>
-    <string name="pet_character_dada_desc">A steady co-building robot that helps you piece ideas together</string>
-    <string name="pet_character_huhu_desc">A route robot with a pencil and a plan, always finding a way out of hard tasks</string>
-    <string name="pet_character_bubu_desc">A little robot with a patching wrench, best at finding and fixing cracks</string>
-    <string name="pet_character_huihui_desc">A little robot cradling a build gear, energized the moment a new reply arrives</string>
     <string name="pet_tip_thinking">Thinking…</string>
     <string name="pet_tip_done">Done</string>
     <string name="pet_tip_sad">Something went wrong</string>
@@ -1337,12 +1250,10 @@
     <string name="workflow_empty">No workflows yet</string>
     <string name="workflow_empty_desc">Create a workflow to run several generations in order, pausing between each one.</string>
     <string name="workflow_run">Run</string>
-    <string name="workflow_running">Running…</string>
     <string name="workflow_delete">Delete workflow</string>
     <string name="workflow_delete_confirm">Delete this workflow?</string>
     <string name="workflow_add_task_step">Add reply step</string>
     <string name="workflow_add_delay_step">Add wait step</string>
-    <string name="workflow_step_task">Reply</string>
     <string name="workflow_step_delay">Wait</string>
     <string name="workflow_step_prompt_label">Prompt</string>
     <string name="workflow_step_delay_label">Wait duration (seconds)</string>
@@ -1390,7 +1301,6 @@
     <string name="crash_dismiss">Don\'t send</string>
     <string name="crash_privacy_note">The crash log opens as a pre-filled GitHub issue in your browser. You can review it before submitting.</string>
     <string name="crash_submitted">Crash report sent. Thank you!</string>
-    <string name="settings_group_network">Network</string>
     <string name="settings_proxy">Proxy</string>
     <string name="settings_proxy_desc">Route network traffic through an HTTP or SOCKS proxy</string>
     <string name="proxy_enable">Enable Proxy</string>
@@ -1456,7 +1366,6 @@
     <string name="task_enabled_needs_schedule">Choose a schedule first.</string>
     <string name="task_section_details">Details</string>
     <string name="task_schedule_not_set">Not set</string>
-    <string name="task_schedule_pick">Choose schedule</string>
     <string name="task_last_run_at">Last run %1$s</string>
     <string name="task_never_run">Never run</string>
     <string name="task_empty">No tasks yet</string>
@@ -1467,7 +1376,6 @@
     <string name="task_no_executions_desc">Runs appear here after you execute this task.</string>
     <string name="task_running">Running…</string>
     <string name="task_last_run">Last run %1$s</string>
-    <string name="task_from_banner">From task: %1$s</string>
     <string name="task_schedule">Schedule</string>
     <string name="task_schedule_manual">Manual only</string>
     <string name="task_schedule_custom">Custom (cron)</string>
@@ -1503,25 +1411,6 @@
     <string name="settings_automation">Automation</string>
     <string name="settings_automation_desc">Tasks, session loops and scheduling precision</string>
     <string name="settings_device_control">Device Control</string>
-    <string name="settings_device_control_desc">Let the model open and operate other apps</string>
-    <string name="settings_runtime_status">Runtime Status</string>
-    <string name="settings_runtime_status_desc">Agent, accessibility, and speech health</string>
-    <string name="runtime_status_howto">Live health of the services that power LxChat. Values refresh while this page is open.</string>
-    <string name="runtime_refresh">Refresh</string>
-    <string name="runtime_open_settings">Open settings</string>
-    <string name="runtime_accessibility_title">Device control bridge</string>
-    <string name="runtime_bridge_enabled">Accessibility enabled</string>
-    <string name="runtime_bridge_disabled">Accessibility off</string>
-    <string name="runtime_bridge_connected">Bridge connected</string>
-    <string name="runtime_bridge_disconnected">Bridge disconnected</string>
-    <string name="runtime_tts_title">Speech (TTS)</string>
-    <string name="runtime_tts_ready">Engine ready</string>
-    <string name="runtime_tts_missing">Engine unavailable</string>
-    <string name="runtime_tts_playing">Speaking</string>
-    <string name="runtime_tts_idle">Idle</string>
-    <string name="runtime_model_title">Generation model</string>
-    <string name="runtime_model_unset">No model selected</string>
-    <string name="runtime_model_counts">%1$d enabled · %2$d custom</string>
     <string name="settings_im_gateway">IM Channels</string>
     <string name="settings_im_gateway_desc">Bind IM channels and let the AI auto-reply</string>
     <string name="settings_notification_reply">Auto-reply to Notifications</string>
@@ -1531,7 +1420,6 @@
     <string name="notification_reply_packages">Apps monitored</string>
     <string name="notification_reply_packages_fixed">WeChat (com.tencent.mm)</string>
     <string name="notification_reply_contacts">Nickname → ID mapping</string>
-    <string name="notification_reply_contacts_desc">Notification title (sender nickname) → iLink user_id, one per line, format: nickname=user_id</string>
     <string name="notification_reply_contacts_auto_desc">Auto-mapped once friends message you — no manual setup needed</string>
     <string name="notification_reply_contacts_count">%1$d friends auto-mapped</string>
     <string name="notification_reply_contacts_empty">Friends are mapped once they message you</string>
@@ -1559,7 +1447,6 @@
     <string name="notification_reply_listener_denied">Notification access denied</string>
     <string name="notification_reply_listener_denied_desc">Grant notification access in system settings to watch notifications</string>
     <string name="notification_reply_grant">Grant access</string>
-    <string name="notification_reply_grant_hint">Grant this app "notification access" in system settings first</string>
     <string name="notification_reply_to_im">Go to IM channels to bind WeChat</string>
     <string name="notification_reply_saved">Saved</string>
     <string name="notification_reply_test">Configuration check</string>
@@ -1602,7 +1489,6 @@
 
     <!-- Reply channels: send AI replies via Telegram / Bark / Email in addition to WeChat. -->
     <string name="settings_reply_channel">Reply Channels</string>
-    <string name="settings_reply_channel_desc">Send AI replies to Telegram / Bark / Email too</string>
     <string name="reply_channel_saved">Saved</string>
     <string name="reply_channel_telegram">Telegram</string>
     <string name="reply_channel_telegram_desc">Push replies via Telegram Bot API</string>
@@ -1632,9 +1518,6 @@
     <string name="membership_gated_locked">Locked</string>
     <string name="membership_gated_upgrade_hint">Upgrade to Premium to unlock this feature</string>
     <string name="membership_gated_upgrade_button">Upgrade</string>
-
-    <string name="settings_group_im">IM</string>
-    <string name="settings_group_connection">Connection</string>
     <string name="device_control_howto">The agent plans from the on-screen element tree and can open apps, read the UI and tap or type. Opening apps works without the bridge; click, tap and input need the accessibility bridge enabled below.</string>
     <string name="device_control_accessibility">Accessibility bridge</string>
     <string name="device_control_enabled">Enabled</string>
@@ -1645,36 +1528,6 @@
     <string name="device_control_unknown">unknown</string>
     <string name="device_control_open_settings">Open accessibility settings</string>
     <string name="device_control_refresh">Refresh</string>
-    <string name="im_gateway_howto">Bridge a WeChat bot (or other IM) into the agent via a remote gateway adapter.\n\nSetup steps:\n1. Deploy an OneBot v11/v12 or wechaty gateway service next to your WeChat bot (e.g. NapCat, go-cqhttp, NoneBot, or wechaty-puppet-wechat).\n2. Expose its REST/SSE API on a reachable host:port.\n3. Fill Base URL with the gateway REST API address (e.g. http://192.168.1.10:3000).\n4. Fill Auth token if the gateway requires one.\n\nThe app polls the gateway over REST/SSE — no persistent IM connection is held on-device, so battery and background use stay low.</string>
-    <string name="im_gateway_configured">Configured and enabled</string>
-    <string name="im_gateway_not_configured">Not configured</string>
-    <string name="im_gateway_enabled">Enable gateway</string>
-    <string name="im_gateway_enabled_desc">Allow the agent to send and receive IM messages</string>
-    <string name="im_gateway_platform">Platform</string>
-    <string name="im_gateway_base_url">Gateway base URL</string>
-    <string name="im_gateway_token">Auth token (optional)</string>
-    <string name="im_gateway_poll_interval">Poll interval (ms)</string>
-    <string name="im_gateway_auto_reply_model">Auto-reply model</string>
-    <string name="im_gateway_auto_reply_model_hint">Provider/Model, blank uses default</string>
-    <string name="im_gateway_auto_reply_model_select">Select auto-reply model</string>
-    <string name="im_gateway_auto_reply_model_default">App default</string>
-    <string name="im_gateway_auto_reply_model_search_hint">Search models</string>
-    <string name="im_gateway_auto_reply_model_no_models">No models available. Add or enable models in Settings → Models first.</string>
-    <string name="im_gateway_auto_reply_model_current_default">Default</string>
-    <string name="im_gateway_save">Save gateway</string>
-    <string name="im_gateway_saved">Gateway saved</string>
-    <string name="settings_group_proactive">Proactive behavior</string>
-    <string name="im_gateway_proactive_enabled">Proactive messages</string>
-    <string name="im_gateway_proactive_enabled_desc">Let the agent initiate contact with idle IM conversations</string>
-    <string name="im_gateway_proactive_idle_minutes">Idle minutes before greeting</string>
-    <string name="im_gateway_proactive_silent_start">Quiet window start (HH:MM)</string>
-    <string name="im_gateway_proactive_silent_end">Quiet window end (HH:MM)</string>
-    <string name="im_gateway_proactive_ignore_groups">Ignore group chats</string>
-    <string name="im_gateway_proactive_ignore_groups_desc">Never send proactive messages to groups</string>
-    <string name="im_gateway_humanize">Human-like typing delay</string>
-    <string name="im_gateway_humanize_desc">Add a light randomized delay before sending replies</string>
-    <string name="im_gateway_validation">Base URL is required when the gateway is enabled</string>
-    <string name="im_gateway_show_token">Show token</string>
     <string name="thinking_segment_display_mode">Thinking segments</string>
     <string name="thinking_segment_display_mode_desc">Choose where thinking segments open</string>
     <string name="thinking_segment_display_card">Card</string>
@@ -1684,16 +1537,13 @@
     <string name="tool_delete_task">Delete task</string>
     <string name="tool_start_loop">Start loop</string>
     <string name="tool_stop_loop">Stop loop</string>
-    <string name="tool_automation_failed">Automation action failed</string>
     <string name="tool_creating_task">Creating task…</string>
     <string name="tool_created_task">Task created</string>
     <string name="tool_listing_tasks">Listing tasks…</string>
     <string name="tool_listed_tasks">Tasks listed</string>
     <string name="tool_deleting_task">Deleting task…</string>
     <string name="tool_deleted_task">Task deleted</string>
-    <string name="tool_starting_loop">Starting loop…</string>
     <string name="tool_started_loop">Loop started</string>
-    <string name="tool_stopping_loop">Stopping loop…</string>
     <string name="tool_stopped_loop">Loop stopped</string>
 
     <!-- ── IM multi-channel management UI (SettingsImGatewayPage) ─────────────────────── -->
@@ -1801,7 +1651,6 @@
 
     <!-- SMS command system: receive smsf# commands and execute locally on-device. -->
     <string name="settings_sms_command">SMS Commands</string>
-    <string name="settings_sms_command_desc">Control phone via SMS smsf# commands</string>
     <string name="sms_command_enabled">Enable SMS commands</string>
     <string name="sms_command_enabled_desc">Listen for SMS starting with smsf# and execute locally (ADB Shell / AI / WiFi)</string>
     <string name="sms_command_permission_granted">SMS permission granted</string>
@@ -1820,7 +1669,6 @@
 
     <!-- Condition trigger system: listen for battery/network changes and trigger AI tasks. -->
     <string name="settings_trigger">Condition Triggers</string>
-    <string name="settings_trigger_desc">Trigger AI tasks on battery / network events</string>
     <string name="trigger_enabled">Enable condition triggers</string>
     <string name="trigger_enabled_desc">Listen for battery / network changes and run matching rules</string>
     <string name="trigger_presets">Presets</string>
@@ -1861,7 +1709,6 @@
     <string name="settings_complex_task_model">Complex task model</string>
     <string name="settings_subagent_max_running">Max concurrent subagents</string>
     <string name="settings_routing_model_not_set">Not set (use default)</string>
-    <string name="settings_routing_select_model">Select model</string>
     <string name="settings_routing_subagent_range">Range: 1–20</string>
 <string name="reply_channel_email_security_starttls">STARTTLS (587)</string>
     <string name="reply_channel_email_security_none">No encryption</string>
@@ -2022,38 +1869,11 @@
     <string name="tm_system_clean_desc">Scan and clean system junk</string>
 
     <!-- P2 on-device data tools: contacts / calendar / notifications / screen record / usage stats. -->
-    <string name="tm_group_p2_data">On-device data</string>
-    <string name="tm_contacts_list_label">List contacts</string>
-    <string name="tm_contacts_list_desc">Read contacts from the device address book</string>
-    <string name="tm_contacts_search_label">Search contacts</string>
-    <string name="tm_contacts_search_desc">Find contacts by name or phone number</string>
-    <string name="tm_contacts_create_label">Create contact</string>
-    <string name="tm_contacts_create_desc">Add a new contact to the address book</string>
-    <string name="tm_calendar_list_label">List calendars</string>
-    <string name="tm_calendar_list_desc">Show on-device calendar accounts</string>
-    <string name="tm_calendar_events_label">List events</string>
-    <string name="tm_calendar_events_desc">List calendar events with optional filters</string>
-    <string name="tm_calendar_create_label">Create event</string>
-    <string name="tm_calendar_create_desc">Add a new calendar event</string>
-    <string name="tm_notification_list_label">List notifications</string>
-    <string name="tm_notification_list_desc">Read active notifications from the system shade</string>
-    <string name="tm_notification_clear_label">Clear notification</string>
-    <string name="tm_notification_clear_desc">Dismiss a notification from the shade</string>
-    <string name="tm_screen_record_start_label">Start recording</string>
-    <string name="tm_screen_record_start_desc">Begin recording the device screen to MP4</string>
-    <string name="tm_screen_record_stop_label">Stop recording</string>
-    <string name="tm_screen_record_stop_desc">Stop screen recording and finalize the file</string>
-    <string name="tm_usage_stats_label">Usage stats</string>
-    <string name="tm_usage_stats_desc">Show per-app foreground usage duration</string>
-<string name="confirm">Confirm</string>
+    <string name="confirm">Confirm</string>
     <string name="ask_user_title">Agent Question</string>
     <string name="ask_user_other">Other (custom)</string>
     <string name="ask_user_custom_hint">Type a custom answer…</string>
     <string name="ask_user_answer_hint">Type your answer…</string>
-    <string name="drawer_global_search">Global Search</string>
-    <string name="drawer_search_hint">Search all messages across conversations</string>
-    <string name="drawer_search_empty">Enter a keyword to search all conversations</string>
-    <string name="drawer_unnamed">(Untitled)</string>
     <string name="err_action_check_network">Check network</string>
     <string name="err_action_retry_later">Retry later</string>
     <string name="err_action_increase_max_tokens">Increase Max Tokens</string>
@@ -2061,31 +1881,4 @@
     <string name="markdown_rendering_mermaid">Rendering Mermaid chart…</string>
 
     <!-- Slash command descriptions (see SlashCommands.kt). -->
-    <string name="slash_help">Show all available slash commands</string>
-    <string name="slash_new">Create and switch to a new conversation</string>
-    <string name="slash_stop">Stop the current generation</string>
-    <string name="slash_share">Export and share the current conversation</string>
-    <string name="slash_fork">Fork the current conversation into a new branch</string>
-    <string name="slash_clear">Clear messages in the current conversation</string>
-    <string name="slash_search">Search conversation history</string>
-    <string name="slash_export">Export the conversation to a file (txt/md)</string>
-    <string name="slash_summarize">Summarize the current conversation</string>
-    <string name="slash_model">Switch or list available models</string>
-    <string name="slash_settings">Open the settings page</string>
-    <string name="slash_tools">List available tools</string>
-    <string name="slash_skills">List installed skills</string>
-    <string name="slash_memory">View saved memory content</string>
-    <string name="slash_screenshot">Take a screenshot</string>
-    <string name="slash_clean">Run system cleanup</string>
-    <string name="slash_battery">Show battery status</string>
-    <string name="slash_wifi">Toggle WiFi</string>
-    <string name="slash_flashlight">Toggle flashlight</string>
-    <string name="slash_volume">Control or show volume level</string>
-    <string name="slash_pet">Switch desktop pet</string>
-    <string name="slash_voice">Toggle voice input mode</string>
-    <string name="slash_timer">Set a timer (e.g. /timer 10m)</string>
-    <string name="slash_reminder">Set a reminder</string>
-    <string name="slash_translate">Translate text</string>
-    <string name="slash_image">Generate an image from a prompt</string>
-    <string name="slash_command_placeholder">Feature under development</string>
-</resources>
+    </resources>

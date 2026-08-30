@@ -263,10 +263,11 @@ fun interface SummaryGenerator {
 
         // 把各 chunk 摘要拼接为"摘要的摘要"输入文本，再生成最终摘要
         val mergedText = chunkSummaries.joinToString("\n\n---\n\n")
+        // metaPrompt 只携带指示语；mergedText 通过 syntheticInput 作为待摘要内容传入，
+        // 避免同一文本在系统提示与用户消息中重复出现。
         val metaPrompt = buildString {
             append(summaryPrompt)
-            append("\n\n以下是分段摘要，请合并为一份连贯的综合摘要：\n\n")
-            append(mergedText)
+            append("\n\n以下是分段摘要，请合并为一份连贯的综合摘要。")
         }
         // 用合成消息承载合并输入，避免引入新的消息类型
         val syntheticInput = listOf(
