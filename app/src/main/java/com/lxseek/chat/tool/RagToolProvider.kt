@@ -8,8 +8,10 @@ import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.data.EmbeddingIndexer
+import com.lxseek.chat.data.local.EmbeddingEntity
 import com.lxseek.chat.data.local.MessageEntity
 import com.lxseek.chat.data.repository.ConversationRepository
+import java.util.concurrent.ConcurrentHashMap
 import com.lxseek.chat.model.Participant
 import com.lxseek.chat.util.Constants
 import com.lxseek.chat.util.DebugLog
@@ -33,6 +35,13 @@ import kotlinx.serialization.json.putJsonArray
 class RagToolProvider(
     private val conversations: ConversationRepository
 ) : ToolProvider {
+
+    /**
+     * 每模型的内存向量索引缓存（key = modelId）。
+     * 携带签名（条目数 + embedding 字节数哈希），签名变化时自动重建，
+     * 避免每次语义检索都重新解码全量向量，降低内存峰值与 CPU 开销。
+     */
+    private val indexCache = ConcurrentHashMap<String, Pair<String, EmbeddingIndexer.EmbeddingIndex<String>>>()
 
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> {
         if (!ctx.accessPastConversations) return emptyList()
@@ -420,21 +429,47 @@ class RagToolProvider(
         DebugLog.d("LxChatVM", "GM RAG: ${all.size} stored embeddings, query dim=${queryEmbedding.size}")
         if (all.isEmpty()) return@withContext emptyList()
 
-        val scored = all.map {
-            val stored = EmbeddingIndexer.bytesToFloats(it.embedding)
-            it to EmbeddingIndexer.cosineSimilarity(queryEmbedding, stored)
-        }
-        val best = scored.maxOfOrNull { it.second } ?: 0f
+        val index = cachedIndex(config.id, all)
+        // 候选池：int8 粗扫的 top-K 数量。相对 limit 的若干倍，确保阈值过滤下的召回不被截断；
+        // 池子 >= 全量时等价于精确暴力检索（无精度损失）。
+        val pool = minOf(all.size, maxOf(limit * 10, 64))
+        val candidates = index.searchTopK(queryEmbedding, pool)
+        val best = candidates.maxOfOrNull { it.second } ?: 0f
         DebugLog.d("LxChatVM", "GM RAG: best cosine = ${"%.4f".format(best)}")
-        val aboveThreshold = scored.filter { it.second > ctx.ragThreshold }
+        val aboveThreshold = candidates.filter { it.second > ctx.ragThreshold }
         val messagesById = conversations
-            .getSearchableMessagesByIds(aboveThreshold.map { it.first.messageId })
+            .getSearchableMessagesByIds(aboveThreshold.map { it.first })
             .associateBy { it.id }
         val filtered = aboveThreshold
-            .filter { (messagesById[it.first.messageId]?.text?.length ?: 0) >= 10 }
-            .sortedByDescending { it.second }
+            .filter { (messagesById[it.first]?.text?.length ?: 0) >= 10 }
             .take(limit)
-        filtered.mapNotNull { (embedding, score) -> messagesById[embedding.messageId]?.let { it to score } }
+        filtered.mapNotNull { (messageId, score) -> messagesById[messageId]?.let { it to score } }
+    }
+
+    /**
+     * 按 ([modelId], 签名) 取得内存向量索引；签名（总数+字节哈希）变化时重建。
+     * 索引构建需全量解码一次（归一化 + INT8 量化），此后多次检索复用，性能收益明显。
+     */
+    private fun cachedIndex(modelId: String, embeddings: List<EmbeddingEntity>): EmbeddingIndexer.EmbeddingIndex<String> {
+        var checksum = 0
+        var count = 0
+        for (e in embeddings) {
+            count++
+            checksum = checksum * 31 + e.embedding.size
+        }
+        val signature = "$count|$checksum"
+        val cached = indexCache[modelId]
+        if (cached != null && cached.first == signature) return cached.second
+
+        // 构建前先清理：避免该模型上次的坏索引/陈旧索引残留
+        val index = EmbeddingIndexer.EmbeddingIndex<String>()
+        for (e in embeddings) {
+            // 解码后原地归一化；维度不足/为空直接跳过，避免索引进非法向量
+            if (e.embedding.isEmpty()) continue
+            index.add(e.messageId, EmbeddingIndexer.bytesToFloats(e.embedding))
+        }
+        indexCache[modelId] = signature to index
+        return index
     }
 
     private fun resolveEmbeddingApiKey(ctx: GenerationContext): String? {

@@ -212,7 +212,7 @@ jobs:
 
       - name: Upload .so to lxchat-runtime repo
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.LXCHAT_RUNTIME_TOKEN }}
         run: |
           gh release delete "$TAG" --repo ojbkxc/lxchat-runtime --yes --cleanup-tag 2>/dev/null || true
           gh release create "$TAG" \
