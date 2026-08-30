@@ -136,11 +136,7 @@ class ImageGenToolProvider(private val app: Application) : ToolProvider {
         }
     }
 
-    private fun err(code: String, message: String?): String = buildJsonObject {
-        put("type", "image_generation")
-        put("error", code)
-        if (!message.isNullOrBlank()) put("message", message)
-    }.toString()
+    private fun err(code: String, message: String?): String = toolError("image_generation", code, message)
 }
 
 /** Small pure-Kotlin queue used to prevent generated images leaking across conversations. */

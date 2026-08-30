@@ -728,11 +728,7 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         return KNOWN_APPS.firstOrNull { it.second.contains(id, ignoreCase = true) }?.third
     }
 
-    private fun err(code: String, message: String?): String = buildJsonObject {
-        put("type", "android_error")
-        put("error", code)
-        if (!message.isNullOrBlank()) put("message", message)
-    }.toString()
+    private fun err(code: String, message: String?): String = toolError("android_error", code, message)
 
     private companion object {
         private const val WECHAT_PACKAGE = "com.tencent.mm"

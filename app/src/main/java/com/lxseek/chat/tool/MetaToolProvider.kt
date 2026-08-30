@@ -455,30 +455,6 @@ class MetaToolProvider(
 
     // ── Helpers ───────────────────────────────────────────────
 
-    private fun tool(
-        name: String,
-        description: String,
-        properties: Map<String, ToolProperty>,
-        required: List<String>,
-    ) = ToolDefinition(function = ToolFunction(
-        name = name,
-        description = description,
-        parameters = ToolParameters(properties = properties, required = required),
-    ))
-
-    private fun argString(key: String, arguments: String): String? {
-        val stripped = arguments.ifBlank { "{}" }
-        return try {
-            val el = Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]
-            val v = el?.content ?: return null
-            if (v == "null") null else v
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun argBool(key: String, arguments: String): Boolean? =
-        argString(key, arguments)?.toBooleanStrictOrNull()
 
     private fun ok(key: String, value: String) = buildJsonObject {
         put("type", "config")
@@ -494,11 +470,7 @@ class MetaToolProvider(
         put("ok", true)
     }.toString()
 
-    private fun err(code: String, message: String?): String = buildJsonObject {
-        put("type", "meta_error")
-        put("error", code)
-        if (!message.isNullOrBlank()) put("message", message)
-    }.toString()
+    private fun err(code: String, message: String?): String = toolError("meta_error", code, message)
 
     companion object {
         private val HANDLED_TOOLS = setOf(

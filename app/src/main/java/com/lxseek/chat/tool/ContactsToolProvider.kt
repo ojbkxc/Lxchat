@@ -570,17 +570,6 @@ class ContactsToolProvider(private val app: Application) : ToolProvider {
 
     // ── Generic helpers ──────────────────────────────────────
 
-    private fun tool(
-        name: String,
-        description: String,
-        properties: Map<String, ToolProperty>,
-        required: List<String>,
-    ) = ToolDefinition(function = ToolFunction(
-        name = name,
-        description = description,
-        parameters = ToolParameters(properties = properties, required = required),
-    ))
-
     private fun risk(name: String): RiskLevel = when (name) {
         "contact_create", "contact_update" -> RiskLevel.Moderate
         "contact_delete" -> RiskLevel.HighRisk
@@ -592,32 +581,7 @@ class ContactsToolProvider(private val app: Application) : ToolProvider {
         else -> ToolTier.Dangerous
     }
 
-    private fun hasPermission(permission: String): Boolean =
-        ContextCompat.checkSelfPermission(app, permission) == PackageManager.PERMISSION_GRANTED
+    private fun hasPermission(permission: String): Boolean = checkPermission(app, permission)
 
-    private fun argString(key: String, arguments: String): String? {
-        val stripped = arguments.ifBlank { "{}" }
-        return try {
-            val el = Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]
-            val v = el?.content ?: return null
-            if (v == "null") null else v
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun argInt(key: String, arguments: String): Int? {
-        val stripped = arguments.ifBlank { "{}" }
-        return try {
-            Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]?.content?.toIntOrNull()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun err(code: String, message: String?): String = buildJsonObject {
-        put("type", "contact_error")
-        put("error", code)
-        if (!message.isNullOrBlank()) put("message", message)
-    }.toString()
+    private fun err(code: String, message: String?): String = toolError("contact_error", code, message)
 }

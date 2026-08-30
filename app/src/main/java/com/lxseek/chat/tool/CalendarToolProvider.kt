@@ -176,8 +176,7 @@ class CalendarToolProvider(private val app: Application) : ToolProvider {
 
     // ── Permission helpers ─────────────────────────────────────
 
-    private fun hasPermission(permission: String): Boolean =
-        ContextCompat.checkSelfPermission(app, permission) == PackageManager.PERMISSION_GRANTED
+    private fun hasPermission(permission: String): Boolean = checkPermission(app, permission)
 
     private fun requireRead(): String? =
         if (hasPermission(Manifest.permission.READ_CALENDAR)) null
@@ -631,58 +630,7 @@ class CalendarToolProvider(private val app: Application) : ToolProvider {
         return if (i < 0 || isNull(i)) null else getInt(i)
     }
 
-    // ── Argument parsing helpers ──────────────────────────────
-
-    private fun argString(key: String, arguments: String): String? {
-        val stripped = arguments.ifBlank { "{}" }
-        return try {
-            val el = Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]
-            val v = el?.content ?: return null
-            if (v == "null") null else v
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun argLong(key: String, arguments: String): Long? {
-        val stripped = arguments.ifBlank { "{}" }
-        return try {
-            Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]?.content?.toLongOrNull()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun argInt(key: String, arguments: String): Int? {
-        val stripped = arguments.ifBlank { "{}" }
-        return try {
-            Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]?.content?.toIntOrNull()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun argBool(key: String, arguments: String): Boolean? {
-        val v = argString(key, arguments) ?: return null
-        return v.toBooleanStrictOrNull()
-    }
-
     // ── Tool definition + error helpers ───────────────────────
 
-    private fun tool(
-        name: String,
-        description: String,
-        properties: Map<String, ToolProperty>,
-        required: List<String>,
-    ) = ToolDefinition(function = ToolFunction(
-        name = name,
-        description = description,
-        parameters = ToolParameters(properties = properties, required = required),
-    ))
-
-    private fun err(code: String, message: String?): String = buildJsonObject {
-        put("type", "calendar_error")
-        put("error", code)
-        if (!message.isNullOrBlank()) put("message", message)
-    }.toString()
+    private fun err(code: String, message: String?): String = toolError("calendar_error", code, message)
 }

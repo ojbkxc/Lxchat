@@ -722,8 +722,7 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
 
     // ── P2/P3 system-extension tools ──────────────────────────
 
-    private fun hasPermission(permission: String): Boolean =
-        ContextCompat.checkSelfPermission(app, permission) == PackageManager.PERMISSION_GRANTED
+    private fun hasPermission(permission: String): Boolean = checkPermission(app, permission)
 
     private fun call(arguments: String): String {
         val number = argString("number", arguments)?.trim()
@@ -1162,17 +1161,6 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
 
     // ── Helpers ───────────────────────────────────────────────
 
-    private fun tool(
-        name: String,
-        description: String,
-        properties: Map<String, ToolProperty>,
-        required: List<String>,
-    ) = ToolDefinition(function = ToolFunction(
-        name = name,
-        description = description,
-        parameters = ToolParameters(properties = properties, required = required),
-    ))
-
     private fun risk(name: String): RiskLevel = when (name) {
         "device_clipboard_write", "device_vibrate", "device_set_volume", "device_flashlight", "device_notify",
         "device_call", "device_sms", "device_media_save", "device_saf_delete",
@@ -1204,29 +1192,5 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
         null
     }
 
-    private fun argString(key: String, arguments: String): String? {
-        val stripped = arguments.ifBlank { "{}" }
-        return try {
-            val el = Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]
-            val v = el?.content ?: return null
-            if (v == "null") null else v
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun argInt(key: String, arguments: String): Int? {
-        val stripped = arguments.ifBlank { "{}" }
-        return try {
-            Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]?.content?.toIntOrNull()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun err(code: String, message: String?): String = buildJsonObject {
-        put("type", "device_error")
-        put("error", code)
-        if (!message.isNullOrBlank()) put("message", message)
-    }.toString()
+    private fun err(code: String, message: String?): String = toolError("device_error", code, message)
 }

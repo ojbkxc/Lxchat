@@ -389,18 +389,6 @@ fun SettingsMembershipPage(
                 }
             }
 
-            if (status.isActive) {
-                item {
-                    OutlinedButton(
-                        onClick = { scope.launch { viewModel.membership.revokeMembership() } },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                    ) {
-                        Text(stringResource(R.string.membership_revoke))
-                    }
-                }
-            }
 
             // About entry at the bottom.
             item {
