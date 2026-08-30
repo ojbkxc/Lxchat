@@ -11,8 +11,8 @@ jobs:
   prerelease:
     runs-on: ubuntu-latest
     env:
-      VERSION: "2.1.0"
-      TAG: "v2.1.0"
+      VERSION: "1.0.11"
+      TAG: "v1.0.11"
     steps:
       - uses: actions/checkout@v4
 
