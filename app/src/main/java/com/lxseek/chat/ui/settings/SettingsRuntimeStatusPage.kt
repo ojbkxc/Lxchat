@@ -444,6 +444,7 @@ private fun EngineRow(
                     }
                     else -> {
                         VersionSelector(
+                            engineId = engineId,
                             versions = versions,
                             selected = selectedVersion,
                             onSelected = onVersionSelected,
@@ -493,6 +494,7 @@ private fun EngineRow(
 
 @Composable
 private fun VersionSelector(
+    engineId: String,
     versions: List<String>,
     selected: String?,
     onSelected: (String) -> Unit,
@@ -520,15 +522,15 @@ private fun VersionSelector(
             onDismissRequest = { expanded = false },
         ) {
             versions.forEach { v ->
-                val latest = v == versions.firstOrNull()
+                val recommended = engineId == "runtime-python" && v == "3.12.7"
                 DropdownMenuItem(
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(v)
-                            if (latest) {
+                            if (recommended) {
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = stringResource(R.string.runtime_engine_version_latest),
+                                    text = stringResource(R.string.runtime_engine_version_recommended),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
