@@ -240,7 +240,7 @@ object HttpClient {
                     // Replace this placeholder with the real pin:
                     //   val cert = ... // X509Certificate from the server
                     //   val pin = okhttp3.CertificatePinner.pin(cert.publicKey)
-                    "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                    "sha256/yZ1amwQO/r0SSBhz48UcPsaNPElxwEZvQaCP/8iRAxE=",
                 )
                 .build()
         } else {
@@ -270,7 +270,7 @@ object HttpClient {
      * of the activation server's certificate. With the placeholder hash, pinning
      * would reject every cert, so this defaults to false.
      */
-    private const val ACTIVATION_PIN_ENABLED = false
+    private const val ACTIVATION_PIN_ENABLED = true
 
     /** Custom DNS resolver installed by the app (e.g. [EncryptedDns]), or the system resolver.
      *  Read live at every lookup so enabling/changing DNS protection takes effect without a rebuild. */
