@@ -36,6 +36,7 @@ class DataControlController internal constructor(
     private val backupSchedule: AutoBackupSchedulePort,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val userSkillStore: com.lxseek.chat.skill.UserSkillStore? = null,
 ) {
     private val _conversationCount = MutableStateFlow(0)
     val conversationCount: StateFlow<Int> = _conversationCount.asStateFlow()
@@ -45,6 +46,9 @@ class DataControlController internal constructor(
 
     private val _systemPromptCount = MutableStateFlow(0)
     val systemPromptCount: StateFlow<Int> = _systemPromptCount.asStateFlow()
+
+    private val _skillCount = MutableStateFlow(0)
+    val skillCount: StateFlow<Int> = _skillCount.asStateFlow()
 
     internal fun startAutoBackup() {
         try {
@@ -71,6 +75,7 @@ class DataControlController internal constructor(
             _memoryCount.value = memory.listFiles().size +
                 (if (memory.getActiveMemory().isNotEmpty()) 1 else 0)
             _systemPromptCount.value = settings.getSystemPrompts().size
+            _skillCount.value = userSkillStore?.listSkillFiles()?.size ?: 0
         }
     }
 

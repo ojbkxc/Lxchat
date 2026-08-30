@@ -456,6 +456,7 @@ class ImportExportManager(
                 if (result.memoriesImported > 0) parts.add("${result.memoriesImported} memories")
                 if (result.systemPromptsImported > 0) parts.add("${result.systemPromptsImported} prompts")
                 if (result.settingsImported) parts.add("settings")
+                if (result.skillsImported > 0) parts.add("${result.skillsImported} skills")
                 if (result.apiKeysImported) parts.add("API keys")
 
                 val summary = if (result.errors.isEmpty()) {

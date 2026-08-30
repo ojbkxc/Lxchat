@@ -113,6 +113,9 @@ class ProviderRegistry(
     private val settings: SettingsRepository,
     localProvider: LocalProvider,
     private val scope: CoroutineScope,
+    /** Supplies the ChatGPT account id for the `ChatGPT-Account-Id` header on Codex
+     *  Responses API calls. Null/blank omits the header. */
+    private val openAiAccountIdProvider: () -> String? = { null },
 ) {
     private val builtInProviders: Map<String, LlmProvider> = mapOf(
         Constants.PROVIDER_GOOGLE to GeminiProvider(),
@@ -122,7 +125,7 @@ class ProviderRegistry(
         Constants.PROVIDER_QWEN to QwenProvider(),
         Constants.PROVIDER_GROQ to GroqProvider(),
         Constants.PROVIDER_GROK to GrokXProvider(),
-        Constants.PROVIDER_CHATGPT to OpenAIXProvider(),
+        Constants.PROVIDER_CHATGPT to OpenAIXProvider(accountIdProvider = openAiAccountIdProvider),
         Constants.PROVIDER_OLLAMA to OllamaProvider(),
         Constants.PROVIDER_OPEN_ROUTER to OpenRouterProvider(),
         Constants.PROVIDER_LOCAL to localProvider

@@ -86,6 +86,7 @@ class DataImporter(
     }
 
     private val importJson = Json { ignoreUnknownKeys = true }
+    private val userSkillStore = com.lxseek.chat.skill.UserSkillStore(context)
     private val conversationMediaRestorer = NativeConversationMediaRestorer(context, importJson)
     private val conversationGraphImporter = NativeConversationGraphImporter(
         database = database,
@@ -112,7 +113,8 @@ class DataImporter(
         val memoryCount: Int = 0,
         val systemPromptCount: Int = 0,
         val settingsPresent: Boolean = false,
-        val apiKeysPresent: Boolean = false
+        val apiKeysPresent: Boolean = false,
+        val skillCount: Int = 0
     ) {
         val hasConversationGraph: Boolean
             get() = conversationCount > 0 || taskCount > 0 || loopCount > 0
@@ -128,6 +130,7 @@ class DataImporter(
         val systemPromptsImported: Int = 0,
         val settingsImported: Boolean = false,
         val apiKeysImported: Boolean = false,
+        val skillsImported: Int = 0,
         val errors: List<String> = emptyList()
     )
 
@@ -175,6 +178,7 @@ class DataImporter(
                 val memoryCount = archive.names().count { it.startsWith("memories/") }
                 val settingsPresent = archive.has(NativeBackupFormat.SETTINGS_ENTRY)
                 val apiKeysPresent = archive.has(NativeBackupFormat.SECRETS_ENTRY)
+                val skillCount = archive.names().count { it.startsWith(NativeBackupFormat.SKILLS_ENTRY_PREFIX) }
 
                 archive.stream(NativeBackupFormat.CONVERSATIONS_ENTRY)?.use { stream ->
                     try {
@@ -200,7 +204,8 @@ class DataImporter(
                     memoryCount = memoryCount,
                     systemPromptCount = systemPromptCount,
                     settingsPresent = settingsPresent,
-                    apiKeysPresent = apiKeysPresent
+                    apiKeysPresent = apiKeysPresent,
+                    skillCount = skillCount
                 )
             }
         }
@@ -339,6 +344,7 @@ class DataImporter(
                 var systemPromptsImported = 0
                 var settingsImported = false
                 var apiKeysImported = false
+                var skillsImported = 0
 
                 val activeCategories = decisions.filter { it.value != ImportStrategy.SKIP }.keys
                 val totalSteps = activeCategories.size
@@ -457,6 +463,30 @@ class DataImporter(
                     step()
                 }
 
+                val skillsDecision = decisions[DataExporter.ExportCategory.SKILLS]
+                if (skillsDecision != null && skillsDecision != ImportStrategy.SKIP) {
+                    try {
+                        val skillPaths = opened.names()
+                            .filter { it.startsWith(NativeBackupFormat.SKILLS_ENTRY_PREFIX) }
+                        if (skillsDecision == ImportStrategy.REPLACE) {
+                            userSkillStore.deleteAll()
+                        }
+                        for (path in skillPaths) {
+                            val name = path.removePrefix(NativeBackupFormat.SKILLS_ENTRY_PREFIX)
+                            // 目录穿越防护：fileFor 会净化非法字符，嵌套路径直接跳过。
+                            if (name.isEmpty() || name.contains('/')) continue
+                            val target = userSkillStore.fileFor(name)
+                            if (skillsDecision == ImportStrategy.REPLACE || !target.isFile) {
+                                opened.bytes(path)?.let { target.writeBytes(it) }
+                            }
+                            skillsImported++
+                        }
+                    } catch (error: Exception) {
+                        errors += "Skills: ${error.localizedMessage ?: "Unknown error"}"
+                    }
+                    step()
+                }
+
                 val settingsDecision = decisions[DataExporter.ExportCategory.SETTINGS]
                 if (settingsDecision != null && settingsDecision != ImportStrategy.SKIP) {
                     var restoredFont: RestoredCustomFont? = null
@@ -550,6 +580,7 @@ class DataImporter(
                     systemPromptsImported = systemPromptsImported,
                     settingsImported = settingsImported,
                     apiKeysImported = apiKeysImported,
+                    skillsImported = skillsImported,
                     errors = errors,
                 )
             }

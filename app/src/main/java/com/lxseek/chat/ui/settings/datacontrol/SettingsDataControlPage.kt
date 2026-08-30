@@ -47,6 +47,7 @@ fun SettingsDataControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val conversationCount by viewModel.dataControl.conversationCount.collectAsState()
     val memoryCount by viewModel.dataControl.memoryCount.collectAsState()
     val promptCount by viewModel.dataControl.systemPromptCount.collectAsState()
+    val skillCount by viewModel.dataControl.skillCount.collectAsState()
     val exportProgress by viewModel.importExport.exportProgress.collectAsState()
     val importProgress by viewModel.importExport.importProgress.collectAsState()
     val importManifest by viewModel.importExport.importManifest.collectAsState()
@@ -285,6 +286,7 @@ fun SettingsDataControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             conversationCount = conversationCount,
             memoryCount = memoryCount,
             promptCount = promptCount,
+            skillCount = skillCount,
             onDismiss = { showExportDialog = false },
             onExport = { categories, includeApiKeys ->
                 showExportDialog = false
@@ -605,6 +607,7 @@ private fun ExportDataDialog(
     conversationCount: Int,
     memoryCount: Int,
     promptCount: Int,
+    skillCount: Int,
     onDismiss: () -> Unit,
     onExport: (categories: Set<DataExporter.ExportCategory>, includeApiKeys: Boolean) -> Unit
 ) {
@@ -612,9 +615,10 @@ private fun ExportDataDialog(
     var exportMemories by remember { mutableStateOf(true) }
     var exportPrompts by remember { mutableStateOf(true) }
     var exportSettings by remember { mutableStateOf(true) }
+    var exportSkills by remember { mutableStateOf(true) }
     var exportApiKeys by remember { mutableStateOf(false) }
 
-    val anyChecked = exportConversations || exportMemories || exportPrompts || exportSettings || exportApiKeys
+    val anyChecked = exportConversations || exportMemories || exportPrompts || exportSettings || exportSkills || exportApiKeys
 
     AlertDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -630,6 +634,8 @@ private fun ExportDataDialog(
                     "${stringResource(R.string.export_category_system_prompts)} ($promptCount)")
                 CheckRow(exportSettings, { exportSettings = it },
                     stringResource(R.string.export_category_settings))
+                CheckRow(exportSkills, { exportSkills = it },
+                    "${stringResource(R.string.export_category_skills)} ($skillCount)")
                 CheckRow(exportApiKeys, { exportApiKeys = it },
                     stringResource(R.string.export_category_api_keys))
                 if (exportApiKeys) {
@@ -654,6 +660,7 @@ private fun ExportDataDialog(
                     if (exportMemories) cats.add(DataExporter.ExportCategory.MEMORIES)
                     if (exportPrompts) cats.add(DataExporter.ExportCategory.SYSTEM_PROMPTS)
                     if (exportSettings) cats.add(DataExporter.ExportCategory.SETTINGS)
+                    if (exportSkills) cats.add(DataExporter.ExportCategory.SKILLS)
                     if (exportApiKeys) cats.add(DataExporter.ExportCategory.API_KEYS)
                     onExport(cats, exportApiKeys)
                 }, enabled = anyChecked) {
@@ -692,6 +699,7 @@ private fun ImportPreviewDialog(
     var memStrategy by remember { mutableStateOf(DataImporter.ImportStrategy.MERGE) }
     var promptStrategy by remember { mutableStateOf(DataImporter.ImportStrategy.MERGE) }
     var settingsStrategy by remember { mutableStateOf(DataImporter.ImportStrategy.MERGE) }
+    var skillsStrategy by remember { mutableStateOf(DataImporter.ImportStrategy.MERGE) }
     var keysStrategy by remember { mutableStateOf(DataImporter.ImportStrategy.SKIP) }
 
     AlertDialog(
@@ -748,6 +756,12 @@ private fun ImportPreviewDialog(
                         settingsStrategy, { settingsStrategy = it })
                     Spacer(Modifier.height(8.dp))
                 }
+                if (preview.skillCount > 0) {
+                    StrategyRow(
+                        "${stringResource(R.string.export_category_skills)} (${preview.skillCount})",
+                        skillsStrategy, { skillsStrategy = it })
+                    Spacer(Modifier.height(8.dp))
+                }
                 if (preview.apiKeysPresent) {
                     StrategyRow(
                         stringResource(R.string.export_category_api_keys),
@@ -776,6 +790,7 @@ private fun ImportPreviewDialog(
                 if (preview.memoryCount > 0) decisions[DataExporter.ExportCategory.MEMORIES] = memStrategy
                 if (preview.systemPromptCount > 0) decisions[DataExporter.ExportCategory.SYSTEM_PROMPTS] = promptStrategy
                 if (preview.settingsPresent) decisions[DataExporter.ExportCategory.SETTINGS] = settingsStrategy
+                if (preview.skillCount > 0) decisions[DataExporter.ExportCategory.SKILLS] = skillsStrategy
                 if (preview.apiKeysPresent) decisions[DataExporter.ExportCategory.API_KEYS] = keysStrategy
                 onImport(decisions)
                 },

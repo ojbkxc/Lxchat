@@ -28,6 +28,7 @@ private fun categoryLabelRes(key: String): Int = when (key) {
     "system_prompts" -> R.string.export_category_system_prompts
     "settings" -> R.string.export_category_settings
     "api_keys" -> R.string.export_category_api_keys
+    "skills" -> R.string.export_category_skills
     else -> R.string.export_category_settings // fallback, never hit
 }
 
@@ -265,6 +266,7 @@ private fun AutoBackupCategoriesDialog(
         "memories" to R.string.export_category_memories,
         "system_prompts" to R.string.export_category_system_prompts,
         "settings" to R.string.export_category_settings,
+        "skills" to R.string.export_category_skills,
         "api_keys" to R.string.export_category_api_keys
     )
     var current by remember { mutableStateOf(selectedKeys) }

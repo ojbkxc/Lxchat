@@ -34,6 +34,8 @@ class DataExporter(
     private val settingsManager: SettingsManager,
     private val memoryManager: MemoryManager
 ) {
+    private val userSkillStore = com.lxseek.chat.skill.UserSkillStore(context)
+
     companion object {
         /** Bounds entity/string expansion while exporting databases with large chat histories. */
         private const val MESSAGE_PAGE_SIZE = 64
@@ -44,7 +46,8 @@ class DataExporter(
         MEMORIES("memories"),
         SYSTEM_PROMPTS("system_prompts"),
         SETTINGS("settings"),
-        API_KEYS("api_keys");
+        API_KEYS("api_keys"),
+        SKILLS("skills");
 
         companion object {
             fun fromManifestKey(key: String): ExportCategory? =
@@ -592,6 +595,16 @@ class DataExporter(
                 zip.putNextEntry(ZipEntry(NativeBackupFormat.SYSTEM_PROMPTS_ENTRY))
                 Json.encodeToStream(prompts, zip)
                 zip.closeEntry()
+                step()
+            }
+
+            // User Skills (self-authored SKILL.md files)
+            if (ExportCategory.SKILLS in categories) {
+                userSkillStore.listSkillFiles().forEach { file ->
+                    zip.putNextEntry(ZipEntry(NativeBackupFormat.SKILLS_ENTRY_PREFIX + file.name))
+                    file.inputStream().use { it.copyTo(zip) }
+                    zip.closeEntry()
+                }
                 step()
             }
 

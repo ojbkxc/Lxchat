@@ -400,18 +400,16 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
 
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
 
-                "market" -> SettingsMarketPage(
-                    viewModel,
-                    onBack = { selectedCategory = null },
-                    onOpenOnlineMarket = { selectedCategory = "online_market" },
-                )
-
-                "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null })
-                "online_market" -> SettingsPluginMarketPage(
+                // Market entry now goes directly to the online plugin market page
+                // (SettingsMarketPage was removed; its skills/plugins browsing duties
+                // moved into SettingsPluginsListPage).
+                "market" -> SettingsPluginMarketPage(
                     viewModel,
                     onBack = { selectedCategory = null },
                     onOpenSources = { selectedCategory = "market_sources" },
                 )
+
+                "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null })
 
                 "automation" -> SettingsAutomationPage(
                     viewModel,

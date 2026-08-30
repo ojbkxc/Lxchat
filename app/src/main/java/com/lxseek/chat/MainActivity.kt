@@ -229,7 +229,7 @@ class MainActivity : ComponentActivity() {
             val themeMode by settingsManager.themeMode.collectAsState(initial = "FOLLOW_DEVICE")
             val colorSchemeName by settingsManager.colorScheme.collectAsState(initial = "MINIMAL")
             val schemeStyleName by settingsManager.schemeStyle.collectAsState(initial = "TONAL_SPOT")
-            val dynamicColor by settingsManager.dynamicColor.collectAsState(initial = false)
+            val dynamicColor by settingsManager.dynamicColor.collectAsState(initial = true)
             val fontPreference by settingsManager.fontPreference.collectAsState(initial = "app_default")
             val customFontPath by settingsManager.customFontPath.collectAsState(initial = "")
             val chatFontScale by settingsManager.chatFontScale.collectAsState(initial = 1.0f)

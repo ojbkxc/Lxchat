@@ -124,21 +124,25 @@ fun SettingsPluginMarketPage(
     // Apply the search query on top of the kind filter. Matches name, description,
     // and (for catalog entries) author — case-insensitive.
     val query = searchQuery.trim()
+    val installedIds = remember(installations) { installations.map { it.pluginId }.toSet() }
     val searchedInstallations = remember(filteredInstallations, query) {
-        if (query.isEmpty()) filteredInstallations else filteredInstallations.filter { inst ->
+        val filtered = if (query.isEmpty()) filteredInstallations else filteredInstallations.filter { inst ->
             inst.name.contains(query, ignoreCase = true) ||
                 inst.description?.contains(query, ignoreCase = true) == true
         }
+        // Sort: enabled first, then by name — aligns with cc-haha-main pattern.
+        filtered.sortedWith(compareByDescending<MarketInstallation> { it.enabled }.thenBy { it.name })
     }
-    val searchedCatalog = remember(filteredCatalog, query) {
-        if (query.isEmpty()) filteredCatalog else filteredCatalog.filter { meta ->
+    val searchedCatalog = remember(filteredCatalog, query, installedIds) {
+        val filtered = if (query.isEmpty()) filteredCatalog else filteredCatalog.filter { meta ->
             meta.name.contains(query, ignoreCase = true) ||
                 meta.description?.contains(query, ignoreCase = true) == true ||
                 meta.author?.contains(query, ignoreCase = true) == true
         }
+        // Sort: installed first, then by name — aligns with cc-haha-main pattern.
+        filtered.sortedWith(compareByDescending<MarketPluginMeta> { it.id in installedIds }.thenBy { it.name })
     }
 
-    val installedIds = remember(installations) { installations.map { it.pluginId }.toSet() }
 
     // 首次进入自动拉取目录。
     LaunchedEffect(Unit) {

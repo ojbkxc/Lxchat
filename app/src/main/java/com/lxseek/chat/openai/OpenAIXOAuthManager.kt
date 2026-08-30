@@ -52,6 +52,9 @@ class OpenAIXOAuthManager(
 
     fun currentEmail(): String? = tokenStore.load()?.email
 
+    /** ChatGPT account id extracted from the JWT; sent as `ChatGPT-Account-Id` on Codex Responses API calls. */
+    fun currentAccountId(): String? = tokenStore.load()?.accountId
+
     /** 取当前可用 access token(若过期且可刷新,自动刷新并回写)。 */
     fun currentAccessToken(): String? = tokenStore.ensureFresh()?.accessToken
 

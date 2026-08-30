@@ -35,6 +35,13 @@ class UserSkillStore(context: Context) {
         ?.sortedBy { it.name }
         ?: emptyList()
 
+    /** 列出技能目录下全部 .md 文件（含无法解析的），导出/REPLACE 导入用。 */
+    fun listSkillFiles(): List<File> =
+        skillsDir.listFiles()?.filter { it.isFile && it.extension == "md" } ?: emptyList()
+
+    /** 删除目录下全部技能文件（REPLACE 导入前清场）。返回删除数量。 */
+    fun deleteAll(): Int = listSkillFiles().count { it.delete() }
+
     /** 根据技能名定位文件（做路径净化，防止目录穿越）。 */
     fun fileFor(name: String): File {
         val sanitized = name.trim()

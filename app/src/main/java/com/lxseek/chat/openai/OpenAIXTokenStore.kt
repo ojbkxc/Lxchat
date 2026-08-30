@@ -12,6 +12,10 @@ internal data class StoredOpenAITokens(
     val refreshToken: String?,
     val expiresAt: Long?,
     val email: String?,
+    /** ChatGPT account id extracted from the JWT claims (chatgpt_account_id /
+     *  organizations[0].id). Sent as the `ChatGPT-Account-Id` header on Codex
+     *  Responses API calls; null when the token did not carry it. */
+    val accountId: String?,
 )
 
 /**
@@ -32,11 +36,13 @@ internal class OpenAIXTokenStore(private val context: Context) {
             val refresh = json.optString("refreshToken").takeIf { it.isNotBlank() }
             val expiresAt = if (json.has("expiresAt")) json.optLong("expiresAt") else null
             val email = json.optString("email").takeIf { it.isNotBlank() }
+            val accountId = json.optString("accountId").takeIf { it.isNotBlank() }
             StoredOpenAITokens(
                 accessToken = access,
                 refreshToken = refresh,
                 expiresAt = expiresAt,
                 email = email,
+                accountId = accountId,
             )
         } catch (e: Exception) {
             DebugLog.e(TAG, "load failed", e)
@@ -51,6 +57,7 @@ internal class OpenAIXTokenStore(private val context: Context) {
                 if (!tokens.refreshToken.isNullOrBlank()) put("refreshToken", tokens.refreshToken)
                 tokens.expiresAt?.let { put("expiresAt", it) }
                 if (!tokens.email.isNullOrBlank()) put("email", tokens.email)
+                if (!tokens.accountId.isNullOrBlank()) put("accountId", tokens.accountId)
             }
             // 原子写:先写临时文件再 rename,避免读到写一半的残缺 JSON。
             val tmp = File(context.filesDir, "$FILE_NAME.tmp")
@@ -108,12 +115,47 @@ internal class OpenAIXTokenStore(private val context: Context) {
                 ?: System.currentTimeMillis() + OpenAIXOAuthConstants.TOKEN_LIFETIME_DEFAULT_SECONDS * 1000L
         }
         val email = parseJwtEmail(json, fallback?.email)
+        val accountId = extractOpenAIAccountId(json, fallback?.accountId)
         return StoredOpenAITokens(
             accessToken = access,
             refreshToken = refresh,
             expiresAt = expiresAt,
             email = email,
+            accountId = accountId,
         )
+    }
+
+    /**
+     * Extract the ChatGPT account id from the JWT claims of the token endpoint response.
+     *
+     * Mirrors cc-haha-main `extractOpenAIAccountId`: prefers `id_token`, falls back to
+     * `access_token`, and reads `chatgpt_account_id` (top-level or nested under
+     * `https://api.openai.com/auth`) then `organizations[0].id`. Returns [fallback]
+     * when no account id can be determined.
+     */
+    private fun extractOpenAIAccountId(json: JSONObject, fallback: String?): String? {
+        val jwt = json.optString("id_token").takeIf { it.isNotBlank() }
+            ?: json.optString("access_token").takeIf { it.isNotBlank() }
+            ?: return fallback
+        val parts = jwt.split('.')
+        if (parts.size < 2) return fallback
+        val payload = parts[1]
+        return runCatching {
+            val decoded = android.util.Base64.decode(
+                payload.replace('-', '+').replace('_', '/')
+                    .padEnd((payload.length + 3) / 4 * 4, '='),
+                android.util.Base64.DEFAULT,
+            )
+            val claims = JSONObject(String(decoded, Charsets.UTF_8))
+            // 1) top-level chatgpt_account_id
+            claims.optString("chatgpt_account_id").takeIf { it.isNotBlank() }
+                // 2) https://api.openai.com/auth -> chatgpt_account_id
+                ?: claims.optJSONObject("https://api.openai.com/auth")
+                    ?.optString("chatgpt_account_id")?.takeIf { it.isNotBlank() }
+                // 3) organizations[0].id
+                ?: claims.optJSONArray("organizations")
+                    ?.optJSONObject(0)?.optString("id")?.takeIf { it.isNotBlank() }
+        }.getOrNull() ?: fallback
     }
 
     private companion object {

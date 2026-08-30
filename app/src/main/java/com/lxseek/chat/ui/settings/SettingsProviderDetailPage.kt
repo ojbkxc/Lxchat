@@ -410,19 +410,13 @@ fun SettingsProviderDetailPage(
                         manager = openAIManager,
 
                         onLoginSuccess = {
-                            // 先保存预置模型列表(立即可用),再异步拉取远端模型列表(成功则覆盖)。
+                            // Codex OAuth 不兼容 /v1/models,直接使用预置模型列表。
                             val presetModels = OpenAIXProvider.PRESET_MODELS.map { "${Constants.PROVIDER_CHATGPT}:$it" }
                             scope.launch {
                                 try {
                                     viewModel.settings.saveAvailableModels(Constants.PROVIDER_CHATGPT, presetModels)
                                 } catch (e: Exception) {
                                     DebugLog.e("ChatGPTOAuth", "save preset models failed", e)
-                                }
-                                try {
-                                    viewModel.fetchModelsForProvider(Constants.PROVIDER_CHATGPT)
-                                } catch (e: Exception) {
-                                    // 拉取失败时保留预置模型列表,不报错。
-                                    DebugLog.e("ChatGPTOAuth", "fetch remote models failed", e)
                                 }
                             }
                         },

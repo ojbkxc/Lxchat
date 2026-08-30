@@ -1156,6 +1156,7 @@
     <string name="export_category_memories">记忆</string>
     <string name="export_category_system_prompts">系统提示词</string>
     <string name="export_category_settings">设置</string>
+    <string name="export_category_skills">用户技能</string>
     <string name="export_category_api_keys">凭据与秘密</string>
     <string name="export_api_keys_warning">API 密钥、密码和自定义鉴权请求头将以明文导出。仅在信任目标位置时启用。</string>
     <string name="export_button">导出</string>

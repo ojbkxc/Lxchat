@@ -250,16 +250,6 @@ class AppContainer(private val appContext: Context) {
 
     val localProvider: LocalProvider by lazy { LocalProvider(appContext, settingsRepository) }
 
-    val providerRegistry: ProviderRegistry by lazy {
-        ProviderRegistry(settingsRepository, localProvider, appScope).also {
-            try {
-                it.launchSyncJobs()
-            } catch (e: Throwable) {
-                com.lxseek.chat.util.DebugLog.e("AppContainer", "providerRegistry.launchSyncJobs failed", e)
-            }
-        }
-    }
-
     /** Grok(x.ai) 官方账号登录。登录产出的 access token 写入 [Constants.PROVIDER_GROK] 的活动 API Key。 */
     val grokXOAuthManager: GrokXOAuthManager by lazy {
         GrokXOAuthManager(appContext, settingsRepository, appScope)
@@ -268,6 +258,23 @@ class AppContainer(private val appContext: Context) {
     /** ChatGPT(OpenAI) 官方账号登录。登录产出的 access token 写入 [Constants.PROVIDER_CHATGPT] 的活动 API Key。 */
     val openAIXOAuthManager: OpenAIXOAuthManager by lazy {
         OpenAIXOAuthManager(appContext, settingsRepository, appScope)
+    }
+
+    val providerRegistry: ProviderRegistry by lazy {
+        ProviderRegistry(
+            settingsRepository,
+            localProvider,
+            appScope,
+            // Feed the ChatGPT account id (extracted from the OAuth JWT) into the Codex
+            // Responses API provider so it can send the ChatGPT-Account-Id header.
+            openAiAccountIdProvider = { openAIXOAuthManager.currentAccountId() },
+        ).also {
+            try {
+                it.launchSyncJobs()
+            } catch (e: Throwable) {
+                com.lxseek.chat.util.DebugLog.e("AppContainer", "providerRegistry.launchSyncJobs failed", e)
+            }
+        }
     }
 
     /** Serializes every foreground/background generation touching the same conversation. */

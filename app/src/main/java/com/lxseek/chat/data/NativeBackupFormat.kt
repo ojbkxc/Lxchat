@@ -18,6 +18,9 @@ internal object NativeBackupFormat {
     const val VIDEO_MEDIA_PREFIX = "media/videos/"
     const val DRAFT_MEDIA_PREFIX = "media/drafts/"
 
+    /** 用户自建技能（`filesDir/skills_user/`）导出目录前缀，每技能一个 .md 条目。 */
+    const val SKILLS_ENTRY_PREFIX = "skills/"
+
     fun isSupported(version: Int): Boolean =
         version in MIN_SUPPORTED_VERSION..CURRENT_VERSION
 }

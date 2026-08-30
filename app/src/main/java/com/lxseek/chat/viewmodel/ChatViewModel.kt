@@ -111,6 +111,7 @@ class ChatViewModel(
         backupManager = autoBackupManager,
         backupSchedule = AndroidAutoBackupSchedulePort(application),
         scope = viewModelScope,
+        userSkillStore = com.lxseek.chat.skill.UserSkillStore(appContext),
     )
     private val conversationForkShare =
         ConversationForkShareService(
