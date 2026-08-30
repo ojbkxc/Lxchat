@@ -533,18 +533,18 @@ class PetFloatingView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val params = windowParams ?: return performClickFallback(event)
         if (event.actionMasked == MotionEvent.ACTION_DOWN && isTransparentAt(event.x, event.y)) return false
-        // For the built-in Canvas bubble, touches outside the bubble circle pass through.
+        // For the built-in Canvas bubble, touches outside the bubble circle pass through, and
+        // within it only the central [TAP_TARGET_RADIUS_RATIO] responds (the fuzzy circle outline
+        // would otherwise fire accidental drags/launches). Bitmap pets (spritesheet / custom) skip
+        // this extra shrink — transparent pixels were already rejected above via isTransparentAt,
+        // so a non-transparent touch is on the pet itself and should always respond, keeping the
+        // hit region aligned with the visible sprite instead of a small off-center circle.
         if (event.actionMasked == MotionEvent.ACTION_DOWN && customBitmap == null && spritesheetBitmap == null) {
             val dx = event.x - petCenterX
             val dy = event.y - bubbleCenterY
             if (hypot(dx, dy) > bubbleRadius()) return false
+            if (isOutsideTapTarget(event.x, event.y)) return false
         }
-        // Shrink the tap target: only the central [TAP_TARGET_RADIUS_RATIO] of the pet radius
-        // responds to touches. The outer ring passes through to the app below so taps near the
-        // pet's edges (transparent atlas padding, sprite outline fringe) don't trigger a drag or
-        // app launch by accident. This is independent of the visual size and the transparent-pixel
-        // pass-through above, and only narrows the hit region for DOWN events.
-        if (event.actionMasked == MotionEvent.ACTION_DOWN && isOutsideTapTarget(event.x, event.y)) return false
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 cancelSnapAnimation()
