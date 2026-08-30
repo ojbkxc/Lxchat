@@ -325,11 +325,9 @@ fun SettingsMembershipPage(
             }
 
 
-            // 套餐选择：免费用户、未激活、或非永久激活用户（可续费叠加时间）
-            // 永久激活用户不显示（不需要再买）
-            val isLifetime = status.isActive && (status.expiryTimestamp == null ||
-                (status.expiryTimestamp ?: 0L) >= System.currentTimeMillis() + 36000L * 24L * 60L * 60L * 1000L)
-            if (!isLifetime) {
+            // 套餐选择：非永久激活用户可见（免费/未激活可购买，付费可续费叠加时间）。
+            // 永久激活用户隐藏整块套餐 UI（MembershipStatus.isLifetime 统一判定）。
+            if (!status.isLifetime) {
                 item {
                     PlanSelectionSection(
 
@@ -447,9 +445,7 @@ private fun MembershipStatusCard(status: MembershipStatus) {
 
             if (status.isActive) {
                 // Lifetime (permanent) members: show "永久有效", hide expiry date and source.
-                val isLifetimeMember = status.expiryTimestamp == null ||
-                    (status.expiryTimestamp ?: 0L) >= System.currentTimeMillis() + 36000L * 24L * 60L * 60L * 1000L
-                if (isLifetimeMember) {
+                if (status.isLifetime) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "永久有效",

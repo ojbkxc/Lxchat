@@ -34,7 +34,23 @@ data class MembershipStatus(
     val expiryTimestamp: Long? = null,
     val source: String = "", // "yipay" or "redemption_code"
     val isActive: Boolean = false,
-)
+) {
+    /**
+     * 永久会员：已激活且无过期时间，或过期时间在 [LIFETIME_THRESHOLD_DAYS] 天以后。
+     *
+     * 服务端永久套餐签发 36500 天（约 100 年），激活码等途径也可能签发
+     * 2099 年哨兵日期等不同长度的"永久"。此处用 10 年阈值统一覆盖各种永久语义，
+     * 同时不会误伤叠加购买的年度套餐（连续买 10 年年度才会到阈值）。
+     */
+    val isLifetime: Boolean
+        get() = isActive && (expiryTimestamp == null ||
+            expiryTimestamp >= System.currentTimeMillis() + LIFETIME_THRESHOLD_DAYS * MILLIS_PER_DAY)
+
+    private companion object {
+        const val LIFETIME_THRESHOLD_DAYS = 3650L
+        const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
+    }
+}
 
 /** Interface for membership status sources. */
 interface MembershipProvider {
