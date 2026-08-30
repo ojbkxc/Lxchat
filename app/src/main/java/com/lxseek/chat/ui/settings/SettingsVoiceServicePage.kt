@@ -89,7 +89,7 @@ fun SettingsVoiceServicePage(
                 )
                 CapabilityTile(
                     icon = Icons.Filled.Mic,
-                    title = "语音识别 (STT)",
+                    title = "语音识别 (ASR)",
                     sub = "本地 / 云端模型",
                     onClick = onOpenStt,
                 )

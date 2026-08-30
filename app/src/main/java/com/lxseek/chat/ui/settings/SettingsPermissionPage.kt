@@ -357,7 +357,7 @@ private fun isMediaGranted(context: Context): Boolean {
             android.Manifest.permission.READ_MEDIA_IMAGES,
             android.Manifest.permission.READ_MEDIA_VIDEO,
             android.Manifest.permission.READ_MEDIA_AUDIO,
-        ).all {
+        ).any {
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
     } else {
