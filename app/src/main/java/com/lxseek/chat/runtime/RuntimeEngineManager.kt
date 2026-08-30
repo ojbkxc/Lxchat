@@ -194,17 +194,18 @@ class RuntimeEngineManager(
 
     /** 引擎状态快照。 */
     fun status(engineId: String): RuntimeStatus {
-        // runtime-python is provided by the sandbox (proot + Alpine rootfs) and no longer
-        // goes through the market installation pipeline, so its availability is derived from
-        // the sandbox instead of the market installation records.
-        if (engineId == "runtime-python") {
+        // runtime-python / runtime-node / runtime-ffmpeg are provided by the sandbox
+        // (proot + Alpine rootfs) and no longer go through the market installation
+        // pipeline, so their availability is derived from the sandbox instead of the
+        // market installation records.
+        if (engineId == "runtime-python" || engineId == "runtime-node" || engineId == "runtime-ffmpeg") {
             val sandboxReady = sandbox?.isAvailableSync() == true
             return RuntimeStatus(
                 engineId = engineId,
                 installed = sandboxReady,
                 installedVersion = if (sandboxReady) "sandbox" else null,
                 installedVersions = if (sandboxReady) listOf("sandbox") else emptyList(),
-                running = false, // python is executed on demand, no resident process
+                running = false, // executed on demand, no resident process
             )
         }
         val installation = installationOf(engineId)

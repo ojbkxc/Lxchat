@@ -105,20 +105,23 @@ class RuntimeToolProvider(
             ?: return error(engineId, "engine_not_found", "市场目录中不存在引擎「$engineId」，可用 all_runtimes_status 查看")
         val version = args["version"]?.takeIf(String::isNotBlank)
         return try {
-            // runtime-python 改为通过 sandbox（proot + Alpine rootfs）安装 python3，
-            // 不再用 glibc ld-linux 直接加载二进制（Android 上各种不兼容）。
-            if (engineId == "runtime-python") {
+            // runtime-python / runtime-node / runtime-ffmpeg are provided by the sandbox
+            // (proot + Alpine rootfs). Install the corresponding apk package instead of
+            // going through the market installation pipeline (glibc ld-linux direct load
+            // is unreliable on Android).
+            val sandboxPackage = sandboxPackageName(engineId)
+            if (sandboxPackage != null) {
                 val sandbox = manager.sandbox ?: throw IllegalStateException("Sandbox 不可用，请先安装 Linux 沙箱")
                 if (!sandbox.isAvailable()) {
                     sandbox.install()
                     if (!sandbox.isAvailable()) throw IllegalStateException("Sandbox 安装失败")
                 }
-                sandbox.apkInstall("python3")
+                sandbox.apkInstall(sandboxPackage)
                 return buildJsonObject {
                     put("ok", true)
                     put("engine_id", engineId)
                     put("action", "market_install")
-                    put("message", "Python3 已通过沙箱安装")
+                    put("message", "$sandboxPackage 已通过沙箱安装")
                 }.toString()
             }
             val market = manager.market ?: throw IllegalStateException("市场服务不可用")
@@ -225,12 +228,15 @@ class RuntimeToolProvider(
         if (argv.isEmpty()) return error(engineId, "missing_argv", "缺少 argv（参数数组）")
         val timeoutMs = (args["timeout_ms"]?.toLongOrNull() ?: 60_000L).coerceIn(1_000, 300_000)
         return try {
-            // 对 runtime-python / webnovel 引擎，通过 sandbox（proot + Alpine rootfs）执行 python3，
-            // 不再用 glibc ld-linux 直接加载二进制（Android 上各种不兼容）。
-            if (engineId == "runtime-python" || engineId == RuntimeEngineType.PYTHON_WEB_NOVEL) {
-                execPythonInSandbox(engineId, argv, timeoutMs)
+            // runtime-python / runtime-node / runtime-ffmpeg / webnovel go through the
+            // sandbox (proot + Alpine rootfs). webnovel still uses python3 inside the
+            // sandbox; node/ffmpeg use their own binaries. Other engines (e.g. inkos via
+            // NODE_INKOS) keep the resident-process path.
+            val sandboxBinary = sandboxBinaryName(engineId)
+            if (sandboxBinary != null) {
+                execInSandbox(engineId, sandboxBinary, argv, timeoutMs)
             } else {
-                // 其他引擎（node/ffmpeg）保持原有逻辑
+                // Other engines (e.g. inkos via NODE_INKOS) keep the resident-process path.
                 val envMap = manager.ensureStarted(engineId, null, null)
                 val root = manager.packageManager.versionRoot(engineId, manager.installationOf(engineId)?.version.orEmpty())
                 val binary = File(root, binaryName(engineId)).absolutePath
@@ -249,19 +255,23 @@ class RuntimeToolProvider(
         }
     }
 
-    /** 通过 sandbox（proot + Alpine rootfs）执行 Python。 */
-    private suspend fun execPythonInSandbox(engineId: String, argv: List<String>, timeoutMs: Long): String {
+    /**
+     * Execute a one-shot command inside the sandbox (proot + Alpine rootfs). [binary] is
+     * the interpreter/program name inside the sandbox (python3 / node / ffmpeg); the
+     * corresponding apk package is auto-installed before execution.
+     */
+    private suspend fun execInSandbox(engineId: String, binary: String, argv: List<String>, timeoutMs: Long): String {
         val sandbox = manager.sandbox ?: throw IllegalStateException("Sandbox 不可用，请先安装 Linux 沙箱")
-        // 确保 sandbox 可用
+        // Ensure sandbox is available.
         if (!sandbox.isAvailable()) {
             sandbox.install()
             if (!sandbox.isAvailable()) throw IllegalStateException("Sandbox 安装失败")
         }
-        // 确保 python3 已安装
-        sandbox.apkInstall("python3")
-        // 构建命令：python3 + argv
+        // Ensure the corresponding apk package is installed.
+        sandbox.apkInstall(sandboxApkForBinary(binary))
+        // Build command: binary + argv
         val cmd = buildString {
-            append("python3")
+            append(binary)
             argv.forEach { arg -> append(" "); append(shellQuote(arg)) }
         }
         val result = sandbox.executeCommand(cmd, timeoutMs = timeoutMs.toInt())
@@ -273,6 +283,34 @@ class RuntimeToolProvider(
             if (result.stderr.isNotBlank()) put("stderr", result.stderr)
             if (result.exitCode != 0) put("message", "退出码 ${result.exitCode}")
         }.toString()
+    }
+
+    /** apk package name for sandbox-installed engines, or null if not sandbox-backed. */
+    private fun sandboxPackageName(engineId: String): String? = when (engineId) {
+        "runtime-python" -> "python3"
+        "runtime-node" -> "nodejs"
+        "runtime-ffmpeg" -> "ffmpeg"
+        else -> null
+    }
+
+    /**
+     * Binary name inside the sandbox for sandbox-executed engines, or null if the engine
+     * is not executed inside the sandbox. webnovel reuses python3 inside the sandbox.
+     */
+    private fun sandboxBinaryName(engineId: String): String? = when (engineId) {
+        "runtime-python" -> "python3"
+        "runtime-node" -> "node"
+        "runtime-ffmpeg" -> "ffmpeg"
+        RuntimeEngineType.PYTHON_WEB_NOVEL -> "python3"
+        else -> null
+    }
+
+    /** Map a sandbox binary name to its apk package name. */
+    private fun sandboxApkForBinary(binary: String): String = when (binary) {
+        "python3" -> "python3"
+        "node" -> "nodejs"
+        "ffmpeg" -> "ffmpeg"
+        else -> binary
     }
 
     /** Shell 引号转义。 */

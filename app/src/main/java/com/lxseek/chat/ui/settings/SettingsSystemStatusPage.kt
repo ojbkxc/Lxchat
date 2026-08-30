@@ -76,6 +76,7 @@ fun SettingsSystemStatusPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val runtimeEngineManager = viewModel.pluginMarket.runtimeEngineManager
     val pythonStatus = remember(runtimeEngineManager) { runtimeEngineManager?.status("runtime-python") }
     val nodeStatus = remember(runtimeEngineManager) { runtimeEngineManager?.status("runtime-node") }
+    val ffmpegStatus = remember(runtimeEngineManager) { runtimeEngineManager?.status("runtime-ffmpeg") }
     val prootAvailable = remember(viewModel.sandboxManager) {
         viewModel.sandboxManager?.isAvailableSync() == true
     }
@@ -125,6 +126,7 @@ fun SettingsSystemStatusPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 termuxAvailable = termuxAvailable,
                 pythonStatus = pythonStatus,
                 nodeStatus = nodeStatus,
+                ffmpegStatus = ffmpegStatus,
             )
             MembershipSection(
                 tier = membershipStatus.tier,
@@ -206,6 +208,7 @@ private fun RuntimeSection(
     termuxAvailable: Boolean,
     pythonStatus: RuntimeStatus?,
     nodeStatus: RuntimeStatus?,
+    ffmpegStatus: RuntimeStatus?,
 ) {
     SectionCard(title = "运行时状态") {
         // PRoot 沙箱（Lxchat 内置 proot + Alpine）
@@ -231,10 +234,17 @@ private fun RuntimeSection(
             status = pythonStatus,
             sandboxProvided = true,
         )
-        // Node.js 引擎
+        // Node.js 引擎（由 Linux 沙箱提供）
         EngineRow(
             name = RuntimeEnginePlugin.engineDisplayName("runtime-node"),
             status = nodeStatus,
+            sandboxProvided = true,
+        )
+        // ffmpeg 引擎（由 Linux 沙箱提供）
+        EngineRow(
+            name = RuntimeEnginePlugin.engineDisplayName("runtime-ffmpeg"),
+            status = ffmpegStatus,
+            sandboxProvided = true,
         )
     }
 }

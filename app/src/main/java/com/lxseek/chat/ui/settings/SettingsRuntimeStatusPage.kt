@@ -245,14 +245,15 @@ fun SettingsRuntimeStatusPage(
             )
         } else {
             known.forEach { engineId ->
-                // runtime-python is provided by the Linux sandbox (proot + Alpine rootfs)
-                // instead of the market installation pipeline: render a dedicated card with
-                // no version picker and no install/uninstall actions.
-                if (engineId == "runtime-python") {
-                    val pythonStatus = runtimeEngineManager.status(engineId)
+                // runtime-python / runtime-node / runtime-ffmpeg are provided by the Linux
+                // sandbox (proot + Alpine rootfs) instead of the market installation
+                // pipeline: render a dedicated card with no version picker and no
+                // install/uninstall actions.
+                if (engineId == "runtime-python" || engineId == "runtime-node" || engineId == "runtime-ffmpeg") {
+                    val sandboxStatus = runtimeEngineManager.status(engineId)
                     PythonSandboxRow(
                         engineId = engineId,
-                        sandboxReady = pythonStatus.installed,
+                        sandboxReady = sandboxStatus.installed,
                     )
                     Spacer(Modifier.height(12.dp))
                     return@forEach
