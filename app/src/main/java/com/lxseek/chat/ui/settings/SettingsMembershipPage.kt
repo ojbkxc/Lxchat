@@ -328,7 +328,7 @@ fun SettingsMembershipPage(
             // 套餐选择：免费用户、未激活、或非永久激活用户（可续费叠加时间）
             // 永久激活用户不显示（不需要再买）
             val isLifetime = status.isActive && (status.expiryTimestamp == null ||
-                (status.expiryTimestamp ?: 0L) > System.currentTimeMillis() + 36500L * 24L * 60L * 60L * 1000L)
+                (status.expiryTimestamp ?: 0L) >= System.currentTimeMillis() + 36000L * 24L * 60L * 60L * 1000L)
             if (!isLifetime) {
                 item {
                     PlanSelectionSection(
@@ -446,28 +446,40 @@ private fun MembershipStatusCard(status: MembershipStatus) {
             }
 
             if (status.isActive) {
-                status.expiryTimestamp?.let { expiry ->
+                // Lifetime (permanent) members: show "永久有效", hide expiry date and source.
+                val isLifetimeMember = status.expiryTimestamp == null ||
+                    (status.expiryTimestamp ?: 0L) >= System.currentTimeMillis() + 36000L * 24L * 60L * 60L * 1000L
+                if (isLifetimeMember) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.membership_expiry, dateFormatter.format(Date(expiry))),
+                        text = "永久有效",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-                if (status.source.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    val sourceLabel = when (status.source) {
-                        LocalMembershipProvider.SOURCE_REDEMPTION_CODE ->
-                            stringResource(R.string.membership_source_redemption)
-                        LocalMembershipProvider.SOURCE_YIPAY ->
-                            stringResource(R.string.membership_source_yipay)
-                        else -> "Source: ${status.source}"
+                } else {
+                    status.expiryTimestamp?.let { expiry ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.membership_expiry, dateFormatter.format(Date(expiry))),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                    Text(
-                        text = sourceLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (status.source.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val sourceLabel = when (status.source) {
+                            LocalMembershipProvider.SOURCE_REDEMPTION_CODE ->
+                                stringResource(R.string.membership_source_redemption)
+                            LocalMembershipProvider.SOURCE_YIPAY ->
+                                stringResource(R.string.membership_source_yipay)
+                            else -> "Source: ${status.source}"
+                        }
+                        Text(
+                            text = sourceLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             } else {
                 Spacer(modifier = Modifier.height(8.dp))

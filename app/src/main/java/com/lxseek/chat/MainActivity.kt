@@ -171,6 +171,12 @@ class MainActivity : ComponentActivity() {
 
         val settingsManager = SettingsManager(applicationContext)
         lifecycleScope.launch {
+            // Hydrate membership status from DataStore on every app start.
+            // Without this, LocalMembershipProvider._status stays at the Free default
+            // and the UI shows "未激活" even though a valid credential is persisted.
+            withContext(Dispatchers.IO) {
+                (application as LxChatApplication).container.membershipProvider.refresh()
+            }
             val storedVersion = withContext(Dispatchers.IO) {
                 ChatDatabase.getStoredVersion(this@MainActivity)
             }

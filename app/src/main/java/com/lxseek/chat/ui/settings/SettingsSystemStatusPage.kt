@@ -437,6 +437,8 @@ private fun MembershipSection(
 
 private fun formatExpiry(timestamp: Long?): String {
     if (timestamp == null || timestamp <= 0) return "无"
+    // Lifetime members: expiry >= 36000 days from now → "永久"
+    if (timestamp >= System.currentTimeMillis() + 36000L * 24L * 60L * 60L * 1000L) return "永久"
     return runCatching {
         SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
     }.getOrDefault("无")
