@@ -195,28 +195,28 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // 重装恢复：本地无凭证时查服务端 device_status，有有效激活则恢复到本地。
-            // 异步执行，不阻塞 UI 启动；恢复成功后刷新会员状态。
+            // 启动静默同步：无论本地是否有凭证，都查一次服务端 device_status。
+            // - 本地无凭证 + 服务端已激活 → 重装恢复
+            // - 本地凭证与服务端不一致（如服务端修正了到期时间/套餐）→ 以服务端为准刷新本地
+            // 异步执行，不阻塞 UI 启动；离线时静默失败，本地状态不受影响。
             launch {
                 try {
                     val activationManager = ActivationManager(RemoteCloudApi(applicationContext), applicationContext)
-                    if (!activationManager.hasActiveCredential()) {
-                        val deviceId = com.lxseek.chat.membership.DeviceIdCard.getDeviceId(applicationContext)
-                        val credential = withContext(Dispatchers.IO) {
-                            activationManager.restoreActivation(deviceId)
+                    val deviceId = com.lxseek.chat.membership.DeviceIdCard.getDeviceId(applicationContext)
+                    val credential = withContext(Dispatchers.IO) {
+                        activationManager.restoreActivation(deviceId)
+                    }
+                    if (credential != null) {
+                        val provider = (application as LxChatApplication).container.membershipProvider
+                        if (provider is LocalMembershipProvider) {
+                            provider.applyCredential(credential)
+                        } else {
+                            provider.refresh()
                         }
-                        if (credential != null) {
-                            val provider = (application as LxChatApplication).container.membershipProvider
-                            if (provider is LocalMembershipProvider) {
-                                provider.applyCredential(credential)
-                            } else {
-                                provider.refresh()
-                            }
-                            com.lxseek.chat.util.DebugLog.i("MainActivity", "Activation restored after reinstall")
-                        }
+                        com.lxseek.chat.util.DebugLog.i("MainActivity", "Membership synced from server on startup")
                     }
                 } catch (e: Exception) {
-                    com.lxseek.chat.util.DebugLog.e("MainActivity", "restoreActivation failed", e)
+                    com.lxseek.chat.util.DebugLog.e("MainActivity", "startup membership sync failed", e)
                 }
             }
 
