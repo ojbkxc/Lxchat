@@ -302,7 +302,7 @@ class PetOverlayWindowService : Service() {
         private const val SIZE_DP = 64f
         private const val MARGIN_DP = 12f
         // Vertical padding held above the bubble so PetFloatingView has room for the status-tip capsule.
-        private const val TIP_HEADROOM_DP = 120f
+        private const val TIP_HEADROOM_DP = 60f
         // Width of the tip bubble area. The window is widened to this when it exceeds the pet size,
         // giving multi-line tip text room without clipping.
         private const val TIP_WIDTH_DP = 200f

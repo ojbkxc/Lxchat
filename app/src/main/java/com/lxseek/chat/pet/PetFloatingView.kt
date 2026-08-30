@@ -397,7 +397,10 @@ class PetFloatingView @JvmOverloads constructor(
         val left = (cx - capWidth / 2).coerceAtLeast(minLeft)
         val right = (left + capWidth).coerceAtMost(maxRight)
         val actualWidth = right - left
-        val top = dp(TIP_TOP_PADDING_DP)
+        // Position the tip bubble just above the pet (not at the window top),
+        // so it stays close regardless of tipSlotHeight.
+        val bubbleTop = bubbleCenterY - bubbleRadius()
+        val top = (bubbleTop - capHeight - dp(TIP_ARROW_OVERLAP_DP)).coerceAtLeast(dp(TIP_TOP_PADDING_DP))
         val bottom = top + capHeight
         val rect = RectF(left, top, right, bottom)
         canvas.drawRoundRect(rect, capHeight / 2, capHeight / 2, tipBgPaint)
