@@ -545,6 +545,9 @@
     <!-- Settings - ADB Shell Page -->
     <string name="settings_adb_shell">ADB Shell</string>
     <string name="settings_adb_shell_desc">本地 ADB 命令执行</string>
+    <!-- Settings - Sandbox menu entry (the page itself reuses sandbox_title) -->
+    <string name="settings_sandbox">本地沙箱</string>
+    <string name="settings_sandbox_desc">PRoot 隔离环境</string>
     <string name="adb_status">状态</string>
     <string name="adb_root_detected">已检测到 Root</string>
     <string name="adb_root_not_detected">无 Root</string>
@@ -1629,6 +1632,7 @@
     <string name="logs_unified_log_title">全部日志（ADB Shell + App）</string>
     <string name="pet_overlay_size">桌面宠物大小</string>
     <string name="pet_overlay_size_desc">调整桌面宠物的显示大小</string>
+    <string name="pet_section_title">桌面宠物</string>
     <string name="pet_group_builtin_title">内置宠物</string>
     <string name="pet_character_label">宠物外观</string>
     <string name="pet_character_classic">经典（默认气泡）</string>

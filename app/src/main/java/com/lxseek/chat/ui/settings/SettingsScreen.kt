@@ -282,9 +282,10 @@ private val settingsGroups = listOf(
     )),
     // Group 4 — 能力与执行（本机执行环境归拢）
     SettingsGroupData(titleRes = R.string.settings_group_capabilities, items = listOf(
-        SettingsCategory("device_control", R.string.settings_device_control, R.string.settings_device_control_desc, Icons.Default.Android),
+        SettingsCategory("adb_shell", R.string.settings_adb_shell, R.string.settings_adb_shell_desc, Icons.Default.Terminal),
+        SettingsCategory("sandbox", R.string.settings_sandbox, R.string.settings_sandbox_desc, Icons.Default.Security),
         SettingsCategory("runtime_status", R.string.settings_runtime_status, R.string.settings_runtime_status_desc, Icons.Default.Speed),
-        SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Terminal),
+        SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Code),
     )),
     // Group 5 — 接入与自动化（连接/插件/代理/任务归位，proxy 归入网络接入）
     SettingsGroupData(titleRes = R.string.settings_group_access_automation, items = listOf(
@@ -295,6 +296,7 @@ private val settingsGroups = listOf(
             R.string.mcp_desc,
             iconRes = R.drawable.ic_mcp,
         ),
+        SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
         SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
         SettingsCategory("search", R.string.search_title, R.string.search_desc, Icons.Default.Search),
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
@@ -413,10 +415,27 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                     onBack = { selectedCategory = null },
                     onOpenWorkflow = { selectedCategory = "workflow" },
                 )
-
-                "device_control" -> SettingsDeviceControlPage(viewModel, onBack = { selectedCategory = null })
+                "workflow" -> SettingsWorkflowPage(viewModel, onBack = { selectedCategory = null })
+                "plugins" -> SettingsPluginsListPage(viewModel, onBack = { selectedCategory = null })
 
                 "runtime_status" -> SettingsRuntimeStatusPage(viewModel, onBack = { selectedCategory = null })
+                "adb_shell" -> SettingsAdbPage(viewModel, onBack = { selectedCategory = null })
+                "sandbox" -> {
+                    val sandboxMgr = viewModel.sandboxManager
+                    if (sandboxMgr != null) {
+                        val sandboxSharedStorageEnabled by viewModel.settings.sandboxSharedStorageEnabled.collectAsState()
+                        SettingsSandboxPage(
+                            sandboxManager = sandboxMgr,
+                            onBack = { selectedCategory = null },
+                            sharedStorageEnabled = sandboxSharedStorageEnabled,
+                            onSharedStorageEnabledChange = viewModel.settings::setSandboxSharedStorageEnabled,
+                        )
+                    } else {
+                        // Sandbox flavor not available on this build: fall back to the shell page
+                        // so the user still lands somewhere sensible instead of a blank screen.
+                        SettingsShellPage(viewModel, onBack = { selectedCategory = null })
+                    }
+                }
                 "im_gateway" -> SettingsImGatewayPage(viewModel, onBack = { selectedCategory = null })
                 "notification_reply" -> NotificationReplySettingsPage(
                     viewModel,

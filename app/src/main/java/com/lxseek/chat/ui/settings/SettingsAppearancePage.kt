@@ -680,6 +680,14 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     }
                 )
             }
+            // ── Desktop Pet ──
+            Text(
+                text = stringResource(R.string.pet_section_title),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+            PetSettingsSection(viewModel)
             if (showDocFab) { Spacer(modifier = Modifier.height(80.dp)) }
     }
 

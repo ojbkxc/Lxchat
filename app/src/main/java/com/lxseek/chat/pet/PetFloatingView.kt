@@ -578,12 +578,12 @@ class PetFloatingView @JvmOverloads constructor(
         val bw = bitmap.width; val bh = bitmap.height
         if (bw <= 0 || bh <= 0) return false
         if (dst.width() <= 0f || dst.height() <= 0f) return false
-        if (x < dst.left || x > dst.right || y < dst.top || y > dst.bottom) return false
+        if (x < dst.left || x > dst.right || y < dst.top || y > dst.bottom) return true
         val cellW = PetAnimation.CELL_WIDTH
         val cellH = PetAnimation.CELL_HEIGHT
         val fx = srcX + ((x - dst.left) / dst.width() * cellW).toInt().coerceIn(0, cellW - 1)
         val fy = srcY + ((y - dst.top) / dst.height() * cellH).toInt().coerceIn(0, cellH - 1)
-        if (fx < 0 || fx >= bw || fy < 0 || fy >= bh) return false
+        if (fx < 0 || fx >= bw || fy < 0 || fy >= bh) return true
         return bitmap.getPixel(fx, fy).ushr(24) == 0
     }
 

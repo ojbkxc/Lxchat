@@ -507,6 +507,9 @@
     <!-- Settings - ADB Shell Page -->
     <string name="settings_adb_shell">ADB Shell</string>
     <string name="settings_adb_shell_desc">Local ADB command execution</string>
+    <!-- Settings - Sandbox menu entry (the page itself reuses sandbox_title) -->
+    <string name="settings_sandbox">Local Sandbox</string>
+    <string name="settings_sandbox_desc">PRoot isolated environment</string>
     <string name="adb_status">Status</string>
     <string name="adb_root_detected">Root detected</string>
     <string name="adb_root_not_detected">No root</string>
@@ -1285,6 +1288,7 @@
     <string name="pet_overlay_image_desc">Choose an image as the pet icon. Transparent PNG is supported.</string>
     <string name="pet_overlay_size">Pet size</string>
     <string name="pet_overlay_size_desc">Adjust the display size of the desktop pet</string>
+    <string name="pet_section_title">Desktop Pet</string>
     <string name="pet_group_builtin_title">Built-in pets</string>
     <string name="pet_character_label">Pet appearance</string>
     <string name="pet_character_classic">Classic (default bubble)</string>

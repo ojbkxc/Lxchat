@@ -92,27 +92,22 @@ private data class DeviceControlStatus(
 }
 
 /**
- * Desktop-pet settings page. Lets the user show/hide the draggable floating bubble, prompts for the
- * system "Display over other apps" permission when missing, and deep-links to the system overlay
- * permission screen. Toggle state is persisted and drives the service via [PetOverlayController].
+ * Desktop-pet settings section. Lets the user show/hide the draggable floating bubble, prompts for
+ * the system "Display over other apps" permission when missing, and deep-links to the system
+ * overlay permission screen. Toggle state is persisted and drives the service via
+ * [PetOverlayController].
  *
- * The page also lets the user pick a custom image (transparent PNG) from the system gallery; the
- * image is copied into app-private storage and its path persisted, so the pet can be re-rendered
- * with the user's icon instead of the built-in Canvas bubble.
+ * The section also lets the user pick a custom image (transparent PNG) from the system gallery;
+ * the image is copied into app-private storage and its path persisted, so the pet can be
+ * re-rendered with the user's icon instead of the built-in Canvas bubble.
+ *
+ * Extracted from [SettingsDeviceControlPage] so it can be embedded in the appearance page without
+ * duplicating the pet-overlay logic. Contains only the pet settings content (no page scaffold).
  */
 @Composable
-fun SettingsDeviceControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
+fun PetSettingsSection(viewModel: ChatViewModel) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-
-    // ── Device-control (accessibility bridge) state ──
-    var a11yStatus by remember { mutableStateOf(DeviceControlStatus.read()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            a11yStatus = DeviceControlStatus.read()
-            delay(1_000L)
-        }
-    }
 
     // ── Pet overlay state ──
     val enabled by viewModel.settings.petOverlayEnabled.collectAsState()
@@ -195,6 +190,266 @@ fun SettingsDeviceControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             PetOverlayController.refreshImage(context)
         }
     }
+
+    Text(
+        text = stringResource(R.string.pet_overlay_howto),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+    )
+
+    SettingsGroupColumn(modifier = Modifier.fillMaxWidth()) {
+        SettingsGroup(
+            title = stringResource(R.string.pet_group_builtin_title),
+            items = listOf({
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    PetCharacter.selectableEntries.forEachIndexed { index, character ->
+                        PetCharacterOption(
+                            character = character,
+                            selected = PetCharacter.fromKey(characterKey) == character,
+                            onClick = { setCharacter(character) },
+                        )
+                        if (index < PetCharacter.selectableEntries.lastIndex) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                    }
+                }
+            }),
+        )
+
+        SettingsGroup(
+            title = stringResource(R.string.settings_group_appearance_language),
+            items = listOf({
+                SettingsItem(
+                    headlineContent = { Text(stringResource(R.string.pet_overlay_enabled)) },
+                    supportingContent = { Text(stringResource(R.string.pet_overlay_enabled_desc)) },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.Android,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = enabled && overlayGranted,
+                            onCheckedChange = ::setEnabled,
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        setEnabled(!(enabled && overlayGranted))
+                    },
+                )
+                SettingsItem(
+                    headlineContent = { Text(stringResource(R.string.pet_emotion_enabled)) },
+                    supportingContent = { Text(stringResource(R.string.pet_emotion_enabled_desc)) },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.Favorite,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = emotionEnabled,
+                            onCheckedChange = ::setEmotionEnabled,
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        setEmotionEnabled(!emotionEnabled)
+                    },
+                )
+                SettingsItem(
+                    headlineContent = { Text(stringResource(R.string.pet_overlay_size)) },
+                    supportingContent = {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.pet_overlay_size_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Slider(
+                                    value = sliderValue,
+                                    onValueChange = { sliderValue = it },
+                                    onValueChangeFinished = {
+                                        viewModel.viewModelScope.launch {
+                                            viewModel.settings.savePetOverlaySizeScale(sliderValue)
+                                            PetOverlayController.refreshSize(context)
+                                        }
+                                    },
+                                    valueRange = 0.5f..1.0f,
+                                    steps = 9,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("${(sliderValue * 100).toInt()}%")
+                            }
+                        }
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.FormatSize,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
+                    trailingContent = {},
+                )
+            }),
+        )
+
+        SettingsGroup(
+            title = stringResource(R.string.pet_overlay_custom_image),
+            items = listOf({
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.pet_overlay_image_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        // Thumbnail preview of the currently selected image (if any).
+                        ImagePreview(
+                            path = imagePath,
+                            modifier = Modifier.size(56.dp),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            OutlinedButton(
+                                onClick = { imagePicker.launch("image/*") },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Image,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.pet_overlay_select_image))
+                            }
+                            if (imagePath.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = ::clearImage,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.pet_overlay_clear_image))
+                                }
+                            }
+                        }
+                    }
+                }
+            }),
+        )
+
+        SettingsGroup(
+            title = stringResource(R.string.settings_group_permissions),
+            items = listOf({
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VerifiedUser,
+                        contentDescription = null,
+                        tint = if (overlayGranted) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(
+                                if (overlayGranted) {
+                                    R.string.pet_overlay_permission_granted
+                                } else {
+                                    R.string.pet_overlay_permission_missing
+                                },
+                            ),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (overlayGranted) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
+                        )
+                        Text(
+                            text = stringResource(R.string.pet_overlay_permission_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }),
+        )
+
+        if (!overlayGranted) {
+            OutlinedButton(
+                onClick = { PetOverlayController.openPermissionSettings(context) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.pet_overlay_grant_permission))
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+    }
+}
+
+/**
+ * Desktop-pet settings page. Lets the user show/hide the draggable floating bubble, prompts for the
+ * system "Display over other apps" permission when missing, and deep-links to the system overlay
+ * permission screen. Toggle state is persisted and drives the service via [PetOverlayController].
+ *
+ * The page also lets the user pick a custom image (transparent PNG) from the system gallery; the
+ * image is copied into app-private storage and its path persisted, so the pet can be re-rendered
+ * with the user's icon instead of the built-in Canvas bubble.
+ */
+@Composable
+fun SettingsDeviceControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
+    val context = LocalContext.current
+
+
+    // ── Device-control (accessibility bridge) state ──
+    var a11yStatus by remember { mutableStateOf(DeviceControlStatus.read()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            a11yStatus = DeviceControlStatus.read()
+            delay(1_000L)
+        }
+    }
+
 
     CollapsingSettingsScaffold(
         title = stringResource(R.string.settings_device_control),
@@ -289,240 +544,7 @@ fun SettingsDeviceControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = stringResource(R.string.pet_overlay_howto),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        )
-
-        SettingsGroupColumn(modifier = Modifier.fillMaxWidth()) {
-            SettingsGroup(
-                title = stringResource(R.string.pet_group_builtin_title),
-                items = listOf({
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        PetCharacter.selectableEntries.forEachIndexed { index, character ->
-                            PetCharacterOption(
-                                character = character,
-                                selected = PetCharacter.fromKey(characterKey) == character,
-                                onClick = { setCharacter(character) },
-                            )
-                            if (index < PetCharacter.selectableEntries.lastIndex) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                            }
-                        }
-                    }
-                }),
-            )
-
-            SettingsGroup(
-                title = stringResource(R.string.settings_group_appearance_language),
-                items = listOf({
-                    SettingsItem(
-                        headlineContent = { Text(stringResource(R.string.pet_overlay_enabled)) },
-                        supportingContent = { Text(stringResource(R.string.pet_overlay_enabled_desc)) },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Android,
-                                null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        },
-                        trailingContent = {
-                            Switch(
-                                checked = enabled && overlayGranted,
-                                onCheckedChange = ::setEnabled,
-                            )
-                        },
-                        modifier = Modifier.clickable {
-                            setEnabled(!(enabled && overlayGranted))
-                        },
-                    )
-                    SettingsItem(
-                        headlineContent = { Text(stringResource(R.string.pet_emotion_enabled)) },
-                        supportingContent = { Text(stringResource(R.string.pet_emotion_enabled_desc)) },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Favorite,
-                                null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        },
-                        trailingContent = {
-                            Switch(
-                                checked = emotionEnabled,
-                                onCheckedChange = ::setEmotionEnabled,
-                            )
-                        },
-                        modifier = Modifier.clickable {
-                            setEmotionEnabled(!emotionEnabled)
-                        },
-                    )
-                    SettingsItem(
-                        headlineContent = { Text(stringResource(R.string.pet_overlay_size)) },
-                        supportingContent = {
-                            Column {
-                                Text(
-                                    text = stringResource(R.string.pet_overlay_size_desc),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Slider(
-                                        value = sliderValue,
-                                        onValueChange = { sliderValue = it },
-                                        onValueChangeFinished = {
-                                            viewModel.viewModelScope.launch {
-                                                viewModel.settings.savePetOverlaySizeScale(sliderValue)
-                                                PetOverlayController.refreshSize(context)
-                                            }
-                                        },
-                                        valueRange = 0.5f..1.0f,
-                                        steps = 9,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("${(sliderValue * 100).toInt()}%")
-                                }
-                            }
-                        },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.FormatSize,
-                                null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        },
-                        trailingContent = {},
-                    )
-                }),
-            )
-
-            SettingsGroup(
-                title = stringResource(R.string.pet_overlay_custom_image),
-                items = listOf({
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.pet_overlay_image_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            // Thumbnail preview of the currently selected image (if any).
-                            ImagePreview(
-                                path = imagePath,
-                                modifier = Modifier.size(56.dp),
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                OutlinedButton(
-                                    onClick = { imagePicker.launch("image/*") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Image,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.pet_overlay_select_image))
-                                }
-                                if (imagePath.isNotBlank()) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    OutlinedButton(
-                                        onClick = ::clearImage,
-                                        modifier = Modifier.fillMaxWidth(),
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Clear,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(stringResource(R.string.pet_overlay_clear_image))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }),
-            )
-
-            SettingsGroup(
-                title = stringResource(R.string.settings_group_permissions),
-                items = listOf({
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.VerifiedUser,
-                            contentDescription = null,
-                            tint = if (overlayGranted) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            },
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(
-                                    if (overlayGranted) {
-                                        R.string.pet_overlay_permission_granted
-                                    } else {
-                                        R.string.pet_overlay_permission_missing
-                                    },
-                                ),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (overlayGranted) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.error
-                                },
-                            )
-                            Text(
-                                text = stringResource(R.string.pet_overlay_permission_desc),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }),
-            )
-
-            if (!overlayGranted) {
-                OutlinedButton(
-                    onClick = { PetOverlayController.openPermissionSettings(context) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.pet_overlay_grant_permission))
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-        }
+        PetSettingsSection(viewModel)
     }
 }
 
