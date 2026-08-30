@@ -100,6 +100,14 @@ class EmbeddingCacheWorker(
         var attempted = 0
         val batchSize = model.batchSize.coerceIn(1, 100)
         val remoteConfig = if (model.type == EmbeddingModelType.LOCAL) {
+            // Load the downloadable native library first; bail with a friendly
+            // error if it's missing rather than letting computeEmbeddings
+            // silently return nulls.
+            if (!LlamaEngine.loadNative(applicationContext)) {
+                return Result.failure(Data.Builder()
+                    .putString("error", applicationContext.getString(com.lxseek.chat.R.string.local_engine_not_installed))
+                    .build())
+            }
             if (!LlamaEngine.isModelReady(model.localFilePath)) {
                 return Result.failure(Data.Builder()
                     .putString("error", "Local model file not found").build())

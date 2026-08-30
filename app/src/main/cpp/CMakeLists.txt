@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project("lxchat_llama" LANGUAGES C CXX)
+project("lxchat_native" LANGUAGES C CXX)
 
 set(LLAMA_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../thirdparty/llama.cpp" CACHE PATH "llama.cpp source directory")
 get_filename_component(LLAMA_CPP_DIR "${LLAMA_CPP_DIR}" REALPATH)
@@ -20,6 +20,14 @@ set(LLAMA_BUILD_SERVER OFF CACHE BOOL "")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 
+# llama.cpp sources are still pulled in: the downloadable lxchat_llama.so is
+# built from this same CMakeLists.txt by CI (see .github/workflows/build.yml
+# job `build-native-llama`), which invokes `cmake --build --target lxchat_llama`.
+# The target is marked EXCLUDE_FROM_ALL below so the default Gradle build
+# (which calls `cmake --build .` with no explicit target) does NOT compile it,
+# keeping the APK ~5-8MB smaller. The .so ships as a Release Asset and is
+# System.load()ed at runtime from filesDir/native/lxchat_llama/ (see
+# LlamaEngine.loadNative / LlamaChatEngine companion init).
 add_subdirectory(${LLAMA_CPP_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llama)
 add_subdirectory(${LLAMA_CPP_DIR}/common ${CMAKE_CURRENT_BINARY_DIR}/common)
 add_subdirectory(${LLAMA_CPP_DIR}/tools/mtmd ${CMAKE_CURRENT_BINARY_DIR}/mtmd)
@@ -44,8 +52,12 @@ endif()
 
 target_compile_definitions(ggml-base PRIVATE GGML_COMMIT="unknown")
 
-# Build llama JNI wrapper
+# ── llama JNI wrapper (downloadable component, NOT in APK) ───────────
+# EXCLUDE_FROM_ALL keeps it out of the default Gradle build. CI builds it
+# explicitly via `cmake --build --target lxchat_llama` and uploads the .so
+# as a Release Asset.
 add_library(lxchat_llama SHARED llama_jni.cpp llama_chat_jni.cpp)
+set_target_properties(lxchat_llama PROPERTIES EXCLUDE_FROM_ALL TRUE)
 target_link_libraries(lxchat_llama llama mtmd log)
 target_include_directories(lxchat_llama PRIVATE ${LLAMA_CPP_DIR}/include ${LLAMA_CPP_DIR}/tools/mtmd)
 target_link_options(lxchat_llama PRIVATE

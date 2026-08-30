@@ -385,6 +385,14 @@ class RagToolProvider(
             return@withContext emptyList()
         }
         val queryEmbedding = if (config.type == com.lxseek.chat.data.EmbeddingModelType.LOCAL) {
+            // Native library must be loaded for local embeddings. RagToolProvider
+            // is invoked from tool execution which has no UI surface for prompting
+            // a download, so we just bail with a debug log — the chat surface
+            // (LocalProvider) is responsible for the user-facing prompt.
+            if (!LlamaEngine.isNativeAvailable()) {
+                DebugLog.w("LxChatVM", "GM RAG: native library not loaded (downloadable component missing)")
+                return@withContext emptyList()
+            }
             if (!LlamaEngine.isModelReady(config.localFilePath)) {
                 DebugLog.w("LxChatVM", "GM RAG: local model not ready")
                 return@withContext emptyList()

@@ -224,6 +224,12 @@ class RagManager(
         var attempted = 0
         val batchSize = model.batchSize.coerceIn(1, 100)
         val remoteConfig = if (model.type == EmbeddingModelType.LOCAL) {
+            // Load the downloadable native library first; surface a friendly
+            // snackbar if it's missing so the user knows to visit Settings.
+            if (!LlamaEngine.loadNative(appContext)) {
+                if (!silent) emitSnackbar(SnackbarEvent(appContext.getString(R.string.local_engine_not_installed)))
+                return
+            }
             if (!LlamaEngine.isModelReady(model.localFilePath)) {
                 if (!silent) emitSnackbar(SnackbarEvent(appContext.getString(R.string.local_model_not_found)))
                 return
@@ -334,6 +340,13 @@ class RagManager(
         DebugLog.d("LxChatVM", "RAG index: indexing $messageId with model '${model.name}'")
         val toEmbed = text.take(Constants.MAX_EMBEDDING_TEXT_LENGTH)
         val embedding: FloatArray? = if (model.type == EmbeddingModelType.LOCAL) {
+            // Single-message indexing runs in the background with no UI surface;
+            // if the native library isn't loaded just skip silently. The cache
+            // loop above is responsible for the user-facing prompt.
+            if (!LlamaEngine.isNativeAvailable()) {
+                DebugLog.w("LxChatVM", "RAG index: native library not loaded, skipping")
+                return
+            }
             if (!LlamaEngine.isModelReady(model.localFilePath)) {
                 DebugLog.w("LxChatVM", "RAG index: local model not ready, skipping")
                 return

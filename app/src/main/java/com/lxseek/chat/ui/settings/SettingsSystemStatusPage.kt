@@ -14,6 +14,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,7 +27,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import com.lxseek.chat.BuildConfig
+import com.lxseek.chat.R
 import com.lxseek.chat.androidcontrol.AndroidUiControllerService
+import com.lxseek.chat.api.LlamaEngine
+import com.lxseek.chat.api.LlamaEngineDownloader
 import com.lxseek.chat.membership.DeviceIdCard
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.model.ModelId
@@ -33,6 +38,7 @@ import com.lxseek.chat.model.apiModelName
 import com.lxseek.chat.runtime.RuntimeEnginePlugin
 import com.lxseek.chat.runtime.RuntimeStatus
 import com.lxseek.chat.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -128,6 +134,7 @@ fun SettingsSystemStatusPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 nodeStatus = nodeStatus,
                 ffmpegStatus = ffmpegStatus,
             )
+            LocalEngineSection(context = context)
             MembershipSection(
                 tier = membershipStatus.tier,
                 isActive = membershipStatus.isActive,
@@ -245,6 +252,115 @@ private fun RuntimeSection(
             name = RuntimeEnginePlugin.engineDisplayName("runtime-ffmpeg"),
             status = ffmpegStatus,
             sandboxProvided = true,
+        )
+    }
+}
+
+// ---------------- 本地推理引擎（可下载组件） ----------------
+
+@Composable
+private fun LocalEngineSection(context: Context) {
+    // Whether the .so file is present on disk (independent of whether it's
+    // loaded into the current process).
+    var installed by remember { mutableStateOf(LlamaEngine.isNativeInstalled(context)) }
+    // Whether the .so has been System.load()ed in this process.
+    val loaded = remember { LlamaEngine.isNativeAvailable() }
+    // Live download progress from LlamaEngineDownloader.
+    val downloadProgress by LlamaEngineDownloader.progress.collectAsState()
+    val downloading by LlamaEngineDownloader.downloading.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Refresh installed state when a download completes.
+    LaunchedEffect(downloadProgress) {
+        if (downloadProgress == 100) {
+            installed = LlamaEngine.isNativeInstalled(context)
+        }
+    }
+
+    // Surface download failures as a snackbar.
+    LaunchedEffect(downloadProgress) {
+        if (downloadProgress == -2) {
+            snackbarHostState.showSnackbar(context.getString(R.string.local_engine_download_failed))
+        }
+    }
+
+    Box {
+        SectionCard(title = context.getString(R.string.local_engine_section_title)) {
+            StatusDotRow(
+                label = "lxchat_llama.so",
+                available = installed,
+                detail = when {
+                    downloading -> context.getString(R.string.local_engine_downloading)
+                    installed && loaded -> "${context.getString(R.string.local_engine_installed)} · 已加载"
+                    installed -> "${context.getString(R.string.local_engine_installed)} · 未加载（重启生效）"
+                    else -> context.getString(R.string.local_engine_not_installed_short)
+                },
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (!installed || downloading) {
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                LlamaEngineDownloader.download(context)
+                            }
+                        },
+                        enabled = !downloading,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (installed) context.getString(R.string.local_engine_redownload) else context.getString(R.string.local_engine_download))
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                LlamaEngineDownloader.download(context)
+                            }
+                        },
+                        enabled = !downloading,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(context.getString(R.string.local_engine_redownload))
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            LlamaEngineDownloader.delete(context)
+                            installed = LlamaEngine.isNativeInstalled(context)
+                        },
+                        enabled = !downloading,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("删除")
+                    }
+                }
+            }
+            if (downloading || downloadProgress in 0..99) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { (downloadProgress.coerceAtLeast(0)) / 100f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "$downloadProgress%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
 }

@@ -107,8 +107,74 @@ jobs:
           path: dist/*.apk
           if-no-files-found: error
 
+  # ── Build the downloadable lxchat_llama.so native component ──────────────
+  # This .so is NO LONGER packaged in the APK (see app/src/main/cpp/CMakeLists.txt).
+  # It is built here against the NDK and uploaded as a Release Asset so the app
+  # can download it at runtime into filesDir/native/lxchat_llama/liblxchat_llama.so
+  # (see LlamaEngine.loadNative). Keeps the APK ~5-8MB smaller.
+  build-native-llama:
+    needs: get-version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.get-version.outputs.version }}
+      TAG: ${{ needs.get-version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "ndk;28.2.13676358 cmake;3.22.1"
+
+      - name: Set NDK environment
+        run: |
+          NDK_HOME=$(ls -d $ANDROID_HOME/ndk/28.2.13676358 2>/dev/null || ls -d $ANDROID_HOME/ndk/*/ 2>/dev/null | sort -V | tail -1 | sed 's:/$::')
+          echo "ANDROID_NDK_HOME=$NDK_HOME" >> $GITHUB_ENV
+          echo "ANDROID_NDK=$NDK_HOME" >> $GITHUB_ENV
+          echo "NDK_HOME=$NDK_HOME"
+
+      - name: Build lxchat_llama.so for arm64-v8a
+        run: |
+          set -e
+          ABI=arm64-v8a
+          API=24
+          TOOLCHAIN=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake
+          SRC=app/src/main/cpp
+          BUILD=build-native-$ABI
+          mkdir -p "$BUILD"
+          cmake -S "$SRC" -B "$BUILD" \
+            -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
+            -DANDROID_ABI="$ABI" \
+            -DANDROID_PLATFORM=android-$API \
+            -DANDROID_STL=c++_shared \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLAMA_BUILD_EXAMPLES=OFF \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DLLAMA_BUILD_SERVER=OFF
+          cmake --build "$BUILD" --target lxchat_llama -j "$(nproc)"
+
+          # Stage the artifact with an ABI-tagged filename so the app can pick
+          # the right one per device. The runtime path expects liblxchat_llama.so
+          # inside filesDir/native/lxchat_llama/, but the Release Asset keeps the
+          # ABI suffix to disambiguate when we ship more ABIs later.
+          mkdir -p dist
+          cp "$BUILD/liblxchat_llama.so" "dist/lxchat_llama-$ABI.so"
+          ls -lh dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-native-llama
+          path: dist/lxchat_llama-*.so
+          if-no-files-found: error
+
   release:
-    needs: [get-version, build-android]
+    needs: [get-version, build-android, build-native-llama]
     runs-on: ubuntu-latest
     env:
       TAG: ${{ needs.get-version.outputs.tag }}
@@ -122,7 +188,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (APK only)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -133,12 +199,28 @@ jobs:
             echo "### Downloads"
             echo ""
             echo "- \`LxChat-v${VERSION}-android-arm64-v8a.apk\` — Android APK (arm64-v8a)"
+            echo ""
+            echo "### Runtime Components"
+            echo ""
+            echo "- Local inference engine (\`lxchat_llama-arm64-v8a.so\`) is hosted in [lxchat-runtime](https://github.com/ojbkxc/lxchat-runtime/releases). The app downloads it on demand from Settings > System Status."
           } > /tmp/release_notes.md
           gh release create "$TAG" \
             --title "LxChat $TAG" \
             --notes-file /tmp/release_notes.md \
             --target ${{ github.sha }} \
-            $(find dist -type f)
+            $(find dist -name '*.apk' -type f)
+
+      - name: Upload .so to lxchat-runtime repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "$TAG" --repo ojbkxc/lxchat-runtime --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" \
+            --repo ojbkxc/lxchat-runtime \
+            --title "LxChat Runtime $TAG" \
+            --notes "Native inference engine for LxChat $TAG" \
+            --target main \
+            $(find dist -name 'lxchat_llama-*.so' -type f)
 
       - name: Generate latest.json
         run: |

@@ -52,7 +52,15 @@ class LocalProvider(
 
         val engine = ensureEngineLoaded(modelConfig)
         if (engine == null) {
-            emit(StreamEvent.Error(GenerationError.LocalModel("Failed to load model: ${modelConfig.alias}")))
+            // Distinguish "native not installed" (downloadable component missing)
+            // from generic model-load failure so the UI can prompt for download.
+            val nativeReady = LlamaEngine.isNativeAvailable()
+            val msg = if (!nativeReady) {
+                context.getString(R.string.local_engine_not_installed)
+            } else {
+                "Failed to load model: ${modelConfig.alias}"
+            }
+            emit(StreamEvent.Error(GenerationError.LocalModel(msg)))
             return@flow
         }
 
@@ -211,6 +219,12 @@ class LocalProvider(
 
     private suspend fun ensureEngineLoaded(model: com.lxseek.chat.data.LocalChatModelConfig): LlamaChatEngine? {
         return engineLock.withLock {
+            // Load the downloadable native library first. If it's missing the
+            // caller (generateResponse) maps this null into a friendly
+            // "本地推理引擎未安装" error rather than an UnsatisfiedLinkError crash.
+            if (!LlamaEngine.loadNative(context)) {
+                return@withLock null
+            }
             val existing = currentEngine
             if (existing != null && existing.modelPath == model.localFilePath) {
                 existing.resetContext()

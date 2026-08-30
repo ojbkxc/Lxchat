@@ -50,7 +50,11 @@ android {
             cmake {
                 cppFlags += "-std=c++17"
                 arguments += listOf("-DANDROID_STL=c++_shared")
-                targets += listOf("lxchat_llama", "lxchat_proot", "redemption_native")
+                // lxchat_llama is a downloadable component now (see
+                // app/src/main/cpp/CMakeLists.txt). It is built by CI as a
+                // Release Asset, not packaged in the APK. Only the in-APK
+                // stubs are listed here.
+                targets += listOf("lxchat_proot", "redemption_native")
             }
         }
     }

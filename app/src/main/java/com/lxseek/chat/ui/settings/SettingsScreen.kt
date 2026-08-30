@@ -249,16 +249,20 @@ private data class SettingsGroupData(
 )
 
 private val settingsGroups = listOf(
-    // Group 1 — 外观与语言
+    // Group 1 — 会员（置顶突出显示：单独一组，无分组标题，作为最顶部独立卡片）
+    SettingsGroupData(titleRes = null, items = listOf(
+        SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
+    )),
+    // Group 2 — 外观与语言
     SettingsGroupData(titleRes = R.string.settings_group_appearance_language, items = listOf(
         SettingsCategory("appearance", R.string.settings_appearance, R.string.settings_appearance_desc, Icons.Default.Palette),
         SettingsCategory("language", R.string.language_title, R.string.language_desc, Icons.Default.Translate),
     )),
-    // Group 1.5 — 语音（统一入口，所有用户可见）
+    // Group 3 — 语音（统一入口，所有用户可见）
     SettingsGroupData(titleRes = R.string.settings_group_voice, items = listOf(
         SettingsCategory("voice_service", R.string.settings_voice_service, R.string.settings_voice_service_desc, Icons.Default.Mic),
     )),
-    // Group 2 — 模型与生成（转录作为媒体模型能力归入本组）
+    // Group 4 — 模型与生成（转录作为媒体模型能力归入本组）
     SettingsGroupData(titleRes = R.string.settings_group_models_generation, items = listOf(
         SettingsCategory("provider", R.string.settings_provider, R.string.settings_provider_desc, Icons.Default.Cloud),
         SettingsCategory("models", R.string.settings_models, R.string.settings_models_desc, Icons.Default.Chat),
@@ -267,7 +271,7 @@ private val settingsGroups = listOf(
         SettingsCategory("transcription", R.string.settings_transcription, R.string.settings_transcription_desc, Icons.Default.ImageSearch),
         SettingsCategory("feature_model_config", R.string.settings_feature_model_config, R.string.settings_feature_model_config_desc, Icons.Default.Category, requiresMembership = true),
     )),
-    // Group 3 — 回复与内容（通知回复归入回复类）
+    // Group 5 — 回复与内容（通知回复归入回复类）
     SettingsGroupData(titleRes = R.string.settings_group_responses, items = listOf(
         SettingsCategory("prompts", R.string.settings_prompts, R.string.settings_prompts_desc, Icons.Default.Psychology),
         SettingsCategory("context", R.string.context_title, R.string.context_desc, Icons.Default.Memory),
@@ -275,7 +279,7 @@ private val settingsGroups = listOf(
         SettingsCategory("titlegen", R.string.settings_title_gen, R.string.settings_title_gen_desc, Icons.Default.Edit),
         SettingsCategory("notification_reply", R.string.settings_notification_reply, R.string.settings_notification_reply_desc, Icons.Default.Notifications),
     )),
-    // Group 4 — 能力与执行（本机执行环境归拢）
+    // Group 6 — 能力与执行（本机执行环境归拢）
     // runtime_status 已合并进 sandbox 页面：三个运行时引擎（Python/Node/FFmpeg）
     // 现在都跑在 proot 沙箱里，沙箱页面顶部展示它们的就绪状态，不再单列菜单入口。
     SettingsGroupData(titleRes = R.string.settings_group_capabilities, items = listOf(
@@ -283,7 +287,7 @@ private val settingsGroups = listOf(
         SettingsCategory("sandbox", R.string.settings_sandbox, R.string.settings_sandbox_desc, Icons.Default.Security),
         SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Code),
     )),
-    // Group 5 — 接入与自动化（连接/插件/代理/任务归位，proxy 归入网络接入）
+    // Group 7 — 接入与自动化（连接/插件/代理/任务归位，proxy 归入网络接入）
     SettingsGroupData(titleRes = R.string.settings_group_access_automation, items = listOf(
         SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
         SettingsCategory(
@@ -299,16 +303,14 @@ private val settingsGroups = listOf(
         SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
         SettingsCategory("cron", R.string.settings_cron, R.string.settings_cron_desc, Icons.Default.Schedule),
     )),
-    // Group 6 — 数据与系统
+    // Group 8 — 数据与系统（about 入口已移除：关于内容由会员页面内部承载）
     SettingsGroupData(titleRes = R.string.settings_group_data_system, items = listOf(
         SettingsCategory("memory", R.string.settings_memory, R.string.settings_memory_desc, Icons.Default.Description),
         SettingsCategory("datacontrol", R.string.settings_data_control, R.string.settings_data_control_desc, Icons.Default.Storage),
         SettingsCategory("logs", R.string.settings_logs, R.string.settings_logs_desc, Icons.Default.ReceiptLong),
-        SettingsCategory("about", R.string.settings_about, R.string.settings_about_desc, Icons.Default.Info),
         SettingsCategory("statistics", R.string.settings_statistics, R.string.settings_statistics_desc, Icons.Default.BarChart),
-        SettingsCategory("membership", R.string.settings_membership, R.string.settings_membership_desc, Icons.Default.WorkspacePremium),
     )),
-    // Group 7 — 系统（权限与诊断，所有用户可见）
+    // Group 9 — 系统（权限与诊断，所有用户可见）
     SettingsGroupData(titleRes = R.string.settings_group_system, items = listOf(
         SettingsCategory("permission", R.string.settings_permission, R.string.settings_permission_desc, Icons.Default.Lock),
         SettingsCategory("system_status", R.string.settings_system_status, R.string.settings_system_status_desc, Icons.Default.Assessment),
@@ -404,7 +406,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                     onOpenOnlineMarket = { selectedCategory = "online_market" },
                 )
 
-                "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null }, onNavigateToAbout = { selectedCategory = "about" })
+                "membership" -> SettingsMembershipPage(viewModel, onBack = { selectedCategory = null })
                 "online_market" -> SettingsPluginMarketPage(
                     viewModel,
                     onBack = { selectedCategory = null },
@@ -454,7 +456,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "statistics" -> SettingsStatisticsPage(viewModel, onBack = { selectedCategory = null })
                 "datacontrol" -> SettingsDataControlPage(viewModel, onBack = { selectedCategory = null })
                 "appearance" -> SettingsAppearancePage(viewModel, onBack = { selectedCategory = null })
-                "about" -> SettingsAboutPage(viewModel, onBack = { selectedCategory = null })
+
                 "logs" -> SettingsLogsPage(viewModel, onBack = { selectedCategory = null })
 
                 "voice_service" -> SettingsVoiceServicePage(

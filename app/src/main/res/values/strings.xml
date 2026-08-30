@@ -1112,6 +1112,14 @@
     <string name="no_api_key_for_provider">No credentials configured for %s. Please add API key or base URL in Settings.</string>
     <string name="local_model_not_found">Local model file not found. Please re-import the model.</string>
     <string name="local_context_exceeded">This conversation needs %1$d prompt tokens, but the local model context is %2$d tokens. Reduce the context window or increase the model context size.</string>
+    <string name="local_engine_not_installed">Local inference engine is not installed. Please download it in Settings &gt; System Status.</string>
+    <string name="local_engine_downloading">Downloading local inference engine…</string>
+    <string name="local_engine_download_failed">Failed to download local inference engine. Please retry.</string>
+    <string name="local_engine_installed">Installed</string>
+    <string name="local_engine_not_installed_short">Not installed</string>
+    <string name="local_engine_download">Download</string>
+    <string name="local_engine_redownload">Re-download</string>
+    <string name="local_engine_section_title">Local inference engine</string>
     <string name="all_messages_cached">All %1$d messages cached.</string>
     <string name="cached_partial_failed">Cached %1$d of %2$d. %3$d failed.</string>
     <string name="retry">Retry</string>

@@ -1,5 +1,6 @@
 package com.lxseek.chat.api
 
+
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -18,6 +19,17 @@ interface NativeChatCallback {
 
 class ChatTemplateMessage(val role: String, val content: String)
 
+/**
+ * Chat-side wrapper around the downloadable `lxchat_llama` native library.
+ *
+ * The .so is NO LONGER packaged in the APK. It is downloaded at runtime into
+ * `filesDir/native/lxchat_llama/liblxchat_llama.so` (see [LlamaEngine.loadNative]).
+ * The companion `init {}` block no longer calls `System.loadLibrary`, so
+ * constructing a [LlamaChatEngine] is always safe. Callers MUST ensure the
+ * native library is loaded (via [LlamaEngine.loadNative] /
+ * [LlamaEngine.isNativeAvailable]) before invoking [load] — [load] returns
+ * `false` if the native layer is not available.
+ */
 class LlamaChatEngine(
     val modelPath: String,
     val nCtx: Int = 2048
@@ -26,8 +38,11 @@ class LlamaChatEngine(
         private const val TAG = "LlamaChatEngine"
 
         init {
-            System.loadLibrary("c++_shared")
-            System.loadLibrary("lxchat_llama")
+            // No automatic System.loadLibrary here. The .so is a downloadable
+            // component now. LlamaEngine.loadNative(context) is the single entry
+            // point for loading it; LocalProvider.ensureEngineLoaded calls it
+            // before instantiating this class.
+            DebugLog.d(TAG, "Companion init: native library is a downloadable component, no auto-load")
         }
     }
 
@@ -56,6 +71,10 @@ class LlamaChatEngine(
     fun isLoaded(): Boolean = nativeHandle != 0L
 
     fun load(): Boolean {
+        if (!LlamaEngine.isNativeAvailable()) {
+            DebugLog.e(TAG, "Native library not loaded — call LlamaEngine.loadNative(context) first")
+            return false
+        }
         if (!File(modelPath).exists()) {
             DebugLog.e(TAG, "Model file not found")
             return false

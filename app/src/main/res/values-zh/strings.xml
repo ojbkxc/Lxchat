@@ -1207,7 +1207,15 @@
     <string name="no_api_key_configured">未配置 API 密钥。</string>
     <string name="no_api_key_for_provider">未配置 %s 的凭证，请在设置中添加 API 密钥或 Base URL。</string>
     <string name="local_model_not_found">本地模型文件不存在，请重新导入模型。</string>
-    <string name="local_context_exceeded">这段对话需要 %1$d 个提示词元，但本地模型上下文只有 %2$d 个词元。请减少上下文窗口，或调高模型上下文大小。</string>
+    <string name="local_context_exceeded">这段对话需要 %1$d 个提示词元，但本地模型上下文只有 %2$d 词元。请减少上下文窗口，或调高模型上下文大小。</string>
+    <string name="local_engine_not_installed">本地推理引擎未安装，请在设置-系统状态中下载。</string>
+    <string name="local_engine_downloading">正在下载本地推理引擎…</string>
+    <string name="local_engine_download_failed">下载本地推理引擎失败，请重试。</string>
+    <string name="local_engine_installed">已安装</string>
+    <string name="local_engine_not_installed_short">未安装</string>
+    <string name="local_engine_download">下载</string>
+    <string name="local_engine_redownload">重新下载</string>
+    <string name="local_engine_section_title">本地推理引擎</string>
     <string name="all_messages_cached">已缓存全部 %1$d 条消息。</string>
     <string name="asr_provider_model_title">服务商语音识别模型</string>
     <string name="cached_partial_failed">已缓存 %1$d / %2$d 条，%3$d 条失败。</string>
