@@ -151,6 +151,7 @@ class EncryptedDns : okhttp3.Dns {
         val DEFAULT_WHITELIST = setOf(
             "*.workers.dev", "*.pages.dev", "*.cloudflare.com",
             "api.openai.com", "*.openai.com",
+            "activate.lxseek.com", "pay.lxseek.com",
         )
 
         const val DEFAULT_TIMEOUT_MS = 1500L
