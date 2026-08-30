@@ -11,7 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import android.content.Intent
+
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -48,6 +48,7 @@ import com.lxseek.chat.grok.GrokXOAuthManager
 import com.lxseek.chat.openai.OpenAILoginPhase
 import com.lxseek.chat.openai.OpenAIXOAuthManager
 import com.lxseek.chat.ui.components.CustomEndpointProtocolSelector
+import com.lxseek.chat.ui.components.OAuthWebViewDialog
 import com.lxseek.chat.ui.components.clearFocusOnTap
 import com.lxseek.chat.util.Constants
 import com.lxseek.chat.util.noOpBringIntoView
@@ -380,15 +381,7 @@ fun SettingsProviderDetailPage(
                 if (grokManager != null) {
                     GrokOAuthSettingsSection(
                         manager = grokManager,
-                        openBrowser = { uri ->
-                            try {
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                                )
-                            } catch (e: Exception) {
-                                DebugLog.e("GrokOAuth", "open browser failed", e)
-                            }
-                        },
+
                         onLoginSuccess = {
                             // 先保存预置模型列表(立即可用),再异步拉取远端模型列表(成功则覆盖)。
                             val presetModels = GrokXProvider.PRESET_MODELS.map { "${Constants.PROVIDER_GROK}:$it" }
@@ -416,15 +409,7 @@ fun SettingsProviderDetailPage(
                 if (openAIManager != null) {
                     ChatGPTOAuthSettingsSection(
                         manager = openAIManager,
-                        openBrowser = { uri ->
-                            try {
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                                )
-                            } catch (e: Exception) {
-                                DebugLog.e("ChatGPTOAuth", "open browser failed", e)
-                            }
-                        },
+
                         onLoginSuccess = {
                             // 先保存预置模型列表(立即可用),再异步拉取远端模型列表(成功则覆盖)。
                             val presetModels = OpenAIXProvider.PRESET_MODELS.map { "${Constants.PROVIDER_CHATGPT}:$it" }
@@ -721,7 +706,6 @@ fun SettingsProviderDetailPage(
 @Composable
 private fun GrokOAuthSettingsSection(
     manager: GrokXOAuthManager,
-    openBrowser: (android.net.Uri) -> Unit,
     onLoginSuccess: () -> Unit = {},
 ) {
     val loginState by manager.loginState.collectAsState()
@@ -731,6 +715,7 @@ private fun GrokOAuthSettingsSection(
     val scope = rememberCoroutineScope()
     var launchingNow by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf<String?>(null) }
+    var authUrl by remember { mutableStateOf<android.net.Uri?>(null) }
 
     LaunchedEffect(phase) {
         when (phase) {
@@ -802,7 +787,7 @@ private fun GrokOAuthSettingsSection(
                             onClick = {
                                 scope.launch {
                                     val uri = manager.startLogin()
-                                    if (uri != null) openBrowser(uri)
+                                    if (uri != null) authUrl = uri
                                 }
                             },
                             modifier = Modifier.weight(1f),
@@ -824,6 +809,26 @@ private fun GrokOAuthSettingsSection(
             }
         },
     )
+
+    authUrl?.let { url ->
+        val callbackPrefix = manager.getCallbackUrlPrefix()
+        if (callbackPrefix != null) {
+            OAuthWebViewDialog(
+                authUrl = url,
+                callbackUrlPrefix = callbackPrefix,
+                onCallback = { callbackUrl ->
+                    scope.launch {
+                        val success = manager.handleCallbackUrl(callbackUrl)
+                        if (success) {
+                            authUrl = null
+                            onLoginSuccess()
+                        }
+                    }
+                },
+                onDismiss = { authUrl = null },
+            )
+        }
+    }
 }
 
 @Composable
@@ -838,7 +843,6 @@ private fun accountStatusDescription(phase: GrokLoginPhase, loggedIn: Boolean): 
 @Composable
 private fun ChatGPTOAuthSettingsSection(
     manager: OpenAIXOAuthManager,
-    openBrowser: (android.net.Uri) -> Unit,
     onLoginSuccess: () -> Unit = {},
 ) {
     val loginState by manager.loginState.collectAsState()
@@ -848,6 +852,7 @@ private fun ChatGPTOAuthSettingsSection(
     val scope = rememberCoroutineScope()
     var launchingNow by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf<String?>(null) }
+    var authUrl by remember { mutableStateOf<android.net.Uri?>(null) }
 
     LaunchedEffect(phase) {
         when (phase) {
@@ -919,7 +924,7 @@ private fun ChatGPTOAuthSettingsSection(
                             onClick = {
                                 scope.launch {
                                     val uri = manager.startLogin()
-                                    if (uri != null) openBrowser(uri)
+                                    if (uri != null) authUrl = uri
                                 }
                             },
                             modifier = Modifier.weight(1f),
@@ -941,6 +946,26 @@ private fun ChatGPTOAuthSettingsSection(
             }
         },
     )
+
+    authUrl?.let { url ->
+        val callbackPrefix = manager.getCallbackUrlPrefix()
+        if (callbackPrefix != null) {
+            OAuthWebViewDialog(
+                authUrl = url,
+                callbackUrlPrefix = callbackPrefix,
+                onCallback = { callbackUrl ->
+                    scope.launch {
+                        val success = manager.handleCallbackUrl(callbackUrl)
+                        if (success) {
+                            authUrl = null
+                            onLoginSuccess()
+                        }
+                    }
+                },
+                onDismiss = { authUrl = null },
+            )
+        }
+    }
 }
 
 @Composable

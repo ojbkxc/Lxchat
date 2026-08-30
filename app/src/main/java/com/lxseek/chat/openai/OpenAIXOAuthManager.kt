@@ -10,10 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.net.ServerSocket
 
 /** 登录流程对外暴露的状态。 */
 enum class OpenAILoginPhase { IDLE, IN_PROGRESS, SUCCESS, FAILED }
@@ -26,11 +23,10 @@ data class OpenAILoginUiState(
 /**
  * ChatGPT(OpenAI) 官方账号登录编排。
  *
- * 与 cc-haha 桌面端 OpenAI OAuth 服务对齐的 PKCE 授权码流程,但回调宿主改到
- * Android 上的本地 [ServerSocket]:应用在 127.0.0.1 上开一个随机端口,把授权 URL
- * 交给系统浏览器;用户在 auth.openai.com 完成授权后,浏览器把 `http://127.0.0.1:PORT/auth/callback?code=...&state=...`
- * 发起给本地端口,这里的回调服务收到后完成 code → access_token 交换,并返回一个
- * “登录成功,可关闭本页” 的 HTML 页面。
+ * 与 cc-haha 桌面端 OpenAI OAuth 服务对齐的 PKCE 授权码流程。Android 上系统浏览器无法
+ * 访问 App 内部的 127.0.0.1 端口,因此不再启动 [java.net.ServerSocket],而是改用 App 内
+ * WebView 加载授权 URL,由 [handleCallbackUrl] 处理 WebView 拦截到的回调 URL 完成
+ * code → access_token 交换。
  *
  * 登录成功后的 access_token 通过 [SettingsRepository.upsertApiKey] 写入为
  * [Constants.PROVIDER_CHATGPT] 的活动 API Key(OpenAI API 直接用该 Bearer)。
@@ -44,6 +40,14 @@ class OpenAIXOAuthManager(
     private val _loginState = MutableStateFlow(OpenAILoginUiState())
     val loginState: StateFlow<OpenAILoginUiState> = _loginState.asStateFlow()
 
+    /** 当前登录会话的 PKCE challenge,由 [startLogin] 写入、[handleCallbackUrl] 读取后清空。 */
+    @Volatile
+    private var currentChallenge: OpenAIOAuthChallenge? = null
+
+    /** 当前登录会话使用的 redirect_uri,供 WebView 判断是否拦截回调。 */
+    @Volatile
+    private var currentRedirectUri: String? = null
+
     fun isLoggedIn(): Boolean = tokenStore.load() != null
 
     fun currentEmail(): String? = tokenStore.load()?.email
@@ -52,66 +56,48 @@ class OpenAIXOAuthManager(
     fun currentAccessToken(): String? = tokenStore.ensureFresh()?.accessToken
 
     /**
-     * 发起一次登录:绑定本地回调端口、生成 PKCE,返回授权 URL 供 UI 用浏览器打开。
-     * 之后通过 [loginState] 观察完成情况。
+     * 发起一次登录:生成 PKCE 与固定端口的 redirect_uri,返回授权 URL 供 UI 用 App 内
+     * WebView 打开。之后通过 [loginState] 观察完成情况,或由 UI 把 WebView 拦截到的
+     * 回调 URL 交给 [handleCallbackUrl]。
      */
     suspend fun startLogin(): Uri? = withContext(Dispatchers.IO) {
         if (_loginState.value.phase == OpenAILoginPhase.IN_PROGRESS) return@withContext null
-        var socket: ServerSocket? = null
         try {
-            socket = ServerSocket(0, 1, java.net.Inet4Address.getByName("127.0.0.1"))
-            val port = socket.localPort
-            val redirectUri = "http://127.0.0.1:$port${OpenAIXOAuthConstants.CALLBACK_PATH}"
+            val redirectUri = "http://127.0.0.1:$FIXED_CALLBACK_PORT${OpenAIXOAuthConstants.CALLBACK_PATH}"
             val challenge = OpenAIOAuthChallenge()
+            currentChallenge = challenge
+            currentRedirectUri = redirectUri
             _loginState.value = OpenAILoginUiState(OpenAILoginPhase.IN_PROGRESS)
-
-            val server = socket
-            scope.launch(Dispatchers.IO) {
-                try {
-                    handleCallback(server, redirectUri, challenge)
-                } catch (e: Throwable) {
-                    DebugLog.e(TAG, "callback handler failed", e)
-                    runCatching { server.close() }
-                    _loginState.value = OpenAILoginUiState(
-                        OpenAILoginPhase.FAILED,
-                        e.message ?: "登录回调失败",
-                    )
-                }
-            }
             Uri.parse(buildOpenAIAuthorizeUrl(redirectUri, challenge))
         } catch (e: Throwable) {
             DebugLog.e(TAG, "startLogin failed", e)
-            runCatching { socket?.close() }
+            currentChallenge = null
+            currentRedirectUri = null
             _loginState.value = OpenAILoginUiState(OpenAILoginPhase.FAILED, e.message ?: "无法启动登录")
             null
         }
     }
 
-    private fun handleCallback(
-        server: ServerSocket,
-        redirectUri: String,
-        challenge: OpenAIOAuthChallenge,
-    ) {
-        val client = server.accept() ?: return
+    /** 返回当前回调 URL 前缀,供 WebView 判断是否拦截。 */
+    fun getCallbackUrlPrefix(): String? = currentRedirectUri
+
+    /** 处理 WebView 拦截到的回调 URL,完成 token 交换。 */
+    suspend fun handleCallbackUrl(url: String): Boolean = withContext(Dispatchers.IO) {
+        val challenge = currentChallenge ?: return@withContext false
+        val redirectUri = currentRedirectUri ?: return@withContext false
         try {
-            val reader = BufferedReader(client.getInputStream().reader(Charsets.UTF_8))
-            val requestLine = reader.readLine() ?: throw IllegalStateException("空回调请求")
-            // 形如 GET /auth/callback?code=..&state=.. HTTP/1.1
-            val target = requestLine.split(' ').getOrNull(1) ?: "/"
-            val pathAndQuery = target.substringBefore('?')
-            val code = Uri.parse(target).getQueryParameter("code")
-            val state = Uri.parse(target).getQueryParameter("state")
-            val error = Uri.parse(target).getQueryParameter("error")
-
-            if (error != null || code.isNullOrBlank() || state.isNullOrBlank()) {
-                respondHtml(client, renderPage(success = false, message = "授权被拒绝或缺少参数"))
-                throw IllegalStateException(error ?: "authorization missing code/state")
+            val uri = Uri.parse(url)
+            val code = uri.getQueryParameter("code")
+            val state = uri.getQueryParameter("state")
+            val error = uri.getQueryParameter("error")
+            if (error != null || code.isNullOrBlank()) {
+                _loginState.value = OpenAILoginUiState(OpenAILoginPhase.FAILED, error ?: "缺少授权码")
+                return@withContext false
             }
-            if (state != challenge.state) {
-                respondHtml(client, renderPage(success = false, message = "state 校验失败,请重试"))
-                throw IllegalStateException("state mismatch")
+            if (state != null && state != challenge.state) {
+                _loginState.value = OpenAILoginUiState(OpenAILoginPhase.FAILED, "state 校验失败,请重试")
+                return@withContext false
             }
-
             val response = exchangeOpenAICodeForTokens(code, redirectUri, challenge)
             val tokens = tokenStore.parseTokenResponse(response)
             tokenStore.save(tokens)
@@ -120,11 +106,15 @@ class OpenAIXOAuthManager(
                 key = tokens.accessToken,
                 provider = Constants.PROVIDER_CHATGPT,
             )
-            respondHtml(client, renderPage(success = true, message = tokens.email))
             _loginState.value = OpenAILoginUiState(OpenAILoginPhase.SUCCESS, tokens.email)
+            true
+        } catch (e: Throwable) {
+            DebugLog.e(TAG, "handleCallbackUrl failed", e)
+            _loginState.value = OpenAILoginUiState(OpenAILoginPhase.FAILED, e.message ?: "token 交换失败")
+            false
         } finally {
-            runCatching { server.close() }
-            runCatching { client.close() }
+            currentChallenge = null
+            currentRedirectUri = null
         }
     }
 
@@ -133,33 +123,9 @@ class OpenAIXOAuthManager(
         _loginState.value = OpenAILoginUiState()
     }
 
-    private fun respondHtml(client: java.net.Socket, html: String) {
-        val body = html.toByteArray(Charsets.UTF_8)
-        val writer = client.getOutputStream().bufferedWriter(Charsets.UTF_8)
-        writer.write("HTTP/1.1 200 OK\r\n")
-        writer.write("Content-Type: text/html; charset=utf-8\r\n")
-        writer.write("Cache-Control: no-store\r\n")
-        writer.write("Content-Length: ${body.size}\r\n")
-        writer.write("Connection: close\r\n\r\n")
-        writer.flush()
-        client.getOutputStream().write(body)
-        client.getOutputStream().flush()
-    }
-
-    private fun renderPage(success: Boolean, message: String?): String {
-        return if (success) {
-            val email = message?.let { " ($it)" } ?: ""
-            """<!doctype html><html><head><meta charset="utf-8"><title>ChatGPT Login Success</title>
-<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fafafa;color:#333}.card{text-align:center;padding:40px;background:white;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.06)}h1{color:#16a34a;margin:0 0 12px}p{color:#666}</style>
-</head><body><div class="card"><h1>✓ ChatGPT 登录成功</h1><p>账号授权完成$email,可关闭本页返回 LxChat。</p></div><script>setTimeout(function(){window.close()},1500)</script></body></html>"""
-        } else {
-            """<!doctype html><html><head><meta charset="utf-8"><title>ChatGPT Login Failed</title>
-<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fafafa;color:#333}.card{text-align:center;padding:40px;background:white;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.06)}h1{color:#dc2626;margin:0 0 12px}pre{color:#666;white-space:pre-wrap;text-align:left;background:#f5f5f5;padding:12px;border-radius:6px}</style>
-</head><body><div class="card"><h1>✗ ChatGPT 登录失败</h1><pre>${(message ?: "未知错误").replace("<", "&lt;")}</pre></div></body></html>"""
-        }
-    }
-
     private companion object {
         const val TAG = "OpenAIXOAuth"
+        /** 固定回调端口,仅用于构造 redirect_uri,实际不监听该端口。 */
+        const val FIXED_CALLBACK_PORT = 8765
     }
 }
