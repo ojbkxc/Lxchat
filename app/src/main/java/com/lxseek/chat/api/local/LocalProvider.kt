@@ -5,7 +5,7 @@ import com.lxseek.chat.api.*
 import android.content.Context
 import com.lxseek.chat.R
 import com.lxseek.chat.util.DebugLog
-import com.lxseek.chat.api.util.ThinkingParser
+import com.lxseek.chat.api.util.IncrementalThinkingParser
 import com.lxseek.chat.api.util.prepareMessages
 import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.model.ChatMessage
@@ -81,7 +81,7 @@ class LocalProvider(
         var stopped = false
         var rawBuf = ""
         val STOP_PATTERNS = listOf("<|im_end|>", "<|im_start|>")
-        val thinkParser = ThinkingParser()
+        val thinkParser = IncrementalThinkingParser()
         try {
             val tokenFlow = if (hasImages) {
                 engine.generateWithImages(

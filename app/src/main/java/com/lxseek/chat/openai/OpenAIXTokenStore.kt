@@ -1,6 +1,7 @@
 package com.lxseek.chat.openai
 
 import android.content.Context
+import com.lxseek.chat.api.oauth.parseJwtEmail
 import com.lxseek.chat.util.DebugLog
 import org.json.JSONObject
 import java.io.File
@@ -106,30 +107,13 @@ internal class OpenAIXTokenStore(private val context: Context) {
             fallback?.expiresAt
                 ?: System.currentTimeMillis() + OpenAIXOAuthConstants.TOKEN_LIFETIME_DEFAULT_SECONDS * 1000L
         }
-        val email = parseEmail(json, fallback)
+        val email = parseJwtEmail(json, fallback?.email)
         return StoredOpenAITokens(
             accessToken = access,
             refreshToken = refresh,
             expiresAt = expiresAt,
             email = email,
         )
-    }
-
-    private fun parseEmail(json: JSONObject, fallback: StoredOpenAITokens?): String? {
-        json.optString("email").takeIf { it.isNotBlank() }?.let { return it }
-        fallback?.email?.let { return it }
-        // id_token / access_token 第二段是 JWT payload,base64url 解码后找 email 字段。
-        val jwt = json.optString("id_token").takeIf { it.isNotBlank() }
-            ?: json.optString("access_token").takeIf { it.isNotBlank() }
-        val payload = jwt?.split('.')?.getOrNull(1) ?: return null
-        return runCatching {
-            val decoded = android.util.Base64.decode(
-                payload.replace('-', '+').replace('_', '/').padEnd((payload.length + 3) / 4 * 4, '='),
-                android.util.Base64.DEFAULT,
-            )
-            val claims = JSONObject(String(decoded, Charsets.UTF_8))
-            claims.optString("email").takeIf { it.isNotBlank() }
-        }.getOrNull()
     }
 
     private companion object {

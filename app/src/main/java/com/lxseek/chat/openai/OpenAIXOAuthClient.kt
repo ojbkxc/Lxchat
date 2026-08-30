@@ -1,11 +1,10 @@
 package com.lxseek.chat.openai
 
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
-import java.security.MessageDigest
-import java.security.SecureRandom
+import com.lxseek.chat.api.oauth.formUrlEncode
+import com.lxseek.chat.api.oauth.pkceRandomBase64Url
+import com.lxseek.chat.api.oauth.pkceRandomHex
+import com.lxseek.chat.api.oauth.pkceS256
+import com.lxseek.chat.api.oauth.postFormToken
 
 /**
  * ChatGPT(OpenAI) 官方账号 OAuth 客户端。
@@ -34,28 +33,10 @@ internal object OpenAIXOAuthConstants {
 
 /** 一次 PKCE 授权码会话所需状态。 */
 internal class OpenAIOAuthChallenge {
-    val state: String = randomBytesHex(32)
-    val nonce: String = randomBytesHex(16)
-    val codeVerifier: String = randomBytesBase64Url(32)
+    val state: String = pkceRandomHex(32)
+    val nonce: String = pkceRandomHex(16)
+    val codeVerifier: String = pkceRandomBase64Url(32)
     val codeChallenge: String = pkceS256(codeVerifier)
-}
-
-internal fun randomBytesHex(bytes: Int): String = //
-    SecureRandom().run {
-        val b = ByteArray(bytes)
-        nextBytes(b)
-        b.joinToString("") { "%02x".format(it) }
-    }
-
-private fun randomBytesBase64Url(bytes: Int): String {
-    val b = ByteArray(bytes)
-    SecureRandom().nextBytes(b)
-    return android.util.Base64.encodeToString(b, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING)
-}
-
-internal fun pkceS256(verifier: String): String {
-    val digest = MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII))
-    return android.util.Base64.encodeToString(digest, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING)
 }
 
 /** 构建授权 URL。 [redirectUri] 形如 `http://127.0.0.1:<port>/auth/callback`,必须与 token 交换一致。 */
@@ -65,12 +46,12 @@ internal fun buildOpenAIAuthorizeUrl(
 ): String {
     val params = buildString {
         append("response_type=code")
-        append("&client_id=").append(encode(OpenAIXOAuthConstants.CLIENT_ID))
-        append("&redirect_uri=").append(encode(redirectUri))
-        append("&scope=").append(encode(OpenAIXOAuthConstants.SCOPE))
-        append("&state=").append(encode(challenge.state))
-        append("&nonce=").append(encode(challenge.nonce))
-        append("&code_challenge=").append(encode(challenge.codeChallenge))
+        append("&client_id=").append(formUrlEncode(OpenAIXOAuthConstants.CLIENT_ID))
+        append("&redirect_uri=").append(formUrlEncode(redirectUri))
+        append("&scope=").append(formUrlEncode(OpenAIXOAuthConstants.SCOPE))
+        append("&state=").append(formUrlEncode(challenge.state))
+        append("&nonce=").append(formUrlEncode(challenge.nonce))
+        append("&code_challenge=").append(formUrlEncode(challenge.codeChallenge))
         append("&code_challenge_method=S256")
         // OpenAI 专有授权参数(见 cc-haha-main client.ts),Grok 不需要。
         append("&id_token_add_organizations=true")
@@ -78,9 +59,6 @@ internal fun buildOpenAIAuthorizeUrl(
     }
     return "${OpenAIXOAuthConstants.AUTHORIZE_ENDPOINT}?$params"
 }
-
-internal fun encode(v: String): String =
-    URLEncoder.encode(v, Charsets.UTF_8.name())
 
 /**
  * 用授权码交换 token,返回原始响应字符串;由调用方 [OpenAIXTokenStore] 解析。
@@ -92,46 +70,20 @@ internal fun exchangeOpenAICodeForTokens(
 ): String {
     val body = buildString {
         append("grant_type=authorization_code")
-        append("&client_id=").append(encode(OpenAIXOAuthConstants.CLIENT_ID))
-        append("&code=").append(encode(code))
-        append("&redirect_uri=").append(encode(redirectUri))
-        append("&code_verifier=").append(encode(challenge.codeVerifier))
+        append("&client_id=").append(formUrlEncode(OpenAIXOAuthConstants.CLIENT_ID))
+        append("&code=").append(formUrlEncode(code))
+        append("&redirect_uri=").append(formUrlEncode(redirectUri))
+        append("&code_verifier=").append(formUrlEncode(challenge.codeVerifier))
     }
-    return postToken(body)
+    return postFormToken(OpenAIXOAuthConstants.TOKEN_ENDPOINT, body, OpenAIXOAuthConstants.TIMEOUT_MS, "OpenAI")
 }
 
 /** 用 refresh_token 换取新的 access token,返回原始响应字符串。 */
 internal fun refreshOpenAITokens(refreshToken: String): String {
     val body = buildString {
         append("grant_type=refresh_token")
-        append("&client_id=").append(encode(OpenAIXOAuthConstants.CLIENT_ID))
-        append("&refresh_token=").append(encode(refreshToken))
+        append("&client_id=").append(formUrlEncode(OpenAIXOAuthConstants.CLIENT_ID))
+        append("&refresh_token=").append(formUrlEncode(refreshToken))
     }
-    return postToken(body)
-}
-
-private fun postToken(formBody: String): String {
-    val conn = URL(OpenAIXOAuthConstants.TOKEN_ENDPOINT).openConnection() as HttpURLConnection
-    try {
-        conn.requestMethod = "POST"
-        conn.doOutput = true
-        conn.instanceFollowRedirects = true
-        conn.connectTimeout = OpenAIXOAuthConstants.TIMEOUT_MS
-        conn.readTimeout = OpenAIXOAuthConstants.TIMEOUT_MS
-        conn.setRequestProperty("Accept", "application/json")
-        conn.setRequestProperty(
-            "Content-Type",
-            "application/x-www-form-urlencoded",
-        )
-        OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { it.write(formBody) }
-        val status = conn.responseCode
-        val errorStream = conn.errorStream
-        if (status == HttpURLConnection.HTTP_OK && errorStream == null) {
-            return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        }
-        val errBody = errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-        throw IllegalStateException("OpenAI token request failed ($status): ${errBody?.take(500)}")
-    } finally {
-        conn.disconnect()
-    }
+    return postFormToken(OpenAIXOAuthConstants.TOKEN_ENDPOINT, body, OpenAIXOAuthConstants.TIMEOUT_MS, "OpenAI")
 }
