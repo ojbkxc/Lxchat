@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_group_insights">洞察</string>
     <string name="settings_statistics">用量统计</string>
     <string name="settings_statistics_desc">会话、消息与 Token 用量</string>
     <string name="stats_refresh">刷新</string>

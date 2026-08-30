@@ -19,11 +19,8 @@
     <string name="mcp_headers">自定义请求头</string>
     <string name="mcp_headers_desc">仅添加服务器必需的请求头。请求头值会加密存储。</string>
     <string name="mcp_no_headers">暂无自定义请求头</string>
-    <string name="mcp_headers_error">每行必须使用“名称: 值”格式</string>
     <string name="mcp_header_name">请求头名称</string>
     <string name="mcp_header_value">请求头值</string>
-    <string name="mcp_header_name_error">请输入唯一且非保留的 HTTP 请求头名称</string>
-    <string name="mcp_header_value_error">请输入不含控制字符的值</string>
     <string name="mcp_add_header">添加请求头</string>
     <string name="mcp_delete_header">删除请求头</string>
     <string name="mcp_show_header_value">显示请求头值</string>
@@ -37,7 +34,6 @@
     <string name="mcp_delete_env_var">删除环境变量</string>
     <string name="mcp_show_env_value">显示变量值</string>
     <string name="mcp_hide_env_value">隐藏变量值</string>
-    <string name="mcp_timeout">超时（秒）</string>
     <string name="mcp_timeout_desc">5–300 秒</string>
     <string name="mcp_status">状态</string>
     <string name="mcp_status_idle">空闲</string>
@@ -47,7 +43,6 @@
     <string name="mcp_status_error">连接错误</string>
     <string name="mcp_refresh">重新连接</string>
     <string name="mcp_tools_count">工具（%1$d）</string>
-    <string name="mcp_tool_no_description">无描述</string>
     <string name="mcp_elicitation_title">请求</string>
     <string name="mcp_elicitation_submit">提交</string>
     <string name="mcp_elicitation_cancel">取消</string>

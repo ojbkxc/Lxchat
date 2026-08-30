@@ -95,7 +95,6 @@
     <string name="tool_file_grep">Search Files</string>
     <!-- Tool in-progress states (doing) -->
     <string name="tool_listing_conversations">Listing conversations…</string>
-    <string name="tool_reading_conversation">Reading conversation…</string>
     <string name="tool_reading_file">Reading %1$s…</string>
     <string name="tool_writing_file">Writing %1$s…</string>
     <string name="tool_editing_file">Editing %1$s…</string>
@@ -282,14 +281,11 @@
     <string name="tts_provider_model_title">Provider TTS Model</string>
     <string name="tts_provider_voice">Provider Voice</string>
     <string name="tool_generate_image">Generate Image</string>
-    <string name="tool_generating_image">Generating image…</string>
     <string name="tool_generated_image">Generated image</string>
     <string name="img_action_save">Save to gallery</string>
     <string name="img_action_share">Share</string>
-    <string name="conversation_fork">Fork Conversation</string>
     <string name="conversation_fork_from_here">Fork from here</string>
     <string name="conversation_share">Share</string>
-    <string name="conversation_search">Search</string>
     <string name="conversation_search_hint">Search…</string>
     <string name="conversation_fork_failed">Could not fork conversation: %1$s</string>
     <string name="conversation_share_failed">Could not share conversation: %1$s</string>
@@ -356,7 +352,6 @@
     <string name="models_custom_exists">This model already exists</string>
     <string name="models_sync">Sync from All Providers</string>
     <string name="models_sync_desc">Fetch the latest model list for all configured APIs</string>
-    <string name="models_count">%1$d models available</string>
     <string name="models_count_status">%1$d enabled · %2$d total</string>
     <string name="models_search_count_status">%1$d enabled · %2$d matches</string>
     <string name="models_delete_custom_title">Delete Custom Model?</string>
@@ -390,7 +385,6 @@
     <string name="generation_params">Default Generation Parameters</string>
     <string name="default_thinking">Default Thinking</string>
     <string name="gen_thinking_enabled">Thinking</string>
-    <string name="gen_thinking_level">Thinking Level</string>
     <string name="gen_thinking_level_minimal">Minimal</string>
     <string name="gen_thinking_level_low">Low</string>
     <string name="gen_thinking_level_medium">Medium</string>
@@ -559,7 +553,6 @@
     <string name="sandbox_runtime_not_ready">⚠️ Not ready</string>
     <string name="sandbox_runtime_provided_by">Provided by Linux sandbox (proot + Alpine)</string>
     <string name="sandbox_runtime_install_sandbox_first">⚠️ Install the Linux sandbox first</string>
-    <string name="sandbox_disk_usage">Disk Usage</string>
     <string name="sandbox_snackbar_installed">Installed %s</string>
     <string name="sandbox_snackbar_install_failed">Failed to install %s</string>
     <string name="sandbox_snackbar_removed">Removed %s</string>
@@ -575,7 +568,6 @@
     <string name="sandbox_install_packages">Install Packages</string>
     <string name="sandbox_package_name">Package name</string>
     <string name="sandbox_quick_install">Quick Install</string>
-    <string name="sandbox_installed">Installed Packages</string>
     <string name="sandbox_no_packages">No packages installed. Alpine base only.</string>
     <string name="sandbox_danger_zone">Danger Zone</string>
     <string name="sandbox_reset">Reset Environment</string>
@@ -877,7 +869,6 @@
     <string name="local_temperature">Temperature</string>
     <string name="local_top_p">Top P</string>
     <string name="local_max_tokens">Max Tokens</string>
-    <string name="local_mmproj_path">Vision Projector Path (optional)</string>
     <string name="local_mmproj_path_label">Vision projector (.mmproj)</string>
     <string name="local_chat_delete_title">Delete Local Model?</string>
     <string name="local_chat_delete_text">Are you sure you want to delete \'%1$s\'? This will also delete the model file.</string>
@@ -920,7 +911,6 @@
     <string name="membership_payment_redirecting">Redirecting to payment…</string>
     <string name="membership_payment_success">Payment successful, membership activated</string>
     <string name="membership_payment_failed">Payment verification failed</string>
-    <string name="membership_revoke">Revoke Membership</string>
     <string name="membership_device_id">Device ID</string>
     <string name="membership_device_id_desc">Bound to activation code, one code per device</string>
     <string name="membership_activate_code">Activation Code</string>
@@ -1254,7 +1244,6 @@
     <string name="workflow_delete_confirm">Delete this workflow?</string>
     <string name="workflow_add_task_step">Add reply step</string>
     <string name="workflow_add_delay_step">Add wait step</string>
-    <string name="workflow_step_delay">Wait</string>
     <string name="workflow_step_prompt_label">Prompt</string>
     <string name="workflow_step_delay_label">Wait duration (seconds)</string>
     <string name="workflow_save">Save</string>
@@ -1375,7 +1364,6 @@
     <string name="task_no_executions">No runs yet</string>
     <string name="task_no_executions_desc">Runs appear here after you execute this task.</string>
     <string name="task_running">Running…</string>
-    <string name="task_last_run">Last run %1$s</string>
     <string name="task_schedule">Schedule</string>
     <string name="task_schedule_manual">Manual only</string>
     <string name="task_schedule_custom">Custom (cron)</string>
@@ -1537,11 +1525,9 @@
     <string name="tool_delete_task">Delete task</string>
     <string name="tool_start_loop">Start loop</string>
     <string name="tool_stop_loop">Stop loop</string>
-    <string name="tool_creating_task">Creating task…</string>
     <string name="tool_created_task">Task created</string>
     <string name="tool_listing_tasks">Listing tasks…</string>
     <string name="tool_listed_tasks">Tasks listed</string>
-    <string name="tool_deleting_task">Deleting task…</string>
     <string name="tool_deleted_task">Task deleted</string>
     <string name="tool_started_loop">Loop started</string>
     <string name="tool_stopped_loop">Loop stopped</string>

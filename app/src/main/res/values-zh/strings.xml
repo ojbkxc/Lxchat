@@ -82,7 +82,6 @@
     <string name="task_no_executions">还没有运行过</string>
     <string name="task_no_executions_desc">运行此任务后，执行记录会显示在这里。</string>
     <string name="task_running">运行中…</string>
-    <string name="task_last_run">上次运行 %1$s</string>
     <string name="task_schedule">排程</string>
     <string name="task_schedule_manual">仅手动</string>
     <string name="task_schedule_custom">自定义（cron）</string>
@@ -173,7 +172,6 @@
     <string name="workflow_delete_confirm">删除这个工作流？</string>
     <string name="workflow_add_task_step">添加回复步骤</string>
     <string name="workflow_add_delay_step">添加等待步骤</string>
-    <string name="workflow_step_delay">等待</string>
     <string name="workflow_step_prompt_label">提示词</string>
     <string name="workflow_step_delay_label">等待时长（秒）</string>
     <string name="workflow_save">保存</string>
@@ -194,11 +192,9 @@
     <string name="tool_delete_task">删除任务</string>
     <string name="tool_start_loop">启动循环</string>
     <string name="tool_stop_loop">停止循环</string>
-    <string name="tool_creating_task">正在创建任务…</string>
     <string name="tool_created_task">已创建任务</string>
     <string name="tool_listing_tasks">正在列出任务…</string>
     <string name="tool_listed_tasks">已列出任务</string>
-    <string name="tool_deleting_task">正在删除任务…</string>
     <string name="tool_deleted_task">已删除任务</string>
     <string name="tool_started_loop">已启动循环</string>
     <string name="tool_stopped_loop">已停止循环</string>
@@ -280,14 +276,11 @@
     <string name="image_gen_size">默认尺寸</string>
     <string name="image_gen_show_all">显示全部模型</string>
     <string name="tool_generate_image">生成图片</string>
-    <string name="tool_generating_image">正在生成图片…</string>
     <string name="tool_generated_image">已生成图片</string>
     <string name="img_action_save">保存到相册</string>
     <string name="img_action_share">分享</string>
-    <string name="conversation_fork">分支整个对话</string>
     <string name="conversation_fork_from_here">从这里创建分支</string>
     <string name="conversation_share">分享</string>
-    <string name="conversation_search">搜索</string>
     <string name="conversation_search_hint">搜索…</string>
     <string name="conversation_fork_failed">无法创建对话分支：%1$s</string>
     <string name="conversation_share_failed">无法分享对话：%1$s</string>
@@ -354,7 +347,6 @@
     <string name="models_custom_exists">该模型已存在</string>
     <string name="models_sync">从所有提供商同步</string>
     <string name="models_sync_desc">获取所有已配置 API 的最新模型列表</string>
-    <string name="models_count">%1$d 个模型可用</string>
     <string name="models_count_status">已启用 %1$d 个 · 共 %2$d 个</string>
     <string name="models_search_count_status">已启用 %1$d 个 · %2$d 个匹配项</string>
     <string name="models_delete_custom_title">删除自定义模型？</string>
@@ -388,7 +380,6 @@
     <string name="generation_params">默认生成参数</string>
     <string name="default_thinking">默认思考</string>
     <string name="gen_thinking_enabled">思考</string>
-    <string name="gen_thinking_level">思考深度</string>
     <string name="gen_thinking_level_minimal">极低</string>
     <string name="gen_thinking_level_low">低</string>
     <string name="gen_thinking_level_medium">中</string>
@@ -545,7 +536,6 @@
     <string name="sandbox_runtime_not_ready">⚠️ 未就绪</string>
     <string name="sandbox_runtime_provided_by">由 Linux 沙箱提供（proot + Alpine）</string>
     <string name="sandbox_runtime_install_sandbox_first">⚠️ 需先安装 Linux 沙箱</string>
-    <string name="sandbox_disk_usage">磁盘使用</string>
     <string name="sandbox_snackbar_installed">已安装 %s</string>
     <string name="sandbox_snackbar_install_failed">安装失败: %s</string>
     <string name="sandbox_snackbar_removed">已移除 %s</string>
@@ -561,7 +551,6 @@
     <string name="sandbox_install_packages">安装包</string>
     <string name="sandbox_package_name">包名</string>
     <string name="sandbox_quick_install">快速安装</string>
-    <string name="sandbox_installed">已安装包</string>
     <string name="sandbox_no_packages">未安装任何包，仅 Alpine 基础系统。</string>
     <string name="sandbox_danger_zone">危险区域</string>
     <string name="sandbox_reset">重置环境</string>
@@ -878,7 +867,6 @@
     <string name="tool_file_grep">搜索文件</string>
     <!-- Tool in-progress states (doing) -->
     <string name="tool_listing_conversations">列出对话中…</string>
-    <string name="tool_reading_conversation">阅读对话中…</string>
     <string name="tool_reading_file">读取 %1$s…</string>
     <string name="tool_writing_file">写入 %1$s…</string>
     <string name="tool_editing_file">编辑 %1$s…</string>
@@ -1078,7 +1066,6 @@
     <string name="provider_keys_summary">%1$d 个 API 密钥</string>
     <string name="provider_connection">连接</string>
     <string name="local_models_title">本地模型</string>
-    <string name="local_mmproj_path">Vision Projector 路径（可选）</string>
     <string name="local_mmproj_path_label">Vision projector (.mmproj)</string>
 
     <!-- Video Slicing -->
@@ -1581,7 +1568,6 @@
     <string name="membership_payment_redirecting">正在跳转支付页面…</string>
     <string name="membership_payment_success">支付成功，会员已激活</string>
     <string name="membership_payment_failed">支付验证失败</string>
-    <string name="membership_revoke">撤销会员</string>
     <string name="membership_device_id">设备身份证</string>
     <string name="membership_device_id_desc">用于激活码绑定，一码一机</string>
     <string name="membership_activate_code">激活码</string>

@@ -19,11 +19,8 @@
     <string name="mcp_headers">Custom Headers</string>
     <string name="mcp_headers_desc">Add only headers required by the server. Values are stored encrypted.</string>
     <string name="mcp_no_headers">No custom headers</string>
-    <string name="mcp_headers_error">Each line must use Name: Value</string>
     <string name="mcp_header_name">Header name</string>
     <string name="mcp_header_value">Header value</string>
-    <string name="mcp_header_name_error">Use a unique, non-reserved HTTP header name</string>
-    <string name="mcp_header_value_error">Enter a value without control characters</string>
     <string name="mcp_add_header">Add Header</string>
     <string name="mcp_delete_header">Delete header</string>
     <string name="mcp_show_header_value">Show header value</string>
@@ -37,7 +34,6 @@
     <string name="mcp_delete_env_var">Delete variable</string>
     <string name="mcp_show_env_value">Show variable value</string>
     <string name="mcp_hide_env_value">Hide variable value</string>
-    <string name="mcp_timeout">Timeout (seconds)</string>
     <string name="mcp_timeout_desc">5–300 seconds</string>
     <string name="mcp_status">Status</string>
     <string name="mcp_status_idle">Idle</string>
@@ -47,7 +43,6 @@
     <string name="mcp_status_error">Connection error</string>
     <string name="mcp_refresh">Reconnect</string>
     <string name="mcp_tools_count">Tools (%1$d)</string>
-    <string name="mcp_tool_no_description">No description</string>
     <string name="mcp_elicitation_title">Request</string>
     <string name="mcp_elicitation_submit">Submit</string>
     <string name="mcp_elicitation_cancel">Cancel</string>
