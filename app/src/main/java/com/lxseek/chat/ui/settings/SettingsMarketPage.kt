@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -21,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
@@ -31,7 +34,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +70,7 @@ fun SettingsMarketPage(
     val hasMembership = membershipStatus.isActive
 
     var selectedTab by remember { mutableIntStateOf(0) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val tabs = listOf(
         stringResource(R.string.settings_market_tab_all),
         stringResource(R.string.settings_market_tab_skills),
@@ -130,9 +136,56 @@ fun SettingsMarketPage(
                     }
                 }
             } else {
-                val skillsCount = if (showSkills) skills.size else 0
-                val pluginsCount = if (showPlugins) plugins.size else 0
-                val isEmpty = skillsCount == 0 && pluginsCount == 0
+                // Search bar: filter skills/plugins by name or description.
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text(stringResource(R.string.market_search_hint)) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = null,
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
+                )
+
+                // Apply tab + query filters to both lists.
+                val query = searchQuery.trim()
+                val filteredSkills = if (showSkills) {
+                    if (query.isEmpty()) skills else skills.filter { info ->
+                        info.skill.name.contains(query, ignoreCase = true) ||
+                            info.skill.description?.contains(query, ignoreCase = true) == true
+                    }
+                } else {
+                    emptyList()
+                }
+                val filteredPlugins = if (showPlugins) {
+                    if (query.isEmpty()) plugins else plugins.filter { info ->
+                        info.manifest.name.contains(query, ignoreCase = true) ||
+                            info.manifest.description?.contains(query, ignoreCase = true) == true
+                    }
+                } else {
+                    emptyList()
+                }
+
+                val isEmpty = filteredSkills.isEmpty() && filteredPlugins.isEmpty()
+                // Distinguish "no data" from "no search matches".
+                val noMatches = query.isNotEmpty() && isEmpty
 
                 if (isEmpty) {
                     Column(
@@ -143,18 +196,21 @@ fun SettingsMarketPage(
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
-                            text = stringResource(R.string.settings_market_empty),
+                            text = stringResource(
+                                if (noMatches) R.string.market_search_no_results
+                                else R.string.settings_market_empty
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        if (showSkills && skills.isNotEmpty()) {
+                        if (filteredSkills.isNotEmpty()) {
                             item(key = "section_skills") {
                                 SectionHeader(stringResource(R.string.settings_market_section_skills))
                             }
-                            items(skills, key = { "skill_${it.skill.name}" }) { skillInfo ->
+                            items(filteredSkills, key = { "skill_${it.skill.name}" }) { skillInfo ->
                                 val skill = skillInfo.skill
                                 MarketRow(
                                     name = skill.name,
@@ -166,11 +222,11 @@ fun SettingsMarketPage(
                                 )
                             }
                         }
-                        if (showPlugins && plugins.isNotEmpty()) {
+                        if (filteredPlugins.isNotEmpty()) {
                             item(key = "section_plugins") {
                                 SectionHeader(stringResource(R.string.settings_market_section_plugins))
                             }
-                            items(plugins, key = { "plugin_${it.manifest.id}" }) { pluginInfo ->
+                            items(filteredPlugins, key = { "plugin_${it.manifest.id}" }) { pluginInfo ->
                                 val manifest = pluginInfo.manifest
                                 MarketRow(
                                     name = manifest.name,

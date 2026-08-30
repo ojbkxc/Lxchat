@@ -895,6 +895,8 @@
     <string name="settings_market_empty">No skills or plugins registered</string>
     <string name="settings_market_section_skills">Skills</string>
     <string name="settings_market_section_plugins">Plugins</string>
+    <string name="market_search_hint">Search plugins…</string>
+    <string name="market_search_no_results">No matching plugins found</string>
     <string name="settings_online_market">Online Plugin Market</string>
     <string name="settings_online_market_desc">Browse and install community plugins</string>
     <string name="settings_membership">Membership</string>

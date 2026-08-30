@@ -20,10 +20,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -51,6 +53,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -101,6 +104,7 @@ fun SettingsPluginMarketPage(
 
     // ── Category tab filter: 0=All, 1=Skill, 2=MCP, 3=Runtime, 4=ToolPkg ──
     var selectedTab by remember { mutableIntStateOf(0) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val tabKinds = listOf<MarketPluginKind?>(null, MarketPluginKind.SKILL, MarketPluginKind.MCP, MarketPluginKind.RUNTIME, MarketPluginKind.TOOLPKG)
     val tabLabels = listOf(
         stringResource(R.string.settings_market_tab_all),
@@ -115,6 +119,23 @@ fun SettingsPluginMarketPage(
     }
     val filteredCatalog = remember(catalog, filterKind) {
         if (filterKind == null) catalog else catalog.filter { it.kind == filterKind }
+    }
+
+    // Apply the search query on top of the kind filter. Matches name, description,
+    // and (for catalog entries) author — case-insensitive.
+    val query = searchQuery.trim()
+    val searchedInstallations = remember(filteredInstallations, query) {
+        if (query.isEmpty()) filteredInstallations else filteredInstallations.filter { inst ->
+            inst.name.contains(query, ignoreCase = true) ||
+                inst.description?.contains(query, ignoreCase = true) == true
+        }
+    }
+    val searchedCatalog = remember(filteredCatalog, query) {
+        if (query.isEmpty()) filteredCatalog else filteredCatalog.filter { meta ->
+            meta.name.contains(query, ignoreCase = true) ||
+                meta.description?.contains(query, ignoreCase = true) == true ||
+                meta.author?.contains(query, ignoreCase = true) == true
+        }
     }
 
     val installedIds = remember(installations) { installations.map { it.pluginId }.toSet() }
@@ -187,14 +208,41 @@ fun SettingsPluginMarketPage(
                     )
                 }
             }
+            // Search bar: filter installed + catalog entries by name/description/author.
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text(stringResource(R.string.market_search_hint)) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = null,
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+            )
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                if (filteredInstallations.isNotEmpty()) {
+                if (searchedInstallations.isNotEmpty()) {
                     item(key = "section_installed") {
                         MarketSectionHeader(stringResource(R.string.market_section_installed))
                     }
-                    items(filteredInstallations, key = { "inst_${it.pluginId}" }) { inst ->
+                    items(searchedInstallations, key = { "inst_${it.pluginId}" }) { inst ->
                         InstalledPluginRow(
                             installation = inst,
                             onToggle = { market.setEnabled(inst.pluginId, it) },
@@ -248,8 +296,16 @@ fun SettingsPluginMarketPage(
                             )
                         }
                     }
+                    searchedCatalog.isEmpty() -> {
+                        item(key = "no_search_results") {
+                            MarketEmptyState(
+                                title = stringResource(R.string.market_search_no_results),
+                                hint = "",
+                            )
+                        }
+                    }
                     else -> {
-                        items(filteredCatalog, key = { "cat_${it.id}" }) { meta ->
+                        items(searchedCatalog, key = { "cat_${it.id}" }) { meta ->
                             val installed = meta.id in installedIds
                             CatalogPluginRow(
                                 meta = meta,

@@ -981,6 +981,8 @@
     <string name="settings_market_empty">暂无已注册的技能或插件</string>
     <string name="settings_market_section_skills">技能</string>
     <string name="settings_market_section_plugins">插件</string>
+    <string name="market_search_hint">搜索插件…</string>
+    <string name="market_search_no_results">未找到匹配的插件</string>
     <string name="settings_online_market">在线插件市场</string>
     <string name="settings_online_market_desc">浏览并安装社区插件</string>
     <string name="market_section_installed">已安装</string>
