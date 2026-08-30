@@ -1,5 +1,6 @@
 package com.lxseek.chat.api.router
 
+import android.os.SystemClock
 import com.lxseek.chat.api.GenerationError
 import com.lxseek.chat.api.LlmProvider
 import com.lxseek.chat.api.ProviderConfig
@@ -10,6 +11,8 @@ import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * API Key 来源接口
@@ -105,6 +108,19 @@ class SmartModelRouter(
     )
 
     /**
+     * D3：API Key 列表的短 TTL 缓存，避免每次请求都重新解析持久化配置。
+     * TTL 极短（[KEYS_CACHE_TTL_MS]），用户增删/启用 Key 后很快自动失效。
+     */
+    private data class KeysCacheEntry(
+        val keys: List<ApiKeyEntry>,
+        val createdAtMs: Long,
+    )
+    private val keysCache = ConcurrentHashMap<String, KeysCacheEntry>()
+
+    /** D1：兜底模型的自适应反馈追踪器（按历史成功率与延迟在线打分）。 */
+    private val fallbackTracker = AdaptiveFallbackTracker()
+
+    /**
      * 路由一次生成请求。
      *
      * 先尝试主 Provider（delegate），当且仅当请求未产出任何内容且错误可重试时，
@@ -121,7 +137,8 @@ class SmartModelRouter(
     ): Flow<StreamEvent> = flow {
         // 主条目 + 备用条目（当 enableFallback 时）
         val hasFallback = routerConfig.enableFallback && fallbackChain.hasFallback
-        val fallbackEntries = if (hasFallback) fallbackChain.fallbacks else emptyList()
+        // D1：启用 fallback 时按历史成功率/延迟在线打分重排兜底模型，无历史则保持原配置顺序
+        val fallbackEntries = if (hasFallback) fallbackTracker.orderByScore(fallbackChain.fallbacks) else emptyList()
 
         // ── 无 fallback 快速路径：直接流式转发，不缓冲 ──
         // 避免缓冲整个响应导致首 token 延迟；仅应用白名单/Key 轮换/速率限制/并发限制。
@@ -367,6 +384,7 @@ class SmartModelRouter(
         val events = mutableListOf<StreamEvent>()
         var producedContent = false
         var error: GenerationError? = null
+        val startMs = SystemClock.elapsedRealtime()
 
         try {
             provider.generateResponse(messages, entryConfig).collect { event ->
@@ -396,6 +414,14 @@ class SmartModelRouter(
             concurrencySemaphore?.release()
         }
 
+        // D1：记录本条目的成功率与延迟，供自适应 fallback 打分
+        fallbackTracker.record(
+            provider = provider.name,
+            modelId = modelId,
+            success = error == null,
+            latencyMs = SystemClock.elapsedRealtime() - startMs,
+        )
+
         return AttemptResult(
             events = events,
             success = error == null,
@@ -420,9 +446,9 @@ class SmartModelRouter(
         // 1. 显式覆盖优先
         apiKeyOverride?.takeIf { it.isNotBlank() }?.let { return it }
 
-        // 2. Key 轮换
+        // 2. Key 轮换（D3：列表经短 TTL 缓存避免每次重新解析）
         if (routerConfig.enableKeyRotation && apiKeySource != null) {
-            val keys = apiKeySource.keysFor(providerName)
+            val keys = cachedKeysFor(providerName)
             if (keys.isNotEmpty()) {
                 apiKeyRotator.nextKey(providerName, keys)?.let { return it }
             }
@@ -430,5 +456,90 @@ class SmartModelRouter(
 
         // 3. 回退到原始配置中的 Key
         return fallbackKey
+    }
+
+    /**
+     * D3：获取 [provider] 的 API Key 列表，带短 TTL 缓存。
+     *
+     * [ApiKeySource.keysFor] 通常读取持久化配置（DB/SharedPreferences），
+     * 高并发下每次请求都调用会产生不必要的 IO/解析开销。这里缓存 TTL 内的快照，
+     * TTL 极短，用户界面改动 Key 后很快失效，不会感知到陈旧数据。
+     */
+    private suspend fun cachedKeysFor(providerName: String): List<ApiKeyEntry> {
+        val now = SystemClock.elapsedRealtime()
+        val cached = keysCache[providerName]
+        if (cached != null && now - cached.createdAtMs < KEYS_CACHE_TTL_MS) return cached.keys
+        // 仅在 enableKeyRotation && apiKeySource != null 时被调用，此处可安全断言非空
+        val fresh = apiKeySource!!.keysFor(providerName)
+        keysCache[providerName] = KeysCacheEntry(fresh, now)
+        return fresh
+    }
+
+    private companion object {
+        /** D3：API Key 列表缓存时长（毫秒）。 */
+        const val KEYS_CACHE_TTL_MS = 5000L
+    }
+}
+
+/**
+ * D1：兜底模型的自适应反馈追踪器。
+ *
+ * 在线收集每个（Provider, modelId) 的请求成功率与平均延迟，为 fallback
+ * 兜底序列计算实时可靠性打分：更稳、更快的模型优先尝试。无历史记录的条目
+ * 打分取中性值 1.0，保持用户的原始配置顺序（稳定优先）。
+ */
+private class AdaptiveFallbackTracker {
+
+    private class Stat {
+        val attempts = AtomicLong(0)
+        val successes = AtomicLong(0)
+        val latencySum = java.util.concurrent.atomic.LongAdder()
+    }
+
+    private val stats = ConcurrentHashMap<String, Stat>()
+
+    private fun key(provider: String, modelId: String): String = "$provider\u0001$modelId"
+
+    /** 记录一次请求结果（成功与否 + 总耗时）。线程安全。 */
+    fun record(provider: String, modelId: String, success: Boolean, latencyMs: Long) {
+        val s = stats.computeIfAbsent(key(provider, modelId)) { Stat() }
+        s.attempts.incrementAndGet()
+        if (success) s.successes.incrementAndGet()
+        s.latencySum.add(latencyMs.coerceAtLeast(0))
+    }
+
+    /**
+     * 可靠性打分（越高越优先）。
+     *
+     * - 无历史：返回 1.0（中性，不扰动原配置顺序）。
+     * - 有历史：成功率线性项 + 延迟倒数归一化项加权混合。
+     *   成功率权重更高（稳定性优先），延迟作为第二信号区分同等可靠性的模型。
+     */
+    fun score(provider: String, modelId: String): Double {
+        val s = stats[key(provider, modelId)] ?: return 1.0
+        val attempts = s.attempts.get()
+        if (attempts == 0) return 1.0
+        val successRate = s.successes.get().toDouble() / attempts
+        val avgLatency = s.latencySum.sum() / attempts.toDouble()
+        val latencyScore = LATENCY_REF_MS / (LATENCY_REF_MS + avgLatency)
+        return successRate * SUCCESS_WEIGHT + latencyScore * LATENCY_WEIGHT
+    }
+
+    /** 按打分降序重排兜底链；打分相同时保持原配置顺序（稳定排序）。 */
+    fun orderByScore(entries: List<FallbackEntry>): List<FallbackEntry> {
+        if (entries.size < 2) return entries
+        return entries.indices
+            .sortedWith(
+                compareByDescending<Int> { score(entries[it].provider.name, entries[it].modelId) }
+                    .thenBy { it },
+            )
+            .map { entries[it] }
+    }
+
+    private companion object {
+        /** 延迟打分基准（毫秒）：在该延迟下延迟项贡献 0.5。 */
+        const val LATENCY_REF_MS = 3000.0
+        const val SUCCESS_WEIGHT = 0.7
+        const val LATENCY_WEIGHT = 0.3
     }
 }

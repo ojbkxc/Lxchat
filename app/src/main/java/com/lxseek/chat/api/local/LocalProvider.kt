@@ -227,7 +227,9 @@ class LocalProvider(
             }
             val existing = currentEngine
             if (existing != null && existing.modelPath == model.localFilePath) {
-                existing.resetContext()
+                // C1：连续多轮对话复用同一引擎时不再清空 KV cache，由原生层按新
+                // prompt 与上次 token 历史的共享前缀做增量解码；无共享前缀时原生层
+                // 内部自动清空并全量重算，行为与过去一致。
                 // Load or unload mmproj based on current config
                 if (model.mmprojPath.isNotBlank()) {
                     existing.loadMmproj(model.mmprojPath)

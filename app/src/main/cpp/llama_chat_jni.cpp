@@ -27,6 +27,11 @@ struct ChatHandle {
     int32_t n_ctx = 0;
     volatile bool cancelled = false;
     mtmd_context * mtmd_ctx = nullptr;  // multimodal context (for vision models)
+    // C1: cross-turn KV cache reuse — cached token history (prompt + generated)
+    // from the last text generation, used to detect the shared prefix and only
+    // re-decode the incremental tail on the next turn.
+    std::vector<llama_token> cached_tokens;
+    bool cache_valid = false;
 };
 
 static bool abort_callback(void * data) {
@@ -320,23 +325,40 @@ Java_com_lxseek_chat_api_LlamaChatEngine_nativeChatGenerate(
     llama_sampler_chain_add(smpl, llama_sampler_init_temp(temperature));
     llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
-    // Prefill + generation loop (pattern from simple-chat.cpp)
-    // Context space check before prefill
-    int32_t n_ctx_used = llama_memory_seq_pos_max(llama_get_memory(handle->ctx), 0) + 1;
-    if (n_ctx_used + n_tokens > n_ctx) {
-        LOGE("Context size exceeded: used=%d + prompt=%d > ctx=%d", n_ctx_used, n_tokens, n_ctx);
-        llama_sampler_free(smpl);
-        env->CallVoidMethod(callback, on_error, env->NewStringUTF("Context size exceeded"));
-        env->DeleteLocalRef(cb_class);
-        return -1;
+    // ── C1: cross-turn KV cache reuse ──
+    // 多轮追加对话时，新 prompt 以旧 token 历史为前缀。为缩短首字延迟、降低
+    // 重复 prefill 的 CPU 开销，仅重新解码"前缀之后的增量 token"，复用原生
+    // KV cache 中已算好的共享前缀。
+    //
+    // 安全性保证：只保留与重算结果完全一致的"逐 token 精确匹配前缀"，超出
+    // 部分用 seq_rm 截断并重新解码，因此结果恒等于全量 prefill（退化分支即
+    // 全量重算）。视觉生成/模型切换会令 cache_valid 失效，自动回退为完整重算。
+    int32_t common = 0;
+    if (handle->cache_valid) {
+        const int32_t cmin = std::min((int32_t) handle->cached_tokens.size(), n_tokens);
+        while (common < cmin && handle->cached_tokens[common] == tokens[common]) {
+            common++;
+        }
+    }
+    // 新 prompt 成为下一次复用的缓存基准
+    handle->cached_tokens.assign(tokens.begin(), tokens.end());
+    handle->cache_valid = true;
+
+    llama_memory_t mem = llama_get_memory(handle->ctx);
+    if (common > 0) {
+        // 保留 [0, common)，释放 common 之后占用的 slot（上一轮 generation 的尾巴）
+        llama_memory_seq_rm(mem, 0, common, -1);
+        LOGD("KV reuse: reusing %d/%d prefix tokens", common, n_tokens);
+    } else {
+        // 无共享前缀：清空 KV，全量 prefill
+        llama_memory_clear(mem, true);
+        LOGD("KV reuse: no shared prefix, full prefill (%d tokens)", n_tokens);
     }
 
-    // Prefill in n_batch-sized chunks: a single batch larger than n_batch is rejected by
-    // llama_decode now that n_batch is capped at 512.
-    // llama_batch_get_one returns a lightweight batch that borrows the tokens pointer —
-    // it does NOT allocate, so do NOT call llama_batch_free on it (would free vector memory)
+    // 仅解码增量段（off 从 common 起）。用显式 position 的 batch 从绝对位置
+    // `off` 开始，避免 llama_batch_get_one 的自动定位覆盖掉共享前缀。
     const int32_t n_batch = static_cast<int32_t>(llama_n_batch(handle->ctx));
-    for (int32_t off = 0; off < n_tokens; off += n_batch) {
+    for (int32_t off = common; off < n_tokens; off += n_batch) {
         // Cancellation is checked per chunk so Stop no longer has to wait out the whole prefill
         // of a long prompt (previously one uninterruptible decode).
         if (handle->cancelled) {
@@ -346,8 +368,16 @@ Java_com_lxseek_chat_api_LlamaChatEngine_nativeChatGenerate(
             return 0;
         }
         const int32_t chunk = std::min(n_batch, n_tokens - off);
-        llama_batch batch = llama_batch_get_one(tokens.data() + off, chunk);
-        if (llama_decode(handle->ctx, batch) != 0) {
+        llama_batch batch = llama_batch_init(chunk, 0, 1);
+        for (int32_t i = 0; i < chunk; i++) {
+            batch.token[i]    = tokens[off + i];
+            batch.pos[i]      = off + i;
+            batch.n_seq_id[i] = 1;
+            batch.seq_id[i][0]= 0;
+        }
+        const int32_t ret = llama_decode(handle->ctx, batch);
+        llama_batch_free(batch);
+        if (ret != 0) {
             LOGE("Prefill decode failed at offset %d (chunk=%d)", off, chunk);
             llama_sampler_free(smpl);
             env->CallVoidMethod(callback, on_error, env->NewStringUTF("Prefill decode failed"));
@@ -413,6 +443,9 @@ Java_com_lxseek_chat_api_LlamaChatEngine_nativeChatGenerate(
 
         generated++;
 
+        // C1: 记录实际输出的 token，使下一轮对话可复用本段前缀
+        handle->cached_tokens.push_back(new_token_id);
+
         // Decode the new token
         llama_batch single = llama_batch_get_one(&new_token_id, 1);
         if (llama_decode(handle->ctx, single) != 0) {
@@ -437,6 +470,8 @@ Java_com_lxseek_chat_api_LlamaChatEngine_nativeChatReset(
     ChatHandle * handle = reinterpret_cast<ChatHandle *>(handle_ptr);
     if (handle->ctx) {
         llama_memory_clear(llama_get_memory(handle->ctx), true);
+        handle->cached_tokens.clear();
+        handle->cache_valid = false;
         LOGD("KV cache cleared");
     }
 }
@@ -516,6 +551,10 @@ Java_com_lxseek_chat_api_LlamaChatEngine_nativeChatGenerateWithImages(
     }
 
     handle->cancelled = false;
+
+    // C1: 视觉路径的 KV 不可作为文本 token 前缀复用，禁用缓存以回退全量重算
+    handle->cached_tokens.clear();
+    handle->cache_valid = false;
 
     const char * prompt_str = env->GetStringUTFChars(prompt, nullptr);
     if (!prompt_str) return -1;
