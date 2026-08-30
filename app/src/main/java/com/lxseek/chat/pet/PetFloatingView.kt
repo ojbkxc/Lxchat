@@ -399,21 +399,21 @@ class PetFloatingView @JvmOverloads constructor(
         val actualWidth = right - left
         // Position the tip bubble just above the pet (not at the window top),
         // so it stays close regardless of tipSlotHeight.
-        val bubbleTop = bubbleCenterY - bubbleRadius()
-        val top = (bubbleTop - capHeight - dp(TIP_ARROW_OVERLAP_DP)).coerceAtLeast(dp(TIP_TOP_PADDING_DP))
+        val petTop = bubbleCenterY - bubbleRadius()
+        val top = (petTop - capHeight - dp(TIP_ARROW_OVERLAP_DP)).coerceAtLeast(dp(TIP_TOP_PADDING_DP))
         val bottom = top + capHeight
         val rect = RectF(left, top, right, bottom)
         canvas.drawRoundRect(rect, capHeight / 2, capHeight / 2, tipBgPaint)
         // Draw multi-line text centered within the capsule.
-        val textLeft = left + (actualWidth - layout.width.toFloat()) / 2f
+        // Clamp text width to actualWidth to prevent overflow when bubble is clipped.
+        val textLeft = left + (actualWidth - layout.width.toFloat()).coerceAtMost(0f) / 2f + padX
         canvas.save()
         canvas.translate(textLeft, top + padY)
         layout.draw(canvas)
         canvas.restore()
         // Arrow pointing down to the pet.
-        val bubbleTop = bubbleCenterY - bubbleRadius()
         tipArrowPath.reset()
-        tipArrowPath.moveTo(cx, bubbleTop + dp(TIP_ARROW_OVERLAP_DP))
+        tipArrowPath.moveTo(cx, petTop + dp(TIP_ARROW_OVERLAP_DP))
         tipArrowPath.lineTo(cx - dp(TIP_ARROW_HALF_DP), bottom)
         tipArrowPath.lineTo(cx + dp(TIP_ARROW_HALF_DP), bottom)
         tipArrowPath.close()
@@ -674,9 +674,9 @@ class PetFloatingView @JvmOverloads constructor(
 
         const val TIP_BG_COLOR = 0x801F2937.toInt()
         const val TIP_TEXT_COLOR = 0xFFFFFFFF.toInt()
-        const val TIP_TEXT_SIZE_DP = 13f
-        const val TIP_HORIZONTAL_PADDING_DP = 10f
-        const val TIP_VERTICAL_PADDING_DP = 5f
+        const val TIP_TEXT_SIZE_DP = 11f
+        const val TIP_HORIZONTAL_PADDING_DP = 12f
+        const val TIP_VERTICAL_PADDING_DP = 6f
         const val TIP_TOP_PADDING_DP = 4f
         const val TIP_EDGE_MARGIN_DP = 4f
         const val TIP_ARROW_HALF_DP = 5f
