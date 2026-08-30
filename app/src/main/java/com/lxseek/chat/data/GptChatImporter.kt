@@ -213,20 +213,14 @@ class GptChatImporter {
             val rawMessages = messages.map { msg ->
                 val role = msg.author?.role ?: "user"
                 val participant = when (role) {
-                    "assistant" -> "MODEL"
-                    "tool" -> "MODEL"
-                    "system" -> "MODEL"
+                    "assistant", "tool", "system" -> "MODEL"
                     else -> "USER"
                 }
                 val contentType = msg.content?.contentType ?: "text"
                 val text = when (contentType) {
-                    "text" -> msg.content?.parts?.joinToString("") { extractTextFromPart(it) } ?: ""
-                    "multimodal_text" -> msg.content?.parts?.joinToString("") { extractTextFromPart(it) } ?: ""
                     "code" -> msg.content?.text ?: ""
-                    "execution_output" -> msg.content?.text ?: msg.content?.result ?: ""
-                    "tether_quote" -> msg.content?.text ?: msg.content?.result ?: ""
-                    "tether_browsing_display" -> msg.content?.text ?: msg.content?.result ?: ""
-                    "user_editable_context" -> msg.content?.parts?.joinToString("") { extractTextFromPart(it) } ?: ""
+                    "execution_output", "tether_quote", "tether_browsing_display" ->
+                        msg.content?.text ?: msg.content?.result ?: ""
                     else -> msg.content?.parts?.joinToString("") { extractTextFromPart(it) } ?: ""
                 }
                 val thoughts = when (contentType) {
@@ -428,7 +422,6 @@ class GptChatImporter {
                     val partType = obj["content_type"]?.jsonPrimitive?.content ?: ""
                     when (partType) {
                         "image_asset_pointer" -> ""
-                        "tether_quote", "tether_browsing_display" -> obj["text"]?.jsonPrimitive?.content ?: ""
                         else -> obj["text"]?.jsonPrimitive?.content ?: ""
                     }
                 }

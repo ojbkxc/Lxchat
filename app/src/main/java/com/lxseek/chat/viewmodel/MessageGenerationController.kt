@@ -314,10 +314,6 @@ internal class MessageGenerationController(
         )
     }
 
-    // ==================================
-    // deleteMessage
-    // ==================================
-
     /**
      * Deletes one structural message branch. A USER target removes its complete edit subtree; a
      * MODEL target removes its regeneration subtree while retaining the shared boundary USER.
@@ -333,10 +329,6 @@ internal class MessageGenerationController(
             snapshot = renderStore.allMessages,
         )
     }
-
-    // ==================================
-    // regenerate
-    // ==================================
 
     fun regenerate(messageId: String): Boolean {
         val genId = currentConversationId.value ?: return false
@@ -356,10 +348,6 @@ internal class MessageGenerationController(
             state,
         )
     }
-
-    // ==================================
-    // resume
-    // ==================================
 
     fun resume(messageId: String): Boolean {
         val genId = currentConversationId.value ?: return false
@@ -408,10 +396,6 @@ internal class MessageGenerationController(
             state,
         )
     }
-
-    // ==================================
-    // sendMessage
-    // ==================================
 
     suspend fun sendMessage(
         text: String,
