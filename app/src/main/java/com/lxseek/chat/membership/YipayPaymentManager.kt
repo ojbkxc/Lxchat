@@ -168,11 +168,17 @@ class YipayPaymentManager {
     }
 
     companion object {
-        /** Dedicated client for order-status queries: short timeouts, no streaming. */
+        /** Dedicated client for order-status queries: short timeouts, no streaming.
+         *  Certificate pinning prevents MITM packet sniffing on pay.lxseek.com. */
         private val queryClient: OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(5, TimeUnit.SECONDS)
             .writeTimeout(5, TimeUnit.SECONDS)
+            .certificatePinner(
+                okhttp3.CertificatePinner.Builder()
+                    .add("pay.lxseek.com", "sha256/yZ1amwQO/r0SSBhz48UcPsaNPElxwEZvQaCP/8iRAxE=")
+                    .build()
+            )
             .build()
 
         private val queryJson: Json = Json { ignoreUnknownKeys = true }
