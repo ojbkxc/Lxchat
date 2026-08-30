@@ -114,7 +114,7 @@ object EmbeddingIndexer {
                 }
             }
             // 对候选做精确余弦重排（归一化后即为点积）
-            return heap.map { (i, _) -> i to cosineSimilarity(q, norms[i]) }
+            return heap.map { (i, _) -> ids[i] to cosineSimilarity(q, norms[i]) }
                 .sortedByDescending { it.second }
         }
     }

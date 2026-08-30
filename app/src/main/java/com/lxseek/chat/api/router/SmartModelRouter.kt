@@ -518,7 +518,7 @@ private class AdaptiveFallbackTracker {
     fun score(provider: String, modelId: String): Double {
         val s = stats[key(provider, modelId)] ?: return 1.0
         val attempts = s.attempts.get()
-        if (attempts == 0) return 1.0
+        if (attempts == 0L) return 1.0
         val successRate = s.successes.get().toDouble() / attempts
         val avgLatency = s.latencySum.sum() / attempts.toDouble()
         val latencyScore = LATENCY_REF_MS / (LATENCY_REF_MS + avgLatency)
