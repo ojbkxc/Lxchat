@@ -188,15 +188,24 @@ class RuntimePackageManager(private val context: Context) {
         }
     }
 
-    /** 给可执行文件加执行权限。 */
+    /**
+     * 给可执行文件加执行权限。Android 上 File.setExecutable 不可靠（SELinux / FUSE 层
+     * 可能静默忽略），改用 chmod -R 755 确保 bin/ 下的 wrapper 和 real binary 都可执行。
+     */
     private fun makeExecutable(root: File) {
-        root.setExecutable(true)
-        root.listFiles().orEmpty().forEach { child ->
-            if (child.isDirectory) {
-                child.setExecutable(true)
-                makeExecutable(child)
-            } else {
-                child.setExecutable(true, true)
+        try {
+            val proc = Runtime.getRuntime().exec(arrayOf("chmod", "-R", "755", root.absolutePath))
+            proc.waitFor()
+        } catch (e: Exception) {
+            // fallback: File.setExecutable
+            root.setExecutable(true)
+            root.listFiles().orEmpty().forEach { child ->
+                if (child.isDirectory) {
+                    child.setExecutable(true)
+                    makeExecutable(child)
+                } else {
+                    child.setExecutable(true, true)
+                }
             }
         }
     }
