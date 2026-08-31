@@ -52,6 +52,9 @@ import com.lxseek.chat.ui.components.clearFocusOnTap
 import com.lxseek.chat.util.Constants
 import com.lxseek.chat.util.noOpBringIntoView
 import com.lxseek.chat.viewmodel.ChatViewModel
+import com.lxseek.chat.localmodels.GgufModelCatalog
+import com.lxseek.chat.localmodels.GgufDownloader
+import com.lxseek.chat.localmodels.GgufDownloadState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -371,6 +374,23 @@ fun SettingsProviderDetailPage(
                             }
                         }
                     }
+                )
+
+                // Recommended model downloads
+                SettingsGroup(
+                    title = "推荐模型下载",
+                    items = buildList {
+                        GgufModelCatalog.entries.forEach { entry ->
+                            add {
+                                GgufModelDownloadCard(
+                                    entry = entry,
+                                    viewModel = viewModel,
+                                    context = context,
+                                    scope = scope,
+                                )
+                            }
+                        }
+                    },
                 )
             }
 
@@ -967,4 +987,234 @@ private fun openAIAccountStatusDescription(phase: OpenAILoginPhase, loggedIn: Bo
     phase == OpenAILoginPhase.FAILED -> stringResource(R.string.settings_chatgpt_desc_failed)
     loggedIn -> stringResource(R.string.settings_chatgpt_desc_bound)
     else -> stringResource(R.string.settings_chatgpt_desc_no_key)
+}
+
+/**
+ * Download card for a single GGUF catalog entry: shows model name, description, size,
+ * RAM requirement, and a state-driven action button (download / progress / pause / resume / done).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GgufModelDownloadCard(
+    entry: com.lxseek.chat.localmodels.GgufCatalogEntry,
+    viewModel: ChatViewModel,
+    context: android.content.Context,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    val downloader = remember { GgufDownloader.getInstance(context) }
+    val state by downloader.getDownloadState(entry.id).collectAsState()
+    val localChatModels by viewModel.settings.localChatModels.collectAsState()
+    val alreadyRegistered = localChatModels.any { it.id == entry.id }
+    val fileExists = remember(state, alreadyRegistered) {
+        downloader.isModelDownloaded(entry.id) || alreadyRegistered
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    entry.displayName,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    entry.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
+            // Size + RAM badge
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    formatBytes(entry.sizeBytes),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "需 ${entry.minRamGb}GB+",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                )
+            }
+        }
+
+        // Tags
+        if (entry.tags.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                entry.tags.forEach { tag ->
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) {
+                        Text(
+                            tag,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // State-driven action
+        when (val s = state) {
+            is GgufDownloadState.Idle -> {
+                if (fileExists) {
+                    Text("已下载", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                } else {
+                    OutlinedButton(onClick = {
+                        downloader.startDownload(entry) { file ->
+                            scope.launch {
+                                viewModel.modelManager.addLocalChatModel(
+                                    com.lxseek.chat.data.LocalChatModelConfig(
+                                        id = entry.id,
+                                        modelId = entry.id,
+                                        alias = entry.displayName,
+                                        localFilePath = file.absolutePath,
+                                        mmprojPath = "",
+                                        nCtx = entry.recommendedContext,
+                                        temperature = 0.7f,
+                                        topP = 0.9f,
+                                        maxTokens = 2048,
+                                    ),
+                                )
+                            }
+                        }
+                    }) { Text("下载") }
+                }
+            }
+            is GgufDownloadState.Connecting -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("连接中…", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+            is GgufDownloadState.Downloading -> {
+                Column {
+                    LinearProgressIndicator(
+                        progress = { s.progress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            "${formatBytes(s.downloadedBytes)} / ${formatBytes(s.totalBytes)}  ${s.speed}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(onClick = { downloader.pauseDownload(entry.id) }) {
+                            Text("暂停")
+                        }
+                    }
+                }
+            }
+            is GgufDownloadState.Paused -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        "已暂停 ${formatBytes(s.downloadedBytes)}（${(s.progress * 100).toInt()}%）",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(onClick = {
+                        downloader.startDownload(entry) { file ->
+                            scope.launch {
+                                viewModel.modelManager.addLocalChatModel(
+                                    com.lxseek.chat.data.LocalChatModelConfig(
+                                        id = entry.id,
+                                        modelId = entry.id,
+                                        alias = entry.displayName,
+                                        localFilePath = file.absolutePath,
+                                        mmprojPath = "",
+                                        nCtx = entry.recommendedContext,
+                                        temperature = 0.7f,
+                                        topP = 0.9f,
+                                        maxTokens = 2048,
+                                    ),
+                                )
+                            }
+                        }
+                    }) { Text("继续") }
+                }
+            }
+            is GgufDownloadState.Completed -> {
+                if (alreadyRegistered) {
+                    Text("已下载并注册", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                } else {
+                    Button(onClick = {
+                        scope.launch {
+                            viewModel.modelManager.addLocalChatModel(
+                                com.lxseek.chat.data.LocalChatModelConfig(
+                                    id = entry.id,
+                                    modelId = entry.id,
+                                    alias = entry.displayName,
+                                    localFilePath = s.file.absolutePath,
+                                    mmprojPath = "",
+                                    nCtx = entry.recommendedContext,
+                                    temperature = 0.7f,
+                                    topP = 0.9f,
+                                    maxTokens = 2048,
+                                ),
+                            )
+                        }
+                    }) { Text("注册为本地模型") }
+                }
+            }
+            is GgufDownloadState.Failed -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(s.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                    OutlinedButton(onClick = {
+                        downloader.startDownload(entry) { file ->
+                            scope.launch {
+                                viewModel.modelManager.addLocalChatModel(
+                                    com.lxseek.chat.data.LocalChatModelConfig(
+                                        id = entry.id,
+                                        modelId = entry.id,
+                                        alias = entry.displayName,
+                                        localFilePath = file.absolutePath,
+                                        mmprojPath = "",
+                                        nCtx = entry.recommendedContext,
+                                        temperature = 0.7f,
+                                        topP = 0.9f,
+                                        maxTokens = 2048,
+                                    ),
+                                )
+                            }
+                        }
+                    }) { Text("重试") }
+                }
+            }
+        }
+    }
+}
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes >= 1_000_000_000 -> "%.1f GB".format(bytes / 1_000_000_000.0)
+    bytes >= 1_000_000 -> "%.0f MB".format(bytes / 1_000_000.0)
+    else -> "$bytes B"
 }

@@ -172,9 +172,31 @@ class AndroidUiControllerService : AccessibilityService() {
         return swipe(x1, y1, x2, y2)
     }
 
+    /**
+     * Two-finger pinch zoom: two simultaneous horizontal strokes whose separation grows from
+     * [startSpanPx] to [endSpanPx] around (cx, cy) over [durationMs]. endSpan > startSpan zooms
+     * in, endSpan < startSpan zooms out. Both strokes run in ONE gesture dispatch so the system
+     * sees a real two-pointer gesture.
+     */
+    fun pinch(cx: Int, cy: Int, startSpanPx: Int, endSpanPx: Int, durationMs: Long = 500L): Boolean = synchronized(lock) {
+        if (startSpanPx <= 0 || endSpanPx <= 0) return false
+        val finger1 = Path().apply {
+            moveTo(cx - startSpanPx / 2f, cy.toFloat())
+            lineTo(cx - endSpanPx / 2f, cy.toFloat())
+        }
+        val finger2 = Path().apply {
+            moveTo(cx + startSpanPx / 2f, cy.toFloat())
+            lineTo(cx + endSpanPx / 2f, cy.toFloat())
+        }
+        val desc = GestureDescription.Builder()
+            .addStroke(StrokeDescription(finger1, 0L, durationMs))
+            .addStroke(StrokeDescription(finger2, 0L, durationMs))
+            .build()
+        return dispatchGestureBlocking(desc)
+    }
+
     /** Perform a global/system visible action by name: back / home / recents / notifications / quick_settings. */
-    fun pressGlobalKey(key: String): Boolean = synchronized(lock) {
-        when (key.lowercase()) {
+    fun pressGlobalKey(key: String): Boolean = synchronized(lock) {        when (key.lowercase()) {
             "back" -> performGlobalAction(GLOBAL_ACTION_BACK)
             "home" -> performGlobalAction(GLOBAL_ACTION_HOME)
             "recents" -> performGlobalAction(GLOBAL_ACTION_RECENTS)

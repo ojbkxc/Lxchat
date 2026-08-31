@@ -5,6 +5,9 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.util.DisplayMetrics
 import android.view.WindowManager
+import com.lxseek.chat.adb.AdbShellBackend
+import com.lxseek.chat.adb.RootDetector
+import com.lxseek.chat.adb.ShizukuManager
 import com.lxseek.chat.androidcontrol.AndroidUiControllerService
 import java.io.File
 import com.lxseek.chat.api.ToolDefinition
@@ -14,6 +17,7 @@ import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.viewmodel.GenerationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -115,10 +119,46 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
             )),
             ToolDefinition(function = ToolFunction(
                 name = "android_press_key",
-                description = "Send a system navigation key: 'back', 'home', 'recents', 'notifications' or 'quick_settings'. (Arbitrary keyboard keys cannot be injected without root.)",
+                description = "Send a key press. Navigation keys (back | home | recents | notifications | " +
+                    "quick_settings) go through the accessibility bridge. All other keys are injected via the " +
+                    "Shizuku/root shell with 'input keyevent': volume_up | volume_down | volume_mute | power | menu | " +
+                    "enter | backspace | tab | space | escape | delete | dpad_up | dpad_down | dpad_left | dpad_right | " +
+                    "dpad_center | camera. A raw numeric Android keycode (e.g. 24) also works.",
                 parameters = ToolParameters(
-                    properties = mapOf("key" to prop("string", "back | home | recents | notifications | quick_settings")),
+                    properties = mapOf("key" to prop("string", "Key name (e.g. 'volume_down') or a numeric keycode (e.g. 25).")),
                     required = listOf("key"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "android_pinch",
+                description = "Two-finger pinch zoom at a screen point. 'scale' > 1 zooms in (e.g. 2.0), < 1 zooms out (e.g. 0.5); " +
+                    "or give explicit start_span/end_span distances in px. Use for maps, photos and canvases that a plain " +
+                    "android_swipe cannot zoom. Requires the accessibility bridge.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "x" to prop("integer", "Optional centre x of the pinch (screen px). Default: screen centre."),
+                        "y" to prop("integer", "Optional centre y of the pinch (screen px). Default: screen centre."),
+                        "scale" to prop("number", "Zoom factor: >1 zoom in, <1 zoom out. Ignored when start_span/end_span are given."),
+                        "start_span" to prop("integer", "Initial distance between the two fingers in px (default 400)."),
+                        "end_span" to prop("integer", "Final distance between the two fingers in px."),
+                        "duration_ms" to prop("integer", "Gesture duration in ms (default 600)."),
+                    ),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "android_wait_for",
+                description = "Wait until a text or element appears on (or disappears from) the current screen by " +
+                    "polling the accessibility tree. Use this after android_click/android_input when the app needs " +
+                    "time to load the next screen, instead of repeatedly calling android_read_ui (each call costs a " +
+                    "full dump). With mode=appear the success result includes the element's stable index, so you can " +
+                    "android_click index=<i> directly. Requires the accessibility bridge.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "text" to prop("string", "Substring of the element's text or content-description to wait for, e.g. '发送' or 'Login'."),
+                        "mode" to prop("string", "appear (default): wait until the text shows up. gone: wait until it disappears (e.g. a loading spinner)."),
+                        "timeout_ms" to prop("integer", "Max wait in ms, 500..60000, default 10000."),
+                    ),
+                    required = listOf("text"),
                 ),
             )),
             ToolDefinition(function = ToolFunction(
@@ -185,11 +225,11 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         name.startsWith("android_") || name.startsWith("wechat_")
 
     override fun riskLevel(name: String): RiskLevel = when (name) {
-        "android_accessibility_status", "android_read_ui", "android_known_apps" -> RiskLevel.ReadOnly
+        "android_accessibility_status", "android_read_ui", "android_known_apps", "android_wait_for" -> RiskLevel.ReadOnly
         "android_open_app", "android_go_back", "android_go_home", "android_press_key" -> RiskLevel.LowRisk
         // Clicking/typing/swiping inside another app can cause real side effects (sending, posting).
         "android_click", "android_input", "android_focus_clear_text", "android_swipe",
-        "android_long_press", "wechat_open_chat", "android_screenshot", "android_see" -> RiskLevel.Moderate
+        "android_long_press", "wechat_open_chat", "android_screenshot", "android_see", "android_pinch" -> RiskLevel.Moderate
         else -> RiskLevel.ReadOnly
     }
 
@@ -210,6 +250,8 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 "android_swipe" -> swipe(arguments)
                 "android_long_press" -> longPress(arguments)
                 "android_press_key" -> pressKey(arguments)
+                "android_pinch" -> pinch(arguments)
+                "android_wait_for" -> waitFor(arguments)
                 "android_go_back" -> goBackJson()
                 "android_go_home" -> goHomeJson()
                 "android_screenshot" -> screenshotJson()
@@ -226,6 +268,9 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
     }
 
     private fun service(): AndroidUiControllerService? = AndroidUiControllerService.instance
+
+    /** Shared Shizuku bridge for keyevent injection; same pattern as [ShellToolProvider]. */
+    private val shizukuManager: ShizukuManager? by lazy { ShizukuManager(app) }
 
     private fun statusJson(): String = buildJsonObject {
         put("type", "android_status")
@@ -440,17 +485,137 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         }.toString()
     }
 
-    private fun pressKey(arguments: String): String {
+    /**
+     * 导航键（back/home/recents/notifications/quick_settings）只依赖无障碍桥；
+     * 其余按键（音量、电源、菜单、编辑键等）无障碍服务注入不了，必须通过
+     * Shizuku/root shell 的 `input keyevent` 注入 —— Lxchat 已有 AdbShellBackend，
+     * 复用它而不是再起一条 shell 通路。
+     */
+    private suspend fun pressKey(arguments: String): String {
         val key = argString("key", arguments)
-        val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
-        if (key.isNullOrBlank()) return err("no_key", "Missing key (back/home/recents/notifications/quick_settings).")
-        val ok = svc.pressGlobalKey(key)
+        if (key.isNullOrBlank()) return err("no_key", "Missing key. See android_press_key description for valid names.")
+        val lower = key.lowercase()
+        if (lower in GLOBAL_KEYS) {
+            val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
+            val ok = svc.pressGlobalKey(key)
+            return buildJsonObject {
+                put("type", "android_press_key")
+                put("status", if (ok) "ok" else "error")
+                put("key", key)
+                put("via", "accessibility")
+                if (!ok) put("hint", "System rejected the global action.")
+            }.toString()
+        }
+        val code = KEYCODES[lower] ?: key.trim().toIntOrNull()
+            ?: return err("unknown_key", "Unknown key '$key'. Use a name from the tool description or a numeric keycode.")
+        val backend = adbBackend()
+            ?: return buildJsonObject {
+                put("type", "android_press_key")
+                put("status", "error")
+                put("key", key)
+                put("error", "shell_unavailable")
+                put("hint", "Key '$key' needs shell injection: install/enable Shizuku (or root), then retry. Navigation keys (back/home/recents/…) still work via accessibility.")
+            }.toString()
+        val ok = runCatching {
+            backend.executeCommand("input keyevent $code", "", 8_000)
+        }.isSuccess
         return buildJsonObject {
             put("type", "android_press_key")
             put("status", if (ok) "ok" else "error")
             put("key", key)
-            if (!ok) put("hint", "Unknown key or system rejected it.")
+            put("keycode", code)
+            put("via", "shell")
+            if (!ok) put("hint", "'input keyevent $code' failed. Check that Shizuku (or root) is active.")
         }.toString()
+    }
+
+    /** Root 可用则 root，否则要求 Shizuku 就绪（与 ShellToolProvider 的 ADB Shell 通路一致）。 */
+    private fun adbBackend(): AdbShellBackend? {
+        val root = RootDetector.isRootAvailable()
+        val mgr = shizukuManager
+        if (!root && (mgr == null || !mgr.isReady())) return null
+        return AdbShellBackend(root, mgr)
+    }
+
+    /**
+     * 双指缩放：给 scale 或显式 span，中心点默认屏幕中央。
+     * scale 换算成 endSpan = startSpan * scale，交给无障碍桥的两 stroke 手势执行。
+     */
+    private fun pinch(arguments: String): String {
+        val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
+        val (screenW, screenH) = screenSize()
+        val maxSpan = minOf(screenW, screenH)
+        val x = argInt("x", arguments) ?: screenW / 2
+        val y = argInt("y", arguments) ?: screenH / 2
+        val duration = argInt("duration_ms", arguments)?.toLong()?.coerceIn(100L, 5_000L) ?: 600L
+        val startSpan = argInt("start_span", arguments)?.coerceIn(50, maxSpan) ?: 400
+        val endSpanRaw = argInt("end_span", arguments)
+            ?: argDouble("scale", arguments)?.let { scale -> (startSpan * scale).toInt() }
+            ?: return err("no_zoom_target", "Provide 'scale' (>1 zoom in, <1 zoom out), or explicit start_span/end_span.")
+        val endSpan = endSpanRaw.coerceIn(50, maxSpan)
+        val ok = svc.pinch(x, y, startSpan, endSpan, duration)
+        return buildJsonObject {
+            put("type", "android_pinch")
+            put("status", if (ok) "ok" else "error")
+            put("centre", "x=$x,y=$y")
+            put("span", "$startSpan -> $endSpan px")
+            put("via", "accessibility")
+            if (!ok) put("hint", "Pinch was rejected by the system (some secure screens block gestures).")
+        }.toString()
+    }
+
+    /**
+     * 等待文本/元素出现或消失：轮询无障碍 dump（间隔 400ms），命中即返回。
+     * appear 命中时带上稳定 index，AI 可直接 android_click index=<i>，
+     * 免去「点完 → read_ui → 判断 → 再点」中间每一轮的整树 dump 成本。
+     */
+    private suspend fun waitFor(arguments: String): String {
+        val svc = service() ?: return err("accessibility_off", "Enable accessibility first.")
+        val text = argString("text", arguments) ?: return err("no_text", "Missing text to wait for.")
+        val gone = argString("mode", arguments)?.equals("gone", ignoreCase = true) == true
+        val timeoutMs = argInt("timeout_ms", arguments)?.coerceIn(500, 60_000) ?: 10_000
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            val nodes = svc.dumpCurrentUi()
+            val hit = nodes.indexOfFirst { n ->
+                (n.text?.contains(text, ignoreCase = true) == true) ||
+                    (n.contentDescription?.contains(text, ignoreCase = true) == true)
+            }
+            if (gone) {
+                if (hit < 0) {
+                    return buildJsonObject {
+                        put("type", "android_wait_for")
+                        put("status", "ok")
+                        put("text", text)
+                        put("mode", "gone")
+                    }.toString()
+                }
+            } else if (hit >= 0) {
+                val n = nodes[hit]
+                return buildJsonObject {
+                    put("type", "android_wait_for")
+                    put("status", "ok")
+                    put("text", text)
+                    put("mode", "appear")
+                    put("index", hit)
+                    put("cx", n.x + n.width / 2)
+                    put("cy", n.y + n.height / 2)
+                    put("clickable", n.clickable)
+                    put("hint", "Found. Tap it with android_click index=$hit.")
+                }.toString()
+            }
+            val remaining = deadline - System.currentTimeMillis()
+            if (remaining <= 0) {
+                return buildJsonObject {
+                    put("type", "android_wait_for")
+                    put("status", "timeout")
+                    put("text", text)
+                    put("mode", if (gone) "gone" else "appear")
+                    put("hint", "Not settled within ${timeoutMs}ms. Dump the screen with android_read_ui to see what is actually showing.")
+                }.toString()
+            }
+            delay(minOf(400L, remaining))
+        }
     }
 
     private fun notFound(target: String, hint: String): String = buildJsonObject {
@@ -732,6 +897,31 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
 
     private companion object {
         private const val WECHAT_PACKAGE = "com.tencent.mm"
+
+        /** Keys injected through the accessibility bridge's performGlobalAction. */
+        private val GLOBAL_KEYS = setOf("back", "home", "recents", "notifications", "quick_settings")
+
+        /** Named keys injected via 'input keyevent <code>' through the Shizuku/root shell.
+         *  Values are standard Android keycodes (KeyEvent.KEYCODE_*). */
+        private val KEYCODES = mapOf(
+            "volume_up" to 24,
+            "volume_down" to 25,
+            "volume_mute" to 164,
+            "power" to 26,
+            "menu" to 82,
+            "enter" to 66,
+            "backspace" to 67,
+            "tab" to 61,
+            "space" to 62,
+            "escape" to 111,
+            "delete" to 112,
+            "dpad_up" to 19,
+            "dpad_down" to 20,
+            "dpad_left" to 21,
+            "dpad_right" to 22,
+            "dpad_center" to 23,
+            "camera" to 27,
+        )
 
         // (alias, display label, package id)
         val KNOWN_APPS = listOf(
