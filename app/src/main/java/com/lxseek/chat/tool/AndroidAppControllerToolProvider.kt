@@ -19,8 +19,6 @@ import com.lxseek.chat.viewmodel.GenerationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -914,16 +912,15 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         argValue(key, arguments, String::toDoubleOrNull)
 
     /**
-     * 统一的单值参数解析（R1：argString/argInt/argDouble 的公共实现）：
-     * JSON 非法、字段缺失或类型不符时一律返回 null，由调用方决定报错文案。
+     * 统一的单值参数解析（R1：argString/argInt/argDouble 的公共实现）。解析核心
+     * 委托 ToolArgHelpers.argPrimitive（W4F 三处重复实现合并）：JSON 非法、字段
+     * 缺失或类型不符时一律返回 null，由调用方决定报错文案；值交给 [parse] 前先
+     * trim（空白归一化为 null 的语义保留在本类），且与旧实现的异常兜底范围一致
+     * （parse 回调抛出的异常同样归一化为 null）。
      */
-    private fun <T> argValue(key: String, arguments: String, parse: (String) -> T?): T? = try {
-        Json.decodeFromString<Map<String, JsonPrimitive>>(arguments.ifBlank { "{}" })[key]
-            ?.content
-            ?.let { parse(it.trim()) }
-    } catch (_: Exception) {
-        null
-    }
+    private fun <T> argValue(key: String, arguments: String, parse: (String) -> T?): T? =
+        argPrimitive(key, arguments)?.content
+            ?.let { runCatching { parse(it.trim()) }.getOrNull() }
 
     private fun resolvePackage(appId: String): String? {
         val id = appId.trim()

@@ -17,8 +17,6 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -462,26 +460,22 @@ class ImToolProvider(
 
     // ── Helpers ──────────────────────────────────────────────
 
-    private fun argString(args: String, key: String): String {
-        if (args.isBlank()) return ""
-        return runCatching {
-            json.parseToJsonElement(args).jsonObject[key]?.jsonPrimitive?.contentOrNull.orEmpty()
-        }.getOrDefault("")
-    }
+    /**
+     * 参数读取统一委托 ToolArgHelpers.argPrimitive 共享核心（W4F 合并三处重复实现，
+     * 参数顺序保持本类原有的 (args, key)）。本类语义不变：缺失/JSON null/非法一律
+     * 返回空串而非 null，调用方依赖这一非空契约（如 `.trim()` 链式调用），绝不能
+     * 改为返回 null。contentOrNull 扩展恰好复刻旧实现：仅对 JsonNull 返回 null，
+     * 字面量 "null" 字符串原样保留。
+     */
+    private fun argString(args: String, key: String): String =
+        argPrimitive(key, args, json)?.contentOrNull ?: ""
 
-    private fun argInt(args: String, key: String): Int? {
-        if (args.isBlank()) return null
-        return runCatching {
-            json.parseToJsonElement(args).jsonObject[key]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
-        }.getOrNull()
-    }
+    /** 同上，缺失/无效返回 null；数值语义与旧实现一致（不 trim）。 */
+    private fun argInt(args: String, key: String): Int? =
+        argPrimitive(key, args, json)?.contentOrNull?.toIntOrNull()
 
-    private fun argLong(args: String, key: String): Long? {
-        if (args.isBlank()) return null
-        return runCatching {
-            json.parseToJsonElement(args).jsonObject[key]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
-        }.getOrNull()
-    }
+    private fun argLong(args: String, key: String): Long? =
+        argPrimitive(key, args, json)?.contentOrNull?.toLongOrNull()
 
     private fun notConfiguredJson(channel: MessageChannel?): String = buildJsonObject {
         put("ok", false)

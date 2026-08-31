@@ -1,5 +1,6 @@
 package com.lxseek.chat.skill
 
+import com.lxseek.chat.util.PortableGlobMatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -187,59 +188,19 @@ class SkillHost {
     private fun matchesPaths(skill: Skill, currentPath: String?): Boolean {
         if (skill.paths.isEmpty()) return true
         if (currentPath == null) return false
-        return skill.paths.any { GlobMatcher.matches(it, currentPath) }
+        // 统一委托 PortableGlobMatcher（原私有 GlobMatcher 已删除，语义保持一致）：
+        // `*` 段内、`**` 段边界跨段、`?` 单字符的匹配行为两者完全相同；旧实现对
+        // pattern/path 的 trim 在此是冗余的——SkillParser.parseList 已对每个 path 模式
+        // trim 过，currentPath 也来自 trim 过的文件路径上下文。仅剩的理论边缘差异是：
+        // ① 段内出现 `**`（如 `a**b`，这里按 `.*` 可跨段匹配）；② 字符类 `[...]`
+        // （旧实现视为字面量）；③ 模式以 `**` 结尾时对目录本身的匹配（如 `src/**`，
+        // 旧实现 `**` 可匹配零段因而匹配 "src"，新实现要求尾分隔符不匹配），而
+        // SKILL.md 的 paths 实际只有 `src/**/*.ts`、`*.md` 这类标准段边界写法，
+        // 不会用到这些边缘形式，替换是安全的。
+        return skill.paths.any { PortableGlobMatcher.matches(it, currentPath) }
     }
 
     private fun refresh() {
         _skills.value = registered.values.map { SkillInfo(it, enabled[it.name] ?: false) }
-    }
-}
-
-/**
- * Minimal glob matcher for skill `paths` patterns. Supports `*` (segment-spanning
- * wildcard within a path segment), `**` (recursive wildcard across segments), and
- * `?` (single char). Enough for the `src/**/*.ts` style patterns used in SKILL.md
- * without pulling in a filesystem-aware glob library.
- */
-private object GlobMatcher {
-    fun matches(pattern: String, path: String): Boolean {
-        val p = pattern.trim().replace('\\', '/')
-        val t = path.trim().replace('\\', '/')
-        return matchSegments(p.split("/"), t.split("/"))
-    }
-
-    private fun matchSegments(pattern: List<String>, path: List<String>): Boolean {
-        if (pattern.isEmpty()) return path.isEmpty()
-        val head = pattern.first()
-        val rest = pattern.drop(1)
-        if (head == "**") {
-            // ** matches zero or more path segments.
-            if (rest.isEmpty()) return true
-            // Try consuming 0..path.size leading segments.
-            for (i in 0..path.size) {
-                if (matchSegments(rest, path.drop(i))) return true
-            }
-            return false
-        }
-        if (path.isEmpty()) return false
-        return matchSegment(head, path.first()) && matchSegments(rest, path.drop(1))
-    }
-
-    /** Match a single segment with `*` and `?` wildcards (no `/` inside a segment). */
-    private fun matchSegment(pattern: String, text: String): Boolean {
-        if (pattern.isEmpty()) return text.isEmpty()
-        return when (pattern.first()) {
-            '*' -> {
-                // * matches zero or more chars within this segment.
-                for (i in 0..text.length) {
-                    if (matchSegment(pattern.drop(1), text.drop(i))) return true
-                }
-                false
-            }
-            '?' -> text.isNotEmpty() && matchSegment(pattern.drop(1), text.drop(1))
-            else -> text.isNotEmpty() &&
-                pattern.first() == text.first() &&
-                matchSegment(pattern.drop(1), text.drop(1))
-        }
     }
 }
