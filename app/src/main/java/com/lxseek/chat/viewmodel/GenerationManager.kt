@@ -58,6 +58,12 @@ class GenerationManager(
     private val smartRouterFactory: SmartModelRouterFactory? = null,
     /** Process-scoped token usage tracker for cross-session cost analysis. Null = tracking disabled. */
     private val tokenUsageTracker: com.lxseek.chat.metrics.TokenUsageTracker? = null,
+    /**
+     * 进程级 Token 预算管理器（会话/日限额）。Null = 不设预算闸门。
+     * 生成开始前与工具循环每轮前检查 [com.lxseek.chat.metrics.TokenBudgetManager.isExceeded]，
+     * 超限时按既有设计短路本轮生成；每次 Provider 调用结束后把实际用量计入预算。
+     */
+    private val tokenBudgetManager: com.lxseek.chat.metrics.TokenBudgetManager? = null,
     /** 成长活动日志（journey 数据源），转发给 MemoryToolProvider 记录记忆写操作。Null = 不记录。 */
     private val activityJournal: com.lxseek.chat.data.ActivityJournal? = null,
 ) {
@@ -213,6 +219,12 @@ class GenerationManager(
             // 工厂返回 null 表示不包装（保持向后兼容）。
             val provider = smartRouterFactory?.create(rawProvider, config.providerName, config.modelId)
                 ?: rawProvider
+            // Token 预算闸门（既有设计：isExceeded 时生成循环短路）。放在任何模型调用/转写
+            // 之前，超限时直接以 ERROR 终态持久化提示文案，不再消耗任何配额。
+            if (tokenBudgetManager?.isExceeded() == true) {
+                totalText = context.getString(R.string.token_budget_exceeded)
+                currentStatus = MessageStatus.ERROR
+            }
             onLoadingChange(true)
             // Pet face: thinking while the model works.
             com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.THINKING)
@@ -550,6 +562,8 @@ class GenerationManager(
                             cachedTokens = usage.cachedInputTokenCount ?: 0,
                             sessionId = conversationId,
                         )
+                        // 预算记账：同一份用量同时计入会话/日预算，供下一次闸门判定。
+                        tokenBudgetManager?.consume(usage.totalTokenCount)
                     }
                 }
             }
@@ -611,6 +625,13 @@ class GenerationManager(
             val repeatDetector = ToolRepeatDetector()
 
             while (toolCallDataList.isNotEmpty() && currentStatus != MessageStatus.ERROR && currentCoroutineContext().isActive) {
+                // 预算中途闸门：工具循环每轮都会追加消耗，上一轮结束后可能已越限。
+                // 已产出的内容仍按正常流程持久化（终态为 SUCCESS），只在尾部追加提示。
+                if (tokenBudgetManager?.isExceeded() == true) {
+                    if (totalText.isNotEmpty()) totalText += "\n\n"
+                    totalText += context.getString(R.string.token_budget_exhausted_mid_run)
+                    break
+                }
                 val repeatWarning = repeatDetector.observe(toolCallDataList)
                 if (repeatWarning != null) {
                     totalText = repeatWarning

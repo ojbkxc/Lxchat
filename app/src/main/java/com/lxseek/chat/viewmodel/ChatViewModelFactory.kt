@@ -47,6 +47,11 @@ class ChatViewModelFactory(
     private val membershipProvider: com.lxseek.chat.membership.LocalMembershipProvider,
     private val redemptionCodeValidator: com.lxseek.chat.membership.RedemptionCodeValidator,
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
+    /** 进程级 token 用量追踪器，透传给 GenerationManager 做跨会话成本分析。Null = 不追踪。 */
+    private val tokenUsageTracker: com.lxseek.chat.metrics.TokenUsageTracker? = null,
+    /** 进程级 Token 预算管理器，透传给 GenerationManager 做会话/日限额闸门。Null = 不设限。 */
+    private val tokenBudgetManager: com.lxseek.chat.metrics.TokenBudgetManager? = null,
+    /** 成长活动日志（journey 数据源），透传给 MemoryToolProvider 记录记忆写操作。 */
     private val activityJournal: com.lxseek.chat.data.ActivityJournal? = null,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -59,7 +64,7 @@ class ChatViewModelFactory(
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
                 mcpRegistry, pluginHost, pluginMarket, taskExecutionEngine,
                 membershipProvider, redemptionCodeValidator, smartRouterFactory,
-                activityJournal,
+                tokenUsageTracker, tokenBudgetManager, activityJournal,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

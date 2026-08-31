@@ -92,6 +92,10 @@ data class RouterConfig(
  * @param fallbackChain 故障转移链（备用模型列表）
  * @param apiKeyRotator API Key 轮换器（进程级共享实例）
  * @param apiKeySource API Key 来源（null 表示不轮换）
+ * @param scoreFeedbackLoop 结果质量反馈环（进程级共享单例，null = 关闭）。
+ *   每次路由尝试结束后按"成功/失败 + 延迟"写入 0–100 的质量分；
+ *   兜底链排序时把该分数簿的历史均分与 [AdaptiveFallbackTracker] 的
+ *   在线打分混合，让真实结果质量反馈影响后续路由权重（自改进闭环）。
  */
 class SmartModelRouter(
     private val delegate: LlmProvider,
@@ -99,6 +103,7 @@ class SmartModelRouter(
     private val fallbackChain: FallbackChain = FallbackChain.EMPTY,
     private val apiKeyRotator: ApiKeyRotator = ApiKeyRotator(),
     private val apiKeySource: ApiKeySource? = null,
+    private val scoreFeedbackLoop: com.lxseek.chat.metrics.ScoreFeedbackLoop? = null,
 ) : LlmProvider by delegate {
 
     /** 复杂度路由器：按任务复杂度选择小/大模型，配置来自 [routerConfig]。 */
@@ -106,6 +111,57 @@ class SmartModelRouter(
         simpleTaskModel = routerConfig.simpleTaskModel,
         complexTaskModel = routerConfig.complexTaskModel,
     )
+
+    /**
+     * 用 [ScoreFeedbackLoop] 分数簿的历史均分重排兜底条目。
+     *
+     * 混合权重各 50%：一半来自 [AdaptiveFallbackTracker] 的在线打分（成功率/延迟），
+     * 一半来自分数簿的均分（0–100 归一化到 0–1）。分数簿无记录的条目取中性值 0.5，
+     * 因此与在线打分的相对顺序保持一致（[sortedBy] 稳定排序，全程无副作用）。
+     */
+    private fun reorderWithScoreBook(entries: List<FallbackEntry>): List<FallbackEntry> {
+        if (entries.size < 2) return entries
+        val loop = scoreFeedbackLoop ?: return entries
+        return entries.sortedBy { entry ->
+            val onlineScore = fallbackTracker.scoreOf(entry.provider.name, entry.modelId)
+            val bookScore = loop.getPerformance(scoreKey(entry.provider.name, entry.modelId))
+                ?.avgScore?.div(100.0) ?: 0.5
+            0.5 * onlineScore + 0.5 * bookScore
+        }
+    }
+
+    /** 反馈环分数簿的 key："provider/modelId"，与 [recordRouteScore] 的写入 key 对应。 */
+    private fun scoreKey(providerName: String, modelId: String): String = "$providerName/$modelId"
+
+    /**
+     * 每次路由尝试结束后写入质量分（0–100）。
+     *
+     * 打分规则：失败 = 0；成功 = 100 扣除延迟惩罚（每秒 -5，下限 50），
+     * 既奖励稳定成功也奖励快速响应。boosters 记录本次使用的路由策略，
+     * 供 [ScoreFeedbackLoop.getRecommendedBoosters] 分析历史最优组合。
+     */
+    private fun recordRouteScore(
+        providerName: String,
+        modelId: String,
+        success: Boolean,
+        latencyMs: Long,
+        boosters: List<String>,
+    ) {
+        val loop = scoreFeedbackLoop ?: return
+        val score = if (!success) {
+            0
+        } else {
+            // 每秒延迟 -5 分，延迟惩罚最多扣 50 分（下限 50）。
+            val penalty = ((latencyMs / 1000L) * 5L).coerceAtMost(50L)
+            (100 - penalty).toInt()
+        }
+        loop.recordScore(
+            toolName = scoreKey(providerName, modelId),
+            score = score,
+            context = if (success) "ok in ${latencyMs}ms" else "failed after ${latencyMs}ms",
+            boostersUsed = boosters,
+        )
+    }
 
     /**
      * D3：API Key 列表的短 TTL 缓存，避免每次请求都重新解析持久化配置。
@@ -137,8 +193,15 @@ class SmartModelRouter(
     ): Flow<StreamEvent> = flow {
         // 主条目 + 备用条目（当 enableFallback 时）
         val hasFallback = routerConfig.enableFallback && fallbackChain.hasFallback
-        // D1：启用 fallback 时按历史成功率/延迟在线打分重排兜底模型，无历史则保持原配置顺序
-        val fallbackEntries = if (hasFallback) fallbackTracker.orderByScore(fallbackChain.fallbacks) else emptyList()
+        // D1：启用 fallback 时按历史成功率/延迟在线打分重排兜底模型，无历史则保持原配置顺序。
+        // 质量反馈环（ScoreFeedbackLoop）开启时，把分数簿的历史均分与在线打分混合，
+        // 让每次请求的真实结果质量持续影响后续路由权重（自改进闭环）。
+        val orderedByTracker = if (hasFallback) fallbackTracker.orderByScore(fallbackChain.fallbacks) else emptyList()
+        val fallbackEntries = if (hasFallback && scoreFeedbackLoop != null) {
+            reorderWithScoreBook(orderedByTracker)
+        } else {
+            orderedByTracker
+        }
 
         // ── 无 fallback 快速路径：直接流式转发，不缓冲 ──
         // 避免缓冲整个响应导致首 token 延迟；仅应用白名单/Key 轮换/速率限制/并发限制。
@@ -303,16 +366,43 @@ class SmartModelRouter(
         concurrencySemaphore?.acquire()
 
         try {
+            var sawError = false
+            val startMs = SystemClock.elapsedRealtime()
             provider.generateResponse(messages, entryConfig).collect { event ->
+                if (event is StreamEvent.Error) sawError = true
                 emit(event)
             }
+            // 反馈环：主路径（无 fallback 快速路径）也写入质量分，
+            // 让分数簿覆盖真实生成流量的每一次路由决策。
+            recordRouteScore(
+                providerName = provider.name,
+                modelId = modelId,
+                success = !sawError,
+                latencyMs = SystemClock.elapsedRealtime() - startMs,
+                boosters = routeBoosters(entryConfig),
+            )
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {
             emit(StreamEvent.Error(GenerationError.Unknown(e)))
+            // 反馈环：异常同样计为失败（计分与 AdaptiveFallbackTracker 的口径一致）
+            recordRouteScore(
+                providerName = provider.name,
+                modelId = modelId,
+                success = false,
+                latencyMs = 0L,
+                boosters = routeBoosters(entryConfig),
+            )
         } finally {
             concurrencySemaphore?.release()
         }
+    }
+
+    /** 本次请求实际启用的路由策略标签，随质量分写入反馈环。 */
+    private fun routeBoosters(config: ProviderConfig): List<String> = buildList {
+        if (routerConfig.enableKeyRotation) add("key-rotation")
+        if (routerConfig.enableComplexityRouting) add("complexity-routing")
+        if (config.modelId.isNotBlank()) add("model=${config.modelId}")
     }
 
     /**
@@ -421,6 +511,14 @@ class SmartModelRouter(
             success = error == null,
             latencyMs = SystemClock.elapsedRealtime() - startMs,
         )
+        // 反馈环：兜底缓冲路径同样写入质量分，保持两条路径打分口径一致
+        recordRouteScore(
+            providerName = provider.name,
+            modelId = modelId,
+            success = error == null,
+            latencyMs = SystemClock.elapsedRealtime() - startMs,
+            boosters = routeBoosters(entryConfig),
+        )
 
         return AttemptResult(
             events = events,
@@ -524,6 +622,9 @@ private class AdaptiveFallbackTracker {
         val latencyScore = LATENCY_REF_MS / (LATENCY_REF_MS + avgLatency)
         return successRate * SUCCESS_WEIGHT + latencyScore * LATENCY_WEIGHT
     }
+
+    /** [score] 的公开只读入口，供路由器把在线打分与反馈环分数簿混合。 */
+    fun scoreOf(provider: String, modelId: String): Double = score(provider, modelId)
 
     /** 按打分降序重排兜底链；打分相同时保持原配置顺序（稳定排序）。 */
     fun orderByScore(entries: List<FallbackEntry>): List<FallbackEntry> {

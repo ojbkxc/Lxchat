@@ -543,103 +543,118 @@ class DataExporter(
 
         val rawOutput = context.contentResolver.openOutputStream(uri)
             ?: throw IOException("Could not open the selected backup destination")
-        rawOutput.use { raw ->
-            val zip = ZipOutputStream(BufferedOutputStream(raw))
+        try {
+            rawOutput.use { raw ->
+                val zip = ZipOutputStream(BufferedOutputStream(raw))
 
-            // Manifest
-            zip.putNextEntry(ZipEntry(NativeBackupFormat.MANIFEST_ENTRY))
-            Json.encodeToStream(manifest, zip)
-            zip.closeEntry()
-            step()
-
-            // Conversations
-            if (ExportCategory.CONVERSATIONS in categories) {
-                val conversations = chatDao.getAllConversationsList()
-                val mediaPlan = buildMediaExportPlan(zip, conversations)
-                imagesExportedTotal += mediaPlan.copiedImageCount
-                writeConversationArchive(
-                    zip = zip,
-                    conversations = conversations,
-                    mediaPlan = mediaPlan,
-                    conversationSettings = settingsManager.conversationSettings.first(),
-                )
-                step()
-            }
-
-            // Memories
-            if (ExportCategory.MEMORIES in categories) {
-                val activeMemory = memoryManager.getActiveMemory()
-                if (activeMemory.isNotEmpty()) {
-                    zip.putNextEntry(ZipEntry("memories/active_memory.md"))
-                    zip.write(activeMemory.toByteArray())
-                    zip.closeEntry()
-                }
-                for (file in memoryManager.listFiles()) {
-                    val content = memoryManager.readFile(file.name)
-                    zip.putNextEntry(ZipEntry("memories/memory_db/${file.name}"))
-                    zip.write(content.toByteArray())
-                    zip.closeEntry()
-                }
-                val metaJson = memoryManager.getMetaJson()
-                if (metaJson != "{}") {
-                    zip.putNextEntry(ZipEntry("memories/memory_db/memory_meta.json"))
-                    zip.write(metaJson.toByteArray())
-                    zip.closeEntry()
-                }
-                step()
-            }
-
-            // System Prompts
-            if (ExportCategory.SYSTEM_PROMPTS in categories) {
-                val prompts = settingsManager.systemPrompts.first()
-                zip.putNextEntry(ZipEntry(NativeBackupFormat.SYSTEM_PROMPTS_ENTRY))
-                Json.encodeToStream(prompts, zip)
+                // Manifest
+                zip.putNextEntry(ZipEntry(NativeBackupFormat.MANIFEST_ENTRY))
+                Json.encodeToStream(manifest, zip)
                 zip.closeEntry()
                 step()
-            }
 
-            // User Skills (self-authored SKILL.md files)
-            if (ExportCategory.SKILLS in categories) {
-                userSkillStore.listSkillFiles().forEach { file ->
-                    zip.putNextEntry(ZipEntry(NativeBackupFormat.SKILLS_ENTRY_PREFIX + file.name))
-                    file.inputStream().use { it.copyTo(zip) }
-                    zip.closeEntry()
+                // Conversations
+                if (ExportCategory.CONVERSATIONS in categories) {
+                    val conversations = chatDao.getAllConversationsList()
+                    val mediaPlan = buildMediaExportPlan(zip, conversations)
+                    imagesExportedTotal += mediaPlan.copiedImageCount
+                    writeConversationArchive(
+                        zip = zip,
+                        conversations = conversations,
+                        mediaPlan = mediaPlan,
+                        conversationSettings = settingsManager.conversationSettings.first(),
+                    )
+                    step()
                 }
-                step()
-            }
 
-            // Settings
-            if (ExportCategory.SETTINGS in categories) {
-                val fontFile = settingsManager.customFontPath.first()
-                    .takeIf(String::isNotBlank)
-                    ?.let(::File)
-                    ?.takeIf(File::isFile)
-                if (fontFile != null) {
-                    zip.putNextEntry(ZipEntry(NativeBackupFormat.CUSTOM_FONT_ENTRY))
-                    fontFile.inputStream().use { it.copyTo(zip) }
-                    zip.closeEntry()
+                // Memories
+                if (ExportCategory.MEMORIES in categories) {
+                    val activeMemory = memoryManager.getActiveMemory()
+                    if (activeMemory.isNotEmpty()) {
+                        zip.putNextEntry(ZipEntry("memories/active_memory.md"))
+                        zip.write(activeMemory.toByteArray())
+                        zip.closeEntry()
+                    }
+                    for (file in memoryManager.listFiles()) {
+                        val content = memoryManager.readFile(file.name)
+                        zip.putNextEntry(ZipEntry("memories/memory_db/${file.name}"))
+                        zip.write(content.toByteArray())
+                        zip.closeEntry()
+                    }
+                    val metaJson = memoryManager.getMetaJson()
+                    if (metaJson != "{}") {
+                        zip.putNextEntry(ZipEntry("memories/memory_db/memory_meta.json"))
+                        zip.write(metaJson.toByteArray())
+                        zip.closeEntry()
+                    }
+                    step()
                 }
-                val settings = PortableSettingsArchive.toJsonObject(
-                    sm = settingsManager,
-                    customFontIncluded = fontFile != null,
-                )
-                zip.putNextEntry(ZipEntry(NativeBackupFormat.SETTINGS_ENTRY))
-                Json.encodeToStream(settings, zip)
-                zip.closeEntry()
-                step()
-            }
 
-            // API Keys (opt-in)
-            if (includeApiKeys && ExportCategory.API_KEYS in categories) {
-                val keys = NativeBackupSecretsPolicy.capture(settingsManager)
-                zip.putNextEntry(ZipEntry(NativeBackupFormat.SECRETS_ENTRY))
-                Json.encodeToStream(keys, zip)
-                zip.closeEntry()
-                step()
-            }
+                // System Prompts
+                if (ExportCategory.SYSTEM_PROMPTS in categories) {
+                    val prompts = settingsManager.systemPrompts.first()
+                    zip.putNextEntry(ZipEntry(NativeBackupFormat.SYSTEM_PROMPTS_ENTRY))
+                    Json.encodeToStream(prompts, zip)
+                    zip.closeEntry()
+                    step()
+                }
 
-            zip.finish()
-            zip.flush()
+                // User Skills (self-authored SKILL.md files)
+                if (ExportCategory.SKILLS in categories) {
+                    userSkillStore.listSkillFiles().forEach { file ->
+                        zip.putNextEntry(ZipEntry(NativeBackupFormat.SKILLS_ENTRY_PREFIX + file.name))
+                        file.inputStream().use { it.copyTo(zip) }
+                        zip.closeEntry()
+                    }
+                    step()
+                }
+
+                // Settings
+                if (ExportCategory.SETTINGS in categories) {
+                    val fontFile = settingsManager.customFontPath.first()
+                        .takeIf(String::isNotBlank)
+                        ?.let(::File)
+                        ?.takeIf(File::isFile)
+                    if (fontFile != null) {
+                        zip.putNextEntry(ZipEntry(NativeBackupFormat.CUSTOM_FONT_ENTRY))
+                        fontFile.inputStream().use { it.copyTo(zip) }
+                        zip.closeEntry()
+                    }
+                    val settings = PortableSettingsArchive.toJsonObject(
+                        sm = settingsManager,
+                        customFontIncluded = fontFile != null,
+                    )
+                    zip.putNextEntry(ZipEntry(NativeBackupFormat.SETTINGS_ENTRY))
+                    Json.encodeToStream(settings, zip)
+                    zip.closeEntry()
+                    step()
+                }
+
+                // API Keys (opt-in)
+                if (includeApiKeys && ExportCategory.API_KEYS in categories) {
+                    val keys = NativeBackupSecretsPolicy.capture(settingsManager)
+                    zip.putNextEntry(ZipEntry(NativeBackupFormat.SECRETS_ENTRY))
+                    Json.encodeToStream(keys, zip)
+                    zip.closeEntry()
+                    step()
+                }
+
+                zip.finish()
+                zip.flush()
+            }
+        } catch (error: Exception) {
+            // 导出中断（磁盘写满/媒体流抛错等）时会留下一个截断的 zip。不清除的话，
+            // 用户可能把半截文件误当有效备份归档，直到导入时才发现数据缺失。
+            // SAF Uri 的 delete 由 DocumentsProvider 实现，失败（不支持/权限）则静默保留原文件。
+            runCatching { context.contentResolver.delete(uri, null, null) }
+                .onFailure {
+                    com.lxseek.chat.util.DebugLog.w(
+                        "DataExporter",
+                        "Failed to remove the partial export at $uri",
+                        it,
+                    )
+                }
+            throw error
         }
 
         onProgress(1f)

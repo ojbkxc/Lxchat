@@ -78,6 +78,10 @@ class TaskExecutionEngine(
     private val pauseConversationLoop: suspend (String) -> Unit = {},
     /** 智能模型路由器工厂，注入到 GenerationManager 启用 Fallback/Key 轮换/速率限制等。 */
     private val smartRouterFactory: com.lxseek.chat.api.router.SmartModelRouterFactory? = null,
+    /** 进程级 token 用量追踪器，透传给 GenerationManager 做跨会话成本分析。Null = 不追踪。 */
+    private val tokenUsageTracker: com.lxseek.chat.metrics.TokenUsageTracker? = null,
+    /** 进程级 Token 预算管理器，透传给 GenerationManager 做会话/日限额闸门。Null = 不设限。 */
+    private val tokenBudgetManager: com.lxseek.chat.metrics.TokenBudgetManager? = null,
     /** 成长记录（journey）日志，透传给 GenerationManager 以便工具调用留痕。 */
     private val activityJournal: com.lxseek.chat.data.ActivityJournal? = null,
 ) {
@@ -205,6 +209,8 @@ class TaskExecutionEngine(
             deviceToolProvider,
         ),
         smartRouterFactory = smartRouterFactory,
+        tokenUsageTracker = tokenUsageTracker,
+        tokenBudgetManager = tokenBudgetManager,
         activityJournal = activityJournal,
     ).also {
         // Foreground Task/Loop executions share the exact same prompt and session trust state as

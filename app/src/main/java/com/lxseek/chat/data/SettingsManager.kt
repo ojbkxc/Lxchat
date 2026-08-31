@@ -181,6 +181,7 @@ class SettingsManager(private val context: Context) {
     val petOverlayEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_OVERLAY_ENABLED] ?: false }
     val petOverlayImagePath: Flow<String> = context.dataStore.data.map { it[PET_OVERLAY_IMAGE_PATH] ?: "" }
     val petOverlaySizeScale: Flow<Float> = context.dataStore.data.map { it[PET_OVERLAY_SIZE_SCALE] ?: 1.0f }
+    val petOverlayAlpha: Flow<Float> = context.dataStore.data.map { it[PET_OVERLAY_ALPHA] ?: 1.0f }
     val petOverlayCharacter: Flow<String> = context.dataStore.data.map {
         PetCharacter.fromKey(it[PET_OVERLAY_CHARACTER]).prefKey
     }
@@ -795,6 +796,7 @@ class SettingsManager(private val context: Context) {
     suspend fun savePetOverlayEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_OVERLAY_ENABLED] = enabled } }
     suspend fun savePetOverlayImagePath(path: String) { context.dataStore.edit { it[PET_OVERLAY_IMAGE_PATH] = path } }
     suspend fun savePetOverlaySizeScale(scale: Float) { context.dataStore.edit { it[PET_OVERLAY_SIZE_SCALE] = scale.coerceIn(0.5f, 1.3f) } }
+    suspend fun savePetOverlayAlpha(alpha: Float) { context.dataStore.edit { it[PET_OVERLAY_ALPHA] = alpha.coerceIn(0.2f, 1.0f) } }
     suspend fun savePetOverlayCharacter(character: String) {
         context.dataStore.edit { it[PET_OVERLAY_CHARACTER] = PetCharacter.fromKey(character).prefKey }
     }

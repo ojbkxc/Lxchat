@@ -197,6 +197,29 @@ class AppContainer(private val appContext: Context) {
                 com.lxseek.chat.util.DebugLog.e("AppContainer", "cronScheduler.start failed", e)
             }
         }
+        // Token 日预算重置（TokenBudgetManager 既有设计：本地午夜清零 dailyUsed）。
+        // 自愈循环：计算到下一个午夜的延迟并等待，重置失败时 1 分钟后重试。
+        appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            while (true) {
+                try {
+                    val now = java.util.Calendar.getInstance()
+                    @Suppress("UNCHECKED_CAST")
+                    val nextMidnight = (now.clone() as java.util.Calendar).apply {
+                        add(java.util.Calendar.DAY_OF_YEAR, 1)
+                        set(java.util.Calendar.HOUR_OF_DAY, 0)
+                        set(java.util.Calendar.MINUTE, 0)
+                        set(java.util.Calendar.SECOND, 0)
+                        set(java.util.Calendar.MILLISECOND, 0)
+                    }
+                    kotlinx.coroutines.delay(nextMidnight.timeInMillis - now.timeInMillis)
+                    tokenBudgetManager.resetDaily()
+                    com.lxseek.chat.util.DebugLog.d("AppContainer", "Token daily budget reset at local midnight")
+                } catch (e: Throwable) {
+                    com.lxseek.chat.util.DebugLog.e("AppContainer", "Token daily budget reset failed", e)
+                    kotlinx.coroutines.delay(60_000L)
+                }
+            }
+        }
     }
 
     val taskRepository: TaskRepository by lazy {
@@ -246,6 +269,36 @@ class AppContainer(private val appContext: Context) {
     /** Process-scoped token usage tracker for cost analysis and optimization. */
     val tokenUsageTracker: com.lxseek.chat.metrics.TokenUsageTracker by lazy {
         com.lxseek.chat.metrics.TokenUsageTracker()
+    }
+
+    /**
+     * 进程级 Token 预算管理器（会话/日限额闸门）。
+     *
+     * 数据流：GenerationManager 每次 Provider 调用结束后 [com.lxseek.chat.metrics.TokenBudgetManager.consume]
+     * 实际用量 → 生成开始前与工具循环每轮前检查 [com.lxseek.chat.metrics.TokenBudgetManager.isExceeded]
+     * 短路超限请求；日计数在本地午夜由下方 resetDaily 任务清零。
+     */
+    val tokenBudgetManager: com.lxseek.chat.metrics.TokenBudgetManager by lazy {
+        com.lxseek.chat.metrics.TokenBudgetManager()
+    }
+
+    /**
+     * 进程级路由质量反馈环（ScoreFeedbackLoop 单例）。
+     *
+     * SmartModelRouter 每次路由尝试结束后按"成功/失败 + 延迟"写入质量分；
+     * 兜底链排序时把该分数簿的历史均分与在线打分混合，让真实结果质量
+     * 反馈持续影响后续路由权重（自改进闭环）。
+     */
+    val scoreFeedbackLoop: com.lxseek.chat.metrics.ScoreFeedbackLoop by lazy {
+        com.lxseek.chat.metrics.ScoreFeedbackLoop()
+    }
+
+    /**
+     * 多代理协调器：SubAgentManager 派发的每个子代理都登记进该任务簿
+     * （提交→指派→运行→完成/失败），tasks StateFlow 供 UI 观察实时状态。
+     */
+    val multiAgentCoordinator: com.lxseek.chat.automation.MultiAgentCoordinator by lazy {
+        com.lxseek.chat.automation.MultiAgentCoordinator()
     }
 
     val localProvider: LocalProvider by lazy { LocalProvider(appContext, settingsRepository) }
@@ -635,10 +688,16 @@ class AppContainer(private val appContext: Context) {
 
     val smartRouterFactory: SmartModelRouterFactory by lazy {
         SmartModelRouterFactory { delegate, providerName, modelId ->
-            // 当前默认配置：启用 Key 轮换，Fallback 暂空，白名单宽松
+            // 复杂度智能路由开关/小大模型配置从 Settings 实时读取（SettingsRoutingPage UI 可调）：
+            // 每次包装 Provider 时取当前快照，设置变更对新请求即时生效。
+            // 此前该配置未接线（UI 改了不生效），导致 TaskComplexityEstimator/ComplexityRouter
+            // 在真实生成路径中永远不会被调用。
             val routerConfig = RouterConfig(
                 enableFallback = false,       // 暂无备用模型配置入口
-                enableKeyRotation = true,     // 启用多 Key 轮换
+                enableKeyRotation = true,      // 启用多 Key 轮换
+                enableComplexityRouting = settingsRepository.complexityRoutingEnabled.value,
+                simpleTaskModel = settingsRepository.simpleTaskModel.value,
+                complexTaskModel = settingsRepository.complexTaskModel.value,
             )
             SmartModelRouter(
                 delegate = delegate,
@@ -646,6 +705,7 @@ class AppContainer(private val appContext: Context) {
                 fallbackChain = FallbackChain.EMPTY,
                 apiKeyRotator = apiKeyRotator,
                 apiKeySource = apiKeySource,
+                scoreFeedbackLoop = scoreFeedbackLoop,
             )
         }
     }
@@ -673,6 +733,8 @@ class AppContainer(private val appContext: Context) {
             generationRegistry = conversationStateRegistry,
             pauseConversationLoop = { conversationId -> loopManager.stopLoop(conversationId) },
             smartRouterFactory = smartRouterFactory,
+            tokenUsageTracker = tokenUsageTracker,
+            tokenBudgetManager = tokenBudgetManager,
             activityJournal = activityJournal,
         )
     }
@@ -721,7 +783,7 @@ class AppContainer(private val appContext: Context) {
 
     /** Subagents reuse the one-shot Task machinery to run async delegated prompts. */
     val subAgentManager: com.lxseek.chat.automation.SubAgentManager by lazy {
-        com.lxseek.chat.automation.SubAgentManager(taskManager, appScope)
+        com.lxseek.chat.automation.SubAgentManager(taskManager, appScope, coordinator = multiAgentCoordinator)
     }
 
     /** Foreground-only provider: headless automation cannot recursively create automation. */
@@ -788,6 +850,7 @@ class AppContainer(private val appContext: Context) {
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, pluginHost, pluginMarket, taskExecutionEngine,
             membershipProvider, redemptionCodeValidator, smartRouterFactory,
+            tokenUsageTracker, tokenBudgetManager,
             activityJournal,
         )
 

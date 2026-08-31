@@ -51,6 +51,8 @@ class PetOverlayWindowService : Service() {
 
     private var floatingView: PetFloatingView? = null
     private var windowManager: WindowManager? = null
+    /** 当前悬浮窗的 LayoutParams 副本，供运行期 alpha 更新（updateViewLayout）复用。 */
+    private var floatingParams: WindowManager.LayoutParams? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
@@ -73,6 +75,17 @@ class PetOverlayWindowService : Service() {
             DebugLog.w(TAG, "Overlay permission missing; pet service stopping")
             stopSelf()
             return START_NOT_STICKY
+        }
+        // 透明度热更新：applyAlpha 的重投递命令。仅在悬浮窗已 attach 时原地更新
+        // LayoutParams.alpha；未 attach 时落入下方正常启动路径（addFloatingView 读取
+        // companion.pendingAlpha 作为初始值），避免重复 load 图片/角色的副作用。
+        if (intent?.action == ACTION_APPLY_ALPHA) {
+            val alpha = intent.getFloatExtra(EXTRA_ALPHA, 1.0f)
+            pendingAlpha = alpha.coerceIn(MIN_ALPHA, 1.0f)
+            if (floatingView != null) {
+                applyWindowAlpha(pendingAlpha)
+                return START_STICKY
+            }
         }
         if (floatingView == null) {
             // Read the persisted size scale (0.5~1.0) and sprite asynchronously, then build the
@@ -129,6 +142,8 @@ class PetOverlayWindowService : Service() {
             // Offset so the pet (centered in the window) sits at the right edge, not the window.
             x = resources.displayMetrics.widthPixels - (windowW + sizePx) / 2 - (MARGIN_DP * density).toInt()
             y = topMarginPx()
+            // 透明度初始值：服务未运行时拖动滑块的值已存入 pendingAlpha，此处拾取。
+            alpha = pendingAlpha
         }
         val view = PetFloatingView(this).apply {
             bindWindowParams(params)
@@ -140,9 +155,29 @@ class PetOverlayWindowService : Service() {
         try {
             wm.addView(view, params)
             floatingView = view
+            floatingParams = params
             DebugLog.d(TAG, "Pet floating view added")
         } catch (e: RuntimeException) {
             DebugLog.e(TAG, "Failed to add pet overlay", e)
+        }
+    }
+
+    /**
+     * TODO(用户并行开发)：此方法为编译占位实现（Team Leader 委托），用户正在并行开发宠物
+     * 悬浮窗透明度功能，最终实现以用户为准。
+     *
+     * 运行期把窗口透明度应用到已 attach 的悬浮窗：更新 [WindowManager.LayoutParams.alpha]
+     * 后 updateViewLayout 立即生效（窗口属性是实时布局参数，无需重启服务）。
+     */
+    private fun applyWindowAlpha(alpha: Float) {
+        val view = floatingView ?: return
+        val params = floatingParams ?: return
+        params.alpha = alpha.coerceIn(MIN_ALPHA, 1.0f)
+        try {
+            windowManager?.updateViewLayout(view, params)
+        } catch (e: RuntimeException) {
+            // 视图尚未 attach / 已被移除（异常时序），静默降级：下次 attach 由 pendingAlpha 兜底。
+            DebugLog.w(TAG, "applyWindowAlpha failed (view not attached)", e)
         }
     }
 
@@ -258,6 +293,8 @@ class PetOverlayWindowService : Service() {
             }
             floatingView = null
         }
+        // 释放运行期 alpha 更新持有的 params 副本（避免泄漏已移除视图的引用）。
+        floatingParams = null
         DebugLog.d(TAG, "Pet overlay service destroyed")
     }
 
@@ -310,6 +347,44 @@ class PetOverlayWindowService : Service() {
         // Width of the tip bubble area. The window is widened to this when it exceeds the pet size,
         // giving multi-line tip text room without clipping.
         private const val TIP_WIDTH_DP = 200f
+
+        // ── 透明度（编译占位实现，最终以用户实现为准）────────────────────────
+        /** 重投递命令：运行期应用窗口透明度（companion.applyAlpha 使用）。 */
+        private const val ACTION_APPLY_ALPHA = "com.lxseek.chat.pet.action.APPLY_ALPHA"
+        /** [ACTION_APPLY_ALPHA] 携带的 float extra 键。 */
+        private const val EXTRA_ALPHA = "alpha"
+        /** 透明度下界（与 SettingsManager.savePetOverlayAlpha 的钳制范围一致）。 */
+        private const val MIN_ALPHA = 0.2f
+
+        /** 最近一次请求的窗口透明度；服务未运行时先存这里，下次 attach 时作为初始值。 */
+        @Volatile
+        private var pendingAlpha: Float = 1.0f
+
+        /**
+         * TODO(用户并行开发)：此方法为编译占位实现（Team Leader 委托），用户正在并行开发宠物
+         * 悬浮窗透明度功能，最终实现以用户为准。
+         *
+         * 把 [alpha] 应用到运行中的悬浮窗（或服务未运行时预存，供下次 attach 拾取）。
+         * 通过带 [ACTION_APPLY_ALPHA] + [EXTRA_ALPHA] 的 Intent 重投递 start command，
+         * 与 [refreshImage] / [refreshCharacter] 同一模式（Android O+ 用 startForegroundService
+         * 满足后台启动限制，服务在 onCreate 中自我提级前台）。任意线程安全。
+         */
+        fun applyAlpha(context: Context, alpha: Float) {
+            val app = context.applicationContext
+            val clamped = alpha.coerceIn(MIN_ALPHA, 1.0f)
+            pendingAlpha = clamped
+            kotlin.runCatching {
+                val intent = Intent(app, PetOverlayWindowService::class.java).apply {
+                    action = ACTION_APPLY_ALPHA
+                    putExtra(EXTRA_ALPHA, clamped)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    app.startForegroundService(intent)
+                } else {
+                    app.startService(intent)
+                }
+            }
+        }
 
         fun start(context: Context) {
             val app = context.applicationContext

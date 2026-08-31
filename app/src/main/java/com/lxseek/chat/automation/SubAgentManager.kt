@@ -29,6 +29,13 @@ class SubAgentManager(
     private val taskManager: TaskManager,
     private val scope: CoroutineScope,
     val maxRunning: Int = DEFAULT_MAX_RUNNING,
+    /**
+     * 多代理协调器（可选）。非 null 时，每个子代理的完整生命周期
+     * （提交 → 指派 → 运行 → 完成/失败）会同步写入协调器的任务簿，
+     * 其 [MultiAgentCoordinator.tasks] StateFlow 供 UI 观察全部子代理的
+     * 实时状态；null = 关闭协调（向后兼容）。
+     */
+    private val coordinator: MultiAgentCoordinator? = null,
 ) {
 
     data class SubAgent(
@@ -106,6 +113,36 @@ class SubAgentManager(
             createdAt = System.currentTimeMillis(),
         )
         _subAgents.value = _subAgents.value + (id to sub)
+
+        // 多代理协调：把该子代理登记进协调器任务簿（提交/指派/启动一次完成）。
+        // runNow 返回前已同步 reserve 任务槽，因此此处状态必然是"运行中"。
+        coordinator?.let { c ->
+            val agentTask = c.submitTask(description = title, prompt = effectivePrompt)
+            c.assignTask(agentTask.id, id)
+            c.startTask(agentTask.id)
+            // 监督协程：等待底层 Task 执行结束后回写终态（完成/失败），
+            // 让协调器的任务簿与真实执行结果保持一致，而非永远停留在 RUNNING。
+            scope.launch {
+                try {
+                    // runNow 已同步 reserve（runningTaskIds 立即包含 id），
+                    // 此处等待其从运行集合中移除即为执行结束。
+                    taskManager.runningTaskIds.first { ids -> id !in ids }
+                    val summaries = taskManager.executionSummariesForTask(id).first()
+                    val last = summaries.lastOrNull()
+                    val output = last?.preview.orEmpty()
+                    if (last?.status == MessageStatus.ERROR) {
+                        c.failTask(agentTask.id, output.ifBlank { "execution failed" })
+                    } else {
+                        c.completeTask(agentTask.id, output.ifBlank { "completed" })
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 监督失败不应影响子代理本身；协调器条目保守标记为失败。
+                    runCatching { c.failTask(agentTask.id, "supervisor error: ${e.message}") }
+                }
+            }
+        }
 
         // 超时守护：到点若仍在运行则取消底层 Task，并把该子代理标记为 timedOut。
         if (timeoutMs != null && timeoutMs > 0L) {

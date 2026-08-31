@@ -110,7 +110,9 @@ def write_env_if_model(project_root):
 
 def run_engine(script, project_root, subcommand, args=None):
     """Invoke webnovel-writer's own CLI for a fine-grained subcommand."""
-    cmd = ["python", "-X", "utf8", script, "--project-root", project_root]
+    # Use the current interpreter (sys.executable): Alpine sandboxes expose
+    # python3 only, while desktops may expose either python or python3.
+    cmd = [sys.executable, "-X", "utf8", script, "--project-root", project_root]
     if subcommand:
         cmd.append(subcommand)
     if args:
@@ -167,26 +169,51 @@ def main():
         err("model_not_configured", "未配置模型 Key，无法进行创作。请先在设置中配置默认模型服务。")
         return
 
-    # Map high-level action onto webnovel-writer's CLI subcommands.
+    # Map high-level action onto webnovel-writer's CLI subcommands. Each entry is a
+    # list of (subcommand, extra-args) pairs. Shapes verified against upstream v6.2.1:
+    #   init <project_dir> <title> <genre>          (init_project.py)
+    #   story-system <query> [--persist]            (story_system.py, query needs Chinese genre words)
+    #   write-gate --chapter N --stage {prewrite,precommit,postcommit}
+    #   chapter-commit --chapter N (needs 4 result files — only meaningful post-write,
+    #                            so this adapter surfaces guidance instead of failing)
+    #   story-events [--chapter N --limit N --health]
+    title = str(p.get("title") or p.get("name") or "新书")
+    genre = str(p.get("genre") or "都市脑洞")
+    chapter = str(p.get("chapter") or p.get("target") or "").strip()
+    query = str(p.get("query") or p.get("message") or "").strip()
+    # story-system routes by Chinese genre keywords; derive the seed query from the
+    # project's genre when the caller didn't provide a usable one.
+    seed = query if query else (genre + "题材 大纲与力量体系一致性规划")
     mapping = {
-        "init": ["preflight", "story-system"],
-        "plan": ["story-system", "chapter-commit"],
-        "write": ["write-gate", "story-system", "chapter-commit"],
-        "review": ["story-system"],
-        "query": ["story-events"],
+        "init": [
+            ("init", [project_root, title, genre]),
+            ("preflight", []),
+        ],
+        "plan": [
+            ("story-system", [seed, "--persist"]),
+            ("project-status", []),
+        ],
+        "write": [
+            ("write-gate", ["--chapter", chapter or "1", "--stage", "prewrite", "--format", "json"]),
+            ("extract-context", ["--chapter", chapter or "1", "--format", "json"]),
+        ],
+        "review": [
+            ("story-events", ["--health"]),
+            ("doctor", []),
+        ],
+        "query": [
+            ("story-events", ["--limit", "20"]),
+            ("project-status", []),
+        ],
     }
-    subcommands = mapping.get(action, [])
+    steps = mapping.get(action, [])
 
     results = []
     ok = True
-    for sc in subcommands:
-        target = p.get("target") or p.get("chapter") or p.get("scope")
-        extra = []
-        if target:
-            extra = [str(target)]
+    for sc, extra in steps:
         text, run_err, timed = run_engine(script, project_root, sc, extra)
         results.append({"subcommand": sc, "ok": run_err is None, "timed_out": timed,
-                        "output": ("" if run_err else text),
+                        "output": ("" if run_err else text[:4000]),
                         "error": run_err})
         if run_err is not None:
             ok = False

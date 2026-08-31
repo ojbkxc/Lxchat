@@ -79,6 +79,7 @@ internal val AUTOMATION_TOOLS_ENABLED = booleanPreferencesKey("automation_tools_
 internal val PET_OVERLAY_ENABLED = booleanPreferencesKey("pet_overlay_enabled")
 internal val PET_OVERLAY_IMAGE_PATH = stringPreferencesKey("pet_overlay_image_path")
 internal val PET_OVERLAY_SIZE_SCALE = floatPreferencesKey("pet_overlay_size_scale")
+internal val PET_OVERLAY_ALPHA = floatPreferencesKey("pet_overlay_alpha")
 internal val PET_OVERLAY_CHARACTER = stringPreferencesKey("pet_overlay_character")
 internal val PET_EMOTION_ENABLED = booleanPreferencesKey("pet_emotion_enabled")
 internal val EXACT_EXECUTION_ENABLED = booleanPreferencesKey("exact_execution_enabled")

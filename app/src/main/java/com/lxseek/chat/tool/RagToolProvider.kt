@@ -447,14 +447,18 @@ class RagToolProvider(
     }
 
     /**
-     * 按 ([modelId], 签名) 取得内存向量索引；签名（总数+字节哈希）变化时重建。
+     * 按 ([modelId], 签名) 取得内存向量索引；签名（数量+成员哈希）变化时重建。
      * 索引构建需全量解码一次（归一化 + INT8 量化），此后多次检索复用，性能收益明显。
+     *
+     * 签名掺入每个成员的 messageId 与字节数：仅用"数量+维度"做签名时，
+     * "删一条再新增一条同维度向量"会命中陈旧缓存，检索结果指向已删除/缺失的消息。
      */
     private fun cachedIndex(modelId: String, embeddings: List<EmbeddingEntity>): EmbeddingIndexer.EmbeddingIndex<String> {
         var checksum = 0
         var count = 0
         for (e in embeddings) {
             count++
+            checksum = checksum * 31 + e.messageId.hashCode()
             checksum = checksum * 31 + e.embedding.size
         }
         val signature = "$count|$checksum"

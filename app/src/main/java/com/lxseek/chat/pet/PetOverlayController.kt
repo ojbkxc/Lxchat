@@ -47,6 +47,10 @@ object PetOverlayController {
     suspend fun getSizeScale(context: Context): Float =
         settings(context).petOverlaySizeScale.first()
 
+    /** Returns the persisted window alpha (0.2~1.0); defaults to fully opaque. */
+    suspend fun getAlpha(context: Context): Float =
+        settings(context).petOverlayAlpha.first()
+
     /** Returns the persisted built-in sprite ([PetCharacter.prefKey]); defaults to classic. */
     suspend fun getCharacter(context: Context): PetCharacter =
         PetCharacter.fromKey(settings(context).petOverlayCharacter.first())
@@ -74,6 +78,18 @@ object PetOverlayController {
         if (!isEnabled(app)) return
         PetOverlayWindowService.stop(app)
         PetOverlayWindowService.start(app)
+    }
+
+    /**
+     * Applies the persisted window alpha to a running overlay via [PetFloatingView.setWindowAlpha].
+     * Unlike [refreshSize] this needs no service restart — window alpha is a live layout param —
+     * so dragging the slider while the pet is off simply primes the value for the next enable.
+     */
+    suspend fun refreshAlpha(context: Context) {
+        val app = context.applicationContext
+        if (!isEnabled(app)) return
+        val alpha = runCatching { getAlpha(app) }.getOrDefault(1.0f)
+        PetOverlayWindowService.applyAlpha(app, alpha)
     }
 
     /**

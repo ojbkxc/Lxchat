@@ -1882,5 +1882,9 @@
     <string name="markdown_mermaid_engine_error">Chart engine not ready (needs a one-time download; the download failed)</string>
     <string name="markdown_rendering_mermaid">Rendering Mermaid chart…</string>
 
+    <!-- Token budget gate (metrics/TokenBudgetManager, see GenerationManager). -->
+    <string name="token_budget_exceeded">Token budget exceeded: this turn was blocked to protect your quota. Adjust the limits in Settings to continue.</string>
+    <string name="token_budget_exhausted_mid_run">[Token budget exhausted — generation stopped here; adjust the limits in Settings to continue]</string>
+
     <!-- Slash command descriptions (see SlashCommands.kt). -->
     </resources>

@@ -1887,5 +1887,9 @@
     <string name="chat_font_scale_desc">调整聊天消息的字体大小。%.2f×</string>
     <string name="market_kind_runtime">运行时</string>
 
+    <!-- Token 预算闸门（metrics/TokenBudgetManager，见 GenerationManager）。 -->
+    <string name="token_budget_exceeded">Token 预算已耗尽：为保护你的配额，本轮生成已被阻止。可在设置中调整限额后继续。</string>
+    <string name="token_budget_exhausted_mid_run">[Token 预算已耗尽——生成在此处中止，可在设置中调整限额后继续]</string>
+
     <!-- 快捷指令描述（见 SlashCommands.kt）。 -->
     </resources>
