@@ -63,7 +63,7 @@
       "homepage": "https://github.com/lingfengQAQ/webnovel-writer",
       "runtimeType": "python-webnovel",
       "versions": ["1.0.0"],
-      "minVersion": "3.10.0",
+      "minVersion": "1.0.0",
       "downloadUrl": "https://github.com/ojbkxc/lxchat-runtime/releases/download/webnovel-v{version}/webnovel-{version}-android-arm64.zip",
       "license": "GPL-3.0",
       "sourceUrl": "https://github.com/lingfengQAQ/webnovel-writer"
