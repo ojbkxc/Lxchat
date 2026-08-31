@@ -89,6 +89,9 @@ class SettingsRepository(
     val availableModels: StateFlow<Map<String, List<String>>> = hot(settingsManager.availableModels, emptyMap())
     val customModels: StateFlow<Set<String>> = hot(settingsManager.customModels, emptySet())
     val enabledModels: StateFlow<Set<String>> = hot(settingsManager.enabledModels, emptySet())
+    /** One-shot latch: once true, the built-in lxchat default model is never auto-(re)enabled. */
+    val lxChatDefaultAutoEnabled: StateFlow<Boolean> =
+        hot(settingsManager.lxChatDefaultAutoEnabled, false)
     val modelAliases: StateFlow<Map<String, String>> = hot(settingsManager.modelAliases, emptyMap())
     val apiKeys: StateFlow<List<ApiKeyEntry>> = hot(settingsManager.apiKeys, emptyList())
     val activeApiKeyIds: StateFlow<Map<String, String>> = hot(settingsManager.activeApiKeyIds, emptyMap())
@@ -259,10 +262,23 @@ class SettingsRepository(
         scope.launch {
             settingsManager.saveEnabledModels(models)
             if (!models.contains(selectedModel.value)) {
-                settingsManager.saveSelectedModel(models.firstOrNull() ?: "")
+                // Pick a deterministic fallback: prefer the built-in default model,
+                // otherwise the lexicographically smallest id — Set iteration order
+                // is unstable, so firstOrNull() would reset unpredictably.
+                val fallback = models.firstOrNull { it == Constants.EXAMPLE_MODEL_ID }
+                    ?: models.minOrNull()
+                    ?: ""
+                settingsManager.saveSelectedModel(fallback)
             }
         }
     }
+
+    /**
+     * Latches the one-shot "built-in default model was auto-enabled" flag so a later
+     * full deselect by the user is never overridden by the auto-enable heuristic.
+     */
+    suspend fun markLxChatDefaultAutoEnabled() =
+        settingsManager.saveLxChatDefaultAutoEnabled(true)
 
     fun updateModelAlias(model: String, alias: String) {
         scope.launch {

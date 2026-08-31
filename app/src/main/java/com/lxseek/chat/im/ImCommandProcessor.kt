@@ -175,7 +175,7 @@ class ImCommandProcessor(
         "new" -> cmdNew(channelKey, imConversationId)
         "status" -> cmdStatus(channelKey)
         "models" -> cmdModels()
-        "model" -> cmdModel(cmd.args)
+        "model" -> cmdModel(cmd.args, channelKey)
         "presetlist" -> cmdPresetList()
         "preset" -> cmdPreset(cmd.args)
         "stop" -> cmdStop(channelKey, imConversationId)
@@ -274,17 +274,26 @@ class ImCommandProcessor(
     /**
      * `/model` — 查看或切换当前模型。
      *
-     * - 无参数：显示当前模型。
+     * - 无参数：显示当前模型（含本机器人的自动回复模型，如有设置）。
      * - 数字参数：按 `/models` 列表序号切换。
      * - 其他参数：按模型 id 切换。
+     *
+     * 切换时除全局默认模型（selectedModel）外，还会把目标写入当前渠道的
+     * autoReplyModel：IM 自动回复的模型解析优先级是
+     * autoReplyModel > 会话 modelId > 全局默认（见 TaskExecutionEngine），
+     * 只写全局默认时，已绑定会话可能仍用旧模型。
      */
-    private suspend fun cmdModel(args: String): CommandResult {
+    private suspend fun cmdModel(args: String, channelKey: String): CommandResult {
         val available = settings.availableModels.value
         val selected = settings.selectedModel.value
         if (args.isBlank()) {
+            val autoReply = configForChannel(channelKey)?.autoReplyModel.orEmpty()
             val lines = mutableListOf<String>()
             lines += "当前模型："
             lines += selected.ifBlank { "（未选择）" }
+            if (autoReply.isNotBlank()) {
+                lines += "自动回复模型：$autoReply"
+            }
             lines += ""
             lines += "查看全部模型：/models"
             lines += "切换模型：/model <序号>"
@@ -299,10 +308,22 @@ class ImCommandProcessor(
             )
         }
         settings.setSelectedModel(target)
-        DebugLog.i(TAG, "/model: switched to $target")
-        return CommandResult.text(
-            "模型已切换为：\n$target\n\n后续消息将使用该模型。"
-        )
+        // IM auto-replies resolve the model as autoReplyModel > conversation.modelId
+        // > selectedModel (see TaskExecutionEngine.runOnceLocked), so updating only
+        // the global default would not affect bound conversations that already pin
+        // a model. Also write the target into this channel's autoReplyModel (the
+        // highest priority) so the switch takes effect on the very next message.
+        val appliedToChannel = updateChannelAutoReplyModel(channelKey, target)
+        DebugLog.i(TAG, "/model: switched to $target (autoReplyModel applied=$appliedToChannel)")
+        return if (appliedToChannel) {
+            CommandResult.text(
+                "模型已切换为：\n$target\n\n已更新本机器人的自动回复模型，后续消息将使用该模型。"
+            )
+        } else {
+            CommandResult.text(
+                "模型已切换为：\n$target\n\n已更新全局默认模型，后续消息将按全局默认模型回复。"
+            )
+        }
     }
 
     /**
@@ -629,6 +650,29 @@ class ImCommandProcessor(
         multi.all.firstOrNull { it.effectiveChannelId == channelKey }?.let { return it }
         val legacy = store.config.first()
         return if (legacy.effectiveChannelId == channelKey) legacy else null
+    }
+
+    /**
+     * Write [model] into [channelKey]'s autoReplyModel, mirroring
+     * [configForChannel]'s read priority (multi-config first, legacy fallback).
+     * Returns false when no persisted config backs this channel.
+     */
+    private suspend fun updateChannelAutoReplyModel(channelKey: String, model: String): Boolean {
+        val multi = store.multiConfig.first()
+        multi.all.firstOrNull { it.effectiveChannelId == channelKey }?.let { bot ->
+            if (bot.autoReplyModel != model) {
+                store.upsertBot(bot.copy(autoReplyModel = model))
+            }
+            return true
+        }
+        val legacy = store.config.first()
+        if (legacy.effectiveChannelId == channelKey) {
+            if (legacy.autoReplyModel != model) {
+                store.save(legacy.copy(autoReplyModel = model))
+            }
+            return true
+        }
+        return false
     }
 
     /** 查找 IM 会话绑定的 Lxchat 会话 ID。 */

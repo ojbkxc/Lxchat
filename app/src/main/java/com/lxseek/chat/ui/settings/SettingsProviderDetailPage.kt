@@ -840,7 +840,14 @@ private fun GrokOAuthSettingsSection(
                         }
                     }
                 },
-                onDismiss = { authUrl = null },
+                onDismiss = {
+                    // User closed the auth WebView: abort the in-flight login
+                    // session so the login button is not stuck disabled until
+                    // app restart (startLogin's CAS flag would never reset).
+                    manager.cancelLogin()
+                    launchingNow = false
+                    authUrl = null
+                },
             )
         }
     }
@@ -977,7 +984,14 @@ private fun ChatGPTOAuthSettingsSection(
                         }
                     }
                 },
-                onDismiss = { authUrl = null },
+                onDismiss = {
+                    // User closed the auth WebView: abort the in-flight login
+                    // session so the login button is not stuck disabled until
+                    // app restart (startLogin's CAS flag would never reset).
+                    manager.cancelLogin()
+                    launchingNow = false
+                    authUrl = null
+                },
             )
         }
     }

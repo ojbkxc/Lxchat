@@ -147,17 +147,61 @@ class ProviderModelSyncControllerTest {
         assertEquals(0, completionCount)
     }
 
+    @Test
+    fun `first sync with fetched default model auto enables it once and latches`() = runTest {
+        val providers = mockk<ProviderRegistry>()
+        val settings = settings(
+            available = mapOf("LxChat" to listOf(Constants.EXAMPLE_MODEL_ID)),
+        )
+        every { providers.all } returns emptyMap()
+        every { providers.ensureCustomProvidersRegistered() } just Runs
+        every { providers.computeFingerprint() } returns "fingerprint"
+        val completed = CompletableDeferred<ProviderModelSyncOutcome>()
+        val controller = ProviderModelSyncController(providers, settings, this)
+
+        controller.start(request()) { completed.complete(it) }
+        completed.await()
+
+        verify(exactly = 1) {
+            settings.setEnabledModels(setOf(Constants.EXAMPLE_MODEL_ID))
+        }
+        coVerify(exactly = 1) { settings.markLxChatDefaultAutoEnabled() }
+    }
+
+    @Test
+    fun `full deselect is never auto re-enabled once the latch is set`() = runTest {
+        val providers = mockk<ProviderRegistry>()
+        val settings = settings(
+            available = mapOf("LxChat" to listOf(Constants.EXAMPLE_MODEL_ID)),
+            lxChatDefaultAutoEnabled = true,
+        )
+        every { providers.all } returns emptyMap()
+        every { providers.ensureCustomProvidersRegistered() } just Runs
+        every { providers.computeFingerprint() } returns "fingerprint"
+        val completed = CompletableDeferred<ProviderModelSyncOutcome>()
+        val controller = ProviderModelSyncController(providers, settings, this)
+
+        controller.start(request()) { completed.complete(it) }
+        completed.await()
+
+        verify(exactly = 1) { settings.setEnabledModels(emptySet<String>()) }
+        coVerify(exactly = 0) { settings.markLxChatDefaultAutoEnabled() }
+    }
+
     private fun settings(
         available: Map<String, List<String>> = emptyMap(),
         custom: Set<String> = emptySet(),
         enabled: Set<String> = emptySet(),
+        lxChatDefaultAutoEnabled: Boolean = false,
     ): SettingsRepository = mockk<SettingsRepository>().also { settings ->
         every { settings.customModels } returns MutableStateFlow(custom)
         every { settings.enabledModels } returns MutableStateFlow(enabled)
+        every { settings.lxChatDefaultAutoEnabled } returns MutableStateFlow(lxChatDefaultAutoEnabled)
         coEvery { settings.getAvailableModels() } returns available
         coEvery { settings.saveAvailableModels(any(), any()) } returns Unit
         coEvery { settings.saveLastModelsFetchFingerprint(any()) } returns Unit
         every { settings.setEnabledModels(any()) } just Runs
+        coEvery { settings.markLxChatDefaultAutoEnabled() } returns Unit
     }
 
     private fun request() = ProviderModelSyncRequest(

@@ -11,6 +11,8 @@ internal val SELECTED_MODEL = stringPreferencesKey("selected_model")
 internal val AVAILABLE_MODELS_JSON = stringPreferencesKey("available_models_json")
 internal val CUSTOM_MODELS = stringSetPreferencesKey("custom_models")
 internal val ENABLED_MODELS = stringSetPreferencesKey("enabled_models")
+/** One-shot latch: whether the built-in lxchat default model has ever been auto-enabled. */
+internal val LXCHAT_DEFAULT_AUTO_ENABLED = booleanPreferencesKey("lxchat_default_auto_enabled")
 
 internal val API_KEYS_JSON = stringPreferencesKey("api_keys_json")
 internal val ACTIVE_API_KEY_IDS_JSON = stringPreferencesKey("active_api_key_ids_json")

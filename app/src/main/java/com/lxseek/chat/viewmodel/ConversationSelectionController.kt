@@ -36,6 +36,13 @@ internal class ConversationSelectionController(
     private val clearPendingConversationSettings: () -> Unit,
     private val abortRegeneration: () -> Unit,
     private val fadeDelay: suspend () -> Unit = { delay(SWITCH_OVERLAY_FADE_MS) },
+    /**
+     * Persist a user-initiated model switch as the global default. Without this, the
+     * default stays at the cold-start fallback forever, so new chats, title generation,
+     * auto-memory extraction and speech wiring keep hitting the old default model even
+     * after the user picked a different one in the chat model picker.
+     */
+    private val persistDefaultModel: (String) -> Unit = {},
 ) {
     private val switching = SwitchingCoordinator()
     private var switchingJob: Job? = null
@@ -79,6 +86,9 @@ internal class ConversationSelectionController(
 
     fun setActiveModel(model: String) {
         _activeModelOverride.value = model
+        // Keep the global default in sync so new chats, title generation, auto-memory
+        // extraction and speech wiring all follow the user's last explicit choice.
+        persistDefaultModel(model)
         _currentConversationId.value?.let { conversationId ->
             scope.launch {
                 conversations.getConversation(conversationId)?.let { current ->

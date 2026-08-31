@@ -328,6 +328,7 @@ class ChatViewModel(
             clearPendingSystemPrompt = { _pendingSystemPromptId.value = null },
             clearPendingConversationSettings = { _pendingConversationSettings.value = null },
             abortRegeneration = { regenerationTransitions.abortCurrent() },
+            persistDefaultModel = { settings.setSelectedModel(it) },
         )
     }
 

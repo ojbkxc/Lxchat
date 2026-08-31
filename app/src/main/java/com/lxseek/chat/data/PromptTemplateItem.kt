@@ -1,6 +1,6 @@
 package com.lxseek.chat.data
 
-import com.lxseek.chat.util.Constants
+
 import kotlinx.serialization.Serializable
 import java.util.UUID
 
@@ -27,13 +27,20 @@ object PredefinedVariables {
     // Placeholders resolved per-message by applyUserTemplate
     val PER_MESSAGE_VARS = setOf(SENT_TIME, SENT_DATE)
 
+    /**
+     * Standalone placeholder for template example values. Deliberately NOT
+     * Constants.EXAMPLE_MODEL_ID (the real built-in gateway model id): a missing
+     * runtime value must never leak the hidden gateway id into a user prompt.
+     */
+    private const val TEMPLATE_MODEL_PLACEHOLDER = "gpt-4o-mini"
+
     val EXAMPLE_VALUES = mapOf(
         TIME to "14:30:00",
         DATE to "2026-05-10",
         SENT_TIME to "10:05:00",
         SENT_DATE to "2026-05-11",
         ACTIVE_MEMORY to "[Example memory content]",
-        MODEL_ID to Constants.EXAMPLE_MODEL_ID
+        MODEL_ID to TEMPLATE_MODEL_PLACEHOLDER
     )
 
     fun compile(

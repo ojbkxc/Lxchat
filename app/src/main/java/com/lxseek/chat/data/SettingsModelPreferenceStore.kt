@@ -41,6 +41,10 @@ internal class SettingsModelPreferenceStore(
 
     val enabledModels: Flow<Set<String>> = dataStore.data.map { it[ENABLED_MODELS] ?: emptySet() }
 
+    /** Whether the built-in lxchat default model has ever been auto-enabled (one-shot latch). */
+    val lxChatDefaultAutoEnabled: Flow<Boolean> =
+        dataStore.data.map { it[LXCHAT_DEFAULT_AUTO_ENABLED] ?: false }
+
     val modelAliases: Flow<Map<String, String>> = dataStore.data.map { pref ->
         val jsonStr = pref[MODEL_ALIASES_JSON] ?: "{}"
         try { json.decodeFromString<Map<String, String>>(jsonStr) } catch (e: Exception) { emptyMap() }
@@ -266,6 +270,10 @@ internal class SettingsModelPreferenceStore(
 
     suspend fun saveEnabledModels(models: Set<String>) {
         dataStore.edit { it[ENABLED_MODELS] = models }
+    }
+
+    suspend fun saveLxChatDefaultAutoEnabled(value: Boolean) {
+        dataStore.edit { it[LXCHAT_DEFAULT_AUTO_ENABLED] = value }
     }
 
     suspend fun saveModelAliases(aliases: Map<String, String>) {

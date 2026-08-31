@@ -90,8 +90,14 @@ internal class ProviderModelSyncController(
             val newEnabled = currentEnabled.intersect(allKnownModels)
             // 首次同步（用户尚未勾选任何模型）且内置默认模型已成功拉取时，
             // 自动启用 lxchat:glm-4.7-flash，新装即可直接对话而无需手动勾选。
+            // One-shot latch: auto-enable only runs before the latch is persisted, so a
+            // deliberate full deselect by the user is never re-added by later syncs.
             val effectiveEnabled =
-                if (currentEnabled.isEmpty() && Constants.EXAMPLE_MODEL_ID in allKnownModels) {
+                if (currentEnabled.isEmpty() &&
+                    !settings.lxChatDefaultAutoEnabled.value &&
+                    Constants.EXAMPLE_MODEL_ID in allKnownModels
+                ) {
+                    settings.markLxChatDefaultAutoEnabled()
                     newEnabled + Constants.EXAMPLE_MODEL_ID
                 } else {
                     newEnabled

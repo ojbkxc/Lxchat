@@ -130,8 +130,13 @@ class SmartModelRouter(
         }
     }
 
-    /** 反馈环分数簿的 key："provider/modelId"，与 [recordRouteScore] 的写入 key 对应。 */
-    private fun scoreKey(providerName: String, modelId: String): String = "$providerName/$modelId"
+    /**
+     * Score book key: "route:providerName/modelId".
+     * Prefix route scores to avoid mixing with tool names: the score book is shared
+     * with tool-level performance (getTopPerformingTools/getUnderperformingTools),
+     * and an unprefixed "providerName/modelId" could be mistaken for a tool name.
+     */
+    private fun scoreKey(providerName: String, modelId: String): String = "route:$providerName/$modelId"
 
     /**
      * 每次路由尝试结束后写入质量分（0–100）。

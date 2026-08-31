@@ -189,6 +189,27 @@ abstract class BaseXOAuthManager<S>(
         }
     }
 
+    /**
+     * Cancel an in-flight login session (e.g. the user closed the auth WebView).
+     *
+     * Resets [loginInProgress], clears the pending PKCE challenge / redirect URI
+     * and moves the login state back to idle. Without this the CAS flag stays
+     * set forever after the dialog is dismissed, permanently disabling the
+     * login button until app restart.
+     *
+     * Idempotent: a no-op when no login session is in progress, so calling it
+     * after a completed (successful or failed) login never disturbs the
+     * logged-in state.
+     */
+    fun cancelLogin() {
+        // CAS ensures we only tear down when a session is actually in progress;
+        // otherwise this is a harmless no-op (idempotent).
+        if (!loginInProgress.compareAndSet(true, false)) return
+        currentChallenge = null
+        currentRedirectUri = null
+        _loginState.value = idleState()
+    }
+
     fun logout() {
         tokenStore.delete()
         _loginState.value = idleState()

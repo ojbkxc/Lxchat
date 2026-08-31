@@ -204,7 +204,16 @@ class MetaToolProvider(
                 agentId = ctx.conversationId ?: "meta-tool",
             )
         )
-        return ok(key, value)
+        // Be honest about scope: conversation-level override still wins in the
+        // active conversation, so switching the global default does not change
+        // the model used by a conversation that pins one. Without this note the
+        // tool would report success while the next message still uses the old
+        // model, misleading the agent.
+        return if (key == "model") {
+            ok(key, value, "已更新全局默认模型，新对话立即生效；当前对话如已指定模型则保持原模型")
+        } else {
+            ok(key, value)
+        }
     }
 
     private fun configGet(arguments: String): String {
@@ -456,10 +465,11 @@ class MetaToolProvider(
     // ── Helpers ───────────────────────────────────────────────
 
 
-    private fun ok(key: String, value: String) = buildJsonObject {
+    private fun ok(key: String, value: String, note: String? = null) = buildJsonObject {
         put("type", "config")
         put("key", key)
         put("value", value)
+        note?.let { put("note", it) }
         put("ok", true)
     }.toString()
 

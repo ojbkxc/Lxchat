@@ -3,6 +3,7 @@ package com.lxseek.chat.metrics
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Token budget manager: enforces session-level and daily-level token spend
@@ -137,7 +138,10 @@ class TokenBudgetManager(
     // ── Helpers ───────────────────────────────────────────────
 
     private inline fun update(transform: (TokenBudget) -> TokenBudget) {
-        _budget.value = transform(_budget.value)
+        // Use the atomic MutableStateFlow.update extension (CAS loop) instead of a
+        // plain read-modify-write on `.value`, so concurrent consume/reset calls
+        // cannot silently lose updates.
+        _budget.update { transform(it) }
     }
 
     private fun ratio(used: Int, limit: Int): Float =
@@ -147,11 +151,19 @@ class TokenBudgetManager(
         limit > 0 && used >= limit
 
     companion object {
-        /** Default per-session budget: 200k tokens. */
-        const val DEFAULT_SESSION_LIMIT: Int = 200_000
+        /**
+         * Default per-session budget: 0 = unlimited. Budgets are opt-in: without a
+         * settings UI to raise/inspect the limit, a hard default would silently
+         * block generation (token_budget_exceeded) once the in-process counter
+         * crosses it, with no recovery except killing the process.
+         */
+        const val DEFAULT_SESSION_LIMIT: Int = 0
 
-        /** Default per-day budget: 1M tokens. */
-        const val DEFAULT_DAILY_LIMIT: Int = 1_000_000
+        /**
+         * Default per-day budget: 0 = unlimited. See [DEFAULT_SESSION_LIMIT] for
+         * why the default must not enforce a hard cap.
+         */
+        const val DEFAULT_DAILY_LIMIT: Int = 0
 
         /** Default warning threshold: 80% of the limit. */
         const val DEFAULT_WARNING_THRESHOLD: Float = 0.8f

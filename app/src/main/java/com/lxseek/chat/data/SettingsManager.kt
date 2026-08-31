@@ -48,6 +48,7 @@ class SettingsManager(private val context: Context) {
     val availableModels: Flow<Map<String, List<String>>> = modelPreferenceStore.availableModels
     val customModels: Flow<Set<String>> = modelPreferenceStore.customModels
     val enabledModels: Flow<Set<String>> = modelPreferenceStore.enabledModels
+    val lxChatDefaultAutoEnabled: Flow<Boolean> = modelPreferenceStore.lxChatDefaultAutoEnabled
     val modelAliases: Flow<Map<String, String>> = modelPreferenceStore.modelAliases
     val apiKeys: Flow<List<ApiKeyEntry>> = modelPreferenceStore.apiKeys
     val activeApiKeyIds: Flow<Map<String, String>> = modelPreferenceStore.activeApiKeyIds
@@ -288,6 +289,9 @@ class SettingsManager(private val context: Context) {
 
     suspend fun saveEnabledModels(models: Set<String>) =
         modelPreferenceStore.saveEnabledModels(models)
+
+    suspend fun saveLxChatDefaultAutoEnabled(value: Boolean) =
+        modelPreferenceStore.saveLxChatDefaultAutoEnabled(value)
 
     suspend fun saveModelAliases(aliases: Map<String, String>) =
         modelPreferenceStore.saveModelAliases(aliases)
