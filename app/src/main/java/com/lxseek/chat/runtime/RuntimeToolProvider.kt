@@ -426,6 +426,12 @@ class RuntimeToolProvider(
             val root = manager.packageManager.versionRoot(engineId, installation.version)
             val manifest = manager.packageManager.readManifest(engineId, installation.version)
             val adapterFile = File(root, manifest?.entry ?: "scripts/adapter.py")
+            if (!adapterFile.isFile) {
+                throw IllegalStateException(
+                    "webnovel 引擎包不完整：缺少 ${manifest?.entry ?: "scripts/adapter.py"}（安装目录 $root）。" +
+                        "请先 market_uninstall 卸载后重新 market_install 安装最新引擎包。",
+                )
+            }
             // 把 adapter.py 复制到 sandbox home（executeCommand 默认 workdir 即 home）
             val sandboxHome = sandbox.getSandboxHomeDir() ?: throw IllegalStateException("Sandbox home 不可用")
             val targetAdapter = File(sandboxHome, "webnovel_adapter.py")

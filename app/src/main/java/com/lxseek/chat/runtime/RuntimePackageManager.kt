@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.Collections
 import java.util.zip.ZipFile
 
 /**
@@ -166,18 +167,37 @@ class RuntimePackageManager(private val context: Context) {
 
     // ── 内部工具 ───────────────────────────────────────────
 
-    /** 解压 zip 到 [dest]，zip-slip 防护：路径逃逸目标目录的条目被跳过。 */
+    /** 解压 zip 到 [dest]，zip-slip 防护：路径逃逸目标目录的条目被跳过。
+     *  如果 zip 所有文件都在单个顶层目录下，则自动 strip 这个顶层目录，让文件直接落到 dest。
+     * 这处理常见的发布包结构：github release 导出的 zip 通常包含一个顶层同名目录。
+     */
     private fun unzip(zipFile: File, dest: File) {
         val canonicalDest = dest.canonicalFile
         ZipFile(zipFile).use { zip ->
-            val entries = zip.entries()
-            while (entries.hasMoreElements()) {
-                val entry = entries.nextElement()
-                if (entry.isDirectory) continue
-                val out = File(dest, entry.name)
-                val canonicalOut = try { out.canonicalFile } catch (e: Exception) { null } ?: continue
+            val entries = Collections.list(zip.entries())
+            // 检测是否所有条目都在单个顶层目录下
+            val topDirs = entries
+                .filterNot { it.isDirectory }
+                .mapNotNull { it.name.split('/').firstOrNull() }
+                .toSet()
+
+            val stripTopDir = topDirs.size == 1 && entries.all {
+                it.name.startsWith(topDirs.first() + "/")
+            }
+
+            val stripPrefix = if (stripTopDir) topDirs.first() + "/" else ""
+
+            entries.forEach { entry ->
+                if (entry.isDirectory) return@forEach
+                val entryName = entry.name.removePrefix(stripPrefix)
+                if (entryName.isBlank()) return@forEach
+
+                val out = File(dest, entryName)
+                val canonicalOut = try { out.canonicalFile } catch (e: Exception) { null } ?: return@forEach
                 // 路径前缀比较：追加分隔符避免 /foo/bar 匹配 /foo/barbaz（zip-slip 防护）
-                if (canonicalDest != canonicalOut && !canonicalOut.path.startsWith(canonicalDest.path + File.separator)) continue
+                if (canonicalDest != canonicalOut && !canonicalOut.path.startsWith(canonicalDest.path + File.separator)) {
+                    return@forEach
+                }
                 out.parentFile?.mkdirs()
                 zip.getInputStream(entry).use { input ->
                     FileOutputStream(out).use { output -> input.copyTo(output) }
