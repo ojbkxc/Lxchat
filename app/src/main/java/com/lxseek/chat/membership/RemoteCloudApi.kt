@@ -277,26 +277,26 @@ class RemoteCloudApi(
                         return try {
                             JSONObject(raw)
                         } catch (e: Exception) {
-                            DebugLog.e(TAG, "invalid JSON response for $url: $raw", e)
+                            DebugLog.e(TAG, "invalid JSON response: $raw", e)
                             null
                         }
                     }
                     // M9：5xx 视为瞬时故障可重试；4xx 为确定性失败直接放弃。
                     if (response.code >= 500 && attempt < MAX_ATTEMPTS - 1) {
-                        DebugLog.w(TAG, "HTTP ${response.code} for $url (attempt ${attempt + 1}), retrying")
+                        DebugLog.w(TAG, "HTTP ${response.code} (attempt ${attempt + 1}), retrying")
                     } else {
-                        DebugLog.e(TAG, "HTTP ${response.code} for $url")
+                        DebugLog.e(TAG, "HTTP ${response.code}")
                         return null
                     }
                 }
             } catch (e: IOException) {
                 lastError = e
                 if (attempt < MAX_ATTEMPTS - 1) {
-                    DebugLog.w(TAG, "IO error for $url (attempt ${attempt + 1}): ${e.message}, retrying")
+                    DebugLog.w(TAG, "IO error (attempt ${attempt + 1}), retrying")
                 }
             }
         }
-        lastError?.let { DebugLog.e(TAG, "POST $url failed after retries", it) }
+        lastError?.let { DebugLog.e(TAG, "POST failed after retries", it) }
         return null
     }
 

@@ -43,9 +43,11 @@ class ConversationSwitchSafetySourceContractTest {
 
     @Test
     fun `scroll to bottom visibility remembers every captured plain value`() {
+        // remember+derivedStateOf 逻辑已提取到 ChatAppInteractionEffects.kt 的
+        // rememberChatAppScrollToBottomButtonVisible 中（ChatApp.kt 只保留调用点）
         val source = File(
             locateMainSourceRoot(),
-            "com/lxseek/chat/ui/chat/ChatApp.kt",
+            "com/lxseek/chat/ui/chat/ChatAppInteractionEffects.kt",
         ).readText()
         val rememberStart = source.indexOf("val showButton by remember(")
         val derivedStart = source.indexOf("derivedStateOf", startIndex = rememberStart)

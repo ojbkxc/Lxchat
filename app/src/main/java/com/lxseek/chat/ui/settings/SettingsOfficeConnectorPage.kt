@@ -439,7 +439,7 @@ private suspend fun connectToOffice(
     try {
         store.save(settings, deviceToken)
     } catch (e: Exception) {
-        DebugLog.e("OfficeSettings", "保存配置失败: ${e.message}", e)
+        DebugLog.e("OfficeSettings", "保存配置失败", e)
         Toast.makeText(context, context.getString(R.string.settings_office_save_failed, e.message), Toast.LENGTH_SHORT).show()
         return
     }

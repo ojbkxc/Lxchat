@@ -62,7 +62,7 @@ class WhatsappChannel(
                     verifyToken = config.baseUrl,
                 )
             } catch (e: IllegalArgumentException) {
-                DebugLog.w("WhatsappChannel", "skipping API init: ${e.message}")
+                DebugLog.w("WhatsappChannel", "skipping API init")
                 null
             }
         } else null
@@ -95,7 +95,7 @@ class WhatsappChannel(
         } catch (e: WhatsappApiException) {
             DebugLog.e(
                 "WhatsappChannel",
-                "sendMessage failed: ${e.message} (code=${e.errorCode}, http=${e.httpStatus})",
+                "sendMessage failed (code=${e.errorCode}, http=${e.httpStatus})",
             )
             ImSendResult.Failure(e.message ?: "whatsapp send failed")
         } catch (e: Exception) {

@@ -217,7 +217,7 @@ class NotificationAutoReplyService : NotificationListenerService() {
                 null
             }
             is TaskExecutionEngine.Result.Failure -> {
-                DebugLog.e("NotifReply", "runOnce failed: ${result.reason}")
+                DebugLog.e("NotifReply", "runOnce failed")
                 null
             }
         }
@@ -239,7 +239,7 @@ class NotificationAutoReplyService : NotificationListenerService() {
         }
         val result = wechat.sendMessage(mapping.userId, reply)
         if (result is com.lxseek.chat.im.ImSendResult.Failure) {
-            DebugLog.e("NotifReply", "send reply failed: ${result.reason}")
+            DebugLog.e("NotifReply", "send reply failed")
         } else {
             DebugLog.d("NotifReply", "sent reply to ${mapping.userId}")
         }
@@ -258,7 +258,7 @@ class NotificationAutoReplyService : NotificationListenerService() {
         val channelConfig = try {
             channelStore.currentConfig()
         } catch (e: Exception) {
-            DebugLog.w("NotifReply", "read channel config failed, skip additional channels: ${e.message}")
+            DebugLog.w("NotifReply", "read channel config failed, skip additional channels")
             return
         }
         if (channelConfig.additionalChannels.isEmpty()) return
@@ -296,7 +296,7 @@ class NotificationAutoReplyService : NotificationListenerService() {
             )
             dao.prune(System.currentTimeMillis() - LOG_RETENTION_MS)
         } catch (e: Exception) {
-            DebugLog.w("NotifReply", "write channel send log failed: ${e.message}")
+            DebugLog.w("NotifReply", "write channel send log failed")
         }
     }
 

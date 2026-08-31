@@ -1,7 +1,6 @@
 package com.lxseek.chat.runtime
 
 import android.content.Context
-import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,6 +14,7 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
+import com.lxseek.chat.util.DebugLog
 
 /**
  * 运行时进程管理：按引擎类型 spawn / kill / status。
@@ -127,7 +127,7 @@ class RuntimeProcessManager(
             delay(IDLE_TIMEOUT_MS)
             val ep = running[engineId]
             if (ep != null && ep.process.isAlive) {
-                Log.d(TAG, "idle timeout, stopping engine $engineId")
+                DebugLog.d(TAG, "idle timeout, stopping engine $engineId")
                 stop(engineId)
             }
         }

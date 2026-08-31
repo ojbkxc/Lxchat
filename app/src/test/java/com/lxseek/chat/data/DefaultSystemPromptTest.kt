@@ -27,8 +27,9 @@ class DefaultSystemPromptTest {
         assertFalse(systemPrompt.contains("<current_date>"))
         assertFalse(systemPrompt.contains("<current_time>"))
         assertTrue(systemPrompt.contains("<active_memory_context>\nUser prefers concise answers.\n</active_memory_context>"))
-        assertTrue(systemPrompt.contains("Shell and device files:"))
-        assertTrue(systemPrompt.contains("configured shell server or the Local Sandbox"))
+        // 37333c9 起默认提示词重写为中文简洁版：工具策略与会员二元制文案均以中文描述
+        assertTrue(systemPrompt.contains("工具使用："))
+        assertTrue(systemPrompt.contains("只用 LxChat 当前提供的工具"))
         assertFalse(systemPrompt.contains("generate_image"))
     }
 

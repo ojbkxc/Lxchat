@@ -186,7 +186,7 @@ class LocalCloudApi(
         return try {
             JSONObject(json)
         } catch (e: Exception) {
-            DebugLog.w(TAG, "used_codes corrupted, resetting: ${e.message}")
+            DebugLog.w(TAG, "used_codes corrupted, resetting")
             JSONObject()
         }
     }

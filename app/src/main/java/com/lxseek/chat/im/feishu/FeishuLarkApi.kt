@@ -622,7 +622,7 @@ class FeishuLarkConnection(
             running.set(false)
             false
         } catch (e: Throwable) {
-            DebugLog.e(TAG, "long-connection cycle failed: ${e.message}", e)
+            DebugLog.e(TAG, "long-connection cycle failed", e)
             runCatching { listener.onError(e, false) }
             if (!running.get() || fatal) return false
             delay(backoffMs())

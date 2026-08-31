@@ -246,11 +246,16 @@ internal object PortableSettingsArchive {
             val previousById = previousEmbeddingModels.associateBy { it.id }
             val restoredRemote = importedRemote.map { imported ->
                 val legacyKey = if (allowLegacySecrets) {
-                    runCatching {
-                        json.decodeFromJsonElement<List<EmbeddingModelConfig>>(remoteModelsElement!!)
-                            .firstOrNull { it.id == imported.id }
-                            ?.remoteApiKey
-                    }.getOrNull().orEmpty()
+                    // 无原始元素时（replace 且旧档案缺字段）直接无 legacy key，避免 !! 强解
+                    remoteModelsElement
+                        ?.let { element ->
+                            runCatching {
+                                json.decodeFromJsonElement<List<EmbeddingModelConfig>>(element)
+                                    .firstOrNull { it.id == imported.id }
+                                    ?.remoteApiKey
+                            }.getOrNull()
+                        }
+                        .orEmpty()
                 } else {
                     ""
                 }

@@ -139,11 +139,10 @@ class RuntimeEngineManager(
         // 启动前二次校验版本（优先技能约束覆盖，否则用 manifest 自身声明）。
         versionRequirementCheck(engineId, version, requirementOverride ?: requirement)
         // 依赖引擎：自动确保已安装，并解析其安装根目录（供 {depRoot} 引用原生命令环境）。
-        val depRoot = if (manifest.requiresEngine.isNullOrBlank()) {
-            null
-        } else {
-            ensureDependencyRoot(manifest.requiresEngine!!)?.absolutePath
-        }
+        // takeIf 过滤空白值，避免跨模块属性判空后 !! 强解
+        val depRoot = manifest.requiresEngine
+            ?.takeIf { it.isNotBlank() }
+            ?.let { ensureDependencyRoot(it)?.absolutePath }
         val root = packageManager.versionRoot(engineId, version)
         val command = buildCommand(manifest, root.absolutePath, depRoot)
         val env = injectedEnv(engineId, manifest, version, root.absolutePath, depRoot)

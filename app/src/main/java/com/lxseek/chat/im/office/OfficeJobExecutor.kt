@@ -213,7 +213,7 @@ class OfficeJobExecutor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    DebugLog.w("OfficeJob", "Job $jobId failed: ${e.message}")
+                    DebugLog.w("OfficeJob", "Job $jobId failed")
                 }
             }
             active[jobId] = job
@@ -276,7 +276,7 @@ class OfficeJobExecutor(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        DebugLog.w("OfficeJob", "renew failed for $jobId: ${e.message}")
+                        DebugLog.w("OfficeJob", "renew failed for $jobId")
                         return@launch
                     }
                     // 续租后轮询审批状态（与 dsh-im office-job-executor.mjs #renew 对齐）
@@ -285,7 +285,7 @@ class OfficeJobExecutor(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        DebugLog.w("OfficeJob", "approval poll failed for $jobId: ${e.message}")
+                        DebugLog.w("OfficeJob", "approval poll failed for $jobId")
                     }
                 }
             }
@@ -326,7 +326,7 @@ class OfficeJobExecutor(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        DebugLog.w("OfficeJob", "approval request failed: ${e.message}")
+                        DebugLog.w("OfficeJob", "approval request failed")
                     }
                     // 等待 SSE approval.reply 回传（续租轮询也会兜底 resolve）
                     val deferred = CompletableDeferred<OfficeApprovalReply>()
@@ -350,17 +350,21 @@ class OfficeJobExecutor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            DebugLog.w("OfficeJob", "Job $jobId execution failed: ${e.message}")
+            DebugLog.w("OfficeJob", "Job $jobId execution failed")
             // 失败上报：使用独立 fail 端点，不复用 complete
             if (completedFlag.compareAndSet(false, true) && leaseToken != null) {
-                try {
-                    api.failJob(jobId, leaseToken!!, buildJsonObject {
-                        put("error", safeFailure(e))
-                    })
-                } catch (ce: CancellationException) {
-                    throw ce
-                } catch (ce: Exception) {
-                    DebugLog.w("OfficeJob", "fail report failed for $jobId: ${ce.message}")
+                // 局部快照：leaseToken 为可变 var，沿用 currentLeaseToken 的既有模式避免 !! 强解
+                val failToken = leaseToken
+                if (failToken != null) {
+                    try {
+                        api.failJob(jobId, failToken, buildJsonObject {
+                            put("error", safeFailure(e))
+                        })
+                    } catch (ce: CancellationException) {
+                        throw ce
+                    } catch (ce: Exception) {
+                        DebugLog.w("OfficeJob", "fail report failed for $jobId: ${ce.message}")
+                    }
                 }
                 _status.value = _status.value.copy(failed = _status.value.failed + 1)
             }
@@ -421,7 +425,7 @@ class OfficeJobExecutor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            DebugLog.d("OfficeJob", "progress post failed: ${e.message}")
+            DebugLog.d("OfficeJob", "progress post failed")
         }
     }
 

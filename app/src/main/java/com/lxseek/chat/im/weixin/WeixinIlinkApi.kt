@@ -502,7 +502,7 @@ class WeixinIlinkApi(
             throw WeixinApiError("untrusted-endpoint", "拒绝访问不受信任的微信服务地址。")
         }
         val headers = if (authenticated) authenticatedHeaders(token) else commonHeaders()
-        DebugLog.d("WeixinIlinkApi", "requestJson: $method $url (authenticated=$authenticated) body=${body?.take(300)}")
+        DebugLog.d("WeixinIlinkApi", "requestJson: $method (authenticated=$authenticated) body=${body?.take(300)}")
         try {
             val raw = executeCall(method, url, headers, body, timeoutMs)
             // P1-5: 响应体脱敏，含 token 等敏感字段时只打印长度不打印 body
@@ -519,13 +519,13 @@ class WeixinIlinkApi(
         } catch (e: WeixinApiError) {
             throw e
         } catch (e: InterruptedIOException) {
-            DebugLog.e("WeixinIlinkApi", "requestJson: 超时 $method $url", e)
+            DebugLog.e("WeixinIlinkApi", "requestJson: 超时 $method", e)
             throw WeixinApiError("timeout", "微信服务请求超时。", e)
         } catch (e: IOException) {
-            DebugLog.e("WeixinIlinkApi", "requestJson: 网络错误 $method $url", e)
+            DebugLog.e("WeixinIlinkApi", "requestJson: 网络错误 $method", e)
             throw WeixinApiError("network-error", "暂时无法访问微信服务。", e)
         } catch (e: Exception) {
-            DebugLog.e("WeixinIlinkApi", "requestJson: 异常 $method $url", e)
+            DebugLog.e("WeixinIlinkApi", "requestJson: 异常 $method", e)
             throw WeixinApiError("network-error", "暂时无法访问微信服务。", e)
         }
     }

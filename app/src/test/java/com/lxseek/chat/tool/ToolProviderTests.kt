@@ -80,12 +80,19 @@ class ShellToolProviderTest {
             )
         )
         val defs = provider.definitions(ctx)
-        assertEquals(12, defs.size)
+        // Shizuku 迁移（abe8a80）等改动后新增：execute_shell_batch、list_processes、
+        // kill_process、system_stats、tail_follow，单 Conch 设备场景共 17 个工具
+        assertEquals(17, defs.size)
         val names = defs.map { it.function.name }.toSet()
         assertEquals(
             setOf(
                 "list_shells",
                 "execute_shell_command",
+                "execute_shell_batch",
+                "list_processes",
+                "kill_process",
+                "system_stats",
+                "tail_follow",
                 "list_shell_jobs",
                 "get_shell_job",
                 "wait_for_job",

@@ -179,7 +179,8 @@ class RagToolProvider(
                     var cappedRange = range
                     if (range.last - range.first + 1 > maxWindowSize) {
                         val centerId = branchMatchIds.maxByOrNull { scoreByMessageId[it] ?: 0f }
-                        val centerIdx = if (centerId != null) indexMap[centerId]!! else (range.first + range.last) / 2
+                        // 安全回退：centerId 缺失或不在索引中时，退回窗口几何中心
+                        val centerIdx = centerId?.let { indexMap[it] } ?: (range.first + range.last) / 2
                         cappedRange = ((centerIdx - halfN).coerceAtLeast(range.first)..(centerIdx + halfN).coerceAtMost(range.last))
                     }
                     val windowMsgIds = branch.subList(cappedRange.first, cappedRange.last + 1).map { it.id }.toSet()

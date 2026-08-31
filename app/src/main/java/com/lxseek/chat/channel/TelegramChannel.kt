@@ -52,7 +52,7 @@ class TelegramChannel(
                 DebugLog.d("ReplyChannel/TG", "sent ${chunks.size} chunk(s) to chat $chatId")
                 SendResult.Success
             } catch (e: TelegramApiException) {
-                DebugLog.e("ReplyChannel/TG", "sendMessage failed: ${e.message} (code=${e.errorCode})")
+                DebugLog.e("ReplyChannel/TG", "sendMessage failed (code=${e.errorCode})")
                 SendResult.Failure(e.message ?: "telegram send failed")
             } catch (e: Exception) {
                 DebugLog.e("ReplyChannel/TG", "sendMessage failed", e)

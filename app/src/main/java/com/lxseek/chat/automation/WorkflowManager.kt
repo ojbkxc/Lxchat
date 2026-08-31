@@ -85,8 +85,8 @@ class WorkflowManager(
             try {
                 val result = runSteps(workflow)
                 when (result) {
-                    is RunResult.Failure -> DebugLog.e("WorkflowManager", "workflow=${workflow.id} failed: ${result.reason}")
-                    is RunResult.Skipped -> DebugLog.d("WorkflowManager", "workflow=${workflow.id} skipped: ${result.reason}")
+                    is RunResult.Failure -> DebugLog.e("WorkflowManager", "workflow=${workflow.id} failed")
+                    is RunResult.Skipped -> DebugLog.d("WorkflowManager", "workflow=${workflow.id} skipped")
                     is RunResult.Success -> DebugLog.d("WorkflowManager", "workflow=${workflow.id} finished conversation=${result.conversationId}")
                 }
             } catch (e: CancellationException) {

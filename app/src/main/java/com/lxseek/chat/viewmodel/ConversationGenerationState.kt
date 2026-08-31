@@ -200,7 +200,13 @@ class ConversationGenerationState(
         )
         if (!transition.accepted) return null
         check(transition.effects.singleOrNull() is RunEffect.SlotActivated)
-        applyActivatedSlotLocked(transition.newState.identityOrNull()!!, loading = false)
+        // 不变量：SlotActivated 效果意味着新状态必带 identity；带信息断言避免 !! 裸 NPE
+        applyActivatedSlotLocked(
+            checkNotNull(transition.newState.identityOrNull()) {
+                "SlotActivated effect but newState carries no identity"
+            },
+            loading = false,
+        )
         nextToken
     }
 
@@ -218,7 +224,13 @@ class ConversationGenerationState(
         )
         if (!transition.accepted) return null
         check(transition.effects.singleOrNull() is RunEffect.SlotActivated)
-        applyActivatedSlotLocked(transition.newState.identityOrNull()!!, loading = true)
+        // 不变量：SlotActivated 效果意味着新状态必带 identity；带信息断言避免 !! 裸 NPE
+        applyActivatedSlotLocked(
+            checkNotNull(transition.newState.identityOrNull()) {
+                "SlotActivated effect but newState carries no identity"
+            },
+            loading = true,
+        )
         nextToken
     }
 

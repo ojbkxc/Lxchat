@@ -7,7 +7,6 @@ import com.lxseek.chat.im.weixin.WeixinCompanionChannel
 import com.lxseek.chat.notification.ContactMapping
 import com.lxseek.chat.notification.NotificationReplyStore
 import com.lxseek.chat.util.DebugLog
-import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -147,7 +146,7 @@ class ImPollingReceiver(
             emptyList()
         }
         DebugLog.d("ImPolling", "pollChannel $channelKey: ${conversations.size} conversations")
-        Log.e("WxRecv", "pollChannel $channelKey convs=${conversations.size}")
+        DebugLog.e("WxRecv", "pollChannel $channelKey convs=${conversations.size}")
         for (conversation in conversations) {
             coroutineContext.ensureActive()
             pollConversation(channelKey, channel, conversation)
@@ -169,7 +168,7 @@ class ImPollingReceiver(
         }
         val inbox = messages.filter { it.direction == ImMessageDirection.INCOMING }
         DebugLog.d("ImPolling", "pollConversation ${conversation.id}: ${inbox.size} inbox msgs")
-        Log.e("WxRecv", "pollConversation ${conversation.id} inbox=${inbox.size}")
+        DebugLog.e("WxRecv", "pollConversation ${conversation.id} inbox=${inbox.size}")
         if (inbox.isEmpty()) return
         feedInboundBatch(channelKey, channel, conversation, inbox)
     }
@@ -279,10 +278,11 @@ class ImPollingReceiver(
         val existingBind = state.conversationBindings[conversation.id]
         val bindValid = existingBind != null &&
             runCatching { conversationRepository.getConversation(existingBind) != null }.getOrDefault(false)
-        val lxchatConvId = if (bindValid) existingBind!!
+        // bindValid 的定义已包含 existingBind 非空，此处补显式判空仅用于智能转换，避免 !! 强解
+        val lxchatConvId = if (bindValid && existingBind != null) existingBind
         else bindConversation(channelKey, channel, conversation)
         // WxRecv: 区分「复用有效绑定」vs「重建失效绑定」，验证孤儿绑定自动重建是否生效。
-        Log.e("WxRecv", "binding conv=${conversation.id} -> ${if (bindValid) "reuse=$existingBind" else "rebuilt=$lxchatConvId"}")
+        DebugLog.e("WxRecv", "binding conv=${conversation.id} -> ${if (bindValid) "reuse=$existingBind" else "rebuilt=$lxchatConvId"}")
 
         // 自动建立「昵称 → ContactMapping(channelKey, userId)」映射，供系统通知自动回复路径
         // （NotificationAutoReplyService）使用。iLink getupdates 下发的 from_user_nickname
@@ -312,7 +312,7 @@ class ImPollingReceiver(
                         }
                     }
                 }.onFailure { e ->
-                    DebugLog.w("ImPolling", "auto-save contact mapping failed for $nickname: ${e.message}")
+                    DebugLog.w("ImPolling", "auto-save contact mapping failed for $nickname")
                 }
             }
         }
@@ -331,7 +331,7 @@ class ImPollingReceiver(
         // 诊断：若上一条 "feedInboundBatch" 日志缺失，说明卡在 bindConversation/seenMessageIds（DB）。
         DebugLog.d("ImPolling", "feedInboundBatch: ${fresh.size} fresh msgs for conv=${conversation.id}, lxchatConv=$lxchatConvId")
         // WxRecv 下游诊断：fresh=0 说明被 seen 去重/绑定吃掉；fresh>0 才触发 AI 回复。
-        Log.e("WxRecv", "feedInboundBatch fresh=${fresh.size} in=${inbox.size} conv=${conversation.id} lxchatConv=$lxchatConvId bindLxchat=${lxchatConvId.isNotBlank()}")
+        DebugLog.e("WxRecv", "feedInboundBatch fresh=${fresh.size} in=${inbox.size} conv=${conversation.id} lxchatConv=$lxchatConvId bindLxchat=${lxchatConvId.isNotBlank()}")
         if (fresh.isEmpty()) return
         onMessageHandled?.invoke(conversation.id)
 
@@ -551,7 +551,7 @@ class ImPollingReceiver(
                 null
             }
             is TaskExecutionEngine.Result.Failure -> {
-                DebugLog.e("ImPolling", "runOnce failed: ${result.reason}")
+                DebugLog.e("ImPolling", "runOnce failed")
                 null
             }
         }

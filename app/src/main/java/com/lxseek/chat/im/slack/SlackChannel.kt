@@ -110,7 +110,7 @@ class SlackChannel(
                 }
                 ImSendResult.Success(lastTs)
             } catch (e: SlackApiException) {
-                DebugLog.e("SlackChannel", "sendMessage failed: ${e.message}")
+                DebugLog.e("SlackChannel", "sendMessage failed")
                 ImSendResult.Failure(e.message ?: "slack send failed")
             } catch (e: Exception) {
                 DebugLog.e("SlackChannel", "sendMessage failed", e)
@@ -198,7 +198,7 @@ class SlackChannel(
                 if (!running) break
                 DebugLog.e(
                     "SlackChannel",
-                    "socket mode disconnected: ${e.message}; reconnecting in ${backoffMs}ms",
+                    "socket mode disconnected; reconnecting in ${backoffMs}ms",
                     e,
                 )
                 delay(backoffMs)

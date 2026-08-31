@@ -89,8 +89,8 @@ fun convertToOpenAiMessages(
                     toolCalls = toolCalls,
                     reasoningContent = thoughtContent?.ifEmpty { null }
                 ))
-            } else if (msg.toolCall != null) {
-                val tc = msg.toolCall!!
+            } else msg.toolCall?.let { tc ->
+                // 局部绑定非空 toolCall，避免 !! 强解
                 val toolId = tc.toolCallId ?: buildToolCallId(tc.toolName, tc.arguments)
                 entries.add(OpenAiMessage(
                     role = "assistant",
@@ -117,8 +117,8 @@ fun convertToOpenAiMessages(
                         toolCallId = toolId
                     ))
                 }
-            } else if (msg.toolCall != null) {
-                val tc = msg.toolCall!!
+            } else msg.toolCall?.let { tc ->
+                // 局部绑定非空 toolCall，避免 !! 强解
                 val toolId = tc.toolCallId ?: buildToolCallId(tc.toolName, tc.arguments)
                 entries.add(OpenAiMessage(
                     role = "tool",

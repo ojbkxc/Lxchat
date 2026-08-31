@@ -64,8 +64,10 @@ class ShellClient(
             rawResponse = response.body
             if (!response.isSuccessful) {
                 val detail = response.body.take(240).ifBlank { "empty response" }
-                lastError = "Conch at $serverUrl returned HTTP ${response.code}: $detail"
-                DebugLog.e("ShellClient", lastError!!)
+                // 先构造局部消息再赋值，避免对 var 属性 !! 强解
+                val errMsg = "Conch at $serverUrl returned HTTP ${response.code}: $detail"
+                lastError = errMsg
+                DebugLog.e("ShellClient", errMsg)
                 return false
             }
             val json = Json.parseToJsonElement(rawResponse).jsonObject
@@ -78,16 +80,20 @@ class ShellClient(
                 return false
             }
             if (!verifyPublicKeySignature(pubKeyStr, nonce, sig)) {
-                lastError = "Conch authentication failed at $serverUrl: the public-key signature does not match the configured API key"
-                DebugLog.e("ShellClient", lastError!!)
+                // 先构造局部消息再赋值，避免对 var 属性 !! 强解
+                val errMsg = "Conch authentication failed at $serverUrl: the public-key signature does not match the configured API key"
+                lastError = errMsg
+                DebugLog.e("ShellClient", errMsg)
                 return false
             }
             serverPublicKey = ShellCrypto.decodePublicKey(pubKeyStr)
             lastError = null
             true
         } catch (e: Exception) {
-            lastError = describeConchConnectionFailure(serverUrl, e)
-            DebugLog.w("ShellClient", lastError!!)
+            // 先构造局部消息再赋值，避免对 var 属性 !! 强解
+            val errMsg = describeConchConnectionFailure(serverUrl, e)
+            lastError = errMsg
+            DebugLog.w("ShellClient", errMsg)
             false
         }
     }

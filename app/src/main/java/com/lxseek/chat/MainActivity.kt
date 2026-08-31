@@ -85,6 +85,7 @@ import com.lxseek.chat.util.CrashReporter
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
+import com.lxseek.chat.util.DebugLog
 
 class MainActivity : ComponentActivity() {
 
@@ -160,12 +161,12 @@ class MainActivity : ComponentActivity() {
         try {
             com.lxseek.chat.util.DebugLog.init(this)
         } catch (e: Throwable) {
-            android.util.Log.e("MainActivity", "DebugLog.init failed", e)
+            DebugLog.e("MainActivity", "DebugLog.init failed", e)
         }
         try {
             LxChatForegroundService.createChannel(this)
         } catch (e: Throwable) {
-            android.util.Log.e("MainActivity", "Notification channel creation failed", e)
+            DebugLog.e("MainActivity", "Notification channel creation failed", e)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -427,7 +428,7 @@ class MainActivity : ComponentActivity() {
         // H3(b)：订单号必须存在于本地待支付订单（App 发起过下单），防止凭空回调。
         val pending = store.get()
         if (pending == null || pending.outTradeNo != params.outTradeNo) {
-            android.util.Log.w(TAG, "yipay callback rejected: unknown out_trade_no ${params.outTradeNo}")
+            DebugLog.w(TAG, "yipay callback rejected: unknown out_trade_no ${params.outTradeNo}")
             yipayCallbackResult.value = YipayCallbackResult.Failed
             return
         }
@@ -440,7 +441,7 @@ class MainActivity : ComponentActivity() {
         // H3(a)：金额严格校验。回调金额必须等于下单时记录的套餐价格
         // （BigDecimal 按分比较，防止 0.01 元伪造回调占位激活）。
         if (!com.lxseek.chat.membership.PlanCatalog.amountsMatch(params.money, pending.amount)) {
-            android.util.Log.w(TAG, "yipay callback rejected: amount ${params.money} != ordered ${pending.amount}")
+            DebugLog.w(TAG, "yipay callback rejected: amount ${params.money} != ordered ${pending.amount}")
             yipayCallbackResult.value = YipayCallbackResult.Failed
             return
         }
@@ -453,7 +454,7 @@ class MainActivity : ComponentActivity() {
         // 本地不持钥，依赖服务器对账兜底，但记录 WARN。
         if (config.isMerchantKeyConfigured) {
             if (!manager.verifyCallback(config, params)) {
-                android.util.Log.w(TAG, "yipay callback rejected: signature mismatch")
+                DebugLog.w(TAG, "yipay callback rejected: signature mismatch")
                 yipayCallbackResult.value = YipayCallbackResult.Failed
                 return
             }
@@ -645,9 +646,10 @@ fun MainNavigation(
     val ratingScope = rememberCoroutineScope()
 
     // Update dialog
+    // 局部快照便于智能转换，避免委托属性 !! 强解
     val updateDialogData by viewModel.updateDialogData.collectAsState()
-    if (updateDialogData != null) {
-        val info = updateDialogData!!
+    val info = updateDialogData
+    if (info != null) {
         val ctx = LocalContext.current
         AlertDialog(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -1141,8 +1143,11 @@ fun MainNavigation(
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                if (savedContent != null && savedName != null) {
-                    com.lxseek.chat.ui.chat.TextFileViewer(content = savedContent!!, fileName = savedName!!, onClose = { viewModel.clearPreviews() })
+                // 局部快照便于智能转换，避免委托属性 !! 强解
+                val contentSnapshot = savedContent
+                val nameSnapshot = savedName
+                if (contentSnapshot != null && nameSnapshot != null) {
+                    com.lxseek.chat.ui.chat.TextFileViewer(content = contentSnapshot, fileName = nameSnapshot, onClose = { viewModel.clearPreviews() })
                 }
             }
 

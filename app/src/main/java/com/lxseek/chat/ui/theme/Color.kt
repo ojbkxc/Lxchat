@@ -34,7 +34,9 @@ fun colorSchemeForPreset(
     if (preset == ColorSchemePreset.MINIMAL) {
         return if (isDark) minimalDarkColorScheme() else minimalLightColorScheme()
     }
-    val seedArgb = seedColors[preset]!!.toInt()
+    // 非 MINIMAL 预设必须在 seedColors 中定义；带明确信息抛出，避免 !! 强解产生裸 NPE
+    val seedArgb = requireNotNull(seedColors[preset]) { "No seed color defined for preset $preset" }
+        .toInt()
     val hct = Hct.fromInt(seedArgb)
     val scheme: DynamicScheme = when (style) {
         SchemeStyle.TONAL_SPOT -> SchemeTonalSpot(hct, isDark, 0.0)

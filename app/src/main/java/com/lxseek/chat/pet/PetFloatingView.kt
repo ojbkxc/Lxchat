@@ -15,7 +15,6 @@ import android.graphics.Shader
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
-import android.util.Log
 import android.util.AttributeSet
 import android.view.Choreographer
 import android.view.MotionEvent
@@ -30,6 +29,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlin.math.hypot
+import com.lxseek.chat.util.DebugLog
 
 /**
  * The draggable "pet" bubble shown on the system overlay.
@@ -735,7 +735,7 @@ class PetFloatingView @JvmOverloads constructor(
     private fun updateWindowLayout(params: WindowManager.LayoutParams) {
         try {
             context.getSystemService(Context.WINDOW_SERVICE)?.let { wm -> (wm as WindowManager).updateViewLayout(this, params) }
-        } catch (e: IllegalArgumentException) { Log.d("PetFloatingView", "updateViewLayout failed (view not attached)", e) }
+        } catch (e: IllegalArgumentException) { DebugLog.d("PetFloatingView", "updateViewLayout failed (view not attached)", e) }
     }
 
     private fun snapToNearestEdge(params: WindowManager.LayoutParams) {
@@ -773,7 +773,7 @@ class PetFloatingView @JvmOverloads constructor(
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
-        try { context.startActivity(intent) } catch (e: Exception) { Log.w("PetFloatingView", "launchApp failed", e) }
+        try { context.startActivity(intent) } catch (e: Exception) { DebugLog.w("PetFloatingView", "launchApp failed", e) }
     }
 
     private companion object {

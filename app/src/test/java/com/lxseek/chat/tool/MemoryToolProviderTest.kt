@@ -32,15 +32,17 @@ class MemoryToolProviderTest {
     )
 
     @Test
-    fun definitions_whenEnabled_returnsSixMemoryTools() {
+    fun definitions_whenEnabled_returnsSevenMemoryTools() {
         val defs = provider.definitions(ctx)
-        assertEquals(6, defs.size)
+        // 2b23bdd 新增 cleanup_memories（修剪过期记忆）后，启用态共 7 个记忆工具
+        assertEquals(7, defs.size)
         val names = defs.map { it.function.name }.toSet()
         assertTrue(names.contains("list_memory_files"))
         assertTrue(names.contains("read_memory_file"))
         assertTrue(names.contains("create_memory_file"))
         assertTrue(names.contains("edit_memory_file"))
         assertTrue(names.contains("delete_memory_file"))
+        assertTrue(names.contains("cleanup_memories"))
         assertTrue(names.contains("update_active_memory"))
     }
 

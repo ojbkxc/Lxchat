@@ -1,5 +1,6 @@
 package com.lxseek.chat.ui.settings
 
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ import com.lxseek.chat.ui.common.OpenAiServiceTierControlPanel
 import com.lxseek.chat.ui.common.openAiServiceTierShortLabel
 import com.lxseek.chat.ui.common.ThinkingControlPanel
 import com.lxseek.chat.ui.common.thinkingControlShortLabel
+import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.util.TtsManager
 import com.lxseek.chat.viewmodel.ChatViewModel
 import java.util.Locale
@@ -477,7 +479,10 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                     android.content.Intent.ACTION_VIEW,
                                                     android.net.Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.tts"),
                                                 )
-                                                try { ttsContext.startActivity(webIntent) } catch (_: Throwable) {}
+                                                // 连 Play 商店都打不开时记录原因，避免完全静默失败
+                                                try { ttsContext.startActivity(webIntent) } catch (e: Throwable) {
+                                                    DebugLog.w("SettingsGeneration", "打开 TTS 商店页失败", e)
+                                                }
                                             }
                                         }) {
                                             Text(stringResource(R.string.tts_install_google))

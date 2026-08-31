@@ -178,7 +178,7 @@ class DingtalkChannel(
                         return@withContext ImSendResult.Success("webhook:${System.currentTimeMillis()}")
                     }
                 } catch (e: Exception) {
-                    DebugLog.w(TAG, "sessionWebhook reply failed, falling back to REST: ${e.message}")
+                    DebugLog.w(TAG, "sessionWebhook reply failed, falling back to REST")
                 }
             }
             // 2) REST fallback — needs senderStaffId for single-chat, conversationId for group.
@@ -195,7 +195,7 @@ class DingtalkChannel(
                 }
                 ImSendResult.Success(id.ifBlank { "rest:${System.currentTimeMillis()}" })
             } catch (e: DingtalkApiException) {
-                DebugLog.e(TAG, "sendMessage REST failed: ${e.message} (code=${e.code})")
+                DebugLog.e(TAG, "sendMessage REST failed (code=${e.code})")
                 ImSendResult.Failure(e.message ?: "dingtalk send failed")
             } catch (e: Exception) {
                 DebugLog.e(TAG, "sendMessage failed", e)

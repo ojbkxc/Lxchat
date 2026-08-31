@@ -1,7 +1,6 @@
 package com.lxseek.chat.ui.settings
 
 import android.os.Build
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -43,6 +42,7 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.lxseek.chat.util.DebugLog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,7 +113,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         viewModel.settings.setCustomFontPath(dest.absolutePath)
                         viewModel.settings.setCustomFontName(fontName)
                     }
-                } catch (e: Exception) { Log.d("SettingsAppearance", "parse failed", e) }
+                } catch (e: Exception) { DebugLog.d("SettingsAppearance", "parse failed", e) }
             }
         }
     }

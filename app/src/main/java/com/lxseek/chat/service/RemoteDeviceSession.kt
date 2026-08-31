@@ -202,7 +202,10 @@ class RemoteDeviceSession(
         val wd = workdir.ifBlank { remoteBaseDir }
         return when (config) {
             is RemoteConnectionConfig.Ssh -> {
-                val r = sshClient!!.executeCommand(command, wd, timeoutMs)
+                // 局部快照：sshClient 为可变 var，可能被并发 close 置空，避免 !! 强解
+                val ssh = sshClient
+                    ?: throw IllegalStateException("SSH session not connected (state=$s, peer=$peerName)")
+                val r = ssh.executeCommand(command, wd, timeoutMs)
                 if (r.exitCode != 0) {
                     DebugLog.w(TAG, "ssh cmd exit=${r.exitCode} stderr=${r.stderr.take(200)}")
                 }
@@ -222,7 +225,9 @@ class RemoteDeviceSession(
         workdir: String,
         timeoutMs: Int,
     ): String {
-        val client = shellClient!!
+        // 局部快照：shellClient 为可变 var，可能被并发 close 置空，避免 !! 强解
+        val client = shellClient
+            ?: throw IllegalStateException("Conch session not connected (state=$state, peer=$peerName)")
         val startResp = client.startJob(command, timeoutMs, workdir)
         val jobId = extractJsonField(startResp, "job_id")
             ?: throw IllegalStateException("Conch startJob returned no job_id: ${startResp.take(200)}")

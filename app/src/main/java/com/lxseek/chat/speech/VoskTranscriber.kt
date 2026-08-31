@@ -15,6 +15,7 @@ import org.vosk.Model
 import org.vosk.Recognizer
 import java.io.File
 import java.io.FileInputStream
+import com.lxseek.chat.util.DebugLog
 
 class VoskTranscriber(private val context: Context) {
 
@@ -100,7 +101,7 @@ class VoskTranscriber(private val context: Context) {
 
         fun getLanguageByCode(code: String): LanguageModel =
             AVAILABLE_LANGUAGES.find { it.code == code } ?: run {
-                android.util.Log.w(
+                DebugLog.w(
                     "VoskTranscriber",
                     "Language code '$code' not found in AVAILABLE_LANGUAGES, falling back to '${AVAILABLE_LANGUAGES.first().code}'"
                 )
@@ -458,13 +459,15 @@ class VoskTranscriber(private val context: Context) {
 
             } catch (e: Exception) {
                 Log.e(TAG, "Download failed for $languageCode", e)
+                // 局部快照便于 when 分支智能转换，避免 !! 强解
+                val rawMsg = e.message
                 val errorMsg = when {
                     e is java.net.UnknownHostException -> "No internet connection"
                     e is java.net.SocketTimeoutException -> "Connection timed out"
                     e is javax.net.ssl.SSLException -> "SSL/TLS error - check network settings"
                     e is java.io.IOException -> "Network error: ${e.localizedMessage ?: "IO error"}"
-                    e.message.isNullOrBlank() -> "Unknown error (${e.javaClass.simpleName})"
-                    else -> e.message!!
+                    rawMsg.isNullOrBlank() -> "Unknown error (${e.javaClass.simpleName})"
+                    else -> rawMsg
                 }
                 trySend(DownloadState.Error("Download failed: $errorMsg"))
             }
@@ -493,8 +496,10 @@ class VoskTranscriber(private val context: Context) {
 
             val primaryResult = recognizeWithModel(currentModel, audioBytes, "primary")
 
-            if (isMultilingualEnabled && secondaryModel != null) {
-                val secondaryResult = recognizeWithModel(secondaryModel!!, audioBytes, "secondary")
+            // 局部快照：secondaryModel 为可变 var，可能被并发释放置空，避免 !! 强解
+            val secondary = secondaryModel
+            if (isMultilingualEnabled && secondary != null) {
+                val secondaryResult = recognizeWithModel(secondary, audioBytes, "secondary")
 
                 val finalResult = mergeMultilingualResults(primaryResult, secondaryResult)
                 Log.i(TAG, "Multilingual transcription: $finalResult")

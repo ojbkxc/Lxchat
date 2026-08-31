@@ -111,7 +111,7 @@ class WeixinBindingFlow(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        DebugLog.w("WeixinBindingFlow", "onNeedVerifyCode failed: ${e.message}")
+                        DebugLog.w("WeixinBindingFlow", "onNeedVerifyCode failed")
                         null
                     }
                     pendingVerifyCode = code?.takeIf { it.isNotBlank() }
@@ -171,15 +171,15 @@ class WeixinBindingFlow(
         // 使 WeixinChannel 的自回复防护第一道、账号切换检测、多账号管理生效。
         // 参考weixin-ClawBot-API bot.py:1236-1255 登录后保存 ilink_bot_id、ilink_user_id。
         val botId = confirmed.botId?.takeIf { it.isNotBlank() } ?: ""
-        DebugLog.d("WeixinBindingFlow", "扫码确认成功: token=${token.take(10)}... baseUrl=$baseUrl botId=${botId.take(20)}")
+        DebugLog.d("WeixinBindingFlow", "扫码确认成功: token=${token.take(10)}... botId=${botId.take(20)}")
         onEvent(Event.Success(token, baseUrl, botId))
         BindingResult(token, baseUrl, botId)
     } catch (e: WeixinApiError) {
-        DebugLog.e("WeixinBindingFlow", "扫码绑定失败(WeixinApiError): ${e.code} - ${e.message}", e)
+        DebugLog.e("WeixinBindingFlow", "扫码绑定失败(WeixinApiError): ${e.code}", e)
         onEvent(Event.Failure(e))
         null
     } catch (e: Exception) {
-        DebugLog.e("WeixinBindingFlow", "扫码绑定失败(Exception): ${e.message}", e)
+        DebugLog.e("WeixinBindingFlow", "扫码绑定失败(Exception)", e)
         onEvent(Event.Failure(WeixinApiError("bind-failed", e.message ?: "扫码绑定失败。", e)))
         null
     }

@@ -37,16 +37,18 @@ object RateLimiterRegistry {
     fun getOrCreateRateLimiter(key: String, maxRequestsPerMinute: Int): SlidingWindowRateLimiter {
         require(maxRequestsPerMinute > 0) { "maxRequestsPerMinute must be > 0" }
 
-        return rateLimiters.compute(key) { _, existing ->
-            if (existing == null || existing.maxRequestsPerMinute != maxRequestsPerMinute) {
-                RateEntry(
-                    maxRequestsPerMinute = maxRequestsPerMinute,
-                    limiter = SlidingWindowRateLimiter(maxRequestsPerMinute = maxRequestsPerMinute),
-                )
-            } else {
-                existing
+        return checkNotNull(
+            rateLimiters.compute(key) { _, existing ->
+                if (existing == null || existing.maxRequestsPerMinute != maxRequestsPerMinute) {
+                    RateEntry(
+                        maxRequestsPerMinute = maxRequestsPerMinute,
+                        limiter = SlidingWindowRateLimiter(maxRequestsPerMinute = maxRequestsPerMinute),
+                    )
+                } else {
+                    existing
+                }
             }
-        }!!.limiter
+        ).limiter
     }
 
     /**
@@ -58,16 +60,18 @@ object RateLimiterRegistry {
     fun getOrCreateConcurrencySemaphore(key: String, maxConcurrent: Int): Semaphore {
         require(maxConcurrent > 0) { "maxConcurrent must be > 0" }
 
-        return concurrencySemaphores.compute(key) { _, existing ->
-            if (existing == null || existing.maxConcurrent != maxConcurrent) {
-                ConcurrencyEntry(
-                    maxConcurrent = maxConcurrent,
-                    semaphore = Semaphore(maxConcurrent),
-                )
-            } else {
-                existing
+        return checkNotNull(
+            concurrencySemaphores.compute(key) { _, existing ->
+                if (existing == null || existing.maxConcurrent != maxConcurrent) {
+                    ConcurrencyEntry(
+                        maxConcurrent = maxConcurrent,
+                        semaphore = Semaphore(maxConcurrent),
+                    )
+                } else {
+                    existing
+                }
             }
-        }!!.semaphore
+        ).semaphore
     }
 
     /** 清除所有缓存的限流器与信号量（主要用于测试）。 */

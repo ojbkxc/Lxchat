@@ -10,7 +10,6 @@ import com.lxseek.chat.util.DebugLog
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -169,15 +168,15 @@ class WeixinChannel(
         val recipient = conversationId.trim()
         if (recipient.isEmpty()) return ImSendResult.Failure("conversationId is empty")
 
-        // 诊断日志（直接 android.util.Log.e，绕过 DebugLog，release build 也能看到）
-        Log.e("WxSend", "entry: recipient=$recipient textLen=${text.length} textHead=${text.take(100)}")
+        // 诊断日志（统一走 DebugLog 封装，随 debug 构建输出）
+        DebugLog.e("WxSend", "entry: recipient=$recipient textLen=${text.length} textHead=${text.take(100)}")
 
         // P1-7: Strip Markdown syntax WeChat can't render
         val plainText = WeixinMarkdownFilter.strip(text)
-        Log.e("WxSend", "after strip: plainLen=${plainText.length} plainHead=${plainText.take(100)}")
+        DebugLog.e("WxSend", "after strip: plainLen=${plainText.length} plainHead=${plainText.take(100)}")
         // fallback: 如果 strip 后为空，用原文发送（避免 sendText 抛 IllegalArgumentException）
         val effectiveText = if (plainText.isBlank()) {
-            Log.e("WxSend", "strip produced empty text, falling back to original (len=${text.length})")
+            DebugLog.e("WxSend", "strip produced empty text, falling back to original (len=${text.length})")
             text
         } else {
             plainText
@@ -199,9 +198,9 @@ class WeixinChannel(
         for (attempt in 1..SEND_MAX_RETRIES) {
             val contextToken = contextTokenStore[recipient]
             try {
-                Log.e("WxSend", "attempt $attempt: recipient=$recipient textLen=${cappedText.length} hasCtx=${contextToken != null}")
+                DebugLog.e("WxSend", "attempt $attempt: recipient=$recipient textLen=${cappedText.length} hasCtx=${contextToken != null}")
                 val newContextToken = api.sendText(baseUrl, config.token, recipient, cappedText, contextToken)
-                Log.e("WxSend", "attempt $attempt: sendText success, newCtx=${newContextToken != null}")
+                DebugLog.e("WxSend", "attempt $attempt: sendText success, newCtx=${newContextToken != null}")
                 // 响应回写新 context_token（对齐 weixin_client.py _extract_response_context_token）。
                 if (!newContextToken.isNullOrEmpty() && newContextToken != contextToken) {
                     contextTokenStore[recipient] = newContextToken
@@ -213,7 +212,7 @@ class WeixinChannel(
                 return ImSendResult.Success("lxchat-weixin-sent-${System.currentTimeMillis()}")
             } catch (e: WeixinApiError) {
                 lastError = e
-                Log.e("WxSend", "attempt $attempt: WeixinApiError code=${e.code} msg=${e.message}")
+                DebugLog.e("WxSend", "attempt $attempt: WeixinApiError code=${e.code}")
                 DebugLog.e("WeixinChannel", "sendMessage attempt $attempt failed: ${e.code}", e)
                 // Non-transient errors (send-rejected, invalid-*) should not retry.
                 if (e.code !in TRANSIENT_ERROR_CODES) {
@@ -221,7 +220,7 @@ class WeixinChannel(
                 }
             } catch (e: Exception) {
                 lastError = e
-                Log.e("WxSend", "attempt $attempt: Exception ${e.javaClass.name}: ${e.message}")
+                DebugLog.e("WxSend", "attempt $attempt: Exception ${e.javaClass.name}")
                 DebugLog.e("WeixinChannel", "sendMessage attempt $attempt failed", e)
                 // Generic exceptions (e.g. IOException) are treated as transient.
             }
@@ -232,7 +231,7 @@ class WeixinChannel(
             }
         }
         val msg = lastError?.message ?: "send failed"
-        Log.e("WxSend", "final Failure: msg=$msg lastError=${lastError?.javaClass?.name}")
+        DebugLog.e("WxSend", "final Failure: msg=$msg lastError=${lastError?.javaClass?.name}")
         return ImSendResult.Failure(msg)
     }
 
@@ -340,7 +339,7 @@ class WeixinChannel(
         scaled.compress(Bitmap.CompressFormat.JPEG, MEDIA_THUMB_QUALITY, out)
         out.toByteArray()
     } catch (e: Exception) {
-        DebugLog.w("WeixinChannel", "image thumb failed: ${e.message}")
+        DebugLog.w("WeixinChannel", "image thumb failed")
         null
     }
 
@@ -363,7 +362,7 @@ class WeixinChannel(
             }
             DebugLog.d("WeixinChannel", "notifyStop done")
         } catch (e: Exception) {
-            DebugLog.w("WeixinChannel", "notifyStop failed: ${e.message}")
+            DebugLog.w("WeixinChannel", "notifyStop failed")
         }
     }
 
@@ -455,18 +454,18 @@ class WeixinChannel(
             // dsh-im calls notifyStart before the monitor loop; without this the WeChat server
             // does not push messages to getupdates, so every poll returns an empty list.
             if (!notified) {
-                DebugLog.d("WeixinChannel", "pollUpdates: calling notifyStart, baseUrl=$baseUrl, tokenLen=${config.token.length}")
+                DebugLog.d("WeixinChannel", "pollUpdates: calling notifyStart, tokenLen=${config.token.length}")
                 api.notifyStart(baseUrl, config.token)
                 notified = true
                 DebugLog.d("WeixinChannel", "pollUpdates: notifyStart succeeded")
                 // release 可见：确认订阅是否建立（若始终无此日志说明未走到轮询/崩溃）
-                Log.e("WxRecv", "notifyStart ok, notified=true")
+                DebugLog.e("WxRecv", "notifyStart ok, notified=true")
             }
             val timeoutMs = if (longPollTimeoutMs > 0) longPollTimeoutMs else WeixinIlinkApi.DEFAULT_LONG_POLL_TIMEOUT_MS
             val updates = api.getUpdates(baseUrl, config.token, state.getUpdatesBuf(), timeoutMs)
             // release 可见定义入站根因：看 getupdates 是否空、是否被拒、首条消息的关键字段
             val firstMsg = updates.msgs.firstOrNull()
-            Log.e(
+            DebugLog.e(
                 "WxRecv",
                 "getupdates ret=${updates.ret} msgs=${updates.msgs.size} bufLen=${updates.getUpdatesBuf.length} " +
                     "errcode=${updates.raw["errcode"]?.strSafe()} " +
@@ -490,7 +489,7 @@ class WeixinChannel(
                 // 参考weixin-ClawBot-API bot.py:329-330。
                 val code = if (updates.ret != 0) updates.ret else (errcode ?: 0)
                 DebugLog.e("WeixinChannel", "pollUpdates rejected: ret=${updates.ret} errcode=$errcode errmsg=${updates.raw["errmsg"]?.strSafe()}")
-                Log.e("WxRecv", "REJECTED ret=${updates.ret} errcode=$errcode errmsg=${updates.raw["errmsg"]?.strSafe()}")
+                DebugLog.e("WxRecv", "REJECTED ret=${updates.ret} errcode=$errcode errmsg=${updates.raw["errmsg"]?.strSafe()}")
                 if (code == -14) {
                     // token 失效：重置协议状态，让重新绑定后的新 token 能干净接管；
                     // 并通过 onTokenStale 提醒 UI 引导重新扫码（参考 weixin-ClawBot-API 的受控重登录）。
@@ -542,7 +541,7 @@ class WeixinChannel(
                 cacheInboundMedia(ref.name, bytes)
                 writeImageFile(ref.name, bytes, index)?.let { paths.add(it) }
             } catch (e: Exception) {
-                DebugLog.w("WeixinChannel", "load image ${ref.name} failed: ${e.message}")
+                DebugLog.w("WeixinChannel", "load image ${ref.name} failed")
             }
         }
         return paths
@@ -568,7 +567,7 @@ class WeixinChannel(
                 if (text.isNotBlank()) parts += "[文件 $fname 内容]\n${text.take(MAX_FILE_TEXT_CHARS)}"
                 else parts += "[文件 $fname]"
             } catch (e: Exception) {
-                DebugLog.w("WeixinChannel", "load file ${ref.name} failed: ${e.message}")
+                DebugLog.w("WeixinChannel", "load file ${ref.name} failed")
                 parts += "[文件 $fname]"
             }
         }
@@ -617,7 +616,7 @@ class WeixinChannel(
         file.writeBytes(out.toByteArray())
         file.absolutePath
     } catch (e: Exception) {
-        DebugLog.w("WeixinChannel", "image → cache file failed: ${e.message}")
+        DebugLog.w("WeixinChannel", "image → cache file failed")
         null
     }
 
@@ -667,11 +666,11 @@ class WeixinChannel(
             }
             DebugLog.d("WeixinChannel", "applyUpdates: processing ${updates.msgs.size} msgs, bufUpdated=${updates.getUpdatesBuf.isNotEmpty()}")
             // WxRecv 下游诊断：确认进入 applyUpdates 的消息条数（getupdates 有返回但这里为 0 说明上游就断了）
-            Log.e("WxRecv", "applyUpdates enter msgs=${updates.msgs.size} bufUpdated=${updates.getUpdatesBuf.isNotEmpty()}")
+            DebugLog.e("WxRecv", "applyUpdates enter msgs=${updates.msgs.size} bufUpdated=${updates.getUpdatesBuf.isNotEmpty()}")
             for (msg in updates.msgs) {
                 // dsh-im skips message_type === 2 (outgoing messages sent by the bot itself).
                 val msgType = msg["message_type"]?.let { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }
-                if (msgType == 2) { DebugLog.d("WeixinChannel", "applyUpdates: skipped - outgoing msg (type=2)"); Log.e("WxRecv", "applyUpdates skip type=2"); continue }
+                if (msgType == 2) { DebugLog.d("WeixinChannel", "applyUpdates: skipped - outgoing msg (type=2)"); DebugLog.e("WxRecv", "applyUpdates skip type=2"); continue }
                 val text = WeixinIlinkApi.extractWeixinText(msg)
                 val msgId = WeixinIlinkApi.weixinMessageId(msg)
                 val fromUserId = msg["from_user_id"]?.strSafe()
@@ -699,23 +698,23 @@ class WeixinChannel(
                 val images = try {
                     imageResolver(msg)
                 } catch (e: Exception) {
-                    DebugLog.w("WeixinChannel", "applyUpdates: resolve images failed: ${e.message}")
+                    DebugLog.w("WeixinChannel", "applyUpdates: resolve images failed")
                     emptyList()
                 }
                 // 下载+解密文件 → 文本（文本类文件并入提示），对齐 Zyn-iLink 文件识别。
                 val fileText = try {
                     fileResolver(msg)
                 } catch (e: Exception) {
-                    DebugLog.w("WeixinChannel", "applyUpdates: resolve files failed: ${e.message}")
+                    DebugLog.w("WeixinChannel", "applyUpdates: resolve files failed")
                     ""
                 }
                 val hasFile = fileText.isNotBlank()
                 DebugLog.d("WeixinChannel", "applyUpdates: msg text=${text?.take(50)} images=${images.size} files=$hasFile id=$msgId from=$fromUserId hasCtxToken=${!contextToken.isNullOrEmpty()} keys=${msg.keys}")
                 // 只有文本、图片、文件内容都没有才跳过，保证纯图片/纯文件消息能进入管线。
-                if (text.isNullOrBlank() && images.isEmpty() && !hasFile) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - no text, images, or files"); Log.e("WxRecv", "applyUpdates skip NO_CONTENT id=$msgId from=$fromUserId"); continue }
-                if (msgId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - msgId is null"); Log.e("WxRecv", "applyUpdates skip MSGID_NULL"); continue }
-                if (fromUserId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is null"); Log.e("WxRecv", "applyUpdates skip FROM_NULL"); continue }
-                if (fromUserId.isEmpty()) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is empty"); Log.e("WxRecv", "applyUpdates skip FROM_EMPTY"); continue }
+                if (text.isNullOrBlank() && images.isEmpty() && !hasFile) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - no text, images, or files"); DebugLog.e("WxRecv", "applyUpdates skip NO_CONTENT id=$msgId from=$fromUserId"); continue }
+                if (msgId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - msgId is null"); DebugLog.e("WxRecv", "applyUpdates skip MSGID_NULL"); continue }
+                if (fromUserId == null) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is null"); DebugLog.e("WxRecv", "applyUpdates skip FROM_NULL"); continue }
+                if (fromUserId.isEmpty()) { DebugLog.w("WeixinChannel", "applyUpdates: skipped - fromUserId is empty"); DebugLog.e("WxRecv", "applyUpdates skip FROM_EMPTY"); continue }
                 val timestampMs = normalizeTimestamp(msg["create_time"]?.longSafe())
                 val combinedText = buildString {
                     text?.trim()?.let { append(it) }
@@ -725,7 +724,7 @@ class WeixinChannel(
                     }
                 }
                 // WxRecv 下游诊断：正常入队消息 —— 这条日志若在 getupdates msgs>0 时出现但 UI 无显示，说明断点是下游轮询/去重。
-                Log.e("WxRecv", "applyUpdates QUEUED id=$msgId from=$fromUserId len=${combinedText.length} imgs=${images.size} files=$hasFile")
+                DebugLog.e("WxRecv", "applyUpdates QUEUED id=$msgId from=$fromUserId len=${combinedText.length} imgs=${images.size} files=$hasFile")
                 val imMsg = ImMessage(
                     id = msgId,
                     conversationId = fromUserId,

@@ -94,7 +94,7 @@ class TelegramChannel(
                     ImSendResult.Success(lastMessageId)
                 }
             } catch (e: TelegramApiException) {
-                DebugLog.e("TelegramChannel", "sendMessage failed: ${e.message} (code=${e.errorCode})")
+                DebugLog.e("TelegramChannel", "sendMessage failed (code=${e.errorCode})")
                 ImSendResult.Failure(e.message ?: "telegram send failed")
             } catch (e: Exception) {
                 DebugLog.e("TelegramChannel", "sendMessage failed", e)

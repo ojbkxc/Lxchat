@@ -57,7 +57,7 @@ class BarkChannel(
             try {
                 val resp = HttpClient.postTextResponse(url, body, emptyMap())
                 if (resp.isSuccessful) {
-                    DebugLog.d("ReplyChannel/Bark", "sent push to $url")
+                    DebugLog.d("ReplyChannel/Bark", "sent push")
                     SendResult.Success
                 } else {
                     DebugLog.e("ReplyChannel/Bark", "push failed http=${resp.code}: ${resp.body.take(200)}")

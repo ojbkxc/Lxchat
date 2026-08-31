@@ -65,7 +65,10 @@ class NetworkMonitor(context: Context) {
 
     fun unregister() {
         val cb = callback ?: return
-        try { cm.unregisterNetworkCallback(cb) } catch (_: Throwable) {}
+        // 重复反注册或回调已失效时会抛非致命异常：记录原因便于排查，失败不影响后续流程
+        try { cm.unregisterNetworkCallback(cb) } catch (e: Throwable) {
+            DebugLog.w("NetworkMonitor", "unregisterNetworkCallback failed", e)
+        }
         callback = null
     }
 }

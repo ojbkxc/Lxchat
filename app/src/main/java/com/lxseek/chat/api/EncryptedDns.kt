@@ -76,7 +76,7 @@ class EncryptedDns : okhttp3.Dns {
         // 与「熔断降级」。recordFailure/isCircuitOpen 被 JVM 单测覆盖，日志加在
         // 这里（lookup 不进单测），避免未 mock 的 android.util.Log 炸测试。
         if (isCircuitOpen()) {
-            DebugLog.d(TAG, "DoH circuit open, falling back to system DNS for $host")
+            DebugLog.d(TAG, "DoH circuit open, falling back to system DNS")
             return okhttp3.Dns.SYSTEM.lookup(hostname)
         }
 
@@ -84,13 +84,13 @@ class EncryptedDns : okhttp3.Dns {
             val addresses = resolveViaDoh(host)
             circuitFailures.set(0) // a full successful resolution resets the breaker
             if (addresses.isEmpty()) {
-                DebugLog.w(TAG, "DoH empty answer for $host, falling back to system DNS")
+                DebugLog.w(TAG, "DoH empty answer, falling back to system DNS")
                 okhttp3.Dns.SYSTEM.lookup(hostname)
             } else addresses
         } catch (t: Throwable) {
             recordFailure()
             // L1：DoH 失败降级补日志（保留 fail-open 行为不变）。
-            DebugLog.w(TAG, "DoH resolution failed for $host (${t.javaClass.simpleName}), falling back to system DNS")
+            DebugLog.w(TAG, "DoH resolution failed (${t.javaClass.simpleName}), falling back to system DNS")
             // Fail-open: whatever happened with DoH, the system resolver is the safe fallback.
             try {
                 okhttp3.Dns.SYSTEM.lookup(hostname)

@@ -283,7 +283,7 @@ class QqBotWebSocketClient(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                DebugLog.e(TAG, "connection attempt failed: ${e.message}", e)
+                DebugLog.e(TAG, "connection attempt failed", e)
                 false
             }
             if (stopped || !scope.isActive) break
@@ -327,7 +327,7 @@ class QqBotWebSocketClient(
         val token = try {
             restApi.accessToken()
         } catch (e: Exception) {
-            DebugLog.e(TAG, "could not obtain access_token for websocket: ${e.message}", e)
+            DebugLog.e(TAG, "could not obtain access_token for websocket", e)
             return false
         }
         val authedUrl = "$gatewayUrl?$token"
@@ -405,8 +405,9 @@ class QqBotWebSocketClient(
                 ready = true
                 DebugLog.w(TAG, "RESUMED: session=$sessionId seq=$lastSeq")
             }
-            "C2C_MESSAGE_CREATE" -> handleMessageCreate(data, isGroup = false, event = event!!)
-            "GROUP_AT_MESSAGE_CREATE" -> handleMessageCreate(data, isGroup = true, event = event!!)
+            // when 分支匹配常量时 event 必等于该常量，直接传常量避免 !! 强解
+            "C2C_MESSAGE_CREATE" -> handleMessageCreate(data, isGroup = false, event = "C2C_MESSAGE_CREATE")
+            "GROUP_AT_MESSAGE_CREATE" -> handleMessageCreate(data, isGroup = true, event = "GROUP_AT_MESSAGE_CREATE")
             else -> Unit
         }
     }
@@ -463,7 +464,7 @@ class QqBotWebSocketClient(
                 ),
             )
         } catch (e: Exception) {
-            DebugLog.e(TAG, "onMessage callback threw: ${e.message}", e)
+            DebugLog.e(TAG, "onMessage callback threw", e)
         }
     }
 

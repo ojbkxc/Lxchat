@@ -148,7 +148,7 @@ class ProactiveMessagingService(
             is TaskExecutionEngine.Result.Busy ->
                 DebugLog.d("ProactiveMsg", "Conversation busy; deferring greeting")
             is TaskExecutionEngine.Result.Failure ->
-                DebugLog.e("ProactiveMsg", "greeting failed: ${result.reason}")
+                DebugLog.e("ProactiveMsg", "greeting failed")
         }
     }
 

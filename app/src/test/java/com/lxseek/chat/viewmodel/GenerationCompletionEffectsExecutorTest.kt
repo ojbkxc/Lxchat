@@ -19,11 +19,12 @@ class GenerationCompletionEffectsExecutorTest {
             callbacks(events, hasQueuedSends = { events += "queue"; false }),
         )
 
+        // C3 设计：终态 UI 清理（清流/去 loading）先于索引执行，索引失败也不阻塞 UI 恢复
         assertEquals(
             listOf(
-                "index:model:answer",
                 "clear",
                 "loading:false",
+                "index:model:answer",
                 "release:model",
                 "queue",
                 "foreground",
@@ -56,8 +57,9 @@ class GenerationCompletionEffectsExecutorTest {
             callbacks,
         )
 
+        // 索引异常被吞且不阻塞清理；排队发送存在时抑制通知（generationCycleComplete=false）
         assertEquals(
-            listOf("index", "clear", "loading:false", "release", "queue", "foreground"),
+            listOf("clear", "loading:false", "index", "release", "queue", "foreground"),
             events,
         )
     }

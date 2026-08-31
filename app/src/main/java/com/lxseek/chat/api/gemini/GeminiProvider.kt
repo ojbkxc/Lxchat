@@ -317,19 +317,20 @@ class GeminiProvider(
                         )
                     }
                     entries.add(ApiRequestContent(role = "model", parts = parts))
-                } else if (msg.toolCall != null) {
+                } else msg.toolCall?.let { tc ->
+                    // 局部绑定非空 toolCall，避免多处 !! 强解
                     val args = try {
-                        json.parseToJsonElement(msg.toolCall!!.arguments) as? JsonObject
+                        json.parseToJsonElement(tc.arguments) as? JsonObject
                     } catch (_: Exception) { JsonObject(emptyMap()) }
                     entries.add(ApiRequestContent(
                         role = "model",
                         parts = listOf(ApiRequestPart(
                             functionCall = GeminiFunctionCall(
-                                id = msg.toolCall!!.toolCallId,
-                                name = msg.toolCall!!.toolName,
+                                id = tc.toolCallId,
+                                name = tc.toolName,
                                 args = args ?: JsonObject(emptyMap())
                             ),
-                            thoughtSignature = msg.toolCall!!.signature
+                            thoughtSignature = tc.signature
                         ))
                     ))
                 }
@@ -349,13 +350,14 @@ class GeminiProvider(
                         ))
                     }
                     entries.add(ApiRequestContent(role = "user", parts = parts))
-                } else if (msg.toolCall != null) {
-                    val response = buildGeminiFunctionResponse(msg.toolCall!!.result)
+                } else msg.toolCall?.let { tc ->
+                    // 局部绑定非空 toolCall，避免多处 !! 强解
+                    val response = buildGeminiFunctionResponse(tc.result)
                     entries.add(ApiRequestContent(
                         role = "user",
                         parts = listOf(ApiRequestPart(functionResponse = GeminiFunctionResponse(
-                            id = msg.toolCall!!.toolCallId,
-                            name = msg.toolCall!!.toolName,
+                            id = tc.toolCallId,
+                            name = tc.toolName,
                             response = response
                         )))
                     ))

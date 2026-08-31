@@ -1,7 +1,6 @@
 package com.lxseek.chat.ui.settings
 
 import android.os.Build
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -131,7 +130,7 @@ fun SettingsSandboxPage(
             val confirmed = sandboxManager.isAvailable()
             if (available != confirmed) available = confirmed
             if (available) sandboxManager.refreshPackageList()
-        } catch (e: Exception) { Log.d("SettingsSandbox", "operation failed", e) }
+        } catch (e: Exception) { DebugLog.d("SettingsSandbox", "operation failed", e) }
     }
 
     // When a user-initiated rootfs install finishes, re-check availability and surface any error.
@@ -153,7 +152,8 @@ fun SettingsSandboxPage(
     val pkgCount = backendPackages.size
     var diskUsageMB by remember { mutableLongStateOf(0L) }
     LaunchedEffect(backendPackages.size) {
-        try { diskUsageMB = sandboxManager.getDiskUsageMB() } catch (_: Exception) {}
+        // 磁盘占用读取失败不影响页面功能：记录原因，保持 0 值展示
+        try { diskUsageMB = sandboxManager.getDiskUsageMB() } catch (e: Exception) { DebugLog.d("SettingsSandbox", "读取沙箱磁盘占用失败", e) }
     }
     val diskUsageProgress by animateFloatAsState(
         targetValue = (diskUsageMB.toFloat() / 2048f).coerceIn(0f, 1f),

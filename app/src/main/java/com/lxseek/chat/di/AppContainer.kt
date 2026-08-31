@@ -61,6 +61,7 @@ import com.lxseek.chat.tool.QualityToolProvider
 import com.lxseek.chat.tool.SkillLearnToolProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.lxseek.chat.util.DebugLog
 
 /**
  * Centralized dependency container (manual DI).
@@ -85,7 +86,7 @@ class AppContainer(private val appContext: Context) {
             kotlinx.coroutines.CoroutineExceptionHandler { _, e ->
                 // 诊断：完整输出的异常 message（如 IllegalAccessError 的 "tried to access method X"）
                 // 会被 DebugLog.safeThrowableSummary 过滤掉，这里用平台 Log 保留它以精确定位 R8 访问错误。
-                android.util.Log.e("AppContainer", "Uncaught in appScope (full)", e)
+                DebugLog.e("AppContainer", "Uncaught in appScope (full)", e)
             }
     )
 

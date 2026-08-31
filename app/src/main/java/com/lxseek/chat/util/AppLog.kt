@@ -12,11 +12,11 @@ object AppLog {
 
     private data class LogEntry(val time: String, val level: String, val tag: String, val msg: String)
 
-    fun d(tag: String, msg: String) { add("D", tag, msg); android.util.Log.d(tag, msg) }
-    fun i(tag: String, msg: String) { add("I", tag, msg); android.util.Log.i(tag, msg) }
-    fun w(tag: String, msg: String) { add("W", tag, msg); android.util.Log.w(tag, msg) }
-    fun e(tag: String, msg: String) { add("E", tag, msg); android.util.Log.e(tag, msg) }
-    fun e(tag: String, msg: String, tr: Throwable) { add("E", tag, "$msg | ${tr.javaClass.simpleName}: ${tr.message}"); android.util.Log.e(tag, msg, tr) }
+    fun d(tag: String, msg: String) { add("D", tag, msg); DebugLog.d(tag, msg) }
+    fun i(tag: String, msg: String) { add("I", tag, msg); DebugLog.i(tag, msg) }
+    fun w(tag: String, msg: String) { add("W", tag, msg); DebugLog.w(tag, msg) }
+    fun e(tag: String, msg: String) { add("E", tag, msg); DebugLog.e(tag, msg) }
+    fun e(tag: String, msg: String, tr: Throwable) { add("E", tag, "$msg | ${tr.javaClass.simpleName}: ${tr.message}"); DebugLog.e(tag, msg, tr) }
 
     private fun add(level: String, tag: String, msg: String) {
         synchronized(entries) {

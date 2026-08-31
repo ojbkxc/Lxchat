@@ -510,7 +510,7 @@ class DingtalkStreamConnection(
             running.set(false)
             false
         } catch (e: Throwable) {
-            DebugLog.e(TAG, "stream connect cycle failed: ${e.message}", e)
+            DebugLog.e(TAG, "stream connect cycle failed", e)
             runCatching { listener.onError(e, false) }
             if (!running.get() || fatal) return false
             delay(backoffMs())

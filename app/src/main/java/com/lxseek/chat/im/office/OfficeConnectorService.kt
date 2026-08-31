@@ -221,7 +221,7 @@ class OfficeConnectorService(
                 throw e
             } catch (e: Exception) {
                 if (!scope.isActive) break
-                DebugLog.w("OfficeConnector", "connection error: ${e.message}")
+                DebugLog.w("OfficeConnector", "connection error")
                 val delayIdx = attempt.coerceAtMost(OfficeProtocol.RETRY_DELAYS_MS.size - 1)
                 val delayMs = OfficeProtocol.RETRY_DELAYS_MS[delayIdx]
                 attempt++

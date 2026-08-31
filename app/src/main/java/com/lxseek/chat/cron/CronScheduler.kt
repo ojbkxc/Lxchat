@@ -215,12 +215,12 @@ class CronScheduler(
      */
     fun schedule(task: CronTask) {
         val expr = CronExpression.tryParse(task.cronExpression) ?: run {
-            DebugLog.w(TAG, "Skip scheduling '${task.name}': invalid cron '${task.cronExpression}'")
+            DebugLog.w(TAG, "Skip scheduling task ${task.id}: invalid cron '${task.cronExpression}'")
             return
         }
         val now = System.currentTimeMillis()
         val nextRun = expr.nextRunAfter(now) ?: run {
-            DebugLog.w(TAG, "Skip scheduling '${task.name}': no next run within 4 years")
+            DebugLog.w(TAG, "Skip scheduling task ${task.id}: no next run within 4 years")
             return
         }
         val delayMs = (nextRun - now).coerceAtLeast(0)

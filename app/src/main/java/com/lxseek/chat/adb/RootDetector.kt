@@ -1,5 +1,7 @@
 package com.lxseek.chat.adb
 
+import com.lxseek.chat.util.DebugLog
+
 /**
  * Detects whether root access (su binary) is available on the device.
  *
@@ -30,7 +32,7 @@ object RootDetector {
         }
         // 镜像到进程内日志源，让用户看到 su 检测的具体结果（root 未生效时原因一目了然）。
         AdbLog.log("RootDetector: ${if (result) "root available" else "root NOT available"} — $detail")
-        android.util.Log.d("RootDetector", "isRootAvailable=$result detail=$detail")
+        DebugLog.d("RootDetector", "isRootAvailable=$result detail=$detail")
         cached = result
         return result
     }

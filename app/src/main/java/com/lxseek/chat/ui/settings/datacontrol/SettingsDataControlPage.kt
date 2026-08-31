@@ -299,12 +299,14 @@ fun SettingsDataControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     }
 
     // Invalid import error
-    if (invalidImportMessage != null) {
+    // 局部快照便于智能转换，避免委托属性 !! 强解
+    val invalidMsg = invalidImportMessage
+    if (invalidMsg != null) {
         AlertDialog(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             onDismissRequest = { invalidImportMessage = null },
             title = { Text(stringResource(R.string.data_import_title), fontWeight = FontWeight.Bold) },
-            text = { Text(invalidImportMessage!!) },
+            text = { Text(invalidMsg) },
             confirmButton = {
                 TextButton(onClick = { invalidImportMessage = null }) {
                     Text(stringResource(R.string.provider_close))
@@ -314,10 +316,13 @@ fun SettingsDataControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     }
 
     // Import preview dialog
-    if (showImportPreviewDialog && importPreview != null && importManifest != null) {
+    // 局部快照便于智能转换，避免委托属性 !! 强解
+    val manifestSnapshot = importManifest
+    val previewSnapshot = importPreview
+    if (showImportPreviewDialog && previewSnapshot != null && manifestSnapshot != null) {
         ImportPreviewDialog(
-            manifest = importManifest!!,
-            preview = importPreview!!,
+            manifest = manifestSnapshot,
+            preview = previewSnapshot,
             onDismiss = {
                 showImportPreviewDialog = false
                 viewModel.importExport.clearImportState()
@@ -330,8 +335,10 @@ fun SettingsDataControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     }
 
     // Claude import preview dialog
-    if (showClaudeImportDialog && claudeImportPreview != null) {
-        val preview = claudeImportPreview!!
+    // 局部快照便于智能转换，避免委托属性 !! 强解
+    val claudePreview = claudeImportPreview
+    if (showClaudeImportDialog && claudePreview != null) {
+        val preview = claudePreview
         var dialogSelectedIds by remember(preview) { mutableStateOf(preview.conversations.map { it.uuid }.toSet()) }
         val allIds = preview.conversations.map { it.uuid }.toSet()
         val allSelected = dialogSelectedIds.size == allIds.size
@@ -433,8 +440,10 @@ fun SettingsDataControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     }
 
     // Claude import success dialog
-    if (showClaudeSuccessDialog && claudeImportResult != null) {
-        val result = claudeImportResult!!
+    // 局部快照便于智能转换，避免委托属性 !! 强解
+    val claudeResult = claudeImportResult
+    if (showClaudeSuccessDialog && claudeResult != null) {
+        val result = claudeResult
         AlertDialog(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             onDismissRequest = {
@@ -467,8 +476,10 @@ fun SettingsDataControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     }
 
     // GPT import preview dialog
-    if (showGptImportDialog && gptImportPreview != null) {
-        val preview = gptImportPreview!!
+    // 局部快照便于智能转换，避免委托属性 !! 强解
+    val gptPreview = gptImportPreview
+    if (showGptImportDialog && gptPreview != null) {
+        val preview = gptPreview
         var dialogSelectedIds by remember(preview) { mutableStateOf(preview.conversations.map { it.uuid }.toSet()) }
         val allIds = preview.conversations.map { it.uuid }.toSet()
         val allSelected = dialogSelectedIds.size == allIds.size
@@ -568,8 +579,10 @@ fun SettingsDataControlPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     }
 
     // GPT import success dialog
-    if (showGptSuccessDialog && gptImportResult != null) {
-        val result = gptImportResult!!
+    // 局部快照便于智能转换，避免委托属性 !! 强解
+    val gptResult = gptImportResult
+    if (showGptSuccessDialog && gptResult != null) {
+        val result = gptResult
         AlertDialog(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             onDismissRequest = {

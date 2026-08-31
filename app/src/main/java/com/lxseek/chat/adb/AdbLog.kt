@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.lxseek.chat.util.DebugLog
 
 /**
  * 进程内 ADB Shell 诊断日志源（Shizuku / root 检测 / 命令执行共用）。
@@ -31,7 +32,7 @@ object AdbLog {
             append("  ")
             append(msg)
         }
-        android.util.Log.i(TAG, msg)
+        DebugLog.i(TAG, msg)
         _entries.value = (_entries.value + line).takeLast(MAX_ENTRIES)
     }
 

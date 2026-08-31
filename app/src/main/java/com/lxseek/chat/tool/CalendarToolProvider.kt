@@ -414,7 +414,7 @@ class CalendarToolProvider(private val app: Application) : ToolProvider {
             try {
                 resolver.insert(CalendarContract.Attendees.CONTENT_URI, v)
             } catch (e: Exception) {
-                DebugLog.w("CalendarTool", "Failed to insert attendee $email: ${e.message}")
+                DebugLog.w("CalendarTool", "Failed to insert attendee $email")
             }
         }
     }

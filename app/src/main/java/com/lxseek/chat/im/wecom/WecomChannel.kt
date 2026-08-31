@@ -108,7 +108,7 @@ class WecomChannel(
             // 用本地时间戳作为临时 msgId；真实 ack 通过 parseFrame 的 WecomFrame.Ack 异步到达。
             ImSendResult.Success("wecom-send-${System.currentTimeMillis()}")
         } catch (e: WecomApiException) {
-            DebugLog.e("WecomChannel", "sendMessage failed: ${e.message} (errcode=${e.errorCode})")
+            DebugLog.e("WecomChannel", "sendMessage failed (errcode=${e.errorCode})")
             ImSendResult.Failure(e.message ?: "wecom send failed")
         } catch (e: Exception) {
             DebugLog.e("WecomChannel", "sendMessage failed", e)

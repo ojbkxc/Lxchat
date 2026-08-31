@@ -91,7 +91,7 @@ class MultiSegmentMessageSender(
                 is ImSendResult.Failure -> {
                     DebugLog.w(
                         "MultiSegmentSender",
-                        "streaming degraded send failed: ${result.reason}",
+                        "streaming degraded send failed",
                     )
                     ""
                 }

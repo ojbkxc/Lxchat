@@ -111,7 +111,7 @@ class LxNotificationListenerService : NotificationListenerService() {
             val active = getActiveNotifications()
             if (active != null) NotificationBuffer.replaceAll(active)
         } catch (e: Exception) {
-            DebugLog.w("NotifListener", "getActiveNotifications failed: ${e.message}")
+            DebugLog.w("NotifListener", "getActiveNotifications failed")
         }
         DebugLog.d("NotifListener", "connected, buffered ${NotificationBuffer.snapshot().size} notifications")
     }
@@ -331,7 +331,7 @@ class NotificationToolProvider(private val app: Application) : ToolProvider {
                 service.cancelNotification(k)
                 cleared++
             } catch (e: Exception) {
-                DebugLog.w("NotifTool", "cancel $k failed: ${e.message}")
+                DebugLog.w("NotifTool", "cancel $k failed")
             }
         }
         return buildJsonObject {

@@ -586,7 +586,9 @@ fun SettingsProviderDetailPage(
                     formError = "Please select a model file"
                     return@TextButton
                 }
-                viewModel.modelManager.addLocalChatModel(LocalChatModelConfig(modelId = id, alias = modelAlias.ifBlank { id }, localFilePath = copiedFilePath!!, mmprojPath = addMmprojPath.trim(), nCtx = n, temperature = t, topP = p, maxTokens = m))
+                // 局部快照便于智能转换，避免委托属性 !! 强解（上方已判空）
+                val modelPath = copiedFilePath ?: return@TextButton
+                viewModel.modelManager.addLocalChatModel(LocalChatModelConfig(modelId = id, alias = modelAlias.ifBlank { id }, localFilePath = modelPath, mmprojPath = addMmprojPath.trim(), nCtx = n, temperature = t, topP = p, maxTokens = m))
                 showAddModelDialog = false; copiedFilePath = null
             }) { Text(stringResource(R.string.add)) } },
             dismissButton = { TextButton(onClick = {

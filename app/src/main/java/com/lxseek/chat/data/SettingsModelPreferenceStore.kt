@@ -324,8 +324,11 @@ internal class SettingsModelPreferenceStore(
                 json.decodeFromString<MutableMap<String, String>>(rawIds)
             }.getOrNull()
             if (ids != null && ids.containsKey(oldProvider)) {
-                ids[newProvider] = ids.remove(oldProvider)!!
-                prefs[ACTIVE_API_KEY_IDS_JSON] = json.encodeToString(ids)
+                // containsKey 已保证 remove 结果非空；?.let 防御式避免 !! 强解
+                ids.remove(oldProvider)?.let { remapped ->
+                    ids[newProvider] = remapped
+                    prefs[ACTIVE_API_KEY_IDS_JSON] = json.encodeToString(ids)
+                }
             }
         }
     }

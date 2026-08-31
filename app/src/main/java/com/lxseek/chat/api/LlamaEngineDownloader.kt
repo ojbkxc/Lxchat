@@ -66,7 +66,7 @@ object LlamaEngineDownloader {
             targetFile.parentFile?.mkdirs()
             if (tmp.exists()) tmp.delete()
             val url = downloadUrl()
-            DebugLog.i(TAG, "Downloading $url → ${targetFile.absolutePath}")
+            DebugLog.i(TAG, "Downloading file → ${targetFile.absolutePath}")
             HttpClient.downloadToFile(url, tmp, onProgress = { done, total ->
                 if (total > 0) {
                     _progress.value = ((done * 100) / total).toInt().coerceIn(0, 100)

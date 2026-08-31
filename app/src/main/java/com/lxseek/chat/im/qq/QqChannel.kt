@@ -179,7 +179,7 @@ class QqChannel(
         } ?: "unknown"
         ImSendResult.Success(sentId)
     } catch (e: QqApiException) {
-        DebugLog.e("QqChannel", "sendMessage failed: ${e.message} (code=${e.errorCode})")
+        DebugLog.e("QqChannel", "sendMessage failed (code=${e.errorCode})")
         ImSendResult.Failure(e.message ?: "qq send failed")
     } catch (e: Exception) {
         DebugLog.e("QqChannel", "sendMessage failed", e)
@@ -217,7 +217,7 @@ class QqChannel(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    DebugLog.e("QqChannel", "WebSocket connect failed: ${e.message}", e)
+                    DebugLog.e("QqChannel", "WebSocket connect failed", e)
                 } finally {
                     gateway = null
                 }
@@ -337,7 +337,7 @@ class QqChannel(
                 "group" -> api.sendGroupMessage(event.replyTargetId, text, event.messageId)
             }
         } catch (e: Exception) {
-            DebugLog.w("QqChannel", "control reply failed: ${e.message}")
+            DebugLog.w("QqChannel", "control reply failed")
         }
     }
 

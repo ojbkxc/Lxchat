@@ -140,7 +140,8 @@ fun SettingsImGatewayPage(
         ImPlatform.entries.forEach { platform ->
             val bots = multiConfig.botsFor(platform.id)
             val isLegacyForThis = legacyBot != null && legacyPlatform == platform
-            val effectiveBots = if (bots.isEmpty() && isLegacyForThis) listOf(legacyBot!!) else bots
+            // 显式补判空用于智能转换，避免 !! 强解（isLegacyForThis 为真时 legacyBot 必非空）
+            val effectiveBots = if (bots.isEmpty() && isLegacyForThis && legacyBot != null) listOf(legacyBot) else bots
 
             PlatformChannelCard(
                 platform = platform,
@@ -995,14 +996,19 @@ internal fun WeixinQrBindSection(
                 )
             }
             qrcodeUrl != null -> {
-                QrCode(
-                    content = qrcodeUrl!!,
-                    modifier = Modifier.padding(4.dp),
-                    size = 220.dp,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                if (statusText != null) {
-                    Text(text = statusText!!, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                // 局部快照便于智能转换，避免委托属性 !! 强解
+                val qrUrl = qrcodeUrl
+                if (qrUrl != null) {
+                    QrCode(
+                        content = qrUrl,
+                        modifier = Modifier.padding(4.dp),
+                        size = 220.dp,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val status = statusText
+                    if (status != null) {
+                        Text(text = status, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    }
                 }
             }
             errorMsg != null -> {
@@ -1010,7 +1016,11 @@ internal fun WeixinQrBindSection(
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(text = stringResource(R.string.im_channel_wechat_qr_failed), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = errorMsg!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // 局部快照便于智能转换，避免委托属性 !! 强解
+                val err = errorMsg
+                if (err != null) {
+                    Text(text = err, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
 

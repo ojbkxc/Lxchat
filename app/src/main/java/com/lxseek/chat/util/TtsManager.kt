@@ -14,7 +14,6 @@ import android.os.Looper
 import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import android.util.Log
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -206,7 +205,7 @@ object TtsManager {
     private fun log(level: String, msg: String) {
         val ts = logTimeFormat.format(Date())
         val entry = "$ts $level/$TAG: $msg"
-        if (level == "E") Log.e(TAG, msg) else Log.d(TAG, msg)
+        if (level == "E") DebugLog.e(TAG, msg) else DebugLog.d(TAG, msg)
         when (level) {
             "E" -> com.lxseek.chat.util.AppLog.e(TAG, msg)
             "W" -> com.lxseek.chat.util.AppLog.w(TAG, msg)

@@ -295,7 +295,7 @@ class MetaToolProvider(
             try {
                 applyConfigKey(key, value)
             } catch (e: Exception) {
-                DebugLog.w("MetaTool", "rollback skip $key=$value: ${e.message}")
+                DebugLog.w("MetaTool", "rollback skip $key=$value")
             }
         }
     }

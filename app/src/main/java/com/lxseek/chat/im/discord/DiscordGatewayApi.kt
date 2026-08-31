@@ -231,7 +231,7 @@ class DiscordGatewayClient(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                DebugLog.e(TAG, "connection attempt failed: ${e.message}", e)
+                DebugLog.e(TAG, "connection attempt failed", e)
                 false
             }
             if (stopped || !scope.isActive) break
@@ -398,7 +398,7 @@ class DiscordGatewayClient(
                 ),
             )
         } catch (e: Exception) {
-            DebugLog.e(TAG, "onMessage callback threw: ${e.message}", e)
+            DebugLog.e(TAG, "onMessage callback threw", e)
         }
     }
 

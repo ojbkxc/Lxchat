@@ -127,7 +127,7 @@ class FeishuChannel(
                     try {
                         botOpenId = api.getBotInfo().openId
                     } catch (e: Exception) {
-                        DebugLog.w(TAG, "getBotInfo failed: ${e.message}")
+                        DebugLog.w(TAG, "getBotInfo failed")
                     }
                 }
             }
@@ -215,7 +215,7 @@ class FeishuChannel(
                     try {
                         api.replyText(replyTo, text)
                     } catch (e: Exception) {
-                        DebugLog.w(TAG, "replyText failed, falling back to sendText: ${e.message}")
+                        DebugLog.w(TAG, "replyText failed, falling back to sendText")
                         api.sendText(conversationId, text)
                     }
                 } else {
@@ -223,7 +223,7 @@ class FeishuChannel(
                 }
                 ImSendResult.Success(sentId)
             } catch (e: FeishuApiException) {
-                DebugLog.e(TAG, "sendMessage failed: ${e.message} (code=${e.code})")
+                DebugLog.e(TAG, "sendMessage failed (code=${e.code})")
                 ImSendResult.Failure(e.message ?: "feishu send failed")
             } catch (e: Exception) {
                 DebugLog.e(TAG, "sendMessage failed", e)

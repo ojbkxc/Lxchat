@@ -51,28 +51,28 @@ class CronWorker(
         }
 
         if (!task.enabled) {
-            DebugLog.d(TAG, "Cron task ${task.name} ($taskId) disabled, skipping")
+            DebugLog.d(TAG, "Cron task ($taskId) disabled, skipping")
             return Result.success()
         }
         if (task.prompt.isBlank()) {
-            DebugLog.w(TAG, "Cron task ${task.name} ($taskId) has empty prompt, skipping")
+            DebugLog.w(TAG, "Cron task ($taskId) has empty prompt, skipping")
             return Result.success()
         }
 
         return try {
             val conversationId = ensureConversation(container, task)
-            DebugLog.d(TAG, "Running cron task '${task.name}' ($taskId) in conversation $conversationId")
+            DebugLog.d(TAG, "Running cron task ($taskId) in conversation $conversationId")
             when (val outcome = engine.runOnce(
                 conversationId = conversationId,
                 userText = task.prompt,
                 modelId = task.modelId?.takeIf { it.isNotBlank() },
             )) {
                 is com.lxseek.chat.automation.TaskExecutionEngine.Result.Success ->
-                    DebugLog.d(TAG, "Cron task '${task.name}' succeeded")
+                    DebugLog.d(TAG, "Cron task ($taskId) succeeded")
                 is com.lxseek.chat.automation.TaskExecutionEngine.Result.Busy ->
-                    DebugLog.w(TAG, "Cron task '${task.name}' skipped: ${outcome.reason}")
+                    DebugLog.w(TAG, "Cron task ($taskId) skipped")
                 is com.lxseek.chat.automation.TaskExecutionEngine.Result.Failure ->
-                    DebugLog.w(TAG, "Cron task '${task.name}' failed: ${outcome.reason}")
+                    DebugLog.w(TAG, "Cron task ($taskId) failed")
             }
             // 关键副作用必须在 NonCancellable 内完成：调度器监听 tasks Flow，
             // markRun 触发的 Flow 发射可能让 CronScheduler.start() 用 KEEP 调度，
@@ -87,7 +87,7 @@ class CronWorker(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            DebugLog.e(TAG, "Cron task '${task.name}' ($taskId) threw", e)
+            DebugLog.e(TAG, "Cron task ($taskId) threw", e)
             if (runAttemptCount < MAX_RETRY_ATTEMPTS) {
                 Result.retry()
             } else {

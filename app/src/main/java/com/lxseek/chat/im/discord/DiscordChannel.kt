@@ -79,7 +79,7 @@ class DiscordChannel(
             val messageId = result["id"]?.jsonPrimitive?.contentOrNull ?: "unknown"
             ImSendResult.Success(messageId)
         } catch (e: DiscordApiException) {
-            DebugLog.e("DiscordChannel", "sendMessage failed: ${e.message} (code=${e.errorCode})")
+            DebugLog.e("DiscordChannel", "sendMessage failed (code=${e.errorCode})")
             ImSendResult.Failure(e.message ?: "discord send failed")
         } catch (e: Exception) {
             DebugLog.e("DiscordChannel", "sendMessage failed", e)
@@ -105,7 +105,7 @@ class DiscordChannel(
         val gatewayBaseUrl = try {
             api.getGatewayBot()["url"]?.jsonPrimitive?.contentOrNull
         } catch (e: Exception) {
-            DebugLog.w("DiscordChannel", "getGatewayBot failed, falling back to default URL: ${e.message}")
+            DebugLog.w("DiscordChannel", "getGatewayBot failed, falling back to default URL")
             null
         }
         val client = DiscordGatewayClient(
