@@ -5,7 +5,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.util.DisplayMetrics
 import android.view.WindowManager
-import com.lxseek.chat.adb.AdbShellBackend
+
 import com.lxseek.chat.adb.RootDetector
 import com.lxseek.chat.adb.ShizukuManager
 import com.lxseek.chat.androidcontrol.AndroidUiControllerService

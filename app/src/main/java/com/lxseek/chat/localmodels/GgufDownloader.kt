@@ -119,17 +119,19 @@ class GgufDownloader private constructor(private val context: Context) {
             stateFlow.value = GgufDownloadState.Connecting
 
             // 1) HEAD request to get total size.
-            val totalBytes = withContext(Dispatchers.IO) {
+            val totalBytes: Long? = withContext(Dispatchers.IO) {
                 val headReq = Request.Builder().url(entry.url).head().build()
                 client.newCall(headReq).execute().use { resp ->
                     if (!resp.isSuccessful) {
                         stateFlow.value = GgufDownloadState.Failed("服务器返回 ${resp.code}")
-                        return@downloadInternal
+                        null
+                    } else {
+                        resp.header("Content-Length")?.toLongOrNull()
+                            ?: entry.sizeBytes // Fall back to catalog size if server doesn't report.
                     }
-                    resp.header("Content-Length")?.toLongOrNull()
-                        ?: entry.sizeBytes // Fall back to catalog size if server doesn't report.
                 }
             }
+            if (totalBytes == null) return
 
             // 2) Check if already fully downloaded.
             val finalFile = modelFile(entry.id)
