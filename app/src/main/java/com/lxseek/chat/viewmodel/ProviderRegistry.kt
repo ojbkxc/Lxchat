@@ -11,6 +11,7 @@ import com.lxseek.chat.api.openai.CustomOpenAiProvider
 import com.lxseek.chat.api.openai.DeepSeekProvider
 import com.lxseek.chat.api.openai.GroqProvider
 import com.lxseek.chat.api.openai.GrokXProvider
+import com.lxseek.chat.api.openai.LxChatProvider
 import com.lxseek.chat.api.openai.OpenAIXProvider
 import com.lxseek.chat.api.openai.OpenAiProvider
 import com.lxseek.chat.api.openai.OpenRouterProvider
@@ -94,6 +95,8 @@ internal fun providerConfigurationIsValid(
     providerName == Constants.PROVIDER_UNKNOWN -> false
     !registered -> false
     providerName == Constants.PROVIDER_LOCAL -> true
+    // 内置隐藏网关：凭证由编译期混淆常量提供，视为始终已配置。
+    providerName == Constants.PROVIDER_LXCHAT -> true
     !builtIn || providerName == Constants.PROVIDER_OLLAMA -> !effectiveBaseUrl.isNullOrBlank()
     else -> activeKey.isNotBlank()
 }
@@ -128,6 +131,7 @@ class ProviderRegistry(
         Constants.PROVIDER_CHATGPT to OpenAIXProvider(accountIdProvider = openAiAccountIdProvider),
         Constants.PROVIDER_OLLAMA to OllamaProvider(),
         Constants.PROVIDER_OPEN_ROUTER to OpenRouterProvider(),
+        Constants.PROVIDER_LXCHAT to LxChatProvider(),
         Constants.PROVIDER_LOCAL to localProvider
     )
 
@@ -270,7 +274,12 @@ class ProviderRegistry(
         if (name == Constants.PROVIDER_LOCAL) return emptyList()
         ensureCustomProvidersRegistered()
         val provider = providers[name] ?: return emptyList()
-        val activeKey = settings.apiKeys.value.find { it.id == settings.activeApiKeyIds.value[name] }?.key ?: ""
+        // 内置隐藏网关的密钥来自编译期混淆常量，而非用户 DataStore。
+        val activeKey = if (name == Constants.PROVIDER_LXCHAT) {
+            LxChatProvider.builtInApiKey()
+        } else {
+            settings.apiKeys.value.find { it.id == settings.activeApiKeyIds.value[name] }?.key ?: ""
+        }
         if (!isConfigured(name, activeKey)) return emptyList()
         val baseUrl = if (!isBuiltIn(name)) {
             settings.providerBaseUrls.value[name]?.takeIf { it.isNotBlank() } ?: provider.defaultBaseUrl

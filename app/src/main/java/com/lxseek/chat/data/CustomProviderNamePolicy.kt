@@ -25,6 +25,8 @@ internal object CustomProviderNamePolicy {
         Constants.PROVIDER_OLLAMA,
         Constants.PROVIDER_OPEN_ROUTER,
         Constants.PROVIDER_LOCAL,
+        // 内置隐藏网关：禁止用户创建同名自定义供应商劫持模型 ID 解析。
+        Constants.PROVIDER_LXCHAT,
     )
 
     fun isAllowed(name: String): Boolean {

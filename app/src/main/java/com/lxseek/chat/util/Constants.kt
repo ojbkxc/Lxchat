@@ -68,8 +68,9 @@ object Constants {
     const val PROVIDER_CHATGPT = "ChatGPT Official"
     const val PROVIDER_OPEN_ROUTER = "Open Router"
     const val PROVIDER_UNKNOWN = "Unknown"
-    /** Placeholder model ID used as StateFlow/DataStore cold-start fallback and
-     *  template preview sample. NOT the real default model — it is overwritten
-     *  as soon as the user selects a model or DataStore loads the persisted value. */
-    const val EXAMPLE_MODEL_ID = "gemini-1.5-flash"
+    /** 内置隐藏网关供应商（凭证编译期混淆，不落盘、不展示于设置 UI，见 LxChatProvider）。 */
+    const val PROVIDER_LXCHAT = "lxchat"
+    /** 内置默认模型：lxchat 网关的 glm-4.7-flash。作为 selectedModel 的冷启动回退值，
+     *  用户选择模型或 DataStore 加载持久化值后即被覆盖。 */
+    const val EXAMPLE_MODEL_ID = "lxchat:glm-4.7-flash"
 }

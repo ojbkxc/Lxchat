@@ -21,6 +21,7 @@ import com.lxseek.chat.pet.PetCharacter
 import com.lxseek.chat.model.ModelId
 import com.lxseek.chat.model.OpenAiServiceTiers
 import com.lxseek.chat.model.ToolCallDisplayModes
+import com.lxseek.chat.api.openai.LxChatProvider
 import com.lxseek.chat.util.Constants
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -614,10 +615,12 @@ class SettingsRepository(
     suspend fun getMarketSourcesJson(): String = settingsManager.market.sourcesJson.first()
     suspend fun getMarketInstalledJson(): String = settingsManager.market.installedJson.first()
 
-    // ── Derived lookups ─────────────────────────────────────────
+    // ── Derived lookups ────────────────────────────────────────
     /** Resolves the currently-active cleartext API key for [provider], or `null`. */
     fun resolveActiveKey(provider: String): String? =
-        apiKeys.value.find { it.id == activeApiKeyIds.value[provider] }?.key
+        // 内置隐藏网关的密钥由编译期混淆常量提供，不经 DataStore，也不可被 UI 读取。
+        if (provider == Constants.PROVIDER_LXCHAT) LxChatProvider.builtInApiKey()
+        else apiKeys.value.find { it.id == activeApiKeyIds.value[provider] }?.key
 
     /**
      * Like [resolveActiveKey] but awaits the on-disk DataStore values instead of
@@ -628,6 +631,7 @@ class SettingsRepository(
      * considered configured by base-URL alone (custom / OpenAI-compatible / Ollama).
      */
     suspend fun awaitActiveKey(provider: String): String? {
+        if (provider == Constants.PROVIDER_LXCHAT) return LxChatProvider.builtInApiKey()
         val activeIds = settingsManager.activeApiKeyIds.first()
         val keys = settingsManager.apiKeys.first()
         return keys.find { it.id == activeIds[provider] }?.key

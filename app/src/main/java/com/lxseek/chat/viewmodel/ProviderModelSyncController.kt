@@ -86,7 +86,17 @@ internal class ProviderModelSyncController(
 
             val allKnownModels =
                 settings.getAvailableModels().values.flatten().toSet() + settings.customModels.value
-            settings.setEnabledModels(settings.enabledModels.value.intersect(allKnownModels))
+            val currentEnabled = settings.enabledModels.value
+            val newEnabled = currentEnabled.intersect(allKnownModels)
+            // 首次同步（用户尚未勾选任何模型）且内置默认模型已成功拉取时，
+            // 自动启用 lxchat:glm-4.7-flash，新装即可直接对话而无需手动勾选。
+            val effectiveEnabled =
+                if (currentEnabled.isEmpty() && Constants.EXAMPLE_MODEL_ID in allKnownModels) {
+                    newEnabled + Constants.EXAMPLE_MODEL_ID
+                } else {
+                    newEnabled
+                }
+            settings.setEnabledModels(effectiveEnabled)
 
             if (failures.isEmpty()) {
                 settings.saveLastModelsFetchFingerprint(computeFingerprint())
