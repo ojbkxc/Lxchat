@@ -119,7 +119,6 @@ class PetFloatingView @JvmOverloads constructor(
     private var snapAnimator: ValueAnimator? = null
 
     @Volatile private var currentEmotion: PetEmotion = PetEmotion.IDLE
-    @Volatile private var currentTipText: String? = null
     /** When non-null, the pet is being dragged and plays a directional run animation. */
     @Volatile private var dragOverrideState: PetAnimation.State? = null
     private var emotionScope: CoroutineScope? = null
@@ -135,14 +134,6 @@ class PetFloatingView @JvmOverloads constructor(
                 if (emotion != currentEmotion) {
                     currentEmotion = emotion
                     animStartNanos = System.nanoTime() // reset so the new state starts at frame 0
-                    invalidate()
-                }
-            }
-        }
-        scope.launch {
-            PetEmotionController.tipText.collect { text ->
-                if (text != currentTipText) {
-                    currentTipText = text
                     invalidate()
                 }
             }
@@ -362,8 +353,6 @@ class PetFloatingView @JvmOverloads constructor(
     }
 
     private fun tipText(): CharSequence? {
-        // Streaming text from the generation loop takes priority over emotion-based fixed text.
-        currentTipText?.let { return it }
         return when (currentEmotion) {
             PetEmotion.THINKING -> context.getString(R.string.pet_tip_thinking)
             PetEmotion.HAPPY -> context.getString(R.string.pet_tip_done)

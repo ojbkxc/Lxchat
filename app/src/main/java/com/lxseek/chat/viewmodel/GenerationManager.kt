@@ -423,8 +423,6 @@ class GenerationManager(
                             currentStatus = MessageStatus.SENDING
                         }
                         retryText = null
-                        // Stream the live answer text into the pet's speech bubble.
-                        com.lxseek.chat.pet.PetEmotionController.setTipText(totalText)
                         com.lxseek.chat.pet.PetEmotionController.keepAliveDuringStream()
                     }
                     is StreamEvent.ThoughtChunk -> {
@@ -725,8 +723,6 @@ class GenerationManager(
             if (currentStatus == MessageStatus.SUCCESS) {
                 com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.HAPPY)
             }
-            // Clear the streaming tip text once the generation is finalized.
-            com.lxseek.chat.pet.PetEmotionController.setTipText(null)
             if (generationJob?.isCancelled == true && currentStatus != MessageStatus.ERROR) {
                 currentStatus = MessageStatus.STOPPED
             }
@@ -738,7 +734,6 @@ class GenerationManager(
             adoptIncompleteTranscriptionSnapshot()
             toolOverlay.stopIncompleteTools()
             currentStatus = MessageStatus.STOPPED
-            com.lxseek.chat.pet.PetEmotionController.setTipText(null)
             throw e
         } catch (e: Exception) {
             adoptIncompleteTranscriptionSnapshot()
@@ -751,7 +746,6 @@ class GenerationManager(
             if (currentStatus == MessageStatus.ERROR) {
                 com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.SAD)
             }
-            com.lxseek.chat.pet.PetEmotionController.setTipText(null)
         } finally {
             // Fence the asynchronous checkpoint lane before any terminal transaction. Without
             // this join, an older SENDING snapshot could finish after SUCCESS/STOPPED and revive
