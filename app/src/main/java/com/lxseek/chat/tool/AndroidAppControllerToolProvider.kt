@@ -800,11 +800,6 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         return metrics.widthPixels to metrics.heightPixels
     }
 
-    private fun argDouble(key: String, arguments: String): Double? = try {
-        Json.decodeFromString<Map<String, JsonPrimitive>>(arguments.ifBlank { "{}" })[key]?.content?.trim()?.toDoubleOrNull()
-    } catch (_: Exception) {
-        null
-    }
 
     /**
      * 打开微信并尽力而为地搜到联系人、点进聊天窗口。每一步都返回结构化结果：
@@ -838,14 +833,57 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
                 put("hint", "已打开微信，但无障碍桥未启用。启用后我才能帮你搜索并进入与「$contact」的聊天；现在只能用 android_read_ui 手工浏览。")
             }.toString()
         }
+        // 2) 等待微信真正到前台且主界面就绪（冷启动数秒、可能有启动页/广告），
+        //    否则无障碍树仍是上一个应用，后续搜索必然失败。
+        if (!waitForWechatHome(svc)) {
+            return buildJsonObject {
+                put("type", "wechat_open_chat")
+                put("contact", contact)
+                put("status", "launch_timeout")
+                put("hint", "微信已拉起但主界面未就绪（可能在启动页/广告/权限弹窗）。请用 android_read_ui 查看当前界面，处理后重试或手工继续。")
+            }.toString()
+        }
         return wechatSearchOpen(svc, contact)
+    }
+
+    /**
+     * 等待微信到达前台，并轮询无障碍树直到主界面特征（底部「微信」tab 或搜索入口）
+     * 出现。两条超时都用 [Thread.sleep] 轮询 —— 该工具全程跑在 Dispatchers.IO。
+     */
+    private fun waitForWechatHome(svc: AndroidUiControllerService): Boolean {
+        val launchDeadline = System.currentTimeMillis() + WECHAT_LAUNCH_TIMEOUT_MS
+        while (System.currentTimeMillis() < launchDeadline) {
+            if (svc.activePackage() == WECHAT_PACKAGE) break
+            Thread.sleep(200)
+        }
+        if (svc.activePackage() != WECHAT_PACKAGE) return false
+        val homeDeadline = System.currentTimeMillis() + WECHAT_HOME_TIMEOUT_MS
+        while (System.currentTimeMillis() < homeDeadline) {
+            val homeVisible = svc.dumpCurrentUi().any { n ->
+                val text = n.text?.trim()
+                text == "微信" || text == "WeChat" ||
+                    n.contentDescription?.contains("搜索") == true ||
+                    n.text?.contains("搜索") == true
+            }
+            if (homeVisible) return true
+            Thread.sleep(300)
+        }
+        return true // 主界面特征没等到也放行：部分版本 dump 不含这些节点，交给后续步骤自行报错。
     }
 
     private fun wechatSearchOpen(svc: AndroidUiControllerService, contact: String): String {
         // 先逐步执行并记录每一步结果，再统一构造 JSON（避免在 putJsonArray 内层访问外层 builder）。
         val searchClicked = svc.clickByLabel("搜索") || svc.clickByLabel("Search")
         val typed = searchClicked && svc.focusAndInput(contact, null)
-        val opened = typed && svc.clickByLabel(contact)
+        // 搜索结果需要网络往返，轮询等待联系人条目出现后再点击（M10）。
+        var opened = false
+        if (typed) {
+            val resultDeadline = System.currentTimeMillis() + WECHAT_RESULT_TIMEOUT_MS
+            while (System.currentTimeMillis() < resultDeadline) {
+                if (svc.clickByLabel(contact)) { opened = true; break }
+                Thread.sleep(300)
+            }
+        }
         val (status, hint) = when {
             !searchClicked -> "search_not_found" to
                 "未找到微信搜索入口（界面可能已变化）。请用 android_read_ui dump 后手工定位再继续。"
@@ -866,24 +904,25 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
         }.toString()
     }
 
-    private fun argString(key: String, arguments: String): String? {
-        val stripped = arguments.ifBlank { "{}" }
-        return try {
-            val el = Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]?.content
-            el?.takeIf { it.isNotBlank() }
-        } catch (_: Exception) {
-            null
-        }
-    }
+    private fun argString(key: String, arguments: String): String? =
+        argValue(key, arguments) { it.takeIf(String::isNotBlank) }
 
-    private fun argInt(key: String, arguments: String): Int? {
-        return try {
-            val stripped = arguments.ifBlank { "{}" }
-            val el = Json.decodeFromString<Map<String, JsonPrimitive>>(stripped)[key]?.content ?: return null
-            el.trim().toIntOrNull()
-        } catch (_: Exception) {
-            null
-        }
+    private fun argInt(key: String, arguments: String): Int? =
+        argValue(key, arguments, String::toIntOrNull)
+
+    private fun argDouble(key: String, arguments: String): Double? =
+        argValue(key, arguments, String::toDoubleOrNull)
+
+    /**
+     * 统一的单值参数解析（R1：argString/argInt/argDouble 的公共实现）：
+     * JSON 非法、字段缺失或类型不符时一律返回 null，由调用方决定报错文案。
+     */
+    private fun <T> argValue(key: String, arguments: String, parse: (String) -> T?): T? = try {
+        Json.decodeFromString<Map<String, JsonPrimitive>>(arguments.ifBlank { "{}" })[key]
+            ?.content
+            ?.let { parse(it.trim()) }
+    } catch (_: Exception) {
+        null
     }
 
     private fun resolvePackage(appId: String): String? {
@@ -897,6 +936,11 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
 
     private companion object {
         private const val WECHAT_PACKAGE = "com.tencent.mm"
+
+        /** wechat_open_chat 各阶段等待上限（冷启动较慢的设备上放得比较宽）。 */
+        private const val WECHAT_LAUNCH_TIMEOUT_MS = 10_000L
+        private const val WECHAT_HOME_TIMEOUT_MS = 5_000L
+        private const val WECHAT_RESULT_TIMEOUT_MS = 5_000L
 
         /** Keys injected through the accessibility bridge's performGlobalAction. */
         private val GLOBAL_KEYS = setOf("back", "home", "recents", "notifications", "quick_settings")

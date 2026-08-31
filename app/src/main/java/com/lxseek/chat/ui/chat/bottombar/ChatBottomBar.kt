@@ -134,6 +134,7 @@ fun ChatBottomBar(
     onCompactClick: () -> Unit = {},
     queuedSends: List<QueuedSend> = emptyList(),
     onRemoveQueuedSend: (String) -> Unit = {},
+    onClearQueuedSends: () -> Unit = {},
     isStopping: Boolean = false,
     voiceConversationState: com.lxseek.chat.viewmodel.VoiceConversationController.State = com.lxseek.chat.viewmodel.VoiceConversationController.State.IDLE,
     voiceConversationAmplitude: Float = 0f,
@@ -223,6 +224,7 @@ fun ChatBottomBar(
             ComposerStatusColumn(
                 queuedSends = queuedSends,
                 onRemoveQueuedSend = onRemoveQueuedSend,
+                onClearQueuedSends = onClearQueuedSends,
                 modifier = Modifier.zIndex(0f),
             )
 

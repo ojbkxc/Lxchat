@@ -123,7 +123,6 @@ class OpenAIXProvider(
         try {
             while (attempt < maxAttempts && !finished) {
                 attempt++
-                var retryScheduled = false
 
                 val handle = try {
                     HttpClient.streamPost(CODEX_API_ENDPOINT, requestBody, headers)
@@ -141,7 +140,6 @@ class OpenAIXProvider(
                         )
                         emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
                         delay(retryDelayMs)
-                        retryScheduled = true
                         continue
                     }
                     throw e
@@ -149,22 +147,35 @@ class OpenAIXProvider(
 
                 try {
                     if (handle.code == 200) {
-                        val sawTerminal = consumeResponsesStream(handle, config) { emit(it) }
+                        val outcome = consumeResponsesStream(handle, config) { emit(it) }
                         DebugLog.d(
                             TAG,
-                            "[$name] stream_end terminal=$sawTerminal attempt=$attempt/$maxAttempts",
+                            "[$name] stream_end terminal=${outcome.sawTerminal} " +
+                                "emitted=${outcome.emittedToConsumer} attempt=$attempt/$maxAttempts",
                         )
-                        if (!sawTerminal && attempt < maxAttempts) {
-                            // No semantic terminal event arrived; replay is safe because no
-                            // content was surfaced as a complete answer.
-                            DebugLog.w(
-                                TAG,
-                                "[$name] Incomplete stream on attempt $attempt/$maxAttempts, retrying",
-                            )
-                            val retryDelayMs = ProviderRetryPolicy.delayMillis(attempt)
-                            emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
-                            delay(retryDelayMs)
-                            retryScheduled = true
+                        if (!outcome.sawTerminal) {
+                            if (attempt < maxAttempts && !outcome.emittedToConsumer) {
+                                // M2 修复：未见到语义终态事件时仅在「尚未向下游 emit
+                                // 过任何内容」时才自动重放——一旦重放，已 emit 的
+                                // TextChunk 会造成内容重复。此处未 emit 过，重放安全。
+                                DebugLog.w(
+                                    TAG,
+                                    "[$name] Incomplete stream on attempt $attempt/$maxAttempts, retrying",
+                                )
+                                val retryDelayMs = ProviderRetryPolicy.delayMillis(attempt)
+                                emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
+                                delay(retryDelayMs)
+                            } else {
+                                // 已向下游 emit 过部分内容（或重试次数用尽）：不能再
+                                // 自动重放，直接以「响应不完整」错误告终。
+                                emit(StreamEvent.Error(GenerationError.IncompleteStream(
+                                    provider = name,
+                                    stopReason = null,
+                                    toolCallInFlight = false,
+                                    producedContent = outcome.emittedToConsumer,
+                                )))
+                                finished = true
+                            }
                         } else {
                             finished = true
                         }
@@ -187,7 +198,6 @@ class OpenAIXProvider(
                             )
                             emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
                             delay(retryDelayMs)
-                            retryScheduled = true
                         } else {
                             emit(StreamEvent.Error(buildApiError(handle.code, errorRaw)))
                             finished = true
@@ -244,15 +254,17 @@ class OpenAIXProvider(
                             put("arguments", seg.toolArgs ?: "{}")
                         })
                     }
-                } else if (msg.toolCall != null) {
-                    val tc = msg.toolCall!!
-                    val callId = tc.toolCallId ?: buildToolCallId(tc.toolName, tc.arguments)
-                    input.put(JSONObject().apply {
-                        put("type", "function_call")
-                        put("call_id", callId)
-                        put("name", tc.toolName)
-                        put("arguments", tc.arguments)
-                    })
+                } else {
+                    // R4：安全化处理——判空后不再用 !! 强制解包，null 时直接跳过。
+                    msg.toolCall?.let { tc ->
+                        val callId = tc.toolCallId ?: buildToolCallId(tc.toolName, tc.arguments)
+                        input.put(JSONObject().apply {
+                            put("type", "function_call")
+                            put("call_id", callId)
+                            put("name", tc.toolName)
+                            put("arguments", tc.arguments)
+                        })
+                    }
                 }
                 continue
             }
@@ -270,14 +282,16 @@ class OpenAIXProvider(
                             put("output", seg.toolResult ?: "")
                         })
                     }
-                } else if (msg.toolCall != null) {
-                    val tc = msg.toolCall!!
-                    val callId = tc.toolCallId ?: buildToolCallId(tc.toolName, tc.arguments)
-                    input.put(JSONObject().apply {
-                        put("type", "function_call_output")
-                        put("call_id", callId)
-                        put("output", tc.result)
-                    })
+                } else {
+                    // R4：安全化处理——判空后不再用 !! 强制解包，null 时直接跳过。
+                    msg.toolCall?.let { tc ->
+                        val callId = tc.toolCallId ?: buildToolCallId(tc.toolName, tc.arguments)
+                        input.put(JSONObject().apply {
+                            put("type", "function_call_output")
+                            put("call_id", callId)
+                            put("output", tc.result)
+                        })
+                    }
                 }
                 continue
             }
@@ -373,12 +387,19 @@ class OpenAIXProvider(
         handle: HttpClient.StreamHandle,
         config: ProviderConfig,
         emit: suspend (StreamEvent) -> Unit,
-    ): Boolean {
+    ): StreamOutcome {
         var currentEvent = ""
         val dataLines = mutableListOf<String>()
         var sawTerminal = false
+        var emitted = false
         // item_id -> pending tool call accumulator
         val pendingToolCalls = linkedMapOf<String, PendingCodexToolCall>()
+
+        // M2：所有下游 emit 必须经过这里，保证 emitted 标记不漏（重放判定依据）。
+        suspend fun emitTracked(event: StreamEvent) {
+            emitted = true
+            emit(event)
+        }
 
         suspend fun dispatchEvent(): Boolean {
             if (dataLines.isEmpty()) {
@@ -410,7 +431,7 @@ class OpenAIXProvider(
                 "response.output_text.delta" -> {
                     val delta = data.optString("delta")
                     if (delta.isNotEmpty()) {
-                        emit(StreamEvent.TextChunk(delta))
+                        emitTracked(StreamEvent.TextChunk(delta))
                     }
                 }
 
@@ -418,7 +439,7 @@ class OpenAIXProvider(
                 "response.reasoning_summary_text.delta" -> {
                     val delta = data.optString("delta")
                     if (delta.isNotEmpty() && config.thinkingEnabled) {
-                        emit(StreamEvent.ThoughtChunk(delta))
+                        emitTracked(StreamEvent.ThoughtChunk(delta))
                     }
                 }
 
@@ -446,7 +467,7 @@ class OpenAIXProvider(
                             PendingCodexToolCall("", "")
                         }
                         pending.args.append(delta)
-                        emit(StreamEvent.ToolCallUpdate(
+                        emitTracked(StreamEvent.ToolCallUpdate(
                             streamKey = itemId,
                             id = pending.callId.ifBlank { null },
                             name = pending.name,
@@ -460,7 +481,7 @@ class OpenAIXProvider(
                     if (itemId.isNotBlank()) {
                         val pending = pendingToolCalls.remove(itemId)
                         if (pending != null && pending.name.isNotBlank()) {
-                            emit(StreamEvent.ToolCallRequest(
+                            emitTracked(StreamEvent.ToolCallRequest(
                                 id = pending.callId.ifBlank { itemId },
                                 name = pending.name,
                                 arguments = pending.args.toString().ifBlank { "{}" },
@@ -480,7 +501,7 @@ class OpenAIXProvider(
                 "response.incomplete",
                 "error" -> {
                     val errorMsg = readStreamError(resolvedEvent, data)
-                    emit(StreamEvent.Error(GenerationError.Api(
+                    emitTracked(StreamEvent.Error(GenerationError.Api(
                         code = null,
                         type = resolvedEvent,
                         message = errorMsg,
@@ -534,7 +555,7 @@ class OpenAIXProvider(
         // (should not happen when response.completed arrives, but guards against truncation).
         for ((itemId, pending) in pendingToolCalls) {
             if (pending.name.isNotBlank()) {
-                emit(StreamEvent.ToolCallRequest(
+                emitTracked(StreamEvent.ToolCallRequest(
                     id = pending.callId.ifBlank { itemId },
                     name = pending.name,
                     arguments = pending.args.toString().ifBlank { "{}" },
@@ -547,7 +568,7 @@ class OpenAIXProvider(
             throw CancellationException("Stream cancelled")
         }
 
-        return sawTerminal
+        return StreamOutcome(sawTerminal, emitted)
     }
 
     /**
@@ -590,3 +611,11 @@ private class PendingCodexToolCall(
 ) {
     val args: StringBuilder = StringBuilder()
 }
+
+/** 一次 200 流的消耗结果：是否见到语义终态事件、是否已向下游 emit 过任何事件。
+ *  M2：`emittedToConsumer` 为 true 时调用方不得自动重放请求，否则已 emit 的
+ *  内容会随重放重复。 */
+private class StreamOutcome(
+    val sawTerminal: Boolean,
+    val emittedToConsumer: Boolean,
+)

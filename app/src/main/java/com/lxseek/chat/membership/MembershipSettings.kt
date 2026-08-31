@@ -13,12 +13,7 @@ data class MembershipSettings(
     val isLastValidationValid: Boolean
         get() = lastValidationResult is RedemptionResult.Valid
 
-    /** Human-readable summary of the current tier for UI headers. */
+    /** Human-readable summary of the current tier for UI headers（二元制）. */
     val tierLabel: String
-        get() = when (status.tier) {
-            MembershipTier.Free -> "Free"
-            MembershipTier.Premium -> "Premium"
-            MembershipTier.Pro -> "Pro"
-            MembershipTier.Enterprise -> "Enterprise"
-        }
+        get() = if (status.tier == MembershipTier.Free) "Free" else "Paid"
 }

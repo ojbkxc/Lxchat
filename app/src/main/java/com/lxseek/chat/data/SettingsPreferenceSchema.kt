@@ -158,7 +158,12 @@ internal val VAD_MIN_SILENCE = stringPreferencesKey("vad_min_silence")
 internal val VAD_MAX_SPEECH = stringPreferencesKey("vad_max_speech")
 
 // ── Membership (offline) ─────────────────────────────────
-/** Current membership tier name (Free/Premium/Pro). */
+/**
+ * Current membership tier name. 二元制：Free（免费）/ Premium（付费）。
+ * 历史旧值 Pro/Enterprise 读取时经 [com.lxseek.chat.membership.MembershipTier.parse]
+ * 归一化为 Premium（付费）。此 DataStore 值仅作显示缓存；付费门判定以已验签
+ * 凭证为准（见 LocalMembershipProvider，安全修复 H4）。
+ */
 internal val MEMBERSHIP_TIER = stringPreferencesKey("membership_tier")
 /** Epoch millis when the current membership expires; absent = no expiry / free. */
 internal val MEMBERSHIP_EXPIRY_TIMESTAMP = longPreferencesKey("membership_expiry_timestamp")

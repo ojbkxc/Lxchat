@@ -72,7 +72,9 @@ class AutomationToolProviderTest {
 
     @Test
     fun execute_rechecksLiveFeatureGateAfterGenerationStarted() = runTest {
-        val liveDisabled = AutomationToolProvider(taskManager, loopManager) { false }
+        // 构造函数尾随参数是 journal: ActivityJournal?，trailing lambda 会被
+        // 错误地绑定给它；显式命名参数以绑定 isCurrentlyEnabled。
+        val liveDisabled = AutomationToolProvider(taskManager, loopManager, isCurrentlyEnabled = { false })
 
         val result = liveDisabled.execute("list_tasks", "{}", enabledContext)
 

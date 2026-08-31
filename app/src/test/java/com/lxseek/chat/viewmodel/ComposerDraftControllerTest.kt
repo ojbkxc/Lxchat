@@ -103,7 +103,9 @@ class ComposerDraftControllerTest {
             val controller = ComposerDraftController(repository)
             controller.load(CONVERSATION_ID)
 
-            val cleared = controller.clearAccepted(CONVERSATION_ID)
+            // 模拟用户把草稿中已有的 "pending" 文本与附件发送出去：
+            // clearAccepted 只有在草稿仍恰好持有被接受内容时才会清除它。
+            val cleared = controller.clearAccepted(CONVERSATION_ID, "pending", listOf(attachment))
             val staleTailFlush = controller.persist(
                 conversationId = CONVERSATION_ID,
                 expectedRevision = 0L,

@@ -3,10 +3,7 @@ package com.lxseek.chat.membership
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.util.Base64
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 
-import java.security.NoSuchAlgorithmException
 
 /** Redemption code validation result. */
 sealed class RedemptionResult {
@@ -95,7 +92,7 @@ class RedemptionCodeValidator(
         } catch (e: IllegalArgumentException) {
             return RedemptionResult.Invalid("Signature is not valid Base64")
         }
-        if (!constantTimeEquals(expectedSignature, providedSignature)) {
+        if (!CryptoUtils.constantTimeEquals(expectedSignature, providedSignature)) {
             return RedemptionResult.Invalid("Signature mismatch")
         }
 
@@ -121,9 +118,10 @@ class RedemptionCodeValidator(
         if (payload.expiresAt <= payload.issuedAt) {
             return RedemptionResult.Invalid("expiresAt must be after issuedAt")
         }
+        // 二元制：兑换码只能签发付费账户（Free 无意义；旧档位名由 parse 归一化）。
         val tier = MembershipTier.parse(payload.tier)
         if (tier == MembershipTier.Free) {
-            return RedemptionResult.Invalid("tier must be Premium or Pro")
+            return RedemptionResult.Invalid("tier must be a paid tier (Premium)")
         }
 
         // Expiry check.
@@ -191,24 +189,7 @@ class RedemptionCodeValidator(
         return "$base64Payload$SEPARATOR$base64Signature"
     }
 
-    private fun hmacSha256(data: ByteArray): ByteArray {
-        return try {
-            val mac = Mac.getInstance("HmacSHA256")
-            mac.init(SecretKeySpec(secretKey, "HmacSHA256"))
-            mac.doFinal(data)
-        } catch (e: NoSuchAlgorithmException) {
-            throw IllegalStateException("HmacSHA256 not available", e)
-        }
-    }
-
-    private fun constantTimeEquals(a: ByteArray, b: ByteArray): Boolean {
-        if (a.size != b.size) return false
-        var diff = 0
-        for (i in a.indices) {
-            diff = diff or (a[i].toInt() xor b[i].toInt())
-        }
-        return diff == 0
-    }
+    private fun hmacSha256(data: ByteArray): ByteArray = CryptoUtils.hmacSha256(data, secretKey)
 
     companion object {
         private const val SEPARATOR = "."

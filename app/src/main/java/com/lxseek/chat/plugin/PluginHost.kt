@@ -100,9 +100,10 @@ class PluginHost(
     /**
      * 聚合当前启用插件的全部工具提供者。
      *
-     * 会员插件（manifest.requiresMembership = true）的工具被 [MembershipToolProvider] 包装，
-     * 把插件级标记下沉到工具级 ToolDescriptor.requiresMembership，由 GenerationToolExecutor 的
-     * 披露层（filterByMembership）与执行层（membershipCheck）统一门禁。
+     * 付费插件（manifest.requiresMembership = true，二元制：需要付费账户）的工具被
+     * [MembershipToolProvider] 包装，把插件级标记下沉到工具级
+     * ToolDescriptor.requiresMembership，由 GenerationToolExecutor 的
+     * 披露层（filterByMembership）与执行层（membership gate）统一门禁。
      */
     fun toolProviders(): List<ToolProvider> = enabledProviders.entries.flatMap { (id, providers) ->
         val plugin = registered[id]

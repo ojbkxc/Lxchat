@@ -70,8 +70,7 @@ class PetFloatingView @JvmOverloads constructor(
     private val frameDstRect = RectF()
 
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    private val bitmapDstRect = Rect()
-    /** RectF mirror of [bitmapDstRect] for transparent-pixel hit testing (avoids per-touch alloc). */
+    /** RectF used for custom-bitmap drawing + transparent-pixel hit testing (per-draw updated). */
     private val bitmapDstRectF = RectF()
 
     // ---- Canvas fallback bubble paints ----
@@ -99,12 +98,17 @@ class PetFloatingView @JvmOverloads constructor(
     /** Horizontal center of the pet within the window (pet is centered in the window). */
     private var petCenterX = 0f
 
-    // ---- Status-tip bubble ----
-    private val tipBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = TIP_BG_COLOR; style = Paint.Style.FILL }
+    // ---- Status-tip caption (frameless text) ----
     private val tipTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = TIP_TEXT_COLOR; textSize = dp(TIP_TEXT_SIZE_DP); textAlign = Paint.Align.CENTER
+        // Outline pass style: fill + stroke lets the caption survive any background.
+        style = Paint.Style.FILL_AND_STROKE
+        strokeJoin = Paint.Join.ROUND
+        strokeCap = Paint.Cap.ROUND
     }
-    private val tipArrowPath = Path()
+    /** Cached StaticLayout for the tip text; rebuilt only when text or width changes. */
+    private var tipLayoutCache: StaticLayout? = null
+    private var tipLayoutCacheKey: String? = null
 
     // ---- Touch bookkeeping ----
     private var downRawX = 0f
@@ -201,8 +205,7 @@ class PetFloatingView @JvmOverloads constructor(
         tipSlotHeight = (h - effectivePetSize).coerceAtLeast(0)
         petCenterX = w / 2f
         bubbleCenterY = (effectivePetSize / 2f) + tipSlotHeight
-        bitmapDstRect.set(0, 0, w, h)
-        bitmapDstRectF.set(bitmapDstRect)
+        bitmapDstRectF.set(0f, 0f, w.toFloat(), h.toFloat())
         computeFrameDstRect(w, h)
         rebuildBubbleShader()
     }
@@ -285,23 +288,32 @@ class PetFloatingView @JvmOverloads constructor(
     // ---- Draw ----
 
     override fun onDraw(canvas: Canvas) {
-        val savedLayer = canvas.saveLayerAlpha(0f, 0f, width.toFloat(), height.toFloat(), OVERLAY_ALPHA)
-        try {
-            val custom = customBitmap
-            val sheet = spritesheetBitmap
-            when {
-                custom != null && !custom.isRecycled -> drawCustomBitmap(canvas, custom)
-                sheet != null && !sheet.isRecycled -> drawSpritesheetFrame(canvas, sheet)
-                else -> drawDefaultBubble(canvas)
-            }
-            drawTipBubble(canvas)
-        } finally {
-            canvas.restoreToCount(savedLayer)
+        val custom = customBitmap
+        val sheet = spritesheetBitmap
+        when {
+            custom != null && !custom.isRecycled -> drawCustomBitmap(canvas, custom)
+            sheet != null && !sheet.isRecycled -> drawSpritesheetFrame(canvas, sheet)
+            else -> drawDefaultBubble(canvas)
         }
+        // The tip capsule is drawn OUTSIDE the 70%-alpha layer: it carries readable text
+        // (streaming model output), so dimming it together with the pet made the words
+        // nearly illegible and made the bubble appear to flicker with the pet's alpha.
+        drawTipBubble(canvas)
     }
 
     private fun drawCustomBitmap(canvas: Canvas, bitmap: Bitmap) {
-        canvas.drawBitmap(bitmap, null, bitmapDstRect, bitmapPaint)
+        // Draw into the pet body area only (below the tip slot), preserving aspect ratio.
+        // Stretching across the whole window deformed the image: the window includes the
+        // tip headroom strip and is widened to TIP_WIDTH_DP, so a square PNG was squashed.
+        val target = if (frameDstRect.isEmpty) bitmapDstRectF else frameDstRect
+        if (target.isEmpty) return
+        val scale = minOf(target.width() / bitmap.width, target.height() / bitmap.height)
+        val drawW = bitmap.width * scale
+        val drawH = bitmap.height * scale
+        val left = target.left + (target.width() - drawW) / 2f
+        val top = target.top + (target.height() - drawH) / 2f
+        bitmapDstRectF.set(left, top, left + drawW, top + drawH)
+        canvas.drawBitmap(bitmap, null, bitmapDstRectF, bitmapPaint)
     }
 
     /** Resolves the current frame from [PetAnimation] and draws it from the atlas. */
@@ -366,8 +378,6 @@ class PetFloatingView @JvmOverloads constructor(
         if (tipSlotHeight <= 0) return
         val text = tipText() ?: return
         val w = width
-        val padX = dp(TIP_HORIZONTAL_PADDING_DP)
-        val padY = dp(TIP_VERTICAL_PADDING_DP)
         val edgeMargin = dp(TIP_EDGE_MARGIN_DP)
         // Compute the on-screen usable width first (window may extend past screen edges),
         // so the StaticLayout is built with the true available width and never overflows.
@@ -376,24 +386,40 @@ class PetFloatingView @JvmOverloads constructor(
         val minLeft = if (params != null && params.x < 0) (-params.x).toFloat() + edgeMargin else edgeMargin
         val maxRight = if (params != null && params.x + w > screenWidth) (screenWidth - params.x).toFloat() - edgeMargin else w - edgeMargin
         val availableWidth = (maxRight - minLeft).coerceAtLeast(0f)
-        val maxTextWidth = (availableWidth - padX * 2).coerceAtLeast(0f)
+        val maxTextWidth = (availableWidth - dp(TIP_STROKE_WIDTH_DP) * 2).coerceAtLeast(0f)
         if (maxTextWidth <= 0f) return
-        val tipText = text.toString()
-        val layout = StaticLayout.Builder.obtain(tipText, 0, tipText.length, tipTextPaint, maxTextWidth.toInt())
-            .setAlignment(Layout.Alignment.ALIGN_CENTER)
-            .setLineSpacing(0f, 1f)
-            .setIncludePad(false)
-            .build()
+        // Layout cache: the Choreographer loop invalidates at display refresh rate, and
+        // rebuilding a StaticLayout (text shaping) per frame during streaming made the
+        // overlay visibly janky. Rebuild only when text or width actually changed.
+        val cacheKey = "${text.hashCode()}:${maxTextWidth.toInt()}"
+        val layout: StaticLayout
+        if (tipLayoutCache != null && tipLayoutCacheKey == cacheKey) {
+            layout = tipLayoutCache!!
+        } else {
+            val tipText = text.toString()
+            layout = StaticLayout.Builder.obtain(tipText, 0, tipText.length, tipTextPaint, maxTextWidth.toInt())
+                .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                // 1.25x line spacing: multi-line captions stay airy instead of a dense block.
+                .setLineSpacing(0f, TIP_LINE_SPACING)
+                .setIncludePad(false)
+                .build()
+            tipLayoutCache = layout
+            tipLayoutCacheKey = cacheKey
+        }
         // layout.width is the constructor width, NOT the rendered text width — measure the
-        // widest line so the bubble hugs the text instead of spanning the whole window.
+        // widest line so the caption hugs the text instead of spanning the whole window.
         var textWidth = 0f
         for (i in 0 until layout.lineCount) {
             textWidth = maxOf(textWidth, layout.getLineWidth(i))
         }
-        // Bubble hugs the text: width = widest line + padding, clamped to the usable width.
-        val capWidth = (textWidth + padX * 2).coerceAtMost(availableWidth)
-        val capHeight = layout.height.toFloat() + padY * 2
-        // Tip center: window center, shifted to the visible-area center when partially off-screen.
+        // Frameless caption: no bubble, no arrow — just the text with a soft dark outline so
+        // it reads on any background (the old filled capsule clashed with app content and
+        // felt foreign wherever the pet floated).
+        val capWidth = (textWidth + dp(TIP_STROKE_WIDTH_DP) * 2).coerceAtMost(availableWidth)
+        // Vertical budget: the caption must stay between the window top and the pet.
+        // Long streaming tails clip to the LAST lines that fit (newest output).
+        val petTop = bubbleCenterY - bubbleRadius()
+        // Caption center: window center, shifted to the visible-area center when partially off-screen.
         val cx = if (params != null && (params.x < 0 || params.x + w > screenWidth)) {
             val visLeft = params.x.coerceAtLeast(0)
             val visRight = (params.x + w).coerceAtMost(screenWidth)
@@ -401,31 +427,36 @@ class PetFloatingView @JvmOverloads constructor(
         } else {
             w / 2f
         }
-        // Bubble position: centered on cx, clamped so it never leaves the visible area.
+        // Position: centered on cx, clamped so it never leaves the visible area, sitting
+        // just above the pet with a fixed gap.
         val left = (cx - capWidth / 2).coerceIn(minLeft, (maxRight - capWidth).coerceAtLeast(minLeft))
-        val right = left + capWidth
-        val actualWidth = right - left
-        // Position the bubble just above the pet (not at the window top),
-        // so it stays close regardless of tipSlotHeight.
-        val petTop = bubbleCenterY - bubbleRadius()
-        val top = (petTop - capHeight - dp(TIP_ARROW_OVERLAP_DP)).coerceAtLeast(dp(TIP_TOP_PADDING_DP))
-        val bottom = top + capHeight
-        val rect = RectF(left, top, right, bottom)
-        canvas.drawRoundRect(rect, capHeight / 2, capHeight / 2, tipBgPaint)
-        // Center the layout within the bubble: text sits at the bubble's horizontal center
-        // because the layout centers each line inside its own (wider) layout width.
-        val textLeft = left + actualWidth / 2f - layout.width / 2f
+        // Bottom edge anchors to just above the pet; when the layout is taller than the
+        // budget, the HEAD clips away above the window's top padding and the tail (newest
+        // output) stays visible right above the pet.
+        val textBottom = petTop - dp(TIP_GAP_DP)
+        val textTop = (textBottom - layout.height.toFloat()).coerceAtLeast(dp(TIP_TOP_PADDING_DP))
         canvas.save()
-        canvas.translate(textLeft, top + padY)
+        // Soft outline pass: paint the text offset in translucent dark on 8 directions, then
+        // the bright fill on top — readable over light AND dark app content with no box.
+        val stroke = tipTextPaint.strokeWidth
+        val fillColor = tipTextPaint.color
+        tipTextPaint.strokeWidth = dp(TIP_STROKE_WIDTH_DP)
+        tipTextPaint.color = TIP_STROKE_COLOR
+        for (angle in 0 until 8) {
+            val rad = Math.toRadians(angle * 45.0)
+            canvas.save()
+            canvas.translate(
+                left + (Math.cos(rad) * dp(TIP_STROKE_WIDTH_DP) * 0.7f).toFloat(),
+                textTop + (Math.sin(rad) * dp(TIP_STROKE_WIDTH_DP) * 0.7f).toFloat(),
+            )
+            layout.draw(canvas)
+            canvas.restore()
+        }
+        tipTextPaint.strokeWidth = stroke
+        tipTextPaint.color = fillColor
+        canvas.translate(left, textTop)
         layout.draw(canvas)
         canvas.restore()
-        // Arrow pointing down to the pet.
-        tipArrowPath.reset()
-        tipArrowPath.moveTo(cx, petTop + dp(TIP_ARROW_OVERLAP_DP))
-        tipArrowPath.lineTo(cx - dp(TIP_ARROW_HALF_DP), bottom)
-        tipArrowPath.lineTo(cx + dp(TIP_ARROW_HALF_DP), bottom)
-        tipArrowPath.close()
-        canvas.drawPath(tipArrowPath, tipBgPaint)
     }
 
     // ---- Canvas fallback bubble ----
@@ -533,17 +564,21 @@ class PetFloatingView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val params = windowParams ?: return performClickFallback(event)
         if (event.actionMasked == MotionEvent.ACTION_DOWN && isTransparentAt(event.x, event.y)) return false
-        // For the built-in Canvas bubble, touches outside the bubble circle pass through, and
-        // within it only the central [TAP_TARGET_RADIUS_RATIO] responds (the fuzzy circle outline
-        // would otherwise fire accidental drags/launches). Bitmap pets (spritesheet / custom) skip
-        // this extra shrink — transparent pixels were already rejected above via isTransparentAt,
-        // so a non-transparent touch is on the pet itself and should always respond, keeping the
-        // hit region aligned with the visible sprite instead of a small off-center circle.
-        if (event.actionMasked == MotionEvent.ACTION_DOWN && customBitmap == null && spritesheetBitmap == null) {
-            val dx = event.x - petCenterX
-            val dy = event.y - bubbleCenterY
-            if (hypot(dx, dy) > bubbleRadius()) return false
-            if (isOutsideTapTarget(event.x, event.y)) return false
+        // Only the pet BODY starts a drag/tap — never the surrounding window area (which
+        // exists just for tip text headroom). Canvas bubble: inside the drawn circle AND
+        // within the central tap-target. Bitmap pets (spritesheet / custom): inside the
+        // frame rect AND within the central tap target of the pet's bounding circle, so
+        // edges/fringes that survived the alpha test don't grab from far outside the sprite.
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            val inBody = if (customBitmap == null && spritesheetBitmap == null) {
+                val dx = event.x - petCenterX
+                val dy = event.y - bubbleCenterY
+                hypot(dx, dy) <= bubbleRadius()
+            } else {
+                val frame = if (customBitmap != null && frameDstRect.isEmpty) bitmapDstRectF else frameDstRect
+                frame.contains(event.x, event.y)
+            }
+            if (!inBody || isOutsideTapTarget(event.x, event.y)) return false
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -560,7 +595,9 @@ class PetFloatingView @JvmOverloads constructor(
                 val dy = (event.rawY - downRawY).toInt()
                 if (!wasDragging && hypot(event.rawX - downRawX, event.rawY - downRawY) > DRAG_THRESHOLD_DP * resources.displayMetrics.density) wasDragging = true
                 if (wasDragging) {
-                    params.x = downWindowX + dx; params.y = downWindowY + dy; updateWindowLayout(params)
+                    params.x = clampWindowX(downWindowX + dx, params)
+                    params.y = clampWindowY(downWindowY + dy, params)
+                    updateWindowLayout(params)
                     // Directional run animation: right drag -> RUNNING_RIGHT, left drag -> RUNNING_LEFT.
                     val newState = if (dx >= 0) PetAnimation.State.RUNNING_RIGHT else PetAnimation.State.RUNNING_LEFT
                     if (newState != dragOverrideState) {
@@ -571,18 +608,61 @@ class PetFloatingView @JvmOverloads constructor(
                 }
                 return true
             }
-            MotionEvent.ACTION_UP -> {
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                // CANCEL (system gesture stole the stream) must clear drag state the same way
+                // as UP, otherwise the pet stays frozen mid-run-animation and never snaps back.
+                val cancelled = event.actionMasked == MotionEvent.ACTION_CANCEL
                 if (dragOverrideState != null) {
                     dragOverrideState = null
                     animStartNanos = System.nanoTime()
                     invalidate()
                 }
-                if (!wasDragging) { launchApp(); return true }
+                if (!cancelled && !wasDragging) { launchApp(); return true }
+                if (cancelled && !wasDragging) return true
                 snapToNearestEdge(params)
                 return true
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    /**
+     * Clamps a candidate window x so the pet body (not the window, which may be wider for
+     * tip text) can leave the screen by at most [DRAG_OFFSCREEN_FRACTION] of its size.
+     * Without this, FLAG_LAYOUT_NO_LIMITS lets the user drag the pet completely off-screen
+     * with no way to get it back short of toggling the overlay.
+     */
+    private fun clampWindowX(x: Int, params: WindowManager.LayoutParams): Int {
+        val screenWidth = resources.displayMetrics.widthPixels
+        val viewWidth = if (width > 0) width else params.width
+        val effectivePetSize = if (petSizePx > 0) petSizePx else viewWidth
+        val horizontalOffset = (viewWidth - effectivePetSize) / 2
+        // Pet-left / pet-right in screen coordinates for the candidate window x.
+        val petLeft = x + horizontalOffset
+        val petRight = x + horizontalOffset + effectivePetSize
+        val maxOff = (effectivePetSize * DRAG_OFFSCREEN_FRACTION).toInt()
+        return when {
+            petRight < maxOff -> maxOff - horizontalOffset - effectivePetSize
+            petLeft > screenWidth - maxOff -> screenWidth - maxOff - horizontalOffset - effectivePetSize
+            else -> x
+        }
+    }
+
+    /** Vertical counterpart of [clampWindowX]: keeps the pet reachable on the y axis. */
+    private fun clampWindowY(y: Int, params: WindowManager.LayoutParams): Int {
+        val screenHeight = resources.displayMetrics.heightPixels
+        val viewHeight = if (height > 0) height else params.height
+        val effectivePetSize = if (petSizePx > 0) petSizePx else viewHeight
+        // The pet body occupies the bottom part of the window (tip slot is above it).
+        val tipSlot = if (height > 0) (height - effectivePetSize).coerceAtLeast(0) else 0
+        val maxOff = (effectivePetSize * DRAG_OFFSCREEN_FRACTION).toInt()
+        val petTop = y + tipSlot
+        val petBottom = y + viewHeight
+        return when {
+            petBottom < maxOff -> maxOff - viewHeight
+            petTop > screenHeight - maxOff -> screenHeight - maxOff - tipSlot
+            else -> y
+        }
     }
 
     /**
@@ -597,7 +677,16 @@ class PetFloatingView @JvmOverloads constructor(
     private fun isOutsideTapTarget(x: Float, y: Float): Boolean {
         val dx = x - petCenterX
         val dy = y - bubbleCenterY
-        return hypot(dx, dy) > bubbleRadius() * TAP_TARGET_RADIUS_RATIO
+        // Bitmap pets: the tap target is the central circle of the frame rect (the sprite
+        // occupies frameDstRect, which shares the pet center). Canvas bubble: central circle
+        // of the drawn bubble. Either way touches on the outer fringe pass through.
+        val reach = if (customBitmap != null || spritesheetBitmap != null) {
+            val frame = if (customBitmap != null && frameDstRect.isEmpty) bitmapDstRectF else frameDstRect
+            minOf(frame.width(), frame.height()) * 0.5f * TAP_TARGET_RADIUS_RATIO
+        } else {
+            bubbleRadius() * TAP_TARGET_RADIUS_RATIO
+        }
+        return hypot(dx, dy) > reach
     }
 
     /**
@@ -606,26 +695,37 @@ class PetFloatingView @JvmOverloads constructor(
      */
     private fun isTransparentAt(x: Float, y: Float): Boolean {
         val custom = customBitmap
-        if (custom != null && !custom.isRecycled) return isTransparentInBitmap(custom, x, y, bitmapDstRectF, 0, 0)
+        if (custom != null && !custom.isRecycled) {
+            // Custom bitmaps map 1:1 onto their dst rect — no spritesheet cell math.
+            return isTransparentInBitmap(custom, x, y, bitmapDstRectF, custom.width, custom.height)
+        }
         val sheet = spritesheetBitmap
         if (sheet != null && !sheet.isRecycled) {
             val state = dragOverrideState ?: PetAnimation.stateForEmotion(currentEmotion)
             val elapsedMs = (System.nanoTime() - animStartNanos) / NANOS_PER_MS
             val tick = PetAnimation.playbackTickAtElapsedMs(state, elapsedMs)
             val f = tick.frame
-            return isTransparentInBitmap(sheet, x, y, frameDstRect, f.x, f.y)
+            return isTransparentInBitmap(sheet, x, y, frameDstRect, PetAnimation.CELL_WIDTH, PetAnimation.CELL_HEIGHT, f.x, f.y)
         }
         return false
     }
 
-    /** Maps view-local coords to bitmap coords and checks alpha. */
-    private fun isTransparentInBitmap(bitmap: Bitmap, x: Float, y: Float, dst: RectF, srcX: Int, srcY: Int): Boolean {
+    /** Maps view-local coords to bitmap coords and checks alpha. [srcX]/[srcY] offset into a
+     *  spritesheet atlas; [cellW]/[cellH] bound one atlas cell (or the full bitmap). */
+    private fun isTransparentInBitmap(
+        bitmap: Bitmap,
+        x: Float,
+        y: Float,
+        dst: RectF,
+        cellW: Int,
+        cellH: Int,
+        srcX: Int = 0,
+        srcY: Int = 0,
+    ): Boolean {
         val bw = bitmap.width; val bh = bitmap.height
         if (bw <= 0 || bh <= 0) return false
         if (dst.width() <= 0f || dst.height() <= 0f) return false
         if (x < dst.left || x > dst.right || y < dst.top || y > dst.bottom) return true
-        val cellW = PetAnimation.CELL_WIDTH
-        val cellH = PetAnimation.CELL_HEIGHT
         val fx = srcX + ((x - dst.left) / dst.width() * cellW).toInt().coerceIn(0, cellW - 1)
         val fy = srcY + ((y - dst.top) / dst.height() * cellH).toInt().coerceIn(0, cellH - 1)
         if (fx < 0 || fx >= bw || fy < 0 || fy >= bh) return true
@@ -680,15 +780,14 @@ class PetFloatingView @JvmOverloads constructor(
         const val PET_WHITE = 0xFFFFFFFF.toInt()
         const val NANOS_PER_MS = 1_000_000L
 
-        const val TIP_BG_COLOR = 0x801F2937.toInt()
         const val TIP_TEXT_COLOR = 0xFFFFFFFF.toInt()
-        const val TIP_TEXT_SIZE_DP = 10f
-        const val TIP_HORIZONTAL_PADDING_DP = 12f
-        const val TIP_VERTICAL_PADDING_DP = 6f
+        const val TIP_STROKE_COLOR = 0x99000000.toInt()
+        const val TIP_TEXT_SIZE_DP = 11f
+        const val TIP_LINE_SPACING = 1.2f
+        const val TIP_STROKE_WIDTH_DP = 2f
+        const val TIP_GAP_DP = 6f
         const val TIP_TOP_PADDING_DP = 4f
         const val TIP_EDGE_MARGIN_DP = 4f
-        const val TIP_ARROW_HALF_DP = 5f
-        const val TIP_ARROW_OVERLAP_DP = 4f
 
         const val BORDER_PADDING_DP = 6f
         const val SHADOW_ALPHA = 64
@@ -714,9 +813,12 @@ class PetFloatingView @JvmOverloads constructor(
         const val SMILE_SWEEP_ANGLE = 140f
 
         const val DRAG_THRESHOLD_DP = 14f
-        const val OVERLAY_ALPHA = 178
         const val SNAP_DURATION_MS = 300L
         const val SNAP_INTERPOLATOR_FACTOR = 1.5f
+
+        // How much of the pet body may hang off a screen edge while dragging (fraction of
+        // petSizePx). 0.5 keeps half the sprite visible as a grab handle for pulling it back.
+        const val DRAG_OFFSCREEN_FRACTION = 0.5f
 
         // Fraction of the bubble radius that responds to taps; touches outside this central
         // circle pass through to the app below. 0.6 keeps the pet body tappable while letting

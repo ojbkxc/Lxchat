@@ -43,7 +43,7 @@ class EncryptedDnsTest {
     @Test
     fun `buildQuery produces a well-formed header and question`() {
         val q = DnsWire.buildQuery("example.com", 1)
-        val len = q.length
+        val len = q.size
         assertTrue(len > 12)
         // QDCOUNT == 1
         assertEquals(0, q[4].toInt() and 0xFF)
@@ -56,9 +56,11 @@ class EncryptedDnsTest {
 
     @Test
     fun `parseAddresses returns an A record`() {
-        val msg = buildResponse("example.com.", listOf(4 to byteArrayOf(93, 184, -40, 34)))
+        // buildResponse 的 answers 首元素是 DNS 记录类型：A 记录必须为 1，
+        // 此前误写成 rdata 长度 4，导致 parseAddresses 正确地忽略了该记录。
+        val msg = buildResponse("example.com.", listOf(1 to byteArrayOf(93, 184.toByte(), -40, 34)))
         val addrs = DnsWire.parseAddresses(msg)
-        assertEquals(listOf(InetAddress.getByAddress(byteArrayOf(93, 184, -40, 34))), addrs)
+        assertEquals(listOf(InetAddress.getByAddress(byteArrayOf(93, 184.toByte(), -40, 34))), addrs)
     }
 
     @Test
@@ -71,7 +73,7 @@ class EncryptedDnsTest {
 
     @Test
     fun `parseAddresses is empty on NXDOMAIN`() {
-        val msg = buildResponse("missing.example.", listOf(1 to byteArrayOf(93, 184, -40, 34)), rcode = 3)
+        val msg = buildResponse("missing.example.", listOf(1 to byteArrayOf(93, 184.toByte(), -40, 34)), rcode = 3)
         assertTrue(DnsWire.parseAddresses(msg).isEmpty())
     }
 

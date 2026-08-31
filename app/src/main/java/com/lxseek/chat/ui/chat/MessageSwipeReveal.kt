@@ -30,8 +30,9 @@ import kotlin.math.abs
 /**
  * Swipe-to-reveal wrapper for a message row. A horizontal drag displaces the
  * foreground content to expose a delete action (left swipe, red) or a reply
- * action (right swipe, themed primary). Releasing past half the reveal width
- * invokes the corresponding callback; otherwise the row springs back to rest.
+ * action (right swipe, themed primary). Releasing past 90% of the reveal
+ * width — a deliberate full drag, not a stray flick — invokes the delete
+ * confirmation flow or the reply callback; anything less springs back.
  *
  * The gesture is limited to the horizontal axis so the enclosing LazyColumn
  * keeps full authority over vertical scrolling and inner tap/long-press
@@ -46,7 +47,9 @@ internal fun SwipeToRevealMessage(
 ) {
     val density = LocalDensity.current
     val revealWidthPx = with(density) { 72.dp.toPx() }
-    val dragThresholdPx = revealWidthPx * 0.5f
+    // Activation requires a near-full deliberate drag (90% of the reveal width).
+    // A half-way 36dp flick during list scrolling must never arm the action.
+    val dragThresholdPx = revealWidthPx * 0.9f
     val scope = rememberCoroutineScope()
     val offset = remember { Animatable(0f) }
     val haptics = LocalLxChatHaptics.current

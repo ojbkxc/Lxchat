@@ -255,6 +255,7 @@ internal fun ChatAppBottomBarSection(
                             onAdvancedClick = dialogState::showAdvanced,
                             queuedSends = queuedSends,
                             onRemoveQueuedSend = viewModel::removeQueuedSend,
+                            onClearQueuedSends = viewModel::clearQueuedSends,
                             isStopping = isStopping,
                             voiceConversationState = voiceConversationState,
                             voiceConversationAmplitude = voiceConversationAmplitude,

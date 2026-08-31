@@ -154,8 +154,12 @@ class PetOverlayWindowService : Service() {
      */
     private fun loadCustomImageAsync() {
         val view = floatingView ?: return
-        val targetW = view.width
-        val targetH = view.height
+        // view.width/height are 0 until the first layout pass; decoding against them
+        // skipped downsampling entirely and loaded the full-resolution image. Fall back
+        // to the configured pet size (bounded by the tip headroom) in that case.
+        val density = resources.displayMetrics.density
+        val targetW = if (view.width > 0) view.width else (TIP_WIDTH_DP * density).toInt()
+        val targetH = if (view.height > 0) view.height else ((SIZE_DP * 1.3f * density).toInt() + (TIP_HEADROOM_DP * density).toInt())
         scope.launch {
             val path = PetOverlayController.getImagePath(this@PetOverlayWindowService)
             // Decoding is disk/IO-bound — push it off the main thread.

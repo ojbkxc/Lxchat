@@ -664,6 +664,8 @@ internal fun MessageList(
         // Wrap the row in a swipe-to-reveal layer so horizontal drags expose delete
         // (left) and reply (right) actions. Disabled during selection and for retained
         // regeneration-exit placeholders to avoid stealing gestures from the fade.
+        // Swipe-delete routes through the same confirmation dialog as the long-press
+        // menu; a subtree delete must never fire without an explicit confirm step.
         val swipeEnabled = !selectionMode && !isRetainedRegenerationExit
         SwipeToRevealMessage(
             enabled = swipeEnabled,

@@ -93,12 +93,17 @@ class MainActivity : ComponentActivity() {
     /** Yipay callback result surfaced to the UI (Snackbar). Reset to Idle after consumption. */
     private val yipayCallbackResult = kotlinx.coroutines.flow.MutableStateFlow<YipayCallbackResult>(YipayCallbackResult.Idle)
 
+    /**
+     * M2：Yipay 激活互斥标志。DeepLink 回调与 onResume 兜底查询可能并发触发，
+     * compareAndSet 保证同一时刻只有一个激活流程在跑（幂等 + 互斥）。
+     */
+    private val yipayActivationInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
+
     companion object {
         const val EXTRA_CONVERSATION_ID = "com.lxseek.chat.extra.CONVERSATION_ID"
         /** DeepLink host for the Yipay return_url: lxchat://yipay-callback */
         private const val YIPAY_CALLBACK_HOST = "yipay-callback"
-        /** Membership duration (days) granted on a successful yipay purchase. */
-        private const val YIPAY_MEMBERSHIP_DURATION_DAYS = 30
+        private const val TAG = "MainActivity"
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -371,6 +376,12 @@ class MainActivity : ComponentActivity() {
         if (intent == null) return
         val data = intent.data
 
+        // H4：进程级绑定会员运行时（幂等）。绑定后 LocalMembershipProvider.refresh
+        // 才能以已验签凭证（而非可被 root 改写的 DataStore）作为付费门权威源。
+        com.lxseek.chat.membership.MembershipRuntime.bind(this)
+        // M1：启动时清理过期的待支付订单（24 小时有效期，见 PendingOrderStore）。
+        PendingOrderStore(this).cleanupExpired()
+
         // Yipay payment callback DeepLink: lxchat://yipay-callback?...
         if (data != null && data.scheme == "lxchat" && data.host == YIPAY_CALLBACK_HOST) {
             handleYipayCallback(data)
@@ -386,10 +397,15 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Parse + verify the Yipay callback signature, then ask the activation server to
+     * Parse + verify the Yipay callback, then ask the activation server to
      * confirm the payment and issue a signed credential.
      *
-     * Flow: parse callback 鈫?verify MD5 signature 鈫?check trade status 鈫?     *       publish [YipayCallbackResult.Confirming] 鈫?     *       RemoteCloudApi.activateByOrder(deviceId, outTradeNo) 鈫?     *       server queries the gateway, confirms paid, returns credential 鈫?     *       publish [YipayCallbackResult.Success].
+     * Flow（安全修复 H3）: parse callback → 本地订单校验（存在/未过期/金额一致）
+     * → trade status → MD5 签名校验（配置了 merchantKey 时必须通过，不可跳过）
+     * → publish [YipayCallbackResult.Confirming]
+     * → RemoteCloudApi.activateByOrder(deviceId, outTradeNo)
+     * → server queries the gateway, confirms paid, returns credential
+     * → publish [YipayCallbackResult.Success].
      *
      * The signature check alone is NOT enough to activate: a user can forge a
      * DeepLink URL with valid-looking params. The server must independently query
@@ -405,24 +421,106 @@ class MainActivity : ComponentActivity() {
             yipayCallbackResult.value = YipayCallbackResult.Failed
             return
         }
-        // Skip signature verification — merchant key must not live in the App.
-        // The server independently queries the payment gateway to confirm the order
-        // is actually paid, so a forged DeepLink cannot activate without a real payment.
-        // Map amount → tier for UI feedback only; the server is the source of truth.
-        val tier = mapMoneyToTier(params.money)
+
         val store = PendingOrderStore(this)
-        val activationManager = ActivationManager(RemoteCloudApi(this), this)
-        yipayCallbackResult.value = YipayCallbackResult.Confirming
-        lifecycleScope.launch {
-            // Don't double-activate if the onResume fallback already succeeded.
-            if (yipayCallbackResult.value is YipayCallbackResult.Success) {
-                store.clear()
-                return@launch
+
+        // H3(b)：订单号必须存在于本地待支付订单（App 发起过下单），防止凭空回调。
+        val pending = store.get()
+        if (pending == null || pending.outTradeNo != params.outTradeNo) {
+            android.util.Log.w(TAG, "yipay callback rejected: unknown out_trade_no ${params.outTradeNo}")
+            yipayCallbackResult.value = YipayCallbackResult.Failed
+            return
+        }
+        // H3(b)：订单未过期（24 小时窗口，M1）。
+        if (store.isExpired()) {
+            store.clear()
+            yipayCallbackResult.value = YipayCallbackResult.Failed
+            return
+        }
+        // H3(a)：金额严格校验。回调金额必须等于下单时记录的套餐价格
+        // （BigDecimal 按分比较，防止 0.01 元伪造回调占位激活）。
+        if (!com.lxseek.chat.membership.PlanCatalog.amountsMatch(params.money, pending.amount)) {
+            android.util.Log.w(TAG, "yipay callback rejected: amount ${params.money} != ordered ${pending.amount}")
+            yipayCallbackResult.value = YipayCallbackResult.Failed
+            return
+        }
+        // 交易状态必须为成功。
+        if (!com.lxseek.chat.membership.YipayCallbackVerifier(config.merchantKey).isTradeSuccess(params)) {
+            yipayCallbackResult.value = YipayCallbackResult.Failed
+            return
+        }
+        // H3(c)：配置了 merchantKey 就必须验签，不可跳过。未配置时（H2）
+        // 本地不持钥，依赖服务器对账兜底，但记录 WARN。
+        if (config.isMerchantKeyConfigured) {
+            if (!manager.verifyCallback(config, params)) {
+                android.util.Log.w(TAG, "yipay callback rejected: signature mismatch")
+                yipayCallbackResult.value = YipayCallbackResult.Failed
+                return
             }
-            val result = activationManager.activateByOrder(params.outTradeNo)
-            when (result) {
-                is ActivationResult.Success -> {
-                    yipayCallbackResult.value = YipayCallbackResult.Success(tier)
+        } else {
+            com.lxseek.chat.membership.MembershipSecrets.warnIfYipayKeyNotConfigured()
+        }
+
+        // 本地校验全部通过 → 交给统一激活入口（服务器对账后激活）。
+        confirmYipayOrderAndActivate(params.outTradeNo)
+    }
+
+    /**
+     * Fallback for lost DeepLink callbacks: when the App returns to the foreground with a
+     * pending Yipay order, ask the activation server to confirm the payment and activate.
+     *
+     * Skipped when a callback already succeeded (DeepLink beat us to it) — the store is
+     * cleared and we do nothing. Expired orders (24h window, see M1) are also cleared.
+     *
+     * Unlike the old path which queried the Yipay gateway directly (requiring the merchant
+     * key in the App), this calls [RemoteCloudApi.activateByOrder] so the server does
+     * the gateway query. The merchant key never lives in the App.
+     *
+     * M2：与 [handleYipayCallback] 收敛到统一激活入口（互斥 + 幂等）。
+     */
+    private fun checkPendingYipayOrder() {
+        val store = PendingOrderStore(this)
+        val pending = store.get() ?: return
+        // DeepLink already activated membership — don't double-activate.
+        if (yipayCallbackResult.value is YipayCallbackResult.Success) {
+            store.clear()
+            return
+        }
+        if (store.isExpired()) {
+            store.clear()
+            return
+        }
+        confirmYipayOrderAndActivate(pending.outTradeNo)
+    }
+
+    /**
+     * 统一的 Yipay 激活入口（M2：幂等 + 互斥）。
+     *
+     * [yipayActivationInFlight] 保证并发调用（DeepLink 回调 + onResume 兜底）
+     * 只有一个流程真正执行；激活成功后 [PendingOrderStore.clear] 消费订单，
+     * 后续重放（同订单号重复回调）在 handleYipayCallback 的存在性检查处被拒。
+     * 二元制：激活成功即付费账户（Premium），无需金额→档位映射。
+     */
+    private fun confirmYipayOrderAndActivate(outTradeNo: String) {
+        // M2：互斥。已有激活流程在跑则直接跳过（结果由先到的流程发布）。
+        if (!yipayActivationInFlight.compareAndSet(false, true)) {
+            return
+        }
+        val store = PendingOrderStore(this)
+        if (yipayCallbackResult.value !is YipayCallbackResult.Confirming) {
+            yipayCallbackResult.value = YipayCallbackResult.Confirming
+        }
+        lifecycleScope.launch {
+            try {
+                // 幂等：另一条路径已经成功激活过则直接收尾。
+                if (yipayCallbackResult.value is YipayCallbackResult.Success) {
+                    store.clear()
+                    return@launch
+                }
+                val activationManager = ActivationManager(RemoteCloudApi(this@MainActivity), this@MainActivity)
+                val result = activationManager.activateByOrder(outTradeNo)
+                if (result is ActivationResult.Success) {
+                    yipayCallbackResult.value = YipayCallbackResult.Success(MembershipTier.Premium)
                     store.clear()
                     // 把凭证信息写入 DataStore，让 MembershipProvider.refresh() 能读到新状态。
                     // activateByOrder 只把凭证存到 SharedPreferences，而 refresh() 从 DataStore 读取，
@@ -433,73 +531,17 @@ class MainActivity : ComponentActivity() {
                     } else {
                         provider.refresh()
                     }
-                }
-                else -> {
-                    yipayCallbackResult.value = YipayCallbackResult.Failed
-                }
-            }
-        }
-    }
-
-    /**
-     * Fallback for lost DeepLink callbacks: when the App returns to the foreground with a
-     * pending Yipay order, ask the activation server to confirm the payment and activate.
-     *
-     * Skipped when a callback already succeeded (DeepLink beat us to it) 鈥?the store is
-     * cleared and we do nothing. Expired orders (older than 10 min) are also cleared.
-     *
-     * Unlike the old path which queried the Yipay gateway directly (requiring the merchant
-     * key in the App), this now calls [RemoteCloudApi.activateByOrder] so the server does
-     * the gateway query. The merchant key never lives in the App.
-     */
-    private fun checkPendingYipayOrder() {
-        val store = PendingOrderStore(this)
-        val pending = store.get() ?: return
-        // DeepLink already activated membership 鈥?don't double-activate.
-        if (yipayCallbackResult.value is YipayCallbackResult.Success) {
-            store.clear()
-            return
-        }
-        if (store.isExpired()) {
-            store.clear()
-            return
-        }
-        val activationManager = ActivationManager(RemoteCloudApi(this), this)
-        if (yipayCallbackResult.value !is YipayCallbackResult.Confirming) {
-            yipayCallbackResult.value = YipayCallbackResult.Confirming
-        }
-        lifecycleScope.launch {
-            val result = activationManager.activateByOrder(pending.outTradeNo)
-            if (result is ActivationResult.Success) {
-                // A DeepLink may have arrived between get() and the response 鈥?re-check.
-                if (yipayCallbackResult.value is YipayCallbackResult.Success) {
-                    store.clear()
-                    return@launch
-                }
-                yipayCallbackResult.value = YipayCallbackResult.Success(pending.tier)
-                store.clear()
-                // 把凭证信息写入 DataStore，让 MembershipProvider.refresh() 能读到新状态。
-                val provider = (application as LxChatApplication).container.membershipProvider
-                if (provider is LocalMembershipProvider) {
-                    provider.applyCredential(result.credential)
                 } else {
-                    provider.refresh()
+                    // Activation failed (server didn't confirm payment or network error).
+                    // Reset to Idle so the user can retry; keep the pending order for onResume retry.
+                    if (yipayCallbackResult.value is YipayCallbackResult.Confirming) {
+                        yipayCallbackResult.value = YipayCallbackResult.Idle
+                    }
                 }
-            } else {
-                // Activation failed (server didn't confirm payment or network error).
-                // Reset to Idle so the user can retry; keep the pending order for onResume retry.
-                if (yipayCallbackResult.value is YipayCallbackResult.Confirming) {
-                    yipayCallbackResult.value = YipayCallbackResult.Idle
-                }
+            } finally {
+                yipayActivationInFlight.set(false)
             }
         }
-    }
-
-    /** Map the yipay money string to a [MembershipTier]. Unknown amounts fall back to Premium. */
-    private fun mapMoneyToTier(money: String): MembershipTier = when (money.trim()) {
-        "0.30", "0.3" -> MembershipTier.Premium
-        "0.50", "0.5" -> MembershipTier.Pro
-        else -> MembershipTier.Premium
     }
 }
 

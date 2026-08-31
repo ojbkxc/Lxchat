@@ -8,41 +8,42 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
-import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
- * Yipay (鏄撴敮浠? payment manager 鈥?builds the gateway submit URL and parses/verifies
- * the DeepLink callback.
+ * Yipay（易支付）支付管理器 —— 构建网关提交 URL 并解析/校验 DeepLink 回调。
  *
- * **Signature algorithm** (identical to v2board EPay.php `pay()` and to
- * [YipayCallbackVerifier.buildSignString]):
- *  1. Collect the request parameters (money, name, notify_url, return_url,
- *     out_trade_no, pid, type 鈥?blanks dropped), sort by key ascending (ksort).
- *  2. Concatenate as `key1=value1&key2=value2&...` using the **raw** values.
- *     (PHP does `http_build_query` then `stripslashes(urldecode(...))` which
- *     round-trips back to the raw values, so we skip the encode/decode dance.)
- *  3. Append the merchant key directly (no `&`): `...keyN=valueN<merchantKey>`.
- *  4. MD5 the result and lowercase to a 32-char hex digest.
+ * **签名算法**（与 v2board EPay.php `pay()` 及 [YipayCallbackVerifier.buildSignString] 一致）：
+ *  1. 收集请求参数（money、name、notify_url、return_url、out_trade_no、pid、type —— 空值剔除），
+ *     按参数名升序排序（ksort）。
+ *  2. 用**原始值**拼接为 `key1=value1&key2=value2&...`。
+ *     （PHP 的 `http_build_query` + `stripslashes(urldecode(...))` 会还原回原始值，
+ *     这里直接跳过编码往返。）
+ *  3. 商户密钥直接拼接在末尾（不加 `&`）：`...keyN=valueN<merchantKey>`。
+ *  4. MD5 后转小写 32 位 hex。
  *
- * **Submit URL**: `{gatewayUrl}/submit.php?{urlEncodedQuery}&sign={md5}&sign_type=MD5`
+ * **提交 URL**：`{gatewayUrl}/submit.php?{urlEncodedQuery}&sign={md5}&sign_type=MD5`
  *
- * The callback side is delegated to [YipayCallbackVerifier] which shares the same
- * signing algorithm.
+ * 回调侧委托给 [YipayCallbackVerifier]（同一签名算法）。
+ *
+ * 安全（H2）：构造支付 URL / 校验回调签名均要求商户密钥已配置
+ * （[YipayConfig.isMerchantKeyConfigured]）；未配置时调用方应禁用本地路径，
+ * 仅走服务器对账（[RemoteCloudApi.activateByOrder]）。
  */
 class YipayPaymentManager {
 
     /**
      * Build the payment submit URL for the gateway.
      *
-     * @param config       gateway + credentials
+     * @param config       gateway + credentials（须已配置 merchantKey）
      * @param outTradeNo   merchant order number (also used as the product name by v2board)
      * @param amount       payment amount in **yuan** (e.g. "0.30"); v2board uses cents but
      *                     yipay takes yuan directly
      * @param productName  product name; defaults to [outTradeNo] to match v2board
-     * @param notifyUrl    server async notify URL; blank to omit (App绔棤鏈嶅姟鍣? 鍙暀绌?
+     * @param notifyUrl    server async notify URL; blank to omit（App 端无服务器，可留空）
      * @param returnUrl    sync return URL (DeepLink), e.g. `lxchat://yipay-callback`
      * @return fully-qualified submit URL to open in the browser
+     * @throws IllegalStateException [config] 的 merchantKey 未配置（H2：禁止用空/假密钥构造 URL）
      */
     fun buildPaymentUrl(
         config: YipayConfig,
@@ -52,6 +53,11 @@ class YipayPaymentManager {
         notifyUrl: String = "",
         returnUrl: String = "",
     ): String {
+        check(config.isMerchantKeyConfigured) {
+            "merchant key not configured; client-side payment URL is disabled (H2)"
+        }
+        MembershipSecrets.warnIfYipayKeyNotConfigured()
+
         // 1. Collect parameters (raw values), drop blanks.
         val params = sortedMapOf<String, String>(
             "pid" to config.pid,
@@ -67,7 +73,7 @@ class YipayPaymentManager {
         val signString = params.entries.joinToString(separator = "&") { (k, v) -> "$k=$v" }
 
         // 3. Append merchant key + MD5.
-        val sign = md5Hex(signString + config.merchantKey)
+        val sign = CryptoUtils.md5Hex(signString + config.merchantKey)
 
         // 4. Build the submit URL with URL-encoded values for transport.
         val encodedQuery = params.entries.joinToString(separator = "&") { (k, v) ->
@@ -113,6 +119,10 @@ class YipayPaymentManager {
     /**
      * Verify the callback signature. Delegates to [YipayCallbackVerifier].
      * Returns true iff the MD5 sign matches the recomputed signature.
+     *
+     * H3(c)：调用方在 [YipayConfig.isMerchantKeyConfigured] 为 true 时**必须**
+     * 调用本方法并拒绝验签失败的回调，不可跳过。未配置时本方法恒返回 false，
+     * 由调用方决定是否仅依赖服务器对账。
      */
     fun verifyCallback(config: YipayConfig, params: YipayCallbackVerifier.CallbackParams): Boolean {
         val verifier = YipayCallbackVerifier(config.merchantKey)
@@ -120,17 +130,20 @@ class YipayPaymentManager {
     }
 
     /**
-     * Query the gateway for the status of [outTradeNo] 鈥?the fallback path when the
-     * DeepLink callback is lost (user closed the browser, redirect failed, 鈥?.
+     * Query the gateway for the status of [outTradeNo] —— the fallback path when the
+     * DeepLink callback is lost (user closed the browser, redirect failed, …).
      *
      * Calls `GET {gatewayUrl}/api.php?act=order&pid=...&key=...&out_trade_no=...`.
      * Runs on an IO dispatcher with short timeouts. Returns null on network/parse
      * failure; otherwise a [QueryResult] where `code==1 && status==1` means paid.
      *
-     * @deprecated 涓嶅啀鐩存帴璋冩槗鏀粯鏌ヨ API銆傚晢鎴峰瘑閽ワ紙merchantKey锛変笉搴旂暀鍦?App 绔紝
-     * 涓?DeepLink 鍥炶皟鍙浼€犮€傛柊娴佺▼鏀逛负璋?[RemoteCloudApi.activateByOrder]锛?     * 鐢辨縺娲绘湇鍔″櫒锛坅ctivate.lxseek.com锛夊悗绔煡璇㈡槗鏀粯璁㈠崟纭鐪熸宸叉敮浠樺悗绛惧彂鍑瘉銆?     * 淇濈暀鏈柟娉曚粎渚涚绾胯皟璇?鏃ц矾寰勫吋瀹癸紝鐢熶骇鐜涓嶅簲璋冪敤銆?     */
+     * @deprecated 不再直接调易支付查询 API。商户密钥（merchantKey）不应留在 App 端，
+     * 且 DeepLink 回调可被伪造。新流程改为调 [RemoteCloudApi.activateByOrder]，
+     * 由激活服务器（activate.lxseek.com）后端查询易支付订单确认真正已支付后签发凭证。
+     * 保留本方法仅供离线调试与旧路径兼容，生产环境不应调用。
+     */
     @Deprecated(
-        "Use RemoteCloudApi.activateByOrder instead 鈥?merchant key must not live in the App.",
+        "Use RemoteCloudApi.activateByOrder instead — merchant key must not live in the App.",
         ReplaceWith("RemoteCloudApi(context).activateByOrder(deviceId, outTradeNo)"),
     )
     suspend fun queryOrderStatus(config: YipayConfig, outTradeNo: String): QueryResult? =
@@ -159,14 +172,6 @@ class YipayPaymentManager {
             }
         }
 
-    private fun md5Hex(input: String): String {
-        val md = MessageDigest.getInstance("MD5")
-        val digest = md.digest(input.toByteArray(Charsets.UTF_8))
-        return digest.joinToString(separator = "") { byte ->
-            "%02x".format(byte.toInt() and 0xFF)
-        }
-    }
-
     companion object {
         /** Dedicated client for order-status queries: short timeouts, no streaming.
          *  Certificate pinning prevents MITM packet sniffing on pay.lxseek.com. */
@@ -189,7 +194,9 @@ class YipayPaymentManager {
  * Result of processing a Yipay callback DeepLink, surfaced to the UI via a StateFlow
  * (see [com.lxseek.chat.MainActivity]). [Idle] is the resting state; the UI consumes
  * [Success]/[Failed] and resets to [Idle]. [Confirming] is an intermediate state shown
- * while the server confirms the payment (1鈥? s typically).
+ * while the server confirms the payment (1–5 s typically).
+ *
+ * 二元制：[Success] 携带的 tier 恒为 [MembershipTier.Premium]（付费账户）。
  */
 sealed class YipayCallbackResult {
     /** No callback processed yet / already consumed. */

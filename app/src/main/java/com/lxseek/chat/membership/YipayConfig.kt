@@ -11,31 +11,41 @@ package com.lxseek.chat.membership
  * [YipayPaymentManager.buildPaymentUrl] for the request-side signing and
  * [YipayCallbackVerifier.verify] for the callback-side verification.
  *
- * Production builds should inject [pid] and [merchantKey] via BuildConfig or the
- * native layer so the secret never ships in plain text in the APK. For now the
- * DEFAULT companion holds placeholder values pointing at pay.lxseek.com.
+ * 安全修复 H2：商户密钥不再使用占位符随 APK 分发，而是经 [MembershipSecrets]
+ * 从 BuildConfig 读取（gradle 属性 `LXCHAT_YIPAY_MERCHANT_KEY` 或
+ * local.properties 注入）。**密钥未配置时**（`isMerchantKeyConfigured == false`）：
+ * - 回调本地验签不可用（无法证明回调来自网关，而非伪造 DeepLink）；
+ * - App 端自行构造支付 URL 的回退路径禁用（请求侧签名同样需要密钥）。
+ * 支付确认只能依赖服务器对账（[RemoteCloudApi.activateByOrder]，
+ * 服务器查询网关确认订单真实已支付），不留任何假钥路径。
  */
 data class YipayConfig(
     /** 易支付网关URL，如 https://pay.lxseek.com (无尾斜杠). */
     val gatewayUrl: String,
     /** 商户ID (pid). */
     val pid: String,
-    /** 商户密钥，直接拼接在签名串末尾（不加 &）. */
+    /** 商户密钥，直接拼接在签名串末尾（不加 &）. 空串表示未配置（见类注释 H2）. */
     val merchantKey: String,
     /** 默认支付类型：alipay / wxpay / qqpay. */
     val payType: String = "wxpay",
 ) {
+    /** 商户密钥是否已配置（H2：未配置时禁用一切依赖本地签名的路径）。 */
+    val isMerchantKeyConfigured: Boolean
+        get() = merchantKey.isNotBlank()
+
     companion object {
         /**
          * Default configuration pointing at the Lxseek payment gateway.
          *
-         * PID and merchant key are placeholders — replace with real credentials
-         * sourced from BuildConfig / native config before release.
+         * merchantKey comes from BuildConfig (gradle property
+         * `LXCHAT_YIPAY_MERCHANT_KEY` / local.properties, neither is committed);
+         * blank means "not configured" — callers must check
+         * [isMerchantKeyConfigured] before any local signing/verification path.
          */
         val DEFAULT = YipayConfig(
             gatewayUrl = "https://pay.lxseek.com",
             pid = "10000",
-            merchantKey = "REPLACE_WITH_REAL_MERCHANT_KEY",
+            merchantKey = MembershipSecrets.yipayMerchantKey,
             payType = "wxpay",
         )
     }

@@ -318,7 +318,8 @@ fun ChatApp(
     LaunchedEffect(Unit) {
         delay(50)
         showLaunchContent = true
-        inputFocusRequester.requestFocus()
+        // No automatic focus request: opening a conversation should not shove the
+        // IME into the user's face before they choose to tap the input field.
     }
 
 

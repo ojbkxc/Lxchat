@@ -1,6 +1,7 @@
 package com.lxseek.chat.api
 
 import okhttp3.MediaType.Companion.toMediaType
+import com.lxseek.chat.BuildConfig
 import com.lxseek.chat.util.DebugLog
 import okhttp3.Dns
 import okhttp3.OkHttpClient
@@ -110,21 +111,34 @@ object HttpClient {
 
     @Volatile private var proxyConfig: ProxyConfig? = null
 
+    /**
+     * M5 修复：JVM 级 SOCKS 认证改为「常驻 Authenticator + 动态读取最新
+     * [proxyConfig]」。旧实现每次 setProxy 都 new 一个闭包再 setDefault /
+     * setDefault(null)，并发调用时设置与清除的交错顺序不可控（全局
+     * Authenticator 竞态）；现在只安装一次，行为始终基于最新配置——无代理或
+     * 无凭据时对 PROXY 请求返回 null，与 setDefault(null) 等效。
+     */
+    private val jvmSocksAuthenticatorInstalled = AtomicBoolean(false)
+
     /** Apply (or clear) the proxy. Also installs a default [java.net.Authenticator] for
      *  SOCKS proxy auth, which OkHttp's proxyAuthenticator does not cover. */
     fun setProxy(config: ProxyConfig?) {
         proxyConfig = config?.takeIf { it.host.isNotBlank() && it.port in 1..65535 }
         val cfg = proxyConfig
-        if (cfg != null && cfg.username.isNotBlank()) {
+        if (cfg != null && cfg.username.isNotBlank() &&
+            jvmSocksAuthenticatorInstalled.compareAndSet(false, true)
+        ) {
             java.net.Authenticator.setDefault(object : java.net.Authenticator() {
                 override fun getPasswordAuthentication(): java.net.PasswordAuthentication? =
-                    if (requestorType == RequestorType.PROXY)
-                        java.net.PasswordAuthentication(cfg.username, cfg.password.toCharArray())
-                    else null
+                    if (requestorType == RequestorType.PROXY) {
+                        val c = proxyConfig ?: return null
+                        if (c.username.isBlank()) return null
+                        java.net.PasswordAuthentication(c.username, c.password.toCharArray())
+                    } else null
             })
-        } else {
-            java.net.Authenticator.setDefault(null)
         }
+        // 不再 setDefault(null)：常驻 Authenticator 在 proxyConfig 无凭据时
+        // 自然返回 null，无需反复设置/清除全局状态。
     }
 
     private fun resolveProxy(host: String): java.net.Proxy {
@@ -134,17 +148,20 @@ object HttpClient {
         return java.net.Proxy(type, java.net.InetSocketAddress.createUnresolved(cfg.host, cfg.port))
     }
 
-    /** True if [host] matches a bypass entry: exact host, `*.suffix` wildcard, or IPv4 CIDR. */
+    /** True if [host] matches a bypass entry: host rule (exact / `*.suffix` wildcard /
+     *  leading-dot suffix) or IPv4 CIDR. */
     private fun isProxyBypassed(host: String, bypass: List<String>): Boolean {
         if (host.isBlank()) return true
         val h = host.lowercase().trim('[', ']')
         for (raw in bypass) {
             val entry = raw.trim().lowercase()
-            when {
-                entry.isEmpty() -> continue
-                entry.contains('/') -> if (ipv4InCidr(h, entry)) return true
-                entry.startsWith("*.") -> if (h == entry.drop(2) || h.endsWith(entry.drop(1))) return true
-                else -> if (h == entry) return true
+            if (entry.isEmpty()) continue
+            // R3：主机通配符/精确匹配复用 EncryptedDns 的单条规则实现，
+            // 与 DNS 白名单共用一处逻辑，避免多处实现漂移；CIDR 只属于代理场景。
+            if (entry.contains('/')) {
+                if (ipv4InCidr(h, entry)) return true
+            } else if (matchesHostRule(h, entry)) {
+                return true
             }
         }
         return false
@@ -220,30 +237,41 @@ object HttpClient {
      * Dedicated client for the activation server (activate.lxseek.com).
      *
      * Hardened with:
-     * - **Certificate pinning** 鈥?pins the SHA-256 hash of the server's leaf cert
+     * - **Certificate pinning** - pins the SHA-256 hash of the server's leaf cert
      *   (or a CA in its chain). Blocks MITM proxies even if the device trusts a
-     *   rogue CA. The placeholder hash below is a 32-zero SHA-256; replace with
-     *   the real pin captured via `openssl s_client` or OkHttp's
-     *   `CertificatePinner.pin()` before release. With the placeholder, pinning
-     *   is effectively disabled (no cert will match), so set [ACTIVATION_PIN_ENABLED]
-     *   to true only after the real hash is in place.
-     * - **Short timeouts** (10 s) 鈥?activation is a quick request/response, not a
+     *   rogue CA. H1: the pin value comes from BuildConfig.ACTIVATION_PIN (gradle
+     *   property LXCHAT_ACTIVATION_PIN); when absent, pinning is disabled with a
+     *   WARN (fail-open) — see the lazy block below.
+     * - **Short timeouts** (10 s) - activation is a quick request/response, not a
      *   long-running stream.
      * - **Same DNS / proxy** setup as [client] for consistency.
      */
-    val activationClient: OkHttpClient = run {
-        val pinner = if (ACTIVATION_PIN_ENABLED) {
+    // by lazy：H1 的 pin 日志（DebugLog.i/w）必须移出 object 的 <clinit>。
+    // JVM 单测中 android.util.Log 未 mock，类初始化路径一旦调用会抛
+    // RuntimeException，导致 HttpClient 整个 object 初始化失败
+    // （ExceptionInInitializerError），波及所有依赖它的单测。延迟到首次
+    // 使用再初始化，真机行为语义不变（激活请求每个会话至多一次）。
+    val activationClient: OkHttpClient by lazy {
+        // H1 修复：pin 值从 BuildConfig.ACTIVATION_PIN 注入（gradle 属性
+        // LXCHAT_ACTIVATION_PIN，见 app/build.gradle.kts），不再硬编码占位 hash——
+        // 占位 hash 叠加 pinning 开关会让激活服务器所有请求被拒（fail-closed）。
+        // 属性未配置时降级为「不校验 pin + WARN 日志」，保证默认构建 fail-open。
+        val pin = BuildConfig.ACTIVATION_PIN.trim()
+        val pinner = if (pin.isNotBlank()) {
+            DebugLog.i(
+                TAG,
+                "Activation cert pinning enabled (${pin.substringBefore('/')}/" +
+                    pin.substringAfter('/').take(8) + "…)",
+            )
             okhttp3.CertificatePinner.Builder()
-                .add(
-                    ACTIVATION_HOST,
-                    // SHA-256 pin of the activation server's certificate.
-                    // Replace this placeholder with the real pin:
-                    //   val cert = ... // X509Certificate from the server
-                    //   val pin = okhttp3.CertificatePinner.pin(cert.publicKey)
-                    "sha256/yZ1amwQO/r0SSBhz48UcPsaNPElxwEZvQaCP/8iRAxE=",
-                )
+                .add(ACTIVATION_HOST, pin)
                 .build()
         } else {
+            DebugLog.w(
+                TAG,
+                "Activation cert pinning disabled: LXCHAT_ACTIVATION_PIN not configured. " +
+                    "To enable, pass gradle property -PLXCHAT_ACTIVATION_PIN=sha256/<BASE64=",
+            )
             okhttp3.CertificatePinner.DEFAULT
         }
         OkHttpClient.Builder()
@@ -263,14 +291,9 @@ object HttpClient {
     /** Hostname of the activation server (used for certificate pinning). */
     private const val ACTIVATION_HOST = "activate.lxseek.com"
 
-    /**
-     * Toggle for certificate pinning on [activationClient].
-     *
-     * Set to true after [ACTIVATION_PIN_HASH] is replaced with the real SHA-256 pin
-     * of the activation server's certificate. With the placeholder hash, pinning
-     * would reject every cert, so this defaults to false.
-     */
-    private const val ACTIVATION_PIN_ENABLED = true
+    // H1：证书 pin 改由 BuildConfig.ACTIVATION_PIN 注入；未配置时 activationClient
+    // 降级为不校验 pin（fail-open + WARN），不再需要源码内的开关常量。
+    private const val TAG = "HttpClient"
 
     /** Custom DNS resolver installed by the app (e.g. [EncryptedDns]), or the system resolver.
      *  Read live at every lookup so enabling/changing DNS protection takes effect without a rebuild. */

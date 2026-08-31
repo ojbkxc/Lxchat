@@ -4,8 +4,6 @@ import android.content.Context
 import android.os.Build
 import android.provider.Settings
 
-import java.security.MessageDigest
-
 /**
  * 设备身份证生成器。
  *
@@ -15,6 +13,11 @@ import java.security.MessageDigest
  * - Build.FINGERPRINT / MODEL / MANUFACTURER / BOARD / HARDWARE / SUPPORTED_ABIS 共同决定
  *   "这台设备"的指纹，刷机/换机后哈希必然变化。
  * - 后续可将本逻辑移到 NDK native 层进一步增加破解难度（见 [getDeviceId] 注释）。
+ *
+ * M7（缓解性措施）：除 32 位短身份外，[getFullFingerprint] 返回完整 64 位哈希，
+ * 由 [LocalCloudApi] 在激活时快照、验证时比对，设备特征被篡改（如 root 改
+ * ANDROID_ID 克隆到同型号设备）后要求重新激活。**局限**：root 用户同样可
+ * 篡改快照存储，本措施仅提高攻击成本；绝对防御需服务器端设备风控。
  *
  * 该对象无状态、线程安全，可在任意线程调用。
  */
@@ -42,9 +45,34 @@ object DeviceIdCard {
      * 反编译只能看到 JNI 入口，无法直接拿到原始特征组合。
      */
     fun getDeviceId(context: Context): String {
+        return fullFingerprint(context).take(DEVICE_ID_HEX_LEN)
+    }
+
+    /**
+     * 完整设备指纹（64 位 SHA-256 hex，M7）。
+     *
+     * 与 [getDeviceId] 使用同一特征组合但不截断，供 [LocalCloudApi] 做激活
+     * 快照比对：短 ID 碰撞/截断攻击面更小，完整哈希作为第二道防线。
+     */
+    fun getFullFingerprint(context: Context): String = fullFingerprint(context)
+
+    /**
+     * 格式化显示：XXXX-XXXX-XXXX-XXXX（取前 16 位，4 位一组用 `-` 连接）。
+     *
+     * 用户可以在设置页看到自己设备的身份证号，便于客服/激活码发放方核对。
+     * 仅取前 16 位是为了显示紧凑；完整 32 位仍是内部绑定用的 deviceId。
+     */
+    fun getDeviceIdDisplay(context: Context): String {
+        val full = getDeviceId(context)
+        val display = full.take(DISPLAY_LEN)
+        return display.chunked(DISPLAY_GROUP_SIZE).joinToString("-")
+    }
+
+    /** 组合全部设备特征并做 SHA-256 → 小写 hex 字符串（完整 64 位）。 */
+    private fun fullFingerprint(context: Context): String {
         val androidId = try {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // 极少数设备/ROM 读取 ANDROID_ID 会抛异常，回退到空串以保证不崩。
             ""
         }
@@ -66,33 +94,6 @@ object DeviceIdCard {
             .append(abis)
             .toString()
 
-        return sha256Hex(raw).take(DEVICE_ID_HEX_LEN)
+        return CryptoUtils.sha256Hex(raw)
     }
-
-    /**
-     * 格式化显示：XXXX-XXXX-XXXX-XXXX（取前 16 位，4 位一组用 `-` 连接）。
-     *
-     * 用户可以在设置页看到自己设备的身份证号，便于客服/激活码发放方核对。
-     * 仅取前 16 位是为了显示紧凑；完整 32 位仍是内部绑定用的 deviceId。
-     */
-    fun getDeviceIdDisplay(context: Context): String {
-        val full = getDeviceId(context)
-        val display = full.take(DISPLAY_LEN)
-        return display.chunked(DISPLAY_GROUP_SIZE).joinToString("-")
-    }
-
-    /** SHA-256 → 小写 hex 字符串。 */
-    private fun sha256Hex(input: String): String {
-        val md = MessageDigest.getInstance("SHA-256")
-        val digest = md.digest(input.toByteArray(Charsets.UTF_8))
-        val sb = StringBuilder(digest.size * 2)
-        for (b in digest) {
-            val v = b.toInt() and 0xFF
-            sb.append(HEX_TABLE[v ushr 4])
-            sb.append(HEX_TABLE[v and 0x0F])
-        }
-        return sb.toString()
-    }
-
-    private val HEX_TABLE = "0123456789abcdef".toCharArray()
 }

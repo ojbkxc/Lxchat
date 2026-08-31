@@ -421,14 +421,10 @@ private fun MembershipSection(
     expiryTimestamp: Long?,
     deviceId: String,
 ) {
-    val tierLabel = when (tier) {
-        MembershipTier.Free -> "免费版"
-        MembershipTier.Premium -> "高级版"
-        MembershipTier.Pro -> "专业版"
-        MembershipTier.Enterprise -> "企业版"
-    }
+    // 二元制：免费版/付费版（旧档位 Pro/Enterprise 由 MembershipTier.parse 归一化为付费）。
+    val tierLabel = if (tier == MembershipTier.Free) "免费版" else "付费版"
     SectionCard(title = "会员状态") {
-        InfoRow("当前等级", tierLabel)
+        InfoRow("账户类型", tierLabel)
         InfoRow("激活状态", if (isActive) "已激活" else "未激活")
         InfoRow("到期时间", formatExpiry(expiryTimestamp))
         InfoRow("设备身份证", deviceId)

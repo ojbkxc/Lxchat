@@ -6,7 +6,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Compress
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.CircleShape
@@ -23,11 +28,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 
 import androidx.compose.ui.unit.dp
+import com.lxseek.chat.R
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.MessageSegment
 import com.lxseek.chat.model.MessageStatus
@@ -119,9 +127,63 @@ internal fun MessageItem(
     var selectedSegmentIndices by remember { mutableStateOf<List<Int>>(emptyList()) }
     var showInfoDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showLongPressMenu by remember { mutableStateOf(false) }
     var showCompactDetail by remember(message.id) { mutableStateOf(false) }
     val haptics = LocalLxChatHaptics.current
     val motionPolicy = LocalLxChatMotionPolicy.current
+    val clipboardManager = LocalClipboardManager.current
+
+    // Long-press opens an action menu (copy / edit / select / delete) instead of
+    // jumping straight into share-selection mode, matching platform conventions.
+    if (showLongPressMenu) {
+        DropdownMenu(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(12.dp),
+            expanded = true,
+            onDismissRequest = { showLongPressMenu = false },
+        ) {
+            val canCopy = !message.text.isNullOrBlank() &&
+                !message.isContextCompact()
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_menu_copy)) },
+                leadingIcon = { Icon(Icons.Default.ContentCopy, null) },
+                enabled = canCopy,
+                onClick = {
+                    showLongPressMenu = false
+                    message.text?.let { clipboardManager.setText(AnnotatedString(it)) }
+                    haptics.confirm()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_menu_edit)) },
+                leadingIcon = { Icon(Icons.Default.Edit, null) },
+                enabled = isEditingAllowed && message.participant == Participant.USER &&
+                    !message.isContextCompact(),
+                onClick = {
+                    showLongPressMenu = false
+                    onStartEdit()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_menu_select)) },
+                leadingIcon = { Icon(Icons.Default.Checklist, null) },
+                onClick = {
+                    showLongPressMenu = false
+                    onLongPress()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_menu_delete)) },
+                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                enabled = !isLoading,
+                onClick = {
+                    showLongPressMenu = false
+                    showDeleteConfirm = true
+                },
+            )
+        }
+    }
 
     if (showInfoDialog) {
         MessageInfoDialog(
@@ -229,7 +291,7 @@ internal fun MessageItem(
             modifier = Modifier
                 .weight(1f)
                 .pointerInput(selectionMode) {
-                    if (!selectionMode) detectTapGestures(onLongPress = { onLongPress() })
+                    if (!selectionMode) detectTapGestures(onLongPress = { showLongPressMenu = true })
                 },
         ) {
             Column(

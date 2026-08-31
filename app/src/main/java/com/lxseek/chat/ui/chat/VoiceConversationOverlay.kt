@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -170,7 +171,12 @@ internal fun VoiceConversationOverlay(
             )
             Spacer(modifier = Modifier.height(28.dp))
 
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(360.dp)) {
+            // 小屏适配：环直径不超过屏幕短边（360dp 以下等比缩小，避免溢出）。
+            val config = LocalConfiguration.current
+            val ringSize = min(min(config.screenWidthDp, config.screenHeightDp), 360).dp
+            val spectrumSize = ringSize - 15.dp
+            val coreSize = (ringSize.value * 0.4f).dp
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ringSize)) {
                 HaloRing(
                     color = accent,
                     amplitude = if (state == VoiceConversationController.State.LISTENING) amplitude else 0.22f,
@@ -179,12 +185,12 @@ internal fun VoiceConversationOverlay(
                 VoiceSpectrumRing(
                     amplitude = if (state == VoiceConversationController.State.LISTENING) amplitude else 0.22f,
                     accent = accent,
-                    modifier = Modifier.size(345.dp),
+                    modifier = Modifier.size(spectrumSize),
                 )
                 Surface(
                     shape = CircleShape,
                     color = if (isListening) MaterialTheme.colorScheme.error.copy(alpha = 0.18f) else accent.copy(alpha = 0.16f),
-                    modifier = Modifier.size(144.dp),
+                    modifier = Modifier.size(coreSize),
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
@@ -192,7 +198,7 @@ internal fun VoiceConversationOverlay(
                             contentDescription = null,
                             tint = if (isListening) MaterialTheme.colorScheme.error else accent,
                             modifier = Modifier
-                                .size(if (isListening) 64.dp else 60.dp)
+                                .size(if (isListening) (coreSize * 0.44f) else (coreSize * 0.42f))
                                 .then(if (isListening) Modifier.alpha(blinkAlpha) else Modifier),
                         )
                     }

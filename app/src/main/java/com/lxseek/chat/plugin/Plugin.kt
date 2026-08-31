@@ -23,7 +23,7 @@ data class PluginManifest(
     val category: PluginCategory,
     val description: String? = null,
     val author: String? = null,
-    /** true 表示该插件属于会员（高级）能力，由能力门禁层拦截。 */
+    /** true 表示该插件属于付费能力（二元制：需要付费账户），由能力门禁层拦截。 */
     val requiresMembership: Boolean = false,
     /** true 表示随 APK 内置，false 表示外部/动态加载。 */
     val builtIn: Boolean = true,

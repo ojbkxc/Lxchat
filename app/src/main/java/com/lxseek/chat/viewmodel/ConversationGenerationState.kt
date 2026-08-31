@@ -528,6 +528,9 @@ class ConversationGenerationState(
      */
     fun removeQueuedSend(id: String): QueuedSend? = guidanceLeases.remove(id)
 
+    /** Remove every queued send (batch clear affordance); callers clean up orphaned files. */
+    fun clearQueuedSends(): List<QueuedSend> = guidanceLeases.removeAll()
+
     /** Transfer the pending batch to one explicit in-flight owner before leaving memory-only state. */
     fun claimQueuedSends(): GuidanceBatchLease? = guidanceLeases.claim()
 

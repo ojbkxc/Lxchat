@@ -134,6 +134,11 @@
     <string name="share_label_user">User</string>
     <string name="share_label_ai">AI</string>
     <string name="share_export_title">Export</string>
+    <string name="message_menu_copy">Copy</string>
+    <string name="message_menu_edit">Edit</string>
+    <string name="message_menu_select">Select Messages</string>
+    <string name="message_menu_delete">Delete</string>
+    <string name="queue_clear_all">Clear All</string>
     <string name="share_include_thinking">Include Thinking</string>
     <string name="share_include_thinking_desc">Include AI thinking in exported content</string>
     <string name="share_include_tools">Include Tool Calls</string>

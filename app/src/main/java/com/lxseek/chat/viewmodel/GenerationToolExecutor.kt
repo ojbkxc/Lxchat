@@ -247,14 +247,15 @@ internal class GenerationToolExecutor private constructor(
                 )
 
             // ── Execution-layer membership gate ─────────────────────
-            // Anti-bypass: even if a non-member somehow invokes a membership tool,
+            // Anti-bypass: even if a free-account user somehow invokes a paid tool,
             // refuse execution here. The disclosure layer (filterByMembership) already
             // hides these tools from the model, but this is the definitive runtime check.
+            // 二元制：付费门只区分免费/付费账户。
             val membershipDesc = ToolTierPolicy.descriptorMap(providers, call.context)[call.name]
             if (membershipDesc?.requiresMembership == true && !call.context.hasMembership) {
                 return call.result(
                     ToolExecutionResult(
-                        text = "This feature requires a membership subscription. Please upgrade to use it.",
+                        text = "This feature requires a paid membership. Please upgrade to a paid account to use it.",
                         isError = true,
                     ),
                 )

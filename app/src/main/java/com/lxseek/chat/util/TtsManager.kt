@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.PlaybackParams
 import android.os.Build
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import org.json.JSONObject
 import java.io.File
@@ -63,6 +66,12 @@ object TtsManager {
     private const val TAG = "TtsManager"
     private const val MAX_LOG = 300
     private const val WATCHDOG_TIMEOUT_MS = 30_000L
+    /** 单次网络 TTS 音频的播放时长上限：回调彻底丢失时兜底释放，防 isPlaying 永久卡 true。 */
+    private const val NET_PLAYBACK_TIMEOUT_MS = 10 * 60_000L
+    /** 引擎初始化期间缓冲的流式句子数上限：引擎持续失败时丢弃最旧条目，避免无限累积。 */
+    private const val MAX_PENDING_STREAM_UTTERANCES = 200
+    /** 回声兜底（H2c）保留的最近播放文本条数。 */
+    private const val RECENT_SPOKEN_HISTORY = 8
     private val mainHandler = Handler(Looper.getMainLooper())
     private val logBuffer = Collections.synchronizedList(mutableListOf<String>())
     private val logTimeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
@@ -115,6 +124,85 @@ object TtsManager {
     /** Enqueued-but-not-yet-finished utterances; keeps isPlaying true across a queued stream. */
     @Volatile private var activeUtterances = 0
 
+    // ── 回声抑制（H2c）：记录最近提交播放的文本，供语音对话侧比对识别结果 ──
+    private val recentSpokenLock = Any()
+    private val recentSpoken = ArrayDeque<String>(RECENT_SPOKEN_HISTORY)
+
+    /** 最近提交给 TTS 播放的文本（最旧在前），用于识别文本与播报高度相似时的环路兜底。 */
+    val recentSpokenTexts: List<String>
+        get() = synchronized(recentSpokenLock) { recentSpoken.toList() }
+
+    private fun rememberSpoken(text: String) {
+        if (text.isBlank()) return
+        synchronized(recentSpokenLock) {
+            recentSpoken.addLast(text)
+            while (recentSpoken.size > RECENT_SPOKEN_HISTORY) recentSpoken.removeFirst()
+        }
+    }
+
+    // ── 音频焦点（M1）：播放前请求瞬时焦点（其他应用压低音量），丢焦即停止播放 ──
+    @Volatile private var audioManager: AudioManager? = null
+    @Volatile private var focusRequest: AudioFocusRequest? = null
+    @Volatile private var focusListener: AudioManager.OnAudioFocusChangeListener? = null
+
+    private fun requestPlaybackFocus(): Boolean {
+        val ctx = appContext ?: return false
+        val am = audioManager ?: (ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)
+            ?.also { audioManager = it }
+            ?: return false
+        val listener = AudioManager.OnAudioFocusChangeListener { change ->
+            when (change) {
+                AudioManager.AUDIOFOCUS_LOSS,
+                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+                -> {
+                    log("W", "Audio focus lost ($change) — stopping TTS playback")
+                    stop()
+                }
+            }
+        }
+        focusListener = listener
+        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                .setOnAudioFocusChangeListener(listener)
+                .build()
+            focusRequest = request
+            am.requestAudioFocus(request)
+        } else {
+            @Suppress("DEPRECATION")
+            am.requestAudioFocus(
+                listener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+            )
+        }
+        if (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            log("W", "requestAudioFocus not granted ($result) — playing anyway")
+        }
+        return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+    }
+
+    private fun abandonPlaybackFocus() {
+        val am = audioManager ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                focusRequest?.let { am.abandonAudioFocusRequest(it) }
+            } else {
+                focusListener?.let { am.abandonAudioFocus(it) }
+            }
+        } catch (e: Throwable) {
+            log("W", "abandonAudioFocus failed: ${e.message}")
+        } finally {
+            focusRequest = null
+            focusListener = null
+        }
+    }
+
     private fun log(level: String, msg: String) {
         val ts = logTimeFormat.format(Date())
         val entry = "$ts $level/$TAG: $msg"
@@ -156,7 +244,7 @@ object TtsManager {
 
         if (tts != null && initialized) return
         if (tts != null && !initialized) {
-            try { tts?.stop(); tts?.shutdown() } catch (_: Throwable) {}
+            try { tts?.stop(); tts?.shutdown() } catch (e: Throwable) { log("W", "init: stop stale engine failed: ${e.message}") }
             tts = null
         }
         val appCtx = context.applicationContext
@@ -171,66 +259,18 @@ object TtsManager {
                 @Suppress("DEPRECATION")
                 pm.queryIntentServices(ttsIntent, 0)
             }.map { it.serviceInfo.packageName }
-        } catch (_: Throwable) { emptyList() }
+        } catch (e: Throwable) {
+            log("W", "queryIntentServices(TTS) failed: ${e.message}")
+            emptyList()
+        }
         val defaultEngine = try {
             Settings.Secure.getString(appCtx.contentResolver, "tts_default_synth")
-        } catch (_: Throwable) { null }
+        } catch (e: Throwable) {
+            log("W", "read tts_default_synth failed: ${e.message}")
+            null
+        }
         log("D", "PM resolved engines: $resolvedEngines")
         log("D", "System default engine: $defaultEngine")
-        for (e in resolvedEngines) {
-            val installed = try { pm.getPackageInfo(e, 0) != null } catch (_: Throwable) { false }
-            log("D", "  $e installed=$installed")
-        }
-        val knownEngines = setOfNotNull(defaultEngine, "com.google.android.tts", "com.xiaomi.mibrain.speech")
-        for (pkg in knownEngines) {
-            try {
-                val info = pm.getPackageInfo(pkg, 0)
-                val appInfo = info.applicationInfo
-                val enabled = appInfo?.enabled ?: false
-                val enabledStr = when {
-                    appInfo == null -> "null"
-                    !enabled -> "DISABLED"
-                    else -> "ENABLED"
-                }
-                log("D", "Package $pkg: $enabledStr (versionCode=${info.versionCode} versionName=${info.versionName})")
-            } catch (_: Throwable) {
-                log("D", "Package $pkg: NOT INSTALLED")
-            }
-        }
-        // Manual bindService diagnostic. Android 8.0+ (API 26+) requires an
-        // explicit Intent for bindService; the old action-only implicit Intent
-        // always threw "Service Intent must be explicit" and produced a misleading
-        // E log while TTS kept working. Build explicit intents (setPackage) from
-        // resolved + known enabled engines instead, and skip the test if none exist.
-        val bindCandidates = (resolvedEngines + knownEngines).distinct().filter { pkg ->
-            try { pm.getPackageInfo(pkg, 0).applicationInfo?.enabled == true } catch (_: Throwable) { false }
-        }
-        if (bindCandidates.isEmpty()) {
-            log("D", "No TTS engine resolved; skipping manual bindService test")
-            log("D", "Manual bindService(TTS_SERVICE) returned: false (skipped, no explicit engine available)")
-        } else {
-            var bindResult = false
-            for (enginePkg in bindCandidates) {
-                val explicitIntent = Intent("android.speech.tts.TTS_SERVICE").setPackage(enginePkg)
-                val ok = try {
-                    appCtx.bindService(explicitIntent, object : android.content.ServiceConnection {
-                        override fun onServiceConnected(name: android.content.ComponentName?, service: android.os.IBinder?) {
-                            log("D", "Manual bindService($enginePkg): onServiceConnected $name")
-                            try { appCtx.unbindService(this) } catch (_: Throwable) {}
-                        }
-                        override fun onServiceDisconnected(name: android.content.ComponentName?) {
-                            log("D", "Manual bindService($enginePkg): onServiceDisconnected $name")
-                        }
-                    }, android.content.Context.BIND_AUTO_CREATE)
-                } catch (e: Throwable) {
-                    log("E", "Manual bindService exception ($enginePkg): ${e.message}")
-                    false
-                }
-                log("D", "Manual bindService(TTS_SERVICE) via $enginePkg returned: $ok")
-                if (ok) { bindResult = true; break }
-            }
-            log("D", "Manual bindService(TTS_SERVICE) returned: $bindResult")
-        }
         // System-voice-first engine ordering. The 2-arg TextToSpeech constructor is tried first
         // so the user's system-selected voice (e.g. Xiaomi 小爱同学 gentle voice) is inherited.
         // OEM explicit binding (Xiaomi -> 小米引擎, OPPO -> OPPO 引擎, Samsung -> Samsung TTS, ...)
@@ -314,6 +354,13 @@ object TtsManager {
             log("E", "All engines exhausted")
             _lastInitStatus.value = "FAILED:all_exhausted"
             initialized = false; _isAvailable.value = false
+            // 所有引擎都初始化失败：缓冲的流式句子永远等不到 flush，清空避免无限累积。
+            synchronized(streamLock) {
+                if (pendingStreamUtterances.isNotEmpty()) {
+                    log("W", "Dropping ${pendingStreamUtterances.size} buffered stream utterances (no engine)")
+                    pendingStreamUtterances.clear()
+                }
+            }
             return
         }
         val engine = enginesToTry[currentEngineIndex]
@@ -342,17 +389,38 @@ object TtsManager {
             initialized = true; _isAvailable.value = true
             _lastInitStatus.value = "SUCCESS:$engineLabel"
             log("D", "init SUCCESS with engine=$engineLabel, engines=${tts?.engines?.map { it.name }}")
+            // H2(b)：系统 TTS 也走语音通信 usage，尽量让系统 AEC 生效（API 30+）。
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    tts?.setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                } catch (e: Throwable) {
+                    log("W", "setAudioAttributes(VOICE_COMMUNICATION) rejected: ${e.message}")
+                }
+            }
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                override fun onStart(utteranceId: String?) { log("D", "onStart $utteranceId"); _isPlaying.value = true }
+                override fun onStart(utteranceId: String?) {
+                    log("D", "onStart $utteranceId")
+                    _isPlaying.value = true
+                    // 每句开始都续期看门狗（M2）：覆盖"上一句 onDone 后下一句迟迟不开始"的场景。
+                    restartWatchdog()
+                }
                 override fun onDone(utteranceId: String?) {
-                    log("D", "onDone $utteranceId"); watchdogJob?.cancel(); watchdogJob = null; onUtteranceFinished()
+                    log("D", "onDone $utteranceId")
+                    onUtteranceFinished()
                 }
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
-                    log("D", "onError $utteranceId"); watchdogJob?.cancel(); watchdogJob = null; onUtteranceFinished()
+                    log("W", "onError $utteranceId")
+                    onUtteranceFinished()
                 }
                 override fun onError(utteranceId: String?, errorCode: Int) {
-                    log("E", "onError $utteranceId code=$errorCode"); watchdogJob?.cancel(); watchdogJob = null; onUtteranceFinished()
+                    log("E", "onError $utteranceId code=$errorCode")
+                    onUtteranceFinished()
                 }
             })
             pendingText?.let { text ->
@@ -376,7 +444,7 @@ object TtsManager {
             }
         } else {
             log("E", "init FAILED for engine=$engineLabel status=$status")
-            try { tts?.shutdown() } catch (_: Throwable) {}
+            try { tts?.shutdown() } catch (e: Throwable) { log("W", "shutdown failed engine after init failure: ${e.message}") }
             tts = null
             currentEngineIndex++
             mainHandler.postDelayed({ tryNextEngine(ctx) }, 300)
@@ -385,6 +453,7 @@ object TtsManager {
 
     fun speak(text: String, language: String = "system", rate: Float = 1.0f): Boolean {
         if (text.isBlank()) { log("D", "speak: text is blank"); return false }
+        rememberSpoken(text)
 
         val config = networkTtsConfig?.invoke()
         if (config != null) {
@@ -407,6 +476,7 @@ object TtsManager {
     fun speakQueued(text: String, language: String = "system", rate: Float = 1.0f): Boolean {
         if (text.isBlank()) { log("D", "speakQueued: text is blank"); return false }
         val trimmed = text.trim()
+        rememberSpoken(trimmed)
         val config = networkTtsConfig?.invoke()
         if (config != null) {
             streamRate = rate
@@ -418,7 +488,14 @@ object TtsManager {
         if (!initialized || tts == null) {
             appContext?.let { init(it) }
             log("D", "speakQueued: buffering until engine init")
-            synchronized(streamLock) { pendingStreamUtterances.addLast(Triple(trimmed, language, rate)) }
+            synchronized(streamLock) {
+                // 引擎迟迟初始化不了时丢弃最旧缓冲（L 项）：上限保护，避免无限累积。
+                if (pendingStreamUtterances.size >= MAX_PENDING_STREAM_UTTERANCES) {
+                    log("W", "pendingStreamUtterances overflow (${pendingStreamUtterances.size}); dropping oldest")
+                    pendingStreamUtterances.removeFirstOrNull()
+                }
+                pendingStreamUtterances.addLast(Triple(trimmed, language, rate))
+            }
             return true
         }
         return speakInternal(trimmed, language, rate, queueAdd = true)
@@ -434,24 +511,60 @@ object TtsManager {
                     if (config == null) {
                         // Provider TTS switched off mid-stream; drop the remaining queue.
                         _isPlaying.value = false
+                        abandonPlaybackFocus()
                         continue
                     }
                     _isPlaying.value = true
+                    requestPlaybackFocus()
                     val audio = synthesizeNetSpeech(chunk, streamRate, config)
                     if (audio != null) {
-                        playNetAudio(audio, streamRate)
+                        // 播放兜底（M2）：MediaPlayer 回调彻底丢失时超时释放，防 isPlaying 卡 true。
+                        withTimeoutOrNull(NET_PLAYBACK_TIMEOUT_MS) { playNetAudio(audio, streamRate) }
+                            ?: run {
+                                log("E", "Network TTS streaming playback watchdog timeout")
+                                netPlayer?.let { runCatching { it.release() } }
+                                netPlayer = null
+                            }
                     }
-                    if (streamChannel.isEmpty) _isPlaying.value = false
+                    if (streamChannel.isEmpty) { _isPlaying.value = false; abandonPlaybackFocus() }
                 }
             }
         }
     }
 
+    /**
+     * M2 状态机核心：单句结束（完成/错误）只递减计数；计数归零才真正收尾
+     * （isPlaying 复位 + 释放焦点），队列中还有后续句子时看门狗继续续期。
+     */
     private fun onUtteranceFinished() {
         activeUtterances--
         if (activeUtterances <= 0) {
             activeUtterances = 0
             _isPlaying.value = false
+            watchdogJob?.cancel()
+            watchdogJob = null
+            abandonPlaybackFocus()
+        } else {
+            // 还有排队中的句子：续期看门狗等下一句的 onStart。
+            restartWatchdog()
+        }
+    }
+
+    /**
+     * 看门狗（M2）：每次播放活动（入队/单句开始/单句结束但队列未空）都续期。
+     * 旧实现里"任意 onDone 都取消看门狗"，导致最后一句的 onDone 丢失时
+     * isPlaying 永久卡 true；现在只有计数归零或显式 stop 才收掉看门狗。
+     */
+    private fun restartWatchdog() {
+        watchdogJob?.cancel()
+        watchdogJob = watchdogScope.launch {
+            delay(WATCHDOG_TIMEOUT_MS)
+            if (_isPlaying.value) {
+                log("E", "Watchdog timeout (${WATCHDOG_TIMEOUT_MS}ms) — forcing isPlaying=false")
+                activeUtterances = 0
+                _isPlaying.value = false
+                abandonPlaybackFocus()
+            }
         }
     }
 
@@ -463,15 +576,24 @@ object TtsManager {
     private fun speakNetwork(text: String, rate: Float, config: NetworkTtsConfig): Boolean {
         stop()
         _isPlaying.value = true
+        requestPlaybackFocus()
         networkScope.launch {
             val audio = synthesizeNetSpeech(text, rate, config)
             if (audio == null) {
                 log("E", "Network TTS synthesis failed for model=${config.model}")
                 _isPlaying.value = false
+                abandonPlaybackFocus()
                 return@launch
             }
-            playNetAudio(audio, rate)
+            // 播放兜底（M2）：MediaPlayer 既不 onCompletion 也不 onError 时超时释放。
+            withTimeoutOrNull(NET_PLAYBACK_TIMEOUT_MS) { playNetAudio(audio, rate) }
+                ?: run {
+                    log("E", "Network TTS playback watchdog timeout")
+                    netPlayer?.let { runCatching { it.release() } }
+                    netPlayer = null
+                }
             _isPlaying.value = false
+            abandonPlaybackFocus()
         }
         return true
     }
@@ -533,9 +655,11 @@ object TtsManager {
         try {
             netPlayer?.let { runCatching { it.release() } }
             val mp = MediaPlayer()
+            // H2(b)：网络 TTS 用 VOICE_COMMUNICATION usage，让设备 AEC 把麦克风端的
+            // 回声抵消掉（此前 USAGE_MEDIA 不参与语音通信消回声，VAD 会把播报当用户说话）。
             mp.setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )
@@ -599,6 +723,7 @@ object TtsManager {
         }
         engine.setSpeechRate(rate.coerceIn(0.5f, 2.0f))
         val queueMode = if (queueAdd) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+        requestPlaybackFocus()
         val speakResult = engine.speak(text, queueMode, null, UUID.randomUUID().toString())
         val speakStr = if (speakResult == TextToSpeech.SUCCESS) "SUCCESS" else "ERROR:$speakResult"
         log("D", "speak result=$speakStr queue=$queueMode textLen=${text.length} text='${text.take(80)}'")
@@ -608,15 +733,7 @@ object TtsManager {
         // QUEUE_FLUSH replaces everything, so reset the count instead of accumulating.
         if (queueAdd) activeUtterances++ else activeUtterances = 1
         _isPlaying.value = true
-        watchdogJob?.cancel()
-        watchdogJob = watchdogScope.launch {
-            delay(WATCHDOG_TIMEOUT_MS)
-            if (_isPlaying.value) {
-                log("E", "Watchdog timeout (${WATCHDOG_TIMEOUT_MS}ms) — forcing isPlaying=false")
-                activeUtterances = 0
-                _isPlaying.value = false
-            }
-        }
+        restartWatchdog()
         return true
     }
 
@@ -637,6 +754,7 @@ object TtsManager {
         while (streamChannel.tryReceive().isSuccess) { /* drain */ }
         activeUtterances = 0
         _isPlaying.value = false
+        abandonPlaybackFocus()
     }
     fun shutdown() {
         initGeneration++; watchdogJob?.cancel(); watchdogJob = null; tts?.stop(); tts?.shutdown(); tts = null
@@ -647,6 +765,7 @@ object TtsManager {
         while (streamChannel.tryReceive().isSuccess) { /* drain */ }
         synchronized(streamLock) { pendingStreamUtterances.clear() }
         activeUtterances = 0
+        abandonPlaybackFocus()
     }
 
     fun getDiagnosticInfo(): TtsDiagnosticInfo {

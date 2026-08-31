@@ -53,17 +53,17 @@ object LlamaEngineDownloader {
 
     /** Download (or re-download) the .so into filesDir. Idempotent while running. */
     suspend fun download(context: Context): Boolean = withContext(Dispatchers.IO) {
-        if (_downloading.value) {
+        // M7 修复：CAS 原子化「检查-置位」，杜绝并发 download() 双开下载（原先
+        // check-then-act 的 `.value` 读改写存在竞态窗口）。
+        if (!_downloading.compareAndSet(false, true)) {
             DebugLog.w(TAG, "Download already in progress")
             return@withContext false
         }
-        _downloading.value = true
         _progress.value = 0
         val targetFile = File(LlamaEngine.nativeSoPath(context))
-        val targetDir = targetFile.parentFile
+        val tmp = File(targetFile.parentFile, "${targetFile.name}.tmp")
         try {
-            targetDir?.mkdirs()
-            val tmp = File(targetFile.parentFile, "${targetFile.name}.tmp")
+            targetFile.parentFile?.mkdirs()
             if (tmp.exists()) tmp.delete()
             val url = downloadUrl()
             DebugLog.i(TAG, "Downloading $url → ${targetFile.absolutePath}")
@@ -85,6 +85,8 @@ object LlamaEngineDownloader {
             true
         } catch (e: Exception) {
             DebugLog.e(TAG, "Download failed", e)
+            // L4 修复：失败时清理 tmp 残留，避免半成品 .so 干扰后续下载/加载。
+            runCatching { tmp.delete() }
             _progress.value = -2
             false
         } finally {

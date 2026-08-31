@@ -1,7 +1,5 @@
 package com.lxseek.chat.membership
 
-import java.security.MessageDigest
-
 /**
  * Yipay (易支付) callback verifier.
  *
@@ -15,6 +13,10 @@ import java.security.MessageDigest
  *  3. Concatenate as `key1=value1&key2=value2&...&keyN=valueN`.
  *  4. Append the merchant key directly (no `&`): `...keyN=valueN<merchantKey>`.
  *  5. MD5 the resulting string and lowercase it to a 32-char hex digest.
+ *
+ * H2：merchantKey 未配置时本验证器无法给出可信结论（构造前调用方应先检查
+ * [YipayConfig.isMerchantKeyConfigured]）。传入空密钥计算的签名必然失配，
+ * [verify] 会返回 false——这是"未配置即拒绝"的保守行为。
  */
 class YipayCallbackVerifier(
     private val merchantKey: String, // 商户密钥
@@ -38,8 +40,9 @@ class YipayCallbackVerifier(
             return false
         }
         if (params.sign.isBlank()) return false
+        if (merchantKey.isBlank()) return false
         val expected = buildSignString(params)
-        return constantTimeEquals(expected.lowercase(), params.sign.lowercase())
+        return CryptoUtils.constantTimeEquals(expected.lowercase(), params.sign.lowercase())
     }
 
     /**
@@ -60,27 +63,10 @@ class YipayCallbackVerifier(
         val joined = map.filterValues { it.isNotBlank() }
             .entries.joinToString(separator = "&") { (k, v) -> "$k=$v" }
         val raw = joined + merchantKey
-        return md5Hex(raw)
+        return CryptoUtils.md5Hex(raw)
     }
 
     /** True when the trade represents a successful payment. */
     fun isTradeSuccess(params: CallbackParams): Boolean =
         params.tradeStatus.equals("TRADE_SUCCESS", ignoreCase = true)
-
-    private fun md5Hex(input: String): String {
-        val md = MessageDigest.getInstance("MD5")
-        val digest = md.digest(input.toByteArray(Charsets.UTF_8))
-        return digest.joinToString(separator = "") { byte ->
-            "%02x".format(byte.toInt() and 0xFF)
-        }
-    }
-
-    private fun constantTimeEquals(a: String, b: String): Boolean {
-        if (a.length != b.length) return false
-        var diff = 0
-        for (i in a.indices) {
-            diff = diff or (a[i].code xor b[i].code)
-        }
-        return diff == 0
-    }
 }

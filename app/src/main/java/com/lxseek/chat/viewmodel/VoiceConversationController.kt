@@ -32,6 +32,9 @@ private const val TAG = "VoiceConvCtrl"
 // which is barely visible in the voiceprint. This boost maps it to a 0.25-1.0 display range
 // so the bars visibly pulse with the speaker's volume. VAD keeps using the raw amplitude.
 private const val AMPLITUDE_BOOST = 5f
+// H2(c) 回声兜底阈值：比对文本短于该长度不判回声；bigram 相似度达到该值判回声。
+private const val ECHO_MIN_CHARS = 4
+private const val ECHO_SIMILARITY = 0.8
 
 class VoiceConversationController(
     private val scope: CoroutineScope,
@@ -112,7 +115,7 @@ class VoiceConversationController(
 
     fun start() {
         if (active) {
-            Log.w(TAG, "start() called but active=true, state=${_state.value} 鈥?previous session not reset; forcing reset before restart")
+            Log.w(TAG, "start() called but active=true, state=${_state.value} —previous session not reset; forcing reset before restart")
             stop()
         }
         Log.i(TAG, "start: beginning voice conversation")
@@ -137,7 +140,7 @@ class VoiceConversationController(
 
     /**
      * Single-shot ASR: record once, transcribe, publish result via [singleAsrResult].
-     * Does NOT send the message or observe LLM/TTS 鈥?the UI inserts the text into the composer.
+     * Does NOT send the message or observe LLM/TTS —the UI inserts the text into the composer.
      */
     fun startSingleAsr() {
         if (active) {
@@ -178,7 +181,7 @@ class VoiceConversationController(
 
     /**
      * End a voice session gracefully from the overlay's exit affordance. Unlike [stop],
-     * an in-flight recording is transcribed (single ASR 鈫?composer; conversation 鈫?sent)
+     * an in-flight recording is transcribed (single ASR →composer; conversation →sent)
      * instead of being discarded, and the auto-restart loop is cancelled so listening
      * does not begin again.
      */
@@ -194,7 +197,7 @@ class VoiceConversationController(
             Mode.CONVERSATION -> {
                 when (_state.value) {
                     State.LISTENING -> stopCaptureAndTranscribe()
-                    State.TRANSCRIBING -> { /* in flight 鈥?handleTranscriptionResult settles it */ }
+                    State.TRANSCRIBING -> { /* in flight —handleTranscriptionResult settles it */ }
                     else -> stop()
                 }
             }
@@ -335,7 +338,7 @@ class VoiceConversationController(
             beginSystemListening()
             return
         }
-        // Nothing ready 鈥?start capture anyway and init Vosk in background.
+        // Nothing ready —start capture anyway and init Vosk in background.
         // The WAV will be transcribed on stop; if Vosk still isn't ready by then,
         // the user gets a clear error message via _singleAsrError instead of a
         // silent failure.
@@ -357,7 +360,7 @@ class VoiceConversationController(
 
     /** Resolve the configured voice recognition language to a Vosk model code. Prefers an exact
      *  downloaded model, then a downloaded model with the same base code, then any installed
-     *  model 鈥?so offline recognition still engages instead of being silently skipped. */
+     *  model —so offline recognition still engages instead of being silently skipped. */
     private fun resolveVoskLanguage(): String {
         val pref = try { voiceLanguageProvider().trim().lowercase() } catch (e: Throwable) {
             Log.e(TAG, "voiceLanguageProvider crashed: ${e.message}", e); "en"
@@ -410,7 +413,7 @@ class VoiceConversationController(
                 }
                 if (!initialized) {
                     Log.e(TAG, "Streaming: Vosk init failed for $lang")
-                    handleTranscriptionResult("[Vosk model not loaded 鈥?download in Settings 鈫?Speech]")
+                    handleTranscriptionResult("[Vosk model not loaded — download in Settings → Speech]")
                     return@launch
                 }
             }
@@ -424,14 +427,18 @@ class VoiceConversationController(
                     Log.i(TAG, "Streaming Vosk final segment: '$text'")
                     _partialTranscript.value = ""
                     scope.launch { handleTranscriptionResult(text) }
-                    // Do NOT stop capture 鈥?continue recording for next utterance
+                    // Do NOT stop capture — continue recording for next utterance
                 }
                 override fun onError(error: String) {
                     Log.e(TAG, "Streaming Vosk error: $error")
                     if (active) {
                         captureJob?.cancel()
                         captureJob = null
-                        try { audioCaptureManager.cancelCapture() } catch (e: Throwable) {}
+                        try {
+                            audioCaptureManager.cancelCapture()
+                        } catch (e: Throwable) {
+                            Log.w(TAG, "cancelCapture failed after streaming error: ${e.message}")
+                        }
                         voskTranscriber.stopStreamingSession()
                         handleTranscriptionResult("[$error]")
                     }
@@ -469,9 +476,15 @@ class VoiceConversationController(
                     // UI voiceprint uses the boosted value; VAD below stays on the raw RMS
                     // so its silence thresholds are unaffected by the display scaling.
                     _amplitude.value = (rawAmp * AMPLITUDE_BOOST).coerceIn(0f, 1f)
-                    // With VOICE_RECOGNITION the system performs echo cancellation, so TTS
-                    // playback no longer gates ASR feedback: audio keeps flowing into Vosk
-                    // while the assistant speaks (real-time conversation is not paused).
+                    // H2(a) 回声抑制核心：TTS 播放期间暂停向识别器喂音频、暂停 VAD 判定，
+                    // isPlaying 归位后自动恢复。设备 AEC 无法保证时（网络 TTS 旧路径走
+                    // USAGE_MEDIA），VAD 会把助手播报当成用户发言形成"自言自语"循环；
+                    // 代价是助手说话期间无法语音打断（barge-in），换取环路确定性收敛。
+                    if (TtsManager.isPlaying.value) {
+                        chunkCount++
+                        totalBytes += chunk.size
+                        return@collect
+                    }
                     voskTranscriber.acceptWaveform(chunk)
                     chunkCount++
                     totalBytes += chunk.size
@@ -620,7 +633,7 @@ class VoiceConversationController(
                                 // Surface the error instead of silently restarting listening,
                                 // which discarded the recording and left the composer empty.
                                 handleTranscriptionResult(
-                                    "[No ASR engine ready 鈥?configure Vosk or Whisper in Settings]"
+                                    "[No ASR engine ready —configure Vosk or Whisper in Settings]"
                                 )
                             }
                         }
@@ -819,7 +832,7 @@ class VoiceConversationController(
             val errorMsg = if (cleanText.startsWith("[")) {
                 cleanText.removeSurrounding("[", "]")
             } else {
-                "Transcription was empty 鈥?speak louder or closer to the mic"
+                "Transcription was empty — speak louder or closer to the mic"
             }
             when (_mode.value) {
                 Mode.SINGLE_ASR -> {
@@ -838,6 +851,13 @@ class VoiceConversationController(
                     active = false
                 }
             }
+            return
+        }
+        // H2(c) 环路兜底：流式会话中识别文本与最近一次 TTS 播报高度相似时，
+        // 判定为回声（设备 AEC 未消干净），直接丢弃，不发给 LLM。
+        if (isStreamingConversation && looksLikeTtsEcho(cleanText)) {
+            Log.w(TAG, "Echo guard: dropping transcript that mirrors recent TTS output ('$cleanText')")
+            _partialTranscript.value = ""
             return
         }
         Log.i(TAG, "Transcription result: '$cleanText' (mode=${_mode.value})")
@@ -927,4 +947,32 @@ class VoiceConversationController(
     }
 
     fun getVoskTranscriber(): VoskTranscriber = voskTranscriber
+
+    // ── H2(c) 回声环路兜底 ──────────────────────────────────────────────
+
+    /** 识别文本与最近 TTS 播报高度相似（回声）时返回 true。 */
+    private fun looksLikeTtsEcho(text: String): Boolean {
+        val spoken = TtsManager.recentSpokenTexts
+        if (spoken.isEmpty()) return false
+        val said = normalizeForEcho(text)
+        if (said.length < ECHO_MIN_CHARS) return false
+        return spoken.any { candidate ->
+            val norm = normalizeForEcho(candidate)
+            norm.length >= ECHO_MIN_CHARS &&
+                (said == norm || said.contains(norm) || norm.contains(said) || bigramSimilarity(said, norm) >= ECHO_SIMILARITY)
+        }
+    }
+
+    /** 归一化：去掉空白与标点后小写，只保留语义主体。 */
+    private fun normalizeForEcho(text: String): String =
+        text.filterNot { it.isWhitespace() || it in "。，、！？；：,.!?;:\"'“”‘’()（）[]【】<>《》…—-_" }.lowercase()
+
+    /** Dice bigram 相似度（0~1）：两段短文本的轻量相似度估计。 */
+    private fun bigramSimilarity(a: String, b: String): Double {
+        if (a == b) return 1.0
+        val left = a.windowed(2).toSet()
+        val right = b.windowed(2).toSet()
+        if (left.isEmpty() || right.isEmpty()) return 0.0
+        return 2.0 * left.intersect(right).size / (left.size + right.size)
+    }
 }

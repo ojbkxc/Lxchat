@@ -2,10 +2,6 @@ package com.lxseek.chat.membership
 
 import org.json.JSONObject
 
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
-import java.security.NoSuchAlgorithmException
-
 /**
  * 云端签名的会员凭证。激活成功后保存在本地，离线验证。
  *
@@ -14,15 +10,21 @@ import java.security.NoSuchAlgorithmException
  * - App 只持有公钥/共享密钥验证签名，无法伪造。
  * - 篡改本地数据 → 签名验证失败 → 视为未激活。
  *
- * 当前 [LocalCloudApi] 用 HMAC-SHA256（共享密钥在 NDK/混淆中）。
- * 以后 RemoteCloudApi 用 RSA 非对称签名（云端私钥，App 公钥）。
+ * 二元制会员体系：[tier] 只有两态 —— `Free`（免费账户）与 `Premium`（付费账户）。
+ * 历史上曾存在 `Pro`/`Enterprise` 多档，读取旧凭证时由 [MembershipTier.parse]
+ * 统一归一化为 `Premium`（付费）。**注意**：归一化只发生在语义使用处，本类
+ * 的序列化/验签始终使用原始字符串（签名基于原始 tier 值，改写会破坏验签）。
+ *
+ * 当前 [LocalCloudApi] 用 HMAC-SHA256（共享密钥经 [MembershipSecrets] 从
+ * BuildConfig 注入；服务器签发使用同一密钥）。生产正确做法是服务器端 RSA
+ * 非对称签名（云端私钥，App 公钥），客户端持共享密钥仍可被反编译提取。
  *
  * 序列化使用 Android 自带的 `org.json.JSONObject`，不引入新依赖。
  */
 data class SignedCredential(
     /** 绑定的设备身份证（[DeviceIdCard.getDeviceId]）。 */
     val deviceId: String,
-    /** 会员等级：Premium / Pro。 */
+    /** 会员等级：Free（免费）/ Premium（付费）。旧凭证可能仍是 Pro/Enterprise，使用前归一化。 */
     val tier: String,
     /** 过期时间（epoch millis）。 */
     val expiryTimestamp: Long,
@@ -59,7 +61,7 @@ data class SignedCredential(
                 source = obj.getString(KEY_SOURCE),
                 signature = obj.getString(KEY_SIGNATURE),
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
 
@@ -76,7 +78,7 @@ data class SignedCredential(
                 expiryTimestamp = credential.expiryTimestamp,
                 source = credential.source,
             )
-            return hmacSha256Hex(payload.toByteArray(Charsets.UTF_8), secretKey)
+            return CryptoUtils.hmacSha256Hex(payload.toByteArray(Charsets.UTF_8), secretKey)
         }
 
         /**
@@ -87,7 +89,7 @@ data class SignedCredential(
          */
         fun verify(credential: SignedCredential, secretKey: String): Boolean {
             val expected = sign(credential, secretKey)
-            return constantTimeEquals(expected, credential.signature)
+            return CryptoUtils.constantTimeEquals(expected, credential.signature)
         }
 
         /** 拼接签名载荷。固定顺序，避免字段边界歧义。 */
@@ -97,34 +99,5 @@ data class SignedCredential(
             expiryTimestamp: Long,
             source: String,
         ): String = "$deviceId|$tier|$expiryTimestamp|$source"
-
-        private fun hmacSha256Hex(data: ByteArray, secretKey: String): String {
-            val mac = try {
-                Mac.getInstance("HmacSHA256")
-            } catch (e: NoSuchAlgorithmException) {
-                throw IllegalStateException("HmacSHA256 not available", e)
-            }
-            mac.init(SecretKeySpec(secretKey.toByteArray(Charsets.UTF_8), "HmacSHA256"))
-            val digest = mac.doFinal(data)
-            val sb = StringBuilder(digest.size * 2)
-            for (b in digest) {
-                val v = b.toInt() and 0xFF
-                sb.append(HEX_TABLE[v ushr 4])
-                sb.append(HEX_TABLE[v and 0x0F])
-            }
-            return sb.toString()
-        }
-
-        /** 常量时间字符串比较，避免时序攻击。 */
-        private fun constantTimeEquals(a: String, b: String): Boolean {
-            if (a.length != b.length) return false
-            var diff = 0
-            for (i in a.indices) {
-                diff = diff or (a[i].code xor b[i].code)
-            }
-            return diff == 0
-        }
-
-        private val HEX_TABLE = "0123456789abcdef".toCharArray()
     }
 }

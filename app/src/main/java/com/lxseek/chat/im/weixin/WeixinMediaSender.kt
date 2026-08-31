@@ -65,16 +65,20 @@ class WeixinMediaSender(private val api: WeixinIlinkApi) {
 
         // 2) 图片需要缩略图（发送方预先压缩为 JPEG 字节）。
         var thumb: ThumbInfo? = null
-        if (spec.kind == WeixinMediaKind.IMAGE && spec.thumbBytes != null && spec.thumbBytes!!.isNotEmpty()) {
+        val thumbBytes = spec.thumbBytes
+        // stdlib 无 ByteArray?.isNullOrEmpty() 扩展，显式判空以触发智能转换。
+        if (spec.kind == WeixinMediaKind.IMAGE && thumbBytes != null && thumbBytes.isNotEmpty()) {
             val tKey = ByteArray(16).also { SECURE_RANDOM.nextBytes(it) }
-            val tEncrypted = encryptWeixinMedia(spec.thumbBytes!!, tKey)
+            val tEncrypted = encryptWeixinMedia(thumbBytes, tKey)
             thumb = ThumbInfo(
                 encrypted = tEncrypted,
                 aesKeyHex = tKey.toHexString(),
-                rawMd5 = md5Hex(spec.thumbBytes!!),
-                rawSize = spec.thumbBytes!!.size,
+                rawMd5 = md5Hex(thumbBytes),
+                rawSize = thumbBytes.size,
             )
         }
+        // var 字段不做智能转换，取一次非空快照供后续 JSON 构造使用。
+        val thumbInfo = thumb
 
         // 3) getuploadurl 获取上传凭证。
         val uploadBody = buildJsonObject {
@@ -85,10 +89,10 @@ class WeixinMediaSender(private val api: WeixinIlinkApi) {
             put("rawfilemd5", rawMd5)
             put("filesize", encrypted.size)
             put("aeskey", aesKeyHex)
-            if (thumb != null) {
-                put("thumb_rawsize", thumb!!.rawSize)
-                put("thumb_rawfilemd5", thumb!!.rawMd5)
-                put("thumb_filesize", thumb!!.encrypted.size)
+            if (thumbInfo != null) {
+                put("thumb_rawsize", thumbInfo.rawSize)
+                put("thumb_rawfilemd5", thumbInfo.rawMd5)
+                put("thumb_filesize", thumbInfo.encrypted.size)
                 put("no_need_thumb", false)
             } else {
                 put("no_need_thumb", true)
@@ -115,11 +119,11 @@ class WeixinMediaSender(private val api: WeixinIlinkApi) {
         // 缩略图二次上传是挂起操作，需在 buildJsonObject 的同步 lambda 之外先完成。
         val thumbUploadParam = uploadResp["thumb_upload_param"].strSafe()
         val thumbMedia: JsonObject? =
-            if (spec.kind == WeixinMediaKind.IMAGE && thumb != null && thumbUploadParam != null && thumbUploadParam.isNotEmpty()) {
+            if (spec.kind == WeixinMediaKind.IMAGE && thumbInfo != null && !thumbUploadParam.isNullOrEmpty()) {
                 val thumbAesKeyB64 = Base64.encodeToString(
-                    thumb!!.aesKeyHex.toByteArray(Charsets.UTF_8), Base64.NO_WRAP,
+                    thumbInfo.aesKeyHex.toByteArray(Charsets.UTF_8), Base64.NO_WRAP,
                 )
-                uploadCdn(thumbUploadParam, "${filekey}_thumb", thumb!!.encrypted, thumbAesKeyB64)
+                uploadCdn(thumbUploadParam, "${filekey}_thumb", thumbInfo.encrypted, thumbAesKeyB64)
             } else {
                 null
             }
@@ -132,7 +136,7 @@ class WeixinMediaSender(private val api: WeixinIlinkApi) {
                         put("mid_size", encrypted.size)
                         thumbMedia?.let { tm ->
                             put("thumb_media", tm)
-                            put("thumb_size", thumb!!.encrypted.size)
+                            thumbInfo?.let { t -> put("thumb_size", t.encrypted.size) }
                         }
                     }
                 })

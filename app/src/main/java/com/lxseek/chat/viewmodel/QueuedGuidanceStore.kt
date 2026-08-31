@@ -98,6 +98,13 @@ internal class GuidanceLeaseStore(
         removed
     }
 
+    /** Remove every queued send (batch "clear" affordance). Returns the removed batch. */
+    fun removeAll(): List<QueuedSend> = synchronized(lock) {
+        val removed = _queuedSends.value
+        _queuedSends.value = emptyList()
+        removed
+    }
+
     /** Transfer the pending batch to one explicit in-flight owner. */
     fun claim(): GuidanceBatchLease? = synchronized(lock) {
         if (disposed || _queuedSends.value.isEmpty()) return null

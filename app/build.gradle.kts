@@ -15,6 +15,26 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.reader())
 }
 
+// ── 会员/支付密钥（安全修复 H2/H5）──────────────────────────────
+// 真实密钥不入 git：优先读 gradle 属性（-P / gradle.properties，CI 用），
+// 其次读 local.properties（本地开发用，已被 .gitignore 覆盖）。
+// 两处都未配置时 BuildConfig 字段为空串 = 未配置，App 内对应本地验签能力
+// 自动禁用并打 WARN（见 membership/MembershipSecrets.kt）。
+val secretProps = Properties()
+val secretPropsFile = rootProject.file("local.properties")
+if (secretPropsFile.exists()) {
+    secretProps.load(secretPropsFile.reader())
+}
+
+fun membershipSecret(key: String): String =
+    ((project.findProperty(key) as String?) ?: secretProps.getProperty(key))
+        ?.trim()
+        .orEmpty()
+
+fun membershipSecretLiteral(key: String): String =
+    "\"" + membershipSecret(key).replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+
 android {
     namespace = "com.lxseek.chat"
     compileSdk {
@@ -40,6 +60,18 @@ android {
         targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
+
+        // 会员/支付密钥注入（H2/H5）：空串 = 未配置（本地验签能力禁用 + WARN）。
+        // 注意：共享 HMAC 密钥仍可被反编译提取，生产正确做法是服务器端
+        // RSA 签名；本轮目标是"不随 APK 分发占位/假密钥"。
+        buildConfigField("String", "LXCHAT_HMAC_SECRET", membershipSecretLiteral("LXCHAT_HMAC_SECRET"))
+        buildConfigField("String", "LXCHAT_YIPAY_MERCHANT_KEY", membershipSecretLiteral("LXCHAT_YIPAY_MERCHANT_KEY"))
+
+        // H1（安全铁律）：激活服务器证书 pin（SHA-256，形如 "sha256/BASE64="）。
+        // 真实 pin 不入 git，读取顺序同上（gradle 属性 -P/gradle.properties →
+        // local.properties）。未配置时为空串 → HttpClient.activationClient 降级为
+        // 不校验 pin + WARN（fail-open，默认构建不被占位值拖垮）。
+        buildConfigField("String", "ACTIVATION_PIN", membershipSecretLiteral("LXCHAT_ACTIVATION_PIN"))
 
 
         ndk {

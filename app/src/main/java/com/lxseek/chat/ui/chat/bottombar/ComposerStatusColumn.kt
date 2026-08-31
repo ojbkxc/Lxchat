@@ -9,19 +9,25 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.lxseek.chat.R
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
 import com.lxseek.chat.viewmodel.QueuedSend
 
@@ -54,6 +60,7 @@ private sealed interface ComposerStatusItem {
 internal fun ComposerStatusColumn(
     queuedSends: List<QueuedSend>,
     onRemoveQueuedSend: (String) -> Unit,
+    onClearQueuedSends: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val allowSpatialTransitions = LocalLxChatMotionPolicy.current.allowSpatialTransitions
@@ -109,6 +116,20 @@ internal fun ComposerStatusColumn(
                             queued = item.value,
                             onRemove = { onRemoveQueuedSend(item.value.id) },
                         )
+                    }
+                }
+            }
+            // Batch clear affordance: more than one queued row makes removing them one by
+            // one tedious; the header lets the user drop the whole pending batch at once.
+            if (displayedItems.size > 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onClick = onClearQueuedSends) {
+                        Text(stringResource(R.string.queue_clear_all))
                     }
                 }
             }

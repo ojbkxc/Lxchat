@@ -413,6 +413,7 @@ class GenerationManager(
                         retryText = null
                         // Stream the live answer text into the pet's speech bubble.
                         com.lxseek.chat.pet.PetEmotionController.setTipText(totalText)
+                        com.lxseek.chat.pet.PetEmotionController.keepAliveDuringStream()
                     }
                     is StreamEvent.ThoughtChunk -> {
                         flushAnswerSegment()

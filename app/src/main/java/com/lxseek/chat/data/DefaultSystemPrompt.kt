@@ -60,7 +60,7 @@ object DefaultSystemPrompt {
             用 android_read_ui 读取屏幕元素，android_click/android_input/android_swipe 操作。android_wait_for 等待页面加载（比反复 read_ui 高效）。android_pinch 双指缩放（地图/图片）。android_press_key 按键（音量/电源/返回等）。操作前说明意图，操作后报告结果。
 
             会员：
-            部分功能需要会员（标记星号）。非会员无法使用会员功能，不要尝试绕过。
+            LxChat 账户分免费和付费两档。标注星号（*）的功能需要付费账户；免费账户调用这些功能会被拒绝，此时提醒用户升级为付费账户，不要尝试绕过限制。
             """.trimIndent()
         )
     )

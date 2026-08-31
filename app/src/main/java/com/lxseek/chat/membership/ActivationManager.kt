@@ -3,25 +3,42 @@ package com.lxseek.chat.membership
 import android.content.Context
 
 /**
- * 婵€娲荤鐞嗗櫒锛氬皝瑁?[CloudApi] + 鏈湴楠岃瘉 + 璁惧韬唤璇佽幏鍙栥€? *
- * UI 灞傦紙濡?[com.lxseek.chat.ui.settings.SettingsMembershipPage]锛夊彧涓庢湰绫讳氦浜掞紝
- * 涓嶇洿鎺ユ帴瑙?[CloudApi] / [SignedCredential] / [DeviceIdCard]銆? *
- * - [activate]锛氭縺娲荤爜婵€娲伙紙鑱旂綉锛孭OST /api/activate_by_code锛夈€? * - [trial]锛氶娆″厤璐逛笁澶╄瘯鐢紙鑱旂綉锛孭OST /api/trial锛夈€? * - [activateByOrder]锛氳鍗曟縺娲伙紙鑱旂綉锛孭OST /api/activate_by_order锛屾湇鍔″櫒鏌ヨ鍗曠‘璁ゅ凡鏀粯锛夈€? * - [renew]锛氱画璐癸紙鑱旂綉锛孭OST /api/renew锛夈€? * - [verifyLocal]锛氱函绂荤嚎楠岃瘉锛岃鏈湴鍑瘉 鈫?楠岃瘉绛惧悕 + 璁惧 ID 鍖归厤 + 鏈繃鏈熴€? * - [verifyRemote]锛氳仈缃戦獙璇侊紙POST /api/verify锛夛紝鏈嶅姟鍣ㄧ‘璁ゅ嚟璇佹湁鏁堛€? * - [deactivate]锛氳В缁戞湰璁惧锛堟湰鍦版竻闄ゅ嚟璇侊級銆? * - [getDeviceIdDisplay]锛氳幏鍙栨牸寮忓寲璁惧韬唤璇侊紝渚涜缃〉鏄剧ず銆? *
- * 榛樿鐢?[RemoteCloudApi]锛堣皟 activate.lxseek.com锛夈€傞渶瑕佺绾垮厹搴曟椂鍙敞鍏?[LocalCloudApi]銆? */
+ * 激活管理器：封装 [CloudApi] + 本地验证 + 设备身份获取。
+ *
+ * UI 层（如 [com.lxseek.chat.ui.settings.SettingsMembershipPage]）只与本类交互，
+ * 不直接接触 [CloudApi] / [SignedCredential] / [DeviceIdCard]。
+ *
+ * - [activate]：激活码激活（联网，POST /api/activate_by_code）。
+ * - [trial]：首次免费三天试用（联网，POST /api/trial）。
+ * - [activateByOrder]：订单激活（联网，POST /api/activate_by_order，服务器查订单确认已支付）。
+ * - [renew]：续费（联网，POST /api/renew，服务器在剩余时长上累加）。
+ * - [verifyLocal]：纯离线验证，读本地凭证 → 验证签名 + 设备 ID 匹配 + 未过期。
+ * - [verifyRemote]：联网验证（POST /api/verify），服务器确认凭证有效。
+ * - [deactivate]：解绑本设备（本地清除凭证）。
+ * - [getDeviceIdDisplay]：获取格式化设备身份，供设置页显示。
+ *
+ * 默认用 [RemoteCloudApi]（调 activate.lxseek.com）。需要离线兜底时可注入 [LocalCloudApi]。
+ *
+ * 二元制说明：会员只有免费/付费两档，本类所有激活途径（激活码/试用/订单/续费）
+ * 签发的都是同一档付费凭证（tier = Premium），不再有档位参数。
+ */
 class ActivationManager(
     private val cloudApi: CloudApi,
     private val context: Context,
 ) {
 
-    /** 婵€娲荤爜婵€娲伙紙鑱旂綉锛歅OST /api/activate_by_code锛夈€?*/
+    /** 激活码激活（联网：POST /api/activate_by_code）。 */
     suspend fun activate(code: String): ActivationResult {
         val deviceId = DeviceIdCard.getDeviceId(context)
         return cloudApi.activate(code, deviceId)
     }
 
     /**
-     * 棣栨鍏嶈垂涓夊ぉ璇曠敤锛堣仈缃戯細POST /api/trial锛夈€?     *
-     * 浠?[RemoteCloudApi] 鏀寔锛涜嫢娉ㄥ叆鐨勬槸 [LocalCloudApi] 鍒欒繑鍥?[ActivationResult.NetworkError]銆?     * 鎴愬姛鍚庢湰鍦版爣璁板凡鐢ㄨ繃璇曠敤锛圼isTrialUsed]锛夛紝UI 鎹闅愯棌璇曠敤鎸夐挳銆?     */
+     * 首次免费三天试用（联网：POST /api/trial）。
+     *
+     * 仅 [RemoteCloudApi] 支持；若注入的是 [LocalCloudApi] 则返回 [ActivationResult.NetworkError]。
+     * 成功后本地标记已用过试用（[isTrialUsed]），UI 据此隐藏试用按钮。
+     */
     suspend fun trial(): ActivationResult {
         val deviceId = DeviceIdCard.getDeviceId(context)
         val result = if (cloudApi is RemoteCloudApi) {
@@ -36,8 +53,11 @@ class ActivationManager(
     }
 
     /**
-     * 璁㈠崟婵€娲伙紙鑱旂綉锛歅OST /api/activate_by_order锛夈€?     *
-     * DeepLink 鍥炶皟鍚庤皟鐢細鏈嶅姟鍣ㄦ煡璁㈠崟纭宸叉敮浠?鈫?杩斿洖绛惧悕鍑瘉銆?     * 浠?[RemoteCloudApi] 鏀寔锛涜嫢娉ㄥ叆鐨勬槸 [LocalCloudApi] 鍒欒繑鍥?[ActivationResult.NetworkError]銆?     */
+     * 订单激活（联网：POST /api/activate_by_order）。
+     *
+     * DeepLink 回调后调用：服务器查订单确认已支付 → 返回签名凭证。
+     * 仅 [RemoteCloudApi] 支持；若注入的是 [LocalCloudApi] 则返回 [ActivationResult.NetworkError]。
+     */
     suspend fun activateByOrder(outTradeNo: String): ActivationResult {
         val deviceId = DeviceIdCard.getDeviceId(context)
         return if (cloudApi is RemoteCloudApi) {
@@ -48,8 +68,11 @@ class ActivationManager(
     }
 
     /**
-     * 缁垂锛堣仈缃戯細POST /api/renew锛夈€?     *
-     * 宸叉縺娲讳絾蹇埌鏈熸椂璋冪敤锛氭湇鍔″櫒鏌ヨ鍗曠‘璁ゅ凡鏀粯 鈫?杩斿洖鏂扮殑绛惧悕鍑瘉銆?     * 浠?[RemoteCloudApi] 鏀寔锛涜嫢娉ㄥ叆鐨勬槸 [LocalCloudApi] 鍒欒繑鍥?[ActivationResult.NetworkError]銆?     */
+     * 续费（联网：POST /api/renew）。
+     *
+     * 已激活但快到期时调用：服务器查订单确认已支付 → 在剩余时长上累加，返回新签名凭证。
+     * 仅 [RemoteCloudApi] 支持；若注入的是 [LocalCloudApi] 则返回 [ActivationResult.NetworkError]。
+     */
     suspend fun renew(outTradeNo: String): ActivationResult {
         val deviceId = DeviceIdCard.getDeviceId(context)
         return if (cloudApi is RemoteCloudApi) {
@@ -62,18 +85,16 @@ class ActivationManager(
     /**
      * 创建支付订单（云端生成订单 + 支付 URL）。
      *
-     * @param tier 目标会员等级
      * @param amount 金额（元，字符串保留两位小数；服务端按 [planId] 定价时此字段仅作参考）
-     * @param planId 套餐 ID（monthly/quarterly/half_year/yearly/lifetime），空字符串回退旧逻辑
+     * @param planId 套餐 ID（[PlanCatalog] 中的 id），空字符串回退旧逻辑
      * @return 订单结果（含支付 URL 和订单号），失败返回 null
      */
     suspend fun createPaymentOrder(
-        tier: MembershipTier,
         amount: String,
         planId: String = "",
     ): PaymentOrderResult? {
         val deviceId = DeviceIdCard.getDeviceId(context)
-        return cloudApi.createPaymentOrder(deviceId, tier, amount, planId)
+        return cloudApi.createPaymentOrder(deviceId, amount, planId)
     }
 
     /**
@@ -118,9 +139,15 @@ class ActivationManager(
     }
 
     /**
-     * 绂荤嚎楠岃瘉锛氳鍙栨湰鍦板嚟璇?鈫?楠岃瘉绛惧悕 + 璁惧 ID 鍖归厤 + 鏈繃鏈熴€?     *
-     * 涓嶈仈缃戯紝App 鍚姩鏃跺揩閫熷垽瀹氫細鍛樼姸鎬佺敤銆傚鎵樼粰 [LocalCloudApi.verify]锛?     * 瀹冨彧璇绘湰鍦?SharedPreferences 涓殑鍑瘉骞剁敤 HMAC-SHA256 楠岃瘉绛惧悕銆?     *
-     * 娉ㄦ剰锛氳繖瑕佹眰鏈嶅姟鍣ㄧ鍙戝嚟璇佹椂鐢ㄧ殑 HMAC 瀵嗛挜涓?[LocalCloudApi] 鐨勫瘑閽ヤ竴鑷淬€?     * 褰撳墠鏄繃娓℃柟妗堬紱鍚庣画鏈嶅姟鍣ㄦ敼鐢?RSA 闈炲绉扮鍚嶅悗锛孾SignedCredential] 闇€瑕?     * 鍔?RSA 楠岃瘉鏀寔锛屽眾鏃剁绾块獙璇佹敼鐢ㄥ叕閽ャ€?     */
+     * 离线验证：读取本地凭证 → 验证签名 + 设备 ID 匹配 + 未过期。
+     *
+     * 不联网，App 启动时快速判定会员状态。委托给 [LocalCloudApi.verify]：
+     * 它只读本地 SharedPreferences 中的凭证并用 HMAC-SHA256 验证签名。
+     *
+     * 注意：这要求服务器签发凭证时用的 HMAC 密钥与本地一致（密钥经
+     * [MembershipSecrets] 从 BuildConfig 注入，见 H5）。这是过渡方案；
+     * 后续服务器改用 RSA 非对称签名后，离线验证改用公钥。
+     */
     suspend fun verifyLocal(): VerifyResult {
         val deviceId = DeviceIdCard.getDeviceId(context)
         // Always use LocalCloudApi for offline verification, even if cloudApi is RemoteCloudApi.
@@ -128,31 +155,33 @@ class ActivationManager(
     }
 
     /**
-     * 鑱旂綉楠岃瘉锛圥OST /api/verify锛夛細鏈嶅姟鍣ㄧ‘璁ゅ嚟璇佹湁鏁堛€?     *
-     * 浠?[RemoteCloudApi] 鏀寔锛涜嫢娉ㄥ叆鐨勬槸 [LocalCloudApi] 鍒欑瓑浠蜂簬 [verifyLocal]銆?     */
+     * 联网验证（POST /api/verify）：服务器确认凭证有效。
+     *
+     * 仅 [RemoteCloudApi] 支持；若注入的是 [LocalCloudApi] 则等价于 [verifyLocal]。
+     */
     suspend fun verifyRemote(): VerifyResult {
         val deviceId = DeviceIdCard.getDeviceId(context)
         return cloudApi.verify(deviceId)
     }
 
-    /** 瑙ｇ粦鏈澶囷紙鏈湴娓呴櫎鍑瘉锛夈€?*/
+    /** 解绑本设备（本地清除凭证）。 */
     suspend fun deactivate(): Boolean {
         val deviceId = DeviceIdCard.getDeviceId(context)
         return cloudApi.deactivate(deviceId)
     }
 
-    /** 鑾峰彇褰撳墠璁惧韬唤璇侊紙瀹屾暣 32 浣?hex锛夛紝鐢ㄤ簬婵€娲荤爜缁戝畾銆?*/
+    /** 获取当前设备身份（完整 32 位 hex），用于激活码绑定。 */
     fun getDeviceId(): String = DeviceIdCard.getDeviceId(context)
 
-    /** 鑾峰彇鏍煎紡鍖栬澶囪韩浠借瘉锛圶XXX-XXXX-XXXX-XXXX锛夛紝鐢ㄤ簬璁剧疆椤垫樉绀恒€?*/
+    /** 获取格式化设备身份（XXXX-XXXX-XXXX-XXXX），用于设置页显示。 */
     fun getDeviceIdDisplay(): String = DeviceIdCard.getDeviceIdDisplay(context)
 
-    /** 鏄惁宸茬敤杩囧厤璐硅瘯鐢ㄣ€傛湰鍦?SharedPreferences 鏍囪锛孶I 鎹闅愯棌璇曠敤鎸夐挳銆?*/
+    /** 是否已用过免费试用。本地 SharedPreferences 标记，UI 据此隐藏试用按钮。 */
     fun isTrialUsed(): Boolean =
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             .getBoolean(KEY_TRIAL_USED, false)
 
-    /** 鏍囪宸茬敤杩囪瘯鐢紙trial 鎴愬姛鍚庤皟鐢級銆?*/
+    /** 标记已用过试用（trial 成功后调用）。 */
     private fun markTrialUsed() {
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_TRIAL_USED, true).apply()

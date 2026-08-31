@@ -1,5 +1,6 @@
 package com.lxseek.chat.api
 
+import com.lxseek.chat.util.DebugLog
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -70,14 +71,26 @@ class EncryptedDns : okhttp3.Dns {
             DnsProtection.MODE_SELECTIVE -> matchesWhitelist(host, whitelist)
             else -> false
         }
-        if (!useDoh || isCircuitOpen()) return okhttp3.Dns.SYSTEM.lookup(hostname)
+        if (!useDoh) return okhttp3.Dns.SYSTEM.lookup(hostname)
+        // L1：熔断打开期间的降级此前完全无日志，排障时无法区分「未启用 DoH」
+        // 与「熔断降级」。recordFailure/isCircuitOpen 被 JVM 单测覆盖，日志加在
+        // 这里（lookup 不进单测），避免未 mock 的 android.util.Log 炸测试。
+        if (isCircuitOpen()) {
+            DebugLog.d(TAG, "DoH circuit open, falling back to system DNS for $host")
+            return okhttp3.Dns.SYSTEM.lookup(hostname)
+        }
 
         return try {
             val addresses = resolveViaDoh(host)
             circuitFailures.set(0) // a full successful resolution resets the breaker
-            if (addresses.isEmpty()) okhttp3.Dns.SYSTEM.lookup(hostname) else addresses
+            if (addresses.isEmpty()) {
+                DebugLog.w(TAG, "DoH empty answer for $host, falling back to system DNS")
+                okhttp3.Dns.SYSTEM.lookup(hostname)
+            } else addresses
         } catch (t: Throwable) {
             recordFailure()
+            // L1：DoH 失败降级补日志（保留 fail-open 行为不变）。
+            DebugLog.w(TAG, "DoH resolution failed for $host (${t.javaClass.simpleName}), falling back to system DNS")
             // Fail-open: whatever happened with DoH, the system resolver is the safe fallback.
             try {
                 okhttp3.Dns.SYSTEM.lookup(hostname)
@@ -98,7 +111,9 @@ class EncryptedDns : okhttp3.Dns {
         val query = DnsWire.buildQuery(host, qtype)
         val response: ByteArray = try {
             postDoh(primaryUrl, query)
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            // L1：主 DoH 上游失败切备用时补日志，便于定位上游抖动。
+            DebugLog.w(TAG, "Primary DoH upstream failed, trying fallback: ${t.javaClass.simpleName}")
             postDoh(fallbackUrl, query)
         }
         return DnsWire.parseAddresses(response)
@@ -145,6 +160,8 @@ class EncryptedDns : okhttp3.Dns {
     internal fun simulateFailures(count: Int) = repeat(count) { recordFailure() }
 
     companion object {
+        private const val TAG = "EncryptedDns"
+
         const val DEFAULT_PRIMARY = "https://dns.alidns.com/dns-query"
         const val DEFAULT_FALLBACK = "https://cloudflare-dns.com/dns-query"
         /** Built-in protection set: Cloudflare's worker/pages spaces + OpenAI. Users can customize. */
@@ -165,27 +182,34 @@ class EncryptedDns : okhttp3.Dns {
 }
 
 /**
- * Matches [host] against a set of DNS protection rules. Rules support:
- *  - an exact host ("api.openai.com"),
- *  - a leading-dot suffix (".openai.com" → matches "api.openai.com" and any subdomain of it),
- *  - the conventional "*.suffix" wildcard ("*.workers.dev").
+ * 单条主机匹配规则（R3 抽取）：精确 host、前导点后缀（`.openai.com`）或
+ * 通配符 `*.suffix`。大小写不敏感。供 DNS 白名单与 HttpClient 的代理 bypass
+ * 共用一处实现，避免多处复制导致行为漂移。
+ */
+internal fun matchesHostRule(host: String, rule: String): Boolean {
+    val h = host.lowercase()
+    val r = rule.trim().lowercase()
+    if (r.isEmpty()) return false
+    return when {
+        // *.suffix → 匹配 suffix 本身或任意子域（suffix 前必须有点边界）。
+        r.startsWith("*.") -> h == r.drop(2) || h.endsWith(r.drop(1))
+        // .suffix → 同上：suffix 本身或任意子域（后缀自带点边界，防 evil suffix 伪造）。
+        r.startsWith(".") -> h == r.drop(1) || h.endsWith(r)
+        else -> h == r
+    }
+}
+
+/**
+ * True if [host] matches any entry in [entries]. Supported entry shapes:
+ * - `*.suffix` — subdomains of suffix and the bare suffix
+ * - `.suffix` — subdomains of suffix and the bare suffix (leading-dot form)
+ * - exact host (case-insensitive)
  */
 internal fun matchesWhitelist(host: String, entries: Collection<String>): Boolean {
     val h = host.lowercase()
-    for (raw in entries) {
-        val rule = raw.trim().lowercase()
-        if (rule.isEmpty()) continue
-        if (rule.startsWith("*.")) {
-            val suffix = rule.drop(1) // ".workers.dev"
-            if (h == rule.drop(2) || h.endsWith(suffix)) return true
-        } else if (rule.startsWith(".")) {
-            if (h == rule.drop(1) || h.endsWith(rule)) return true
-        } else if (h == rule) {
-            return true
-        }
-    }
-    return false
+    return entries.any { matchesHostRule(h, it) }
 }
+
 
 /** Minimal, dependency-free DNS wire-format encoder/decoder for A/AAAA records over DoH. */
 internal object DnsWire {
@@ -206,6 +230,12 @@ internal object DnsWire {
         // QNAME: one length-prefixed label per label list, terminated by root.
         host.trimEnd('.').split('.').forEach { label ->
             val bytes = label.toByteArray(Charsets.US_ASCII)
+            // L2 修复：单个 DNS label 长度必须为 1..63 字节（RFC 1035，长度前缀
+            // 是单字节）。超长/空 label 会编码出畸形查询或被中间设备丢弃，此前
+            // 未校验。此处抛出后由 lookup 的 catch 兜底降级系统解析（fail-open）。
+            require(bytes.size in 1..63) {
+                "Invalid DNS label in \"$host\": \"$label\" (${bytes.size} bytes, must be 1..63)"
+            }
             out.write(bytes.size)
             out.write(bytes, 0, bytes.size)
         }

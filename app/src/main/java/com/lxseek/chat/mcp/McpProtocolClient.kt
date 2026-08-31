@@ -221,7 +221,8 @@ internal class McpProtocolClient(
                     "clientInfo",
                     buildJsonObject {
                         put("name", "LxChat")
-                        put("version", "1.3.7")
+                        // 版本随构建走，避免硬编码漂移（TtsManager 诊断日志同源）。
+                        put("version", com.lxseek.chat.BuildConfig.VERSION_NAME)
                     },
                 )
             },

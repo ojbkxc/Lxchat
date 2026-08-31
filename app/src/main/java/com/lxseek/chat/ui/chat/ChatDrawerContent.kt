@@ -2,6 +2,7 @@ package com.lxseek.chat.ui.chat
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -9,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,6 +58,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -122,6 +125,82 @@ internal fun resolveDrawerConversationIndicator(
     isGenerating -> DrawerConversationIndicator.GENERATING
     hasUnreadGeneration && !isSelected -> DrawerConversationIndicator.UNREAD
     else -> DrawerConversationIndicator.NONE
+}
+
+/**
+ * Swipe-to-reveal delete for a drawer conversation row. Left drag displaces the row to
+ * expose a red delete affordance; releasing past 90% of the reveal width requests deletion
+ * (routed through the same confirmation dialog as the long-press menu). Anything less
+ * springs back, so drawer scrolling never triggers it accidentally.
+ */
+@Composable
+internal fun DrawerSwipeToDelete(
+    enabled: Boolean,
+    onRequestDelete: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val revealWidthPx = with(density) { 72.dp.toPx() }
+    val dragThresholdPx = revealWidthPx * 0.9f
+    val scope = rememberCoroutineScope()
+    val offset = remember { Animatable(0f) }
+    val haptics = LocalLxChatHaptics.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (enabled) {
+                    Modifier.pointerInput(enabled) {
+                        detectHorizontalDragGestures(
+                            onDragCancel = {
+                                scope.launch { offset.animateTo(0f, tween(180)) }
+                            },
+                            onDragEnd = {
+                                val current = offset.value
+                                scope.launch {
+                                    if (current < -dragThresholdPx) {
+                                        haptics.destructiveConfirmed()
+                                        onRequestDelete()
+                                    }
+                                    offset.animateTo(0f, tween(180))
+                                }
+                            },
+                            onHorizontalDrag = { change, delta ->
+                                change.consume()
+                                scope.launch {
+                                    offset.snapTo(
+                                        (offset.value + delta).coerceIn(-revealWidthPx, 0f),
+                                    )
+                                }
+                            },
+                        )
+                    }
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        val currentOffset = offset.value
+        if (currentOffset < -1f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(MaterialTheme.colorScheme.error, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    tint = MaterialTheme.colorScheme.onError,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+            }
+        }
+        Box(modifier = Modifier.graphicsLayer { translationX = offset.value }) {
+            content()
+        }
+    }
 }
 
 /**
@@ -278,6 +357,11 @@ internal fun ChatDrawerContent(
                         var lastPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
                         val density = LocalDensity.current
 
+                        Box {
+                        DrawerSwipeToDelete(
+                            enabled = menuEnabled,
+                            onRequestDelete = { onRequestDelete(conversation.id) },
+                        ) {
                         Box {
                             Surface(
                                 modifier = Modifier
@@ -441,6 +525,8 @@ internal fun ChatDrawerContent(
                                     onRequestDelete(conversation.id)
                                 }
                             )
+                        }
+                        }
                         }
                     }
                 }

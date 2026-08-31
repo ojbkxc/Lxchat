@@ -9,7 +9,12 @@ package com.lxseek.chat.membership
  * display strings so locale formatting and currency can be swapped without
  * touching the catalog.
  *
- * @property tier          The [MembershipTier] this plan sells.
+ * 二元制说明：[tier] 只有 [MembershipTier.Free]（免费账户权益）与
+ * [MembershipTier.Premium]（付费账户权益）两个条目。付费套餐的多种买法
+ * （月付/季付/年付/永久）见 [PlanCatalog] —— 那是**时长**的差异，
+ * 不是等级差异。
+ *
+ * @property tier          The [MembershipTier] this plan describes.
  * @property displayName   Short label shown on the plan card.
  * @property price         Display string including currency, e.g. "¥19.9".
  * @property durationDays  Billing period in days; 0 means permanent (no expiry).
@@ -27,16 +32,15 @@ data class MembershipPlan(
 )
 
 /**
- * Membership benefits catalog for UI presentation.
+ * Membership benefits catalog for UI presentation（二元制：免费权益 / 付费权益）.
  *
  * Centralizes plan definitions so the settings page, paywall, and onboarding
  * screens all render the same source of truth. The catalog is an [object]
  * (process-wide singleton) because plan definitions are static; runtime state
  * (active tier, expiry) lives in [MembershipProvider].
  *
- * The [Enterprise] tier intentionally has no plan entry today — it is reserved
- * for future organization/seat-based sales. [getPlan] returns null for it,
- * which the UI interprets as "not purchasable yet".
+ * 只有两类条目：免费账户（[MembershipTier.Free]）与付费账户
+ * （[MembershipTier.Premium]）；[getPlan] 对旧档位（Pro/Enterprise）返回付费条目。
  */
 object MembershipBenefits {
 
@@ -60,7 +64,7 @@ object MembershipBenefits {
         ),
         MembershipPlan(
             tier = MembershipTier.Premium,
-            displayName = "Premium",
+            displayName = "Premium (Paid)",
             price = "¥0.99",
             durationDays = 30,
             features = listOf(
@@ -82,17 +86,24 @@ object MembershipBenefits {
         ),
     )
 
-    /** Returns all membership plans in tier order (Free → Premium). */
+    /** Returns all membership plans (Free → Premium). */
     fun getPlans(): List<MembershipPlan> = plans
 
     /**
      * Returns the plan for [tier], or null if no plan is defined.
      *
-     * Returns null for [MembershipTier.Pro] and [MembershipTier.Enterprise] today;
-     * callers should handle the null case by hiding the purchase CTA for that tier.
+     * 二元制归一化：[MembershipTier.Pro] / [MembershipTier.Enterprise]
+     * （旧档位兼容壳）返回付费（Premium）条目。
      */
-    fun getPlan(tier: MembershipTier): MembershipPlan? =
-        plans.firstOrNull { it.tier == tier }
+    @Suppress("DEPRECATION")
+    fun getPlan(tier: MembershipTier): MembershipPlan? = when (tier) {
+        MembershipTier.Free -> plans.firstOrNull { it.tier == MembershipTier.Free }
+        MembershipTier.Pro, MembershipTier.Enterprise -> paidPlan()
+        MembershipTier.Premium -> paidPlan()
+    }
+
+    private fun paidPlan(): MembershipPlan? =
+        plans.firstOrNull { it.tier == MembershipTier.Premium }
 
     /**
      * Generates a human-readable comparison table of all plans.

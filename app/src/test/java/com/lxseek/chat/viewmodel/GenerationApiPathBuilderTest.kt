@@ -16,7 +16,9 @@ class GenerationApiPathBuilderTest {
     @Test
     fun `caller snapshot produces compact-bounded path and exact provider config`() = runTest {
         val repository = mockk<ConversationRepository>(relaxed = true)
-        val builder = GenerationApiPathBuilder(repository) { emptyList() }
+        // 构造函数新增了尾随可选参数 planStateHolder，trailing lambda 会错误地
+        // 绑定到它；此处显式命名参数，将 lambda 绑定到 toolDefinitions。
+        val builder = GenerationApiPathBuilder(repository, toolDefinitions = { emptyList() })
         val compact = message("${Constants.COMPACT_MSG_PREFIX}boundary", parentId = "old", sequence = 1)
         val user = message("user", parentId = compact.id, sequence = 2, participant = Participant.USER)
         val model = message("model", parentId = user.id, sequence = 3)
@@ -43,7 +45,7 @@ class GenerationApiPathBuilderTest {
     @Test
     fun `regeneration excludes the replaced message and its suffix`() = runTest {
         val repository = mockk<ConversationRepository>(relaxed = true)
-        val builder = GenerationApiPathBuilder(repository) { emptyList() }
+        val builder = GenerationApiPathBuilder(repository, toolDefinitions = { emptyList() })
         val user = message("user", null, 0, Participant.USER)
         val replaced = message("replaced", user.id, 1)
 

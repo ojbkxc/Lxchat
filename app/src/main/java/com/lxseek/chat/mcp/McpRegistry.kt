@@ -50,6 +50,13 @@ class McpRegistry(
         val client: McpProtocolClient,
         var connectionJob: Job? = null,
     ) {
+        /**
+         * 连续失败退避（M6）：存在 Runtime 上、跨重连循环保留。此前 retryMs 是
+         * launchConnectionLoop 的局部变量，工具失败触发重连即从头计 5s，连续
+         * 失败时退避被反复重置、重连频率失控；现在只有连接成功才重置。
+         */
+        @Volatile var retryMs: Long = INITIAL_RETRY_MS
+
         fun close() {
             connectionJob?.cancel()
             connectionJob = null
@@ -178,8 +185,19 @@ class McpRegistry(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            markError(runtime, e)
-            scheduleRetry(runtime)
+            // M6：连接层失败（IOException，含会话过期）才置 ERROR 并重连；工具级
+            // 失败（参数错、响应解析失败等）不重连也不降级快照，避免"工具失败
+            // 即重连"的抖动把服务器从 LLM 工具列表里抖没。
+            if (e is java.io.IOException) {
+                markError(runtime, e)
+                scheduleRetry(runtime)
+            } else {
+                DebugLog.e(
+                    "McpRegistry",
+                    "MCP tool ${descriptor.remote.name} failed (non-connection, no reconnect)",
+                    e,
+                )
+            }
             ToolExecutionResult(
                 text = "MCP tool '${descriptor.remote.name}' failed: ${userMessage(e)}",
                 isError = true,
@@ -277,10 +295,15 @@ class McpRegistry(
         }
     }
 
+    /**
+     * 增量 diff（M7）：按 id 增删 runtime，配置未变化的服务器原样保留
+     * （`existing?.config != config` 是值比较，DataStore 重放相同配置不会重建连接）。
+     */
     private fun reconcile(configs: List<McpServerConfig>) {
         synchronized(lock) {
             val desiredIds = configs.mapTo(mutableSetOf(), McpServerConfig::id)
-            runtimes.keys.filter { it !in desiredIds }.forEach { id ->
+            val removedIds = runtimes.keys.filter { it !in desiredIds }
+            removedIds.forEach { id ->
                 runtimes.remove(id)?.close()
             }
             configs.forEach { config ->
@@ -288,18 +311,24 @@ class McpRegistry(
                 when {
                     !config.enabled || config.url.isBlank() -> {
                         runtimes.remove(config.id)?.close()
-                        putSnapshot(
-                            McpServerSnapshot(
-                                serverId = config.id,
-                                status = McpConnectionStatus.IDLE,
-                            ),
-                        )
+                        // 已是 IDLE 的快照不重复发布（settings flow 每次全量 emit）。
+                        val current = _snapshots.value[config.id]
+                        if (current?.status != McpConnectionStatus.IDLE) {
+                            putSnapshot(
+                                McpServerSnapshot(
+                                    serverId = config.id,
+                                    status = McpConnectionStatus.IDLE,
+                                ),
+                            )
+                        }
                     }
                     existing?.config != config -> replaceRuntimeLocked(config)
                 }
             }
-            _snapshots.update { current ->
-                current.filterKeys(desiredIds::contains)
+            if (removedIds.isNotEmpty() || _snapshots.value.keys.any { it !in desiredIds }) {
+                _snapshots.update { current ->
+                    current.filterKeys(desiredIds::contains)
+                }
             }
         }
     }
@@ -346,7 +375,6 @@ class McpRegistry(
     }
 
     private fun launchConnectionLoop(runtime: Runtime): Job = scope.launch(Dispatchers.IO) {
-        var retryMs = INITIAL_RETRY_MS
         while (isActive && isCurrent(runtime)) {
             putSnapshot(
                 McpServerSnapshot(
@@ -369,6 +397,8 @@ class McpRegistry(
                         )
                     }
                 if (!isCurrent(runtime)) return@launch
+                // M6：连接成功才重置退避，连续失败期间退避持续翻倍、重连频率受控。
+                runtime.retryMs = INITIAL_RETRY_MS
                 putSnapshot(
                     McpServerSnapshot(
                         serverId = runtime.config.id,
@@ -382,8 +412,9 @@ class McpRegistry(
                 throw e
             } catch (e: Exception) {
                 markError(runtime, e)
-                delay(retryMs)
-                retryMs = min(MAX_RETRY_MS, retryMs * 2)
+                // M6：退避读/写在 Runtime 字段上，跨重连循环保留，不因循环重启从头计。
+                delay(runtime.retryMs)
+                runtime.retryMs = min(MAX_RETRY_MS, runtime.retryMs * 2)
             }
         }
     }
@@ -398,6 +429,13 @@ class McpRegistry(
     private fun updateConnected(runtime: Runtime, keepTools: Boolean) {
         if (!isCurrent(runtime)) return
         val previous = snapshots.value[runtime.config.id]
+        // L：成功执行工具是高频路径；原快照已是 CONNECTED 且工具集不变时，
+        // 新旧快照值相等，直接跳过，避免每次调用都重建 map。
+        if (previous?.status == McpConnectionStatus.CONNECTED &&
+            (keepTools || previous.tools.isEmpty())
+        ) {
+            return
+        }
         putSnapshot(
             McpServerSnapshot(
                 serverId = runtime.config.id,

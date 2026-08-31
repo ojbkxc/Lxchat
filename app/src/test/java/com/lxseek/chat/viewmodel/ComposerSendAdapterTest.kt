@@ -24,7 +24,7 @@ class ComposerSendAdapterTest {
 
         assertNull(result)
         assertFalse(acknowledged)
-        coVerify(exactly = 0) { fixture.drafts.clearAccepted(any()) }
+        coVerify(exactly = 0) { fixture.drafts.clearAccepted(any(), any(), any()) }
         coVerify(exactly = 0) { fixture.drafts.reclaimAttachments(any()) }
     }
 
@@ -85,7 +85,9 @@ class ComposerSendAdapterTest {
         )
 
         init {
-            coEvery { drafts.clearAccepted(any()) } answers {
+            // clearAccepted 签名为 (conversationId, acceptedText, acceptedAttachments)，
+            // 三参数全部用 any() 匹配；回调用 firstArg<String>() 取会话 id。
+            coEvery { drafts.clearAccepted(any(), any(), any()) } answers {
                 events += "clear:${firstArg<String>()}"
                 attachmentsToReclaim
             }

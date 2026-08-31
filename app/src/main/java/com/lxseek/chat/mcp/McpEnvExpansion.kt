@@ -28,6 +28,8 @@ object McpEnvExpansion {
     /**
      * 解析单个 `${...}` 内部内容：按 `:-` 切出变量名与默认值（split 限 2 段，
      * 默认值中的 `:` 会被保留，与 cc-haha 一致）。有值返回值，否则返回默认值。
+     * M9：变量值与默认值都过滤 CR/LF —— 展开结果会拼进 URL 与 HTTP header，
+     * 混入换行即构成请求行/头部注入。
      */
     private fun resolve(content: String, env: Map<String, String>): String? {
         val sep = content.indexOf(":-")
@@ -35,8 +37,15 @@ object McpEnvExpansion {
         val defaultValue = if (sep >= 0) content.substring(sep + 2) else null
         val value = env[varName]?.takeIf(String::isNotBlank)
             ?: System.getenv(varName)?.takeIf(String::isNotBlank)
-        return value ?: defaultValue
+        return sanitizeExpanded(value) ?: sanitizeExpanded(defaultValue)
     }
+
+    /** 过滤 CR/LF 后的非空值；原值为空白或过滤后变空则返回 null。 */
+    private fun sanitizeExpanded(value: String?): String? =
+        value?.takeIf(String::isNotBlank)
+            ?.replace("\r", "")
+            ?.replace("\n", "")
+            ?.takeIf(String::isNotBlank)
 
     /** 展开单条字符串中的全部变量引用。 */
     fun expandInString(value: String, env: Map<String, String>): ExpandedString {

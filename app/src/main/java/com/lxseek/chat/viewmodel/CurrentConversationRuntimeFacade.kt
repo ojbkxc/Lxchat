@@ -40,4 +40,14 @@ internal class CurrentConversationRuntimeFacade(
             }
         }
     }
+
+    fun clearQueuedSends() {
+        val conversationId = currentConversationId.value ?: return
+        val state = registry.getOrCreate(conversationId)
+        scope.launch(ioDispatcher) {
+            state.queueMutationMutex.withLock {
+                state.clearQueuedSends().forEach(QueuedSend::deleteOwnedFiles)
+            }
+        }
+    }
 }

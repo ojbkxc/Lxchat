@@ -8,7 +8,7 @@ package com.lxseek.chat.membership
  * prompt (when false) without needing a second lookup.
  *
  * @property allowed         Whether the current user may use the feature.
- * @property requiredTier    The minimum tier the feature needs.
+ * @property requiredTier    The minimum tier the feature needs（二元制：Free / Premium）.
  * @property currentTier     The user's effective tier at check time.
  * @property upgradeHint     Human-readable text for the upgrade prompt; empty
  *                           when [allowed] is true.
@@ -29,7 +29,11 @@ data class FeatureAccessResult(
  * Bridges two collaborators:
  * - [MembershipProvider] supplies the current user state (a [StateFlow] of
  *   [MembershipStatus], read synchronously at check time).
- * - [FeatureTierMapper] supplies the policy (which tier a tool/category needs).
+ * - [FeatureTierMapper] supplies the policy (whether a tool/category needs payment).
+ *
+ * 二元制：判定退化为"付费账户可用 / 仅免费可用"两个世界。用户的
+ * [MembershipStatus.isActive] 为 true（凭证已验签，见
+ * [LocalMembershipProvider.refresh]）即视为付费账户。
  *
  * The gate is intentionally synchronous and side-effect free: it reads the
  * current tier snapshot and returns a [FeatureAccessResult]. Callers in the
@@ -103,35 +107,32 @@ class FeatureGate(
      * Reads the user's effective tier from the provider's status snapshot.
      *
      * A membership whose [MembershipStatus.isActive] is false (e.g. expired or
-     * revoked) is treated as [MembershipTier.Free] so the gate correctly locks
-     * paid features for lapsed users and shows them an upgrade prompt.
+     * revoked, or the signed credential failed verification — see H4) is treated
+     * as [MembershipTier.Free] so the gate correctly locks paid features for
+     * lapsed users and shows them an upgrade prompt.
      */
     private fun currentTier(): MembershipTier {
         val status = membershipProvider.status.value
         return if (status.isActive) status.tier else MembershipTier.Free
     }
 
-    /** Builds a category-level upgrade hint for [tier]. */
-    private fun upgradeHintFor(tier: MembershipTier): String = when (tier) {
-        MembershipTier.Free -> "Available on all plans"
-        MembershipTier.Premium -> "Upgrade to Premium to unlock this feature"
-        MembershipTier.Pro -> "Upgrade to Pro to unlock this feature"
-        MembershipTier.Enterprise -> "Upgrade to Enterprise to unlock this feature"
-    }
+    /** Builds a category-level upgrade hint（二元制文案：升级为付费账户）. */
+    private fun upgradeHintFor(tier: MembershipTier): String =
+        if (tier == MembershipTier.Free) {
+            "Available on all plans"
+        } else {
+            "Upgrade to a paid membership to unlock this feature"
+        }
 
     /**
      * True when [this] tier is at or above [required] in the privilege ladder.
      *
-     * Encoded as a private extension so the ordering logic stays co-located
-     * with the gate that depends on it, without polluting the enum API.
+     * 二元制：Premium（付费）满足一切要求；Free 仅满足 Free。
+     * 旧枚举值（Pro/Enterprise 兼容壳）按付费处理（它们只可能来自
+     * 历史遗留数据，语义上等价于 Premium）。
      */
-    private fun MembershipTier.satisfies(required: MembershipTier): Boolean =
-        rank() >= required.rank()
-
-    private fun MembershipTier.rank(): Int = when (this) {
-        MembershipTier.Free -> 0
-        MembershipTier.Premium -> 1
-        MembershipTier.Pro -> 2
-        MembershipTier.Enterprise -> 3
+    private fun MembershipTier.satisfies(required: MembershipTier): Boolean {
+        val paid = this != MembershipTier.Free
+        return paid || required == MembershipTier.Free
     }
 }

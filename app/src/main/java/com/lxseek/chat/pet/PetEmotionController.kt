@@ -53,13 +53,37 @@ object PetEmotionController {
         }
     }
 
+    /**
+     * Called on every streaming text chunk. Re-arms the transient-emotion fallback timer so
+     * a long generation keeps the pet's THINKING face alive; without this the 4s timer
+     * expired mid-stream and the pet went blank-faced (or reverted mid-animation) while
+     * text was still actively streaming in.
+     */
+    fun keepAliveDuringStream() {
+        if (!enabled) return
+        if (_emotion.value == PetEmotion.IDLE) return
+        fallbackJob?.cancel()
+        fallbackJob = scope.launch {
+            delay(FALLBACK_DELAY_MS)
+            _emotion.value = PetEmotion.IDLE
+        }
+    }
+
     /** Updates the live streaming text shown in the pet's speech bubble. */
     fun setTipText(text: String?) {
         _tipText.value = text?.takeIf { it.isNotBlank() }?.let {
             val normalized = it.replace(Regex("\\s+"), " ").trim()
-            if (normalized.length > 120) normalized.take(119).trimEnd() + "…" else normalized
+            // Keep the TAIL of a long stream: the newest output is what the user is
+            // waiting on. Truncating the head froze the bubble at the first 120 chars
+            // for the whole rest of the generation.
+            if (normalized.length > MAX_TIP_CHARS) {
+                "…" + normalized.takeLast(MAX_TIP_CHARS - 1).trimStart()
+            } else {
+                normalized
+            }
         }
     }
 
     private const val FALLBACK_DELAY_MS = 4_000L
+    private const val MAX_TIP_CHARS = 120
 }
