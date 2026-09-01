@@ -1,22 +1,11 @@
 plugins {
-    // AGP 9 内置 Kotlin 编译（与 app 一致，不单独应用 kotlin-android）。
-    alias(libs.plugins.android.library)
+    id("buildlogic.android-library")
     // model 类使用 @Serializable（ChatMessage/AttachmentMeta/TokenUsage）。
     alias(libs.plugins.kotlin.serialization)
 }
 
 android {
     namespace = "com.lxseek.chat.core.model"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 24
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
 }
 
 dependencies {

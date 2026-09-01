@@ -505,34 +505,13 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     scope.launch {
                         val importedPath = withContext(Dispatchers.IO) {
                             try {
-                                val destFile = File(
-                                    context.filesDir,
-                                    "embedding_${java.util.UUID.randomUUID()}.gguf",
+                                com.lxseek.chat.util.FileImport.copyToPrivate(
+                                    context = context,
+                                    uri = uri,
+                                    prefix = "embedding",
+                                    extension = "gguf",
+                                    formats = setOf(com.lxseek.chat.util.FileImportFormat.GGUF),
                                 )
-                                val copied = context.contentResolver
-                                    .openInputStream(uri)
-                                    ?.use { input ->
-                                        destFile.outputStream().use { output ->
-                                            input.copyTo(output)
-                                        }
-                                        true
-                                    } == true
-                                if (!copied) {
-                                    destFile.delete()
-                                    return@withContext null
-                                }
-                                val magic = ByteArray(4)
-                                destFile.inputStream().use { it.read(magic) }
-                                val valid = magic[0] == 'G'.code.toByte() &&
-                                    magic[1] == 'G'.code.toByte() &&
-                                    magic[2] == 'U'.code.toByte() &&
-                                    magic[3] == 'F'.code.toByte()
-                                if (valid) {
-                                    destFile.absolutePath
-                                } else {
-                                    destFile.delete()
-                                    null
-                                }
                             } catch (_: Exception) {
                                 null
                             }
@@ -540,7 +519,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         if (importedPath == null) {
                             showGgufError = true
                         } else {
-                            localFilePath = importedPath
+                            localFilePath = importedPath.absolutePath
                         }
                         isImporting = false
                     }

@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.android.application)
+    id("buildlogic.android-application")
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -9,10 +9,10 @@ plugins {
 
 import java.util.Properties
 
-val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("local.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(keystorePropertiesFile.reader())
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.reader())
 }
 
 // ── 会员/支付密钥（安全修复 H2/H5）──────────────────────────────
@@ -20,26 +20,17 @@ if (keystorePropertiesFile.exists()) {
 // 其次读 local.properties（本地开发用，已被 .gitignore 覆盖）。
 // 两处都未配置时 BuildConfig 字段为空串 = 未配置，App 内对应本地验签能力
 // 自动禁用并打 WARN（见 membership/MembershipSecrets.kt）。
-val secretProps = Properties()
-val secretPropsFile = rootProject.file("local.properties")
-if (secretPropsFile.exists()) {
-    secretProps.load(secretPropsFile.reader())
-}
+fun localValue(key: String): String? =
+    (project.findProperty(key) as String?) ?: localProperties.getProperty(key)
 
-fun membershipSecret(key: String): String =
-    ((project.findProperty(key) as String?) ?: secretProps.getProperty(key))
-        ?.trim()
-        .orEmpty()
-
-fun membershipSecretLiteral(key: String): String =
-    "\"" + membershipSecret(key).replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+fun secretLiteral(key: String): String =
+    "\"" + (localValue(key)?.trim().orEmpty())
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"") + "\""
 
 
 android {
     namespace = "com.lxseek.chat"
-    compileSdk {
-        version = release(36)
-    }
 
     ndkVersion = "29.0.14206865"
 
@@ -56,22 +47,20 @@ android {
 
     defaultConfig {
         applicationId = "com.lxseek.chat"
-        minSdk = 24
-        targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
 
         // 会员/支付密钥注入（H2/H5）：空串 = 未配置（本地验签能力禁用 + WARN）。
         // 注意：共享 HMAC 密钥仍可被反编译提取，生产正确做法是服务器端
         // RSA 签名；本轮目标是"不随 APK 分发占位/假密钥"。
-        buildConfigField("String", "LXCHAT_HMAC_SECRET", membershipSecretLiteral("LXCHAT_HMAC_SECRET"))
-        buildConfigField("String", "LXCHAT_YIPAY_MERCHANT_KEY", membershipSecretLiteral("LXCHAT_YIPAY_MERCHANT_KEY"))
+        buildConfigField("String", "LXCHAT_HMAC_SECRET", secretLiteral("LXCHAT_HMAC_SECRET"))
+        buildConfigField("String", "LXCHAT_YIPAY_MERCHANT_KEY", secretLiteral("LXCHAT_YIPAY_MERCHANT_KEY"))
 
         // H1（安全铁律）：激活服务器证书 pin（SHA-256，形如 "sha256/BASE64="）。
         // 真实 pin 不入 git，读取顺序同上（gradle 属性 -P/gradle.properties →
         // local.properties）。未配置时为空串 → HttpClient.activationClient 降级为
         // 不校验 pin + WARN（fail-open，默认构建不被占位值拖垮）。
-        buildConfigField("String", "ACTIVATION_PIN", membershipSecretLiteral("LXCHAT_ACTIVATION_PIN"))
+        buildConfigField("String", "ACTIVATION_PIN", secretLiteral("LXCHAT_ACTIVATION_PIN"))
 
 
         ndk {
@@ -97,14 +86,14 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file(keystoreProperties.getProperty("storeFile", "."))
-            storePassword = keystoreProperties.getProperty("storePassword", "")
-            keyAlias = keystoreProperties.getProperty("keyAlias", "")
-            keyPassword = keystoreProperties.getProperty("keyPassword", "")
+            storeFile = file(localValue("storeFile") ?: ".")
+            storePassword = localValue("storePassword") ?: ""
+            keyAlias = localValue("keyAlias") ?: ""
+            keyPassword = localValue("keyPassword") ?: ""
         }
     }
 
-    val hasKeystore = keystoreProperties.getProperty("storeFile", ".").let { it != "." }
+    val hasKeystore = (localValue("storeFile") ?: ".").let { it != "." }
     val releaseSigning = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
 
     buildTypes {
@@ -129,10 +118,6 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false

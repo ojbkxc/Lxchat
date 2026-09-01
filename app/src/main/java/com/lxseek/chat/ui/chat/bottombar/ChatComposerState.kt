@@ -194,16 +194,14 @@ class ChatComposerState(
     /** Copy a content URI to app-private storage, returning the absolute path (or null). */
     private suspend fun copyToPrivate(uri: Uri, ext: String): String? {
         return withContext(Dispatchers.IO) {
-            val target = java.io.File(context.filesDir, "att_${UUID.randomUUID()}.$ext")
             try {
-                val input = context.contentResolver.openInputStream(uri)
-                    ?: return@withContext null
-                input.use {
-                    target.outputStream().use { output -> input.copyTo(output) }
-                }
-                target.absolutePath
+                com.lxseek.chat.util.FileImport.copyToPrivate(
+                    context = context,
+                    uri = uri,
+                    prefix = "att",
+                    extension = ext,
+                )?.absolutePath
             } catch (_: Exception) {
-                runCatching { target.delete() }
                 null
             }
         }

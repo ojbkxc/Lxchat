@@ -103,8 +103,6 @@ import kotlin.math.absoluteValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.util.UUID
 import androidx.compose.ui.platform.LocalConfiguration
 
 data class WelcomePage(
@@ -193,48 +191,29 @@ fun WelcomeScreen(
             scope.launch {
                 try {
                     val imported = withContext(Dispatchers.IO) {
-                        val dest = File(context.filesDir, "chat_model_${UUID.randomUUID()}.gguf")
-                        try {
-                            val aliasName =
-                                com.lxseek.chat.util.FileValidator.resolveFileName(context, uri)
-                                    ?.let {
-                                        if (
-                                            it.substringAfterLast('.', "")
-                                                .equals("gguf", ignoreCase = true)
-                                        ) {
-                                            it.substringBeforeLast('.')
-                                        } else {
-                                            it
-                                        }
+                        val dest = com.lxseek.chat.util.FileImport.copyToPrivate(
+                            context = context,
+                            uri = uri,
+                            prefix = "chat_model",
+                            extension = "gguf",
+                            formats = setOf(com.lxseek.chat.util.FileImportFormat.GGUF),
+                        ) ?: return@withContext null
+                        val aliasName =
+                            com.lxseek.chat.util.FileValidator.resolveFileName(context, uri)
+                                ?.let {
+                                    if (
+                                        it.substringAfterLast('.', "")
+                                            .equals("gguf", ignoreCase = true)
+                                    ) {
+                                        it.substringBeforeLast('.')
+                                    } else {
+                                        it
                                     }
-                                    ?.trim()
-                                    ?.ifBlank { null }
-                                    ?: dest.nameWithoutExtension
-                            val copied = context.contentResolver.openInputStream(uri)?.use { input ->
-                                dest.outputStream().use { output -> input.copyTo(output) }
-                                true
-                            } == true
-                            if (!copied) {
-                                dest.delete()
-                                return@withContext null
-                            }
-                            val magic = ByteArray(4)
-                            val bytesRead = dest.inputStream().use { it.read(magic) }
-                            val valid = bytesRead == magic.size &&
-                                magic[0] == 'G'.code.toByte() &&
-                                magic[1] == 'G'.code.toByte() &&
-                                magic[2] == 'U'.code.toByte() &&
-                                magic[3] == 'F'.code.toByte()
-                            if (valid) {
-                                Triple(dest.nameWithoutExtension, aliasName, dest.absolutePath)
-                            } else {
-                                dest.delete()
-                                null
-                            }
-                        } catch (error: Exception) {
-                            dest.delete()
-                            throw error
-                        }
+                                }
+                                ?.trim()
+                                ?.ifBlank { null }
+                                ?: dest.nameWithoutExtension
+                        Triple(dest.nameWithoutExtension, aliasName, dest.absolutePath)
                     }
                     if (imported == null) {
                         showGgufError = true

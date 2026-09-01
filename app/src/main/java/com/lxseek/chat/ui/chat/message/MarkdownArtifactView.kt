@@ -116,15 +116,22 @@ private fun MermaidArtifactView(code: String, modifier: Modifier) {
     val context = LocalContext.current
     val state = remember { mutableStateOf<MermaidLoadState>(MermaidLoadState.Loading) }
     val mermaidEngineError = MermaidLoadState.Error(stringResource(R.string.markdown_mermaid_engine_error))
-    LaunchedEffect(context, code, state.value is MermaidLoadState.Ready) {
+    LaunchedEffect(context, code) {
         if (!MermaidEngine.isDownloaded(context)) {
             state.value = MermaidLoadState.Downloading
-            if (MermaidEngine.ensure(context)) {
-                state.value = MermaidLoadState.Ready
-            } else {
+            if (!MermaidEngine.ensure(context)) {
                 state.value = mermaidEngineError
+                return@LaunchedEffect
             }
         }
+        state.value = runCatching {
+            withContext(Dispatchers.IO) {
+                context.assets.open("www/mermaid_render.html").bufferedReader().use { it.readText() }
+            }
+        }.fold(
+            onSuccess = { MermaidLoadState.Ready(it) },
+            onFailure = { mermaidEngineError },
+        )
     }
     when (val s = state.value) {
         MermaidLoadState.Loading, MermaidLoadState.Downloading ->
@@ -133,8 +140,8 @@ private fun MermaidArtifactView(code: String, modifier: Modifier) {
             s.message, modifier = modifier.padding(8.dp),
             color = Color(0xFFE5484D),
         )
-        MermaidLoadState.Ready -> {
-            val html = remember { context.assets.open("www/mermaid_render.html").bufferedReader().use { it.readText() } }
+        is MermaidLoadState.Ready -> {
+            val html = s.html
             val webView = remember(context) { WebView(context) }
             LaunchedEffect(code) {
                 webView.settings.javaScriptEnabled = true
@@ -152,7 +159,7 @@ private fun MermaidArtifactView(code: String, modifier: Modifier) {
 private sealed interface MermaidLoadState {
     data object Loading : MermaidLoadState
     data object Downloading : MermaidLoadState
-    data object Ready : MermaidLoadState
+    data class Ready(val html: String) : MermaidLoadState
     data class Error(val message: String) : MermaidLoadState
 }
 

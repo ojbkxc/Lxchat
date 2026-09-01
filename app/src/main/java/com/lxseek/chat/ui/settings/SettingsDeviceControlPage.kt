@@ -73,7 +73,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /** Live snapshot of the Android accessibility bridge, read cheaply from the connected service. */
 private data class DeviceControlStatus(
@@ -175,10 +174,20 @@ fun PetSettingsSection(viewModel: ChatViewModel, onOpenAddPet: () -> Unit = {}) 
             if (uri != null) {
                 viewModel.viewModelScope.launch {
                     val destFile = withContext(Dispatchers.IO) {
-                        copyUriToInternalStorage(context, uri)
+                        com.lxseek.chat.util.FileImport.copyToPrivate(
+                            context = context,
+                            uri = uri,
+                            prefix = "pet_overlay_image",
+                            extension = "tmp",
+                        )
                     }
                     if (destFile != null) {
-                        viewModel.settings.savePetOverlayImagePath(destFile.absolutePath)
+                        val finalFile = java.io.File(context.filesDir, PET_IMAGE_FILE_NAME)
+                        if (destFile.renameTo(finalFile)) {
+                            viewModel.settings.savePetOverlayImagePath(finalFile.absolutePath)
+                        } else {
+                            destFile.delete()
+                        }
                         PetOverlayController.refreshImage(context)
                     }
                 }
@@ -694,22 +703,6 @@ private fun ImagePreview(path: String, modifier: Modifier = Modifier) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-/**
- * Copies the content of [uri] into [context.filesDir]/[PET_IMAGE_FILE_NAME], returning the
- * destination [File] on success or `null` on failure. Must be called off the main thread.
- */
-private fun copyUriToInternalStorage(context: android.content.Context, uri: android.net.Uri): File? {
-    return try {
-        val destFile = File(context.filesDir, PET_IMAGE_FILE_NAME)
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            destFile.outputStream().use { output -> input.copyTo(output) }
-        } ?: return null
-        destFile
-    } catch (e: Exception) {
-        null
     }
 }
 

@@ -88,22 +88,19 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit, onOpenA
                 try {
                     // Delete old custom font file if it exists
                     customFontPath.takeIf { it.isNotBlank() }?.let { File(it).delete() }
-                    val dest = File(context.filesDir, "custom_font_${java.util.UUID.randomUUID()}")
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        dest.outputStream().use { output -> input.copyTo(output) }
-                    }
-                    // Validate magic bytes (TTF: 0x00010000, OTTO, true, typ1)
-                    val magic = ByteArray(4)
-                    dest.inputStream().use { it.read(magic) }
-                    val validFont = when {
-                        magic[0] == 0.toByte() && magic[1] == 1.toByte() && magic[2] == 0.toByte() && magic[3] == 0.toByte() -> true
-                        magic[0] == 'O'.code.toByte() && magic[1] == 'T'.code.toByte() && magic[2] == 'T'.code.toByte() && magic[3] == 'O'.code.toByte() -> true
-                        magic[0] == 't'.code.toByte() && magic[1] == 'r'.code.toByte() && magic[2] == 'u'.code.toByte() && magic[3] == 'e'.code.toByte() -> true
-                        magic[0] == 't'.code.toByte() && magic[1] == 'y'.code.toByte() && magic[2] == 'p'.code.toByte() && magic[3] == '1'.code.toByte() -> true
-                        else -> false
-                    }
-                    if (!validFont) {
-                        dest.delete()
+                    val dest = com.lxseek.chat.util.FileImport.copyToPrivate(
+                        context = context,
+                        uri = uri,
+                        prefix = "custom_font",
+                        extension = "",
+                        formats = setOf(
+                            com.lxseek.chat.util.FileImportFormat.TTF,
+                            com.lxseek.chat.util.FileImportFormat.OTF,
+                            com.lxseek.chat.util.FileImportFormat.SFNT_TRUE,
+                            com.lxseek.chat.util.FileImportFormat.SFNT_TYPE_1,
+                        ),
+                    )
+                    if (dest == null) {
                         withContext(Dispatchers.Main) {
                             viewModel.emitSnackbar(invalidFontMessage)
                         }

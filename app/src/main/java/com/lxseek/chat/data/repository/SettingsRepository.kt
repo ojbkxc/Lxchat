@@ -17,7 +17,6 @@ import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.data.ShellDeviceConfig
 import com.lxseek.chat.data.McpServerConfig
 import com.lxseek.chat.data.SystemPromptEntry
-import com.lxseek.chat.pet.PetCharacter
 import com.lxseek.chat.model.ModelId
 import com.lxseek.chat.model.OpenAiServiceTiers
 import com.lxseek.chat.model.ToolCallDisplayModes
@@ -53,6 +52,9 @@ class SettingsRepository(
 ) {
     /** One latch per eagerly-shared DataStore flow; populated completely during construction. */
     private val initialLoadSignals = mutableListOf<CompletableDeferred<Unit>>()
+    private val automationSettingsStore =
+        AutomationSettingsStore(settingsManager, scope, initialLoadSignals)
+    private val petSettingsStore = PetSettingsStore(settingsManager, scope, initialLoadSignals)
 
     private fun <T> hot(flow: kotlinx.coroutines.flow.Flow<T>, initial: T): StateFlow<T> {
         val loaded = CompletableDeferred<Unit>()
@@ -176,16 +178,16 @@ class SettingsRepository(
     val imageGenSize: StateFlow<String> = hot(settingsManager.imageGenSize, "1024x1024")
     val showDocumentationFab: StateFlow<Boolean> = hot(settingsManager.showDocumentationFab, true)
     val shellEnabled: StateFlow<Boolean> = hot(settingsManager.shellEnabled, false)
-    val automationToolsEnabled: StateFlow<Boolean> = hot(settingsManager.automationToolsEnabled, false)
-    val petOverlayEnabled: StateFlow<Boolean> = hot(settingsManager.petOverlayEnabled, false)
-    val petOverlayImagePath: StateFlow<String> = hot(settingsManager.petOverlayImagePath, "")
-    val petOverlaySizeScale: StateFlow<Float> = hot(settingsManager.petOverlaySizeScale, 1.0f)
-    val petOverlayAlpha: StateFlow<Float> = hot(settingsManager.petOverlayAlpha, 1.0f)
-    val petOverlayCharacter: StateFlow<String> = hot(settingsManager.petOverlayCharacter, PetCharacter.HUHU.prefKey)
-    val petEmotionEnabled: StateFlow<Boolean> = hot(settingsManager.petEmotionEnabled, true)
-    val petsLibrary: StateFlow<List<com.lxseek.chat.pet.CustomPet>> = hot(settingsManager.petsLibrary, emptyList())
-    val activePetId: StateFlow<String> = hot(settingsManager.activePetId, "")
-    val petPromptInjectionEnabled: StateFlow<Boolean> = hot(settingsManager.petPromptInjectionEnabled, true)
+    val automationToolsEnabled: StateFlow<Boolean> get() = automationSettingsStore.automationToolsEnabled
+    val petOverlayEnabled: StateFlow<Boolean> get() = petSettingsStore.petOverlayEnabled
+    val petOverlayImagePath: StateFlow<String> get() = petSettingsStore.petOverlayImagePath
+    val petOverlaySizeScale: StateFlow<Float> get() = petSettingsStore.petOverlaySizeScale
+    val petOverlayAlpha: StateFlow<Float> get() = petSettingsStore.petOverlayAlpha
+    val petOverlayCharacter: StateFlow<String> get() = petSettingsStore.petOverlayCharacter
+    val petEmotionEnabled: StateFlow<Boolean> get() = petSettingsStore.petEmotionEnabled
+    val petsLibrary: StateFlow<List<com.lxseek.chat.pet.CustomPet>> get() = petSettingsStore.petsLibrary
+    val activePetId: StateFlow<String> get() = petSettingsStore.activePetId
+    val petPromptInjectionEnabled: StateFlow<Boolean> get() = petSettingsStore.petPromptInjectionEnabled
     val exactExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.exactExecutionEnabled, false)
     val proxyEnabled: StateFlow<Boolean> = hot(settingsManager.proxyEnabled, false)
     val proxyType: StateFlow<String> = hot(settingsManager.proxyType, "http")
@@ -688,17 +690,22 @@ class SettingsRepository(
     suspend fun saveEmbeddingModels(models: List<EmbeddingModelConfig>) = settingsManager.saveEmbeddingModels(models)
     suspend fun setActiveEmbeddingModelId(id: String) = settingsManager.setActiveEmbeddingModelId(id)
     suspend fun saveAutoBackupEnabled(enabled: Boolean) = settingsManager.saveAutoBackupEnabled(enabled)
-    suspend fun savePetOverlayEnabled(enabled: Boolean) = settingsManager.savePetOverlayEnabled(enabled)
-    suspend fun savePetOverlayImagePath(path: String) = settingsManager.savePetOverlayImagePath(path)
-    suspend fun savePetOverlaySizeScale(scale: Float) = settingsManager.savePetOverlaySizeScale(scale)
-    suspend fun savePetOverlayAlpha(alpha: Float) = settingsManager.savePetOverlayAlpha(alpha)
-    suspend fun savePetOverlayCharacter(character: String) = settingsManager.savePetOverlayCharacter(character)
-    suspend fun savePetEmotionEnabled(enabled: Boolean) = settingsManager.savePetEmotionEnabled(enabled)
+    suspend fun savePetOverlayEnabled(enabled: Boolean) =
+        petSettingsStore.savePetOverlayEnabled(enabled)
+    suspend fun savePetOverlayImagePath(path: String) =
+        petSettingsStore.savePetOverlayImagePath(path)
+    suspend fun savePetOverlaySizeScale(scale: Float) =
+        petSettingsStore.savePetOverlaySizeScale(scale)
+    suspend fun savePetOverlayAlpha(alpha: Float) = petSettingsStore.savePetOverlayAlpha(alpha)
+    suspend fun savePetOverlayCharacter(character: String) =
+        petSettingsStore.savePetOverlayCharacter(character)
+    suspend fun savePetEmotionEnabled(enabled: Boolean) =
+        petSettingsStore.savePetEmotionEnabled(enabled)
     suspend fun savePetsLibrary(pets: List<com.lxseek.chat.pet.CustomPet>) =
-        settingsManager.savePetsLibrary(pets)
-    suspend fun saveActivePetId(id: String) = settingsManager.saveActivePetId(id)
+        petSettingsStore.savePetsLibrary(pets)
+    suspend fun saveActivePetId(id: String) = petSettingsStore.saveActivePetId(id)
     suspend fun savePetPromptInjectionEnabled(enabled: Boolean) =
-        settingsManager.savePetPromptInjectionEnabled(enabled)
+        petSettingsStore.savePetPromptInjectionEnabled(enabled)
     suspend fun saveAutoBackupPeriodHours(hours: Int) = settingsManager.saveAutoBackupPeriodHours(hours)
     suspend fun saveAutoBackupCategories(categories: String) = settingsManager.saveAutoBackupCategories(categories)
     suspend fun saveAutoBackupDirectory(path: String) = settingsManager.saveAutoBackupDirectory(path)

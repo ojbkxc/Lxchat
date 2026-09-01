@@ -111,27 +111,13 @@ fun SettingsProviderDetailPage(
             scope.launch {
                 val importedPath = withContext(Dispatchers.IO) {
                     try {
-                        val dest = java.io.File(
-                            context.filesDir,
-                            "chat_model_${java.util.UUID.randomUUID()}.gguf",
+                        com.lxseek.chat.util.FileImport.copyToPrivate(
+                            context = context,
+                            uri = uri,
+                            prefix = "chat_model",
+                            extension = "gguf",
+                            formats = setOf(com.lxseek.chat.util.FileImportFormat.GGUF),
                         )
-                        val copied = context.contentResolver.openInputStream(uri)?.use { input ->
-                            dest.outputStream().use { output -> input.copyTo(output) }
-                            true
-                        } == true
-                        if (!copied) return@withContext null
-                        val magic = ByteArray(4)
-                        dest.inputStream().use { it.read(magic) }
-                        val valid = magic[0] == 'G'.code.toByte() &&
-                            magic[1] == 'G'.code.toByte() &&
-                            magic[2] == 'U'.code.toByte() &&
-                            magic[3] == 'F'.code.toByte()
-                        if (valid) {
-                            dest.absolutePath
-                        } else {
-                            dest.delete()
-                            null
-                        }
                     } catch (e: Exception) {
                         DebugLog.e("ProviderDetail", "GGUF import", e)
                         null
@@ -140,7 +126,7 @@ fun SettingsProviderDetailPage(
                 if (importedPath == null) {
                     showGgufError = true
                 } else {
-                    copiedFilePath = importedPath
+                    copiedFilePath = importedPath.absolutePath
                     showAddModelDialog = true
                 }
                 importingModel = false
@@ -152,25 +138,21 @@ fun SettingsProviderDetailPage(
             scope.launch {
                 val importedPath = withContext(Dispatchers.IO) {
                     try {
-                        val dest = java.io.File(
-                            context.filesDir,
-                            "mmproj_${java.util.UUID.randomUUID()}.gguf",
+                        com.lxseek.chat.util.FileImport.copyToPrivate(
+                            context = context,
+                            uri = uri,
+                            prefix = "mmproj",
+                            extension = "gguf",
                         )
-                        val copied = context.contentResolver.openInputStream(uri)?.use { input ->
-                            dest.outputStream().use { output -> input.copyTo(output) }
-                            true
-                        } == true
-                        if (copied) dest.absolutePath else null
                     } catch (e: Exception) {
                         DebugLog.e("ProviderDetail", "mmproj import", e)
                         null
                     }
                 }
-                if (importedPath != null) mmprojPickedUri = importedPath
+                if (importedPath != null) mmprojPickedUri = importedPath.absolutePath
             }
         }
     }
-
     CollapsingSettingsScaffold(
         title = if (isLocal) stringResource(R.string.local_title) else currentName,
         onBack = onBack,

@@ -8,11 +8,14 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 enum class ThemeMode { LIGHT, DARK, AMOLED, FOLLOW_DEVICE }
@@ -24,26 +27,29 @@ enum class ThemeMode { LIGHT, DARK, AMOLED, FOLLOW_DEVICE }
 private fun effectiveFontFamily(
     fontPreference: String,
     customFontPath: String
-): FontFamily = remember(fontPreference, customFontPath) {
-    when (fontPreference) {
-        "system" -> FontFamily.Default
-        "custom" -> {
+): FontFamily = produceState(
+    initialValue = FontFamily.Default,
+    fontPreference,
+    customFontPath,
+) {
+    value = when (fontPreference) {
+        "custom" -> withContext(Dispatchers.IO) {
             val file = File(customFontPath)
             if (file.exists()) {
-                try {
+                runCatching {
                     FontFamily(
                         Font(file, FontWeight.Normal),
                         Font(file, FontWeight.Medium),
                         Font(file, FontWeight.Bold),
                     )
-                } catch (_: Exception) {
-                    FontFamily.Default
-                }
-            } else FontFamily.Default
+                }.getOrDefault(FontFamily.Default)
+            } else {
+                FontFamily.Default
+            }
         }
         else -> FontFamily.Default
     }
-}
+}.value
 
 /**
  * Builds the [Typography] with the given [FontFamily] replacing all non-mono styles.
