@@ -606,79 +606,78 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             .fillMaxWidth()
                                             .background(MaterialTheme.colorScheme.surfaceContainerLow)
                                     ) {
-                                            group.items.forEachIndexed { index, cat ->
-                                                val isLastItem = index == group.items.lastIndex
-                                                val itemEnabled = !cat.requiresMembership || hasMembership
-                                                val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                                val preview = settingsPreview(cat.key)
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clickable { if (cat.requiresMembership && !hasMembership) selectedCategory = "membership" else selectedCategory = cat.key }
-                                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    if (cat.iconRes != null) {
-                                                        Icon(
-                                                            painter = painterResource(cat.iconRes),
-                                                            contentDescription = null,
-                                                            tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
-                                                            modifier = Modifier.size(24.dp),
-                                                        )
-                                                    } else {
-                                                        Icon(
-                                                            imageVector = checkNotNull(cat.icon),
-                                                            contentDescription = null,
-                                                            tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
-                                                            modifier = Modifier.size(24.dp),
-                                                        )
-                                                    }
-                                                    Spacer(modifier = Modifier.width(16.dp))
-                                                    Column(modifier = Modifier.weight(1f)) {
-                                                        Text(
-                                                            text = stringResource(cat.titleRes),
-                                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                                                            color = if (itemEnabled) MaterialTheme.colorScheme.onSurface else disabledColor,
-                                                        )
-                                                        Spacer(modifier = Modifier.height(3.dp))
-                                                        Text(
-                                                            text = stringResource(cat.descriptionRes),
-                                                            style = MaterialTheme.typography.bodyMedium,
-                                                            color = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant else disabledColor
-                                                        )
-                                                    }
-                                                    if (preview != null) {
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text(
-                                                            text = preview,
-                                                            style = MaterialTheme.typography.bodyMedium,
-                                                            color = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant else disabledColor,
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis,
-                                                            modifier = Modifier.widthIn(max = 120.dp),
-                                                        )
-                                                    }
-                                                    if (cat.requiresMembership && !hasMembership) {
-                                                        Icon(
-                                                            Icons.Default.Lock,
-                                                            contentDescription = null,
-                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                                        )
-                                                    } else {
-                                                        Icon(
-                                                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                                            contentDescription = null,
-                                                            tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
-                                                        )
-                                                    }
-                                                }
-                                                if (!isLastItem) {
-                                                    HorizontalDivider(
-                                                        thickness = LxDesign.dividerThickness,
-                                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        group.items.forEachIndexed { index, cat ->
+                                            val isLastItem = index == group.items.lastIndex
+                                            val itemEnabled = !cat.requiresMembership || hasMembership
+                                            val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                            val preview = settingsPreview(cat.key)
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable { if (cat.requiresMembership && !hasMembership) selectedCategory = "membership" else selectedCategory = cat.key }
+                                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                if (cat.iconRes != null) {
+                                                    Icon(
+                                                        painter = painterResource(cat.iconRes),
+                                                        contentDescription = null,
+                                                        tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
+                                                        modifier = Modifier.size(24.dp),
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        imageVector = checkNotNull(cat.icon),
+                                                        contentDescription = null,
+                                                        tint = if (itemEnabled) MaterialTheme.colorScheme.primary else disabledColor,
+                                                        modifier = Modifier.size(24.dp),
                                                     )
                                                 }
+                                                Spacer(modifier = Modifier.width(16.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = stringResource(cat.titleRes),
+                                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                                        color = if (itemEnabled) MaterialTheme.colorScheme.onSurface else disabledColor,
+                                                    )
+                                                    Spacer(modifier = Modifier.height(3.dp))
+                                                    Text(
+                                                        text = stringResource(cat.descriptionRes),
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant else disabledColor
+                                                    )
+                                                }
+                                                if (preview != null) {
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = preview,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant else disabledColor,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.widthIn(max = 120.dp),
+                                                    )
+                                                }
+                                                if (cat.requiresMembership && !hasMembership) {
+                                                    Icon(
+                                                        Icons.Default.Lock,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                                        contentDescription = null,
+                                                        tint = if (itemEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else disabledColor
+                                                    )
+                                                }
+                                            }
+                                            if (!isLastItem) {
+                                                HorizontalDivider(
+                                                    thickness = LxDesign.dividerThickness,
+                                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                                )
                                             }
                                         }
                                     }

@@ -1,0 +1,102 @@
+#REPORT=FAIL
+#CI_SHA=fc607329e7c5f0f9eb55c335f57ff51885de5d9b
+#CI_REF=refs/heads/main
+====ERR_MARKERS====
+58:C/C++:   Git repository not found; to enable automatic generation of build info,
+73:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:142:13 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> TRY_CALL)' was expected.
+74:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:145:13 Unresolved reference 'requireValidSerializedRequest'.
+75:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:198:25 Argument type mismatch: actual type is 'K#1 (of fun <K> WHEN_CALL)', but 'K#2 (of fun <K> TRY_CALL)' was expected.
+76:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:207:67 Unresolved reference 'describe'.
+77:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:210:29 Argument type mismatch: actual type is 'K (of fun <K> WHEN_CALL)', but 'K (of fun <K> WHEN_CALL)' was expected.
+78:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:210:45 Unresolved reference 'isRetryable'.
+79:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:210:83 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+80:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:220:36 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+81:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:45 Unresolved reference 'toError'.
+82:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:60 Cannot infer type for type parameter 'T'. Specify it explicitly.
+83:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:60 Cannot infer type for type parameter 'R'. Specify it explicitly.
+84:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:64 Cannot infer type for type parameter 'T'. Specify it explicitly.
+85:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:71 Argument type mismatch: actual type is 'StreamEvent.Error', but 'StreamEvent.Retrying' was expected.
+86:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:89 Argument type mismatch: actual type is 'T (of fun <T, R> T.let)', but 'GenerationError' was expected.
+87:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:243:29 Argument type mismatch: actual type is 'K (of fun <K> WHEN_CALL)', but 'K (of fun <K> WHEN_CALL)' was expected.
+88:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:249:31 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+89:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:252:38 Argument type mismatch: actual type is 'StreamEvent.Retrying', but 'StreamEvent.Retrying' was expected.
+90:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:255:36 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+91:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:256:38 Argument type mismatch: actual type is 'StreamEvent.Error', but 'StreamEvent.Retrying' was expected.
+92:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:266:13 Argument type mismatch: actual type is 'Nothing', but 'K (of fun <K> TRY_CALL)' was expected.
+93:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:268:13 Unresolved reference. None of the following candidates is applicable because of a receiver type mismatch:
+95:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:268:13 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> TRY_CALL)' was expected.
+96:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:284:8 Unresolved reference 'StreamTermination'.
+97:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:610:16 Unresolved reference 'StreamTermination'.
+98:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/ui/settings/SettingsScreen.kt:686:37 Unresolved reference 'groupIndex'.
+99:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/ui/settings/SettingsScreen.kt:687:37 @Composable invocations can only happen from the context of a @Composable function
+100:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/ui/settings/SettingsScreen.kt:697:1 Syntax error: Expecting a top level declaration.
+105:FAILURE: Build failed with an exception.
+107:* What went wrong:
+108:Execution failed for task ':app:compileFdroidDebugKotlin' (registered by plugin 'com.android.internal.application').
+====FAIL_BLOCK====
+105:FAILURE: Build failed with an exception.
+106-
+107-* What went wrong:
+108-Execution failed for task ':app:compileFdroidDebugKotlin' (registered by plugin 'com.android.internal.application').
+109-> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+110-   > Compilation error. See log for more details
+111-
+112-* Try:
+113-> Run with --stacktrace option to get the stack trace.
+114-> Run with --info or --debug option to get more log output.
+115-> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+116-> Get more help at https://help.gradle.org.
+117-
+118-BUILD FAILED in 1m 42s
+119-40 actionable tasks: 36 executed, 4 up-to-date
+====ETASK====
+108:Execution failed for task ':app:compileFdroidDebugKotlin' (registered by plugin 'com.android.internal.application').
+109-> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+110-   > Compilation error. See log for more details
+111-
+112-* Try:
+113-> Run with --stacktrace option to get the stack trace.
+114-> Run with --info or --debug option to get more log output.
+115-> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+116-> Get more help at https://help.gradle.org.
+117-
+118-BUILD FAILED in 1m 42s
+====E_DIR====
+70:Unable to strip the following libraries, packaging them as they are: libjnidispatch.so. Run with --info option to learn more.
+73:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:142:13 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> TRY_CALL)' was expected.
+74:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:145:13 Unresolved reference 'requireValidSerializedRequest'.
+75:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:198:25 Argument type mismatch: actual type is 'K#1 (of fun <K> WHEN_CALL)', but 'K#2 (of fun <K> TRY_CALL)' was expected.
+76:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:207:67 Unresolved reference 'describe'.
+77:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:210:29 Argument type mismatch: actual type is 'K (of fun <K> WHEN_CALL)', but 'K (of fun <K> WHEN_CALL)' was expected.
+78:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:210:45 Unresolved reference 'isRetryable'.
+79:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:210:83 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+80:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:220:36 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+81:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:45 Unresolved reference 'toError'.
+82:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:60 Cannot infer type for type parameter 'T'. Specify it explicitly.
+83:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:60 Cannot infer type for type parameter 'R'. Specify it explicitly.
+84:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:64 Cannot infer type for type parameter 'T'. Specify it explicitly.
+85:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:71 Argument type mismatch: actual type is 'StreamEvent.Error', but 'StreamEvent.Retrying' was expected.
+86:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:221:89 Argument type mismatch: actual type is 'T (of fun <T, R> T.let)', but 'GenerationError' was expected.
+87:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:243:29 Argument type mismatch: actual type is 'K (of fun <K> WHEN_CALL)', but 'K (of fun <K> WHEN_CALL)' was expected.
+88:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:249:31 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+89:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:252:38 Argument type mismatch: actual type is 'StreamEvent.Retrying', but 'StreamEvent.Retrying' was expected.
+90:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:255:36 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+91:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:256:38 Argument type mismatch: actual type is 'StreamEvent.Error', but 'StreamEvent.Retrying' was expected.
+92:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:266:13 Argument type mismatch: actual type is 'Nothing', but 'K (of fun <K> TRY_CALL)' was expected.
+93:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:268:13 Unresolved reference. None of the following candidates is applicable because of a receiver type mismatch:
+94:suspend fun FlowCollector<StreamEvent>.emitTransportError(provider: String, logTag: String, e: Exception): Unit
+95:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:268:13 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> TRY_CALL)' was expected.
+96:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:284:8 Unresolved reference 'StreamTermination'.
+97:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/api/openai/BaseOpenAiProvider.kt:610:16 Unresolved reference 'StreamTermination'.
+98:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/ui/settings/SettingsScreen.kt:686:37 Unresolved reference 'groupIndex'.
+99:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/ui/settings/SettingsScreen.kt:687:37 @Composable invocations can only happen from the context of a @Composable function
+100:e: file:///home/runner/work/Lxchat/Lxchat/app/src/main/java/com/lxseek/chat/ui/settings/SettingsScreen.kt:697:1 Syntax error: Expecting a top level declaration.
+====BOT====
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 42s
+40 actionable tasks: 36 executed, 4 up-to-date

@@ -1,5 +1,6 @@
 package com.lxseek.chat.api.util
 
+import com.lxseek.chat.api.compression.InputTokenSaver
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.MessageStatus
 import com.lxseek.chat.model.MessageSegment
@@ -175,8 +176,10 @@ fun contextWindowRetainedMessageIds(messages: List<ChatMessage>, tokenBudget: In
 
 fun prepareMessages(messages: List<ChatMessage>, contextTokenBudget: Int): List<ChatMessage> {
     val canonical = canonicalContextMessages(messages)
+    // InputTokenSaver（Headroom 移植）：压缩历史工具结果，所有 Provider 默认受益。
+    val tokenSaved = InputTokenSaver.apply(canonical)
     return stripEmptyTurns(
-        mergeConsecutiveSameRole(limitContext(canonical, contextTokenBudget))
+        mergeConsecutiveSameRole(limitContext(tokenSaved, contextTokenBudget))
     )
 }
 

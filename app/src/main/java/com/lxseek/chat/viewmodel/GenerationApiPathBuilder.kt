@@ -3,6 +3,8 @@ package com.lxseek.chat.viewmodel
 import com.lxseek.chat.api.ProviderConfig
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.util.projectGenerationStatusesForApi
+import com.lxseek.chat.data.CavemanStyle
+import com.lxseek.chat.data.HumanizerStyle
 import com.lxseek.chat.data.local.MessageEntity
 import com.lxseek.chat.data.repository.ConversationRepository
 import com.lxseek.chat.model.AttachmentMeta
@@ -164,7 +166,9 @@ internal class GenerationApiPathBuilder(
                 providerConfig = ProviderConfig(
                     apiKey = config.apiKey,
                     modelId = config.modelId,
-                    systemPrompt = (config.effectiveSystemPrompt ?: "") +
+                    systemPrompt = HumanizerStyle.inject(
+                        CavemanStyle.inject(config.effectiveSystemPrompt)
+                    ) +
                         (planStateHolder?.let { psh ->
                             com.lxseek.chat.tool.PlanHandler.buildPlanContext(psh, request.conversationId)
                                 ?.takeIf { it.isNotBlank() }?.let { "\n\n$it" }
