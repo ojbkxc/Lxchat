@@ -304,10 +304,15 @@ object HttpClient {
         dnsResolver = resolver
     }
 
-    /** Wraps the mutable [dnsResolver] in the fixed [Dns] the client was built with. */
+    /** Wraps the mutable [dnsResolver] in the fixed [Dns] the client was built with.
+     *  S1: results pass through [ApiEndpointPolicy.screenResolvedAddresses] — the
+     *  IP-level SSRF barrier that supplements the hostname-level cleartext guard. */
     private fun encryptedDnsResolver(): Dns = object : Dns {
         override fun lookup(hostname: String): List<java.net.InetAddress> =
-            (dnsResolver ?: Dns.SYSTEM).lookup(hostname)
+            ApiEndpointPolicy.screenResolvedAddresses(
+                hostname,
+                (dnsResolver ?: Dns.SYSTEM).lookup(hostname),
+            )
     }
 
     /** Every currently-live streaming handle in the process. Per-conversation scopes additionally

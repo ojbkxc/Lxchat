@@ -219,7 +219,11 @@ class CronScheduler(
             return
         }
         val now = System.currentTimeMillis()
-        val nextRun = expr.nextRunAfter(now) ?: run {
+        // 时钟回拨防护（S3）：设备墙钟被拨回上次执行之前（NTP 校正/手动调整）时，
+        // 以 lastRunAt 为下界重算 —— 同一墙钟时段被第二次经历时不会重复触发。
+        // 语义只收紧不放宽：lastRunAt <= now 时 anchor == now，行为与原先完全一致。
+        val anchor = maxOf(now, task.lastRunAt)
+        val nextRun = expr.nextRunAfter(anchor) ?: run {
             DebugLog.w(TAG, "Skip scheduling task ${task.id}: no next run within 4 years")
             return
         }
@@ -234,7 +238,10 @@ class CronScheduler(
     fun reschedule(task: CronTask) {
         val expr = CronExpression.tryParse(task.cronExpression) ?: return
         val now = System.currentTimeMillis()
-        val nextRun = expr.nextRunAfter(now) ?: return
+        // 同 schedule()：REPLACE 重排在墙钟回拨后以 lastRunAt 为下界，
+        // 防止把触发点拉回已执行过的墙钟时段（防重复触发，见 schedule() 注释）。
+        val anchor = maxOf(now, task.lastRunAt)
+        val nextRun = expr.nextRunAfter(anchor) ?: return
         val delayMs = (nextRun - now).coerceAtLeast(0)
         enqueue(task, delayMs, ExistingWorkPolicy.REPLACE)
     }
