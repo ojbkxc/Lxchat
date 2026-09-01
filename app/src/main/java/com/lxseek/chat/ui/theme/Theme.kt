@@ -27,7 +27,7 @@ enum class ThemeMode { LIGHT, DARK, AMOLED, FOLLOW_DEVICE }
 private fun effectiveFontFamily(
     fontPreference: String,
     customFontPath: String
-): FontFamily = produceState(
+): FontFamily = produceState<FontFamily>(
     initialValue = FontFamily.Default,
     fontPreference,
     customFontPath,
