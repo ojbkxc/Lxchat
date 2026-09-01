@@ -12,6 +12,8 @@ import com.lxseek.chat.api.util.emitTransportError
 import com.lxseek.chat.api.util.ProviderRetryPolicy
 import com.lxseek.chat.api.util.safeWireToolCallId
 import com.lxseek.chat.api.util.safeWireToolName
+import com.lxseek.chat.api.util.requireValidSerializedRequest
+import com.lxseek.chat.api.util.StreamTermination
 import com.lxseek.chat.model.ChatMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay

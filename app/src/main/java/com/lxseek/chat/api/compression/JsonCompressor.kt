@@ -112,7 +112,7 @@ object JsonCompressor {
 
         val commonKeys = commonEntries.associate { it.key to it.value }
         val rows = objects.map { obj ->
-            JsonObject(obj.entries.filter { it.key !in commonKeys }.toMap())
+            JsonObject(obj.entries.filter { it.key !in commonKeys }.associate { it.key to it.value })
         }
         val parts = mutableListOf<JsonElement>(JsonObject(commonKeys))
         parts.addAll(rows)
