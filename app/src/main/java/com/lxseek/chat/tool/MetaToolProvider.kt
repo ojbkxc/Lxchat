@@ -12,7 +12,7 @@ import com.lxseek.chat.plugin.PluginHost
 import com.lxseek.chat.skill.SkillHost
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.viewmodel.GenerationContext
-import kotlinx.coroutines.runBlocking
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
@@ -259,8 +259,13 @@ class MetaToolProvider(
         else -> null
     }
 
-    /** Apply a validated config key/value to [settings]. */
-    private fun applyConfigKey(key: String, value: String) {
+    /**
+     * Apply a validated config key/value to [settings].
+     *
+     * 挂起函数：pet_enabled / pet_character 的保存走 suspend 存储接口，
+     * 由调用方协程直接挂起等待，避免 runBlocking 阻塞调度线程。
+     */
+    private suspend fun applyConfigKey(key: String, value: String) {
         when (key) {
             "model" -> settings.setSelectedModel(value)
             "temperature" -> settings.setDefaultTemperature(value.toFloat())
@@ -272,8 +277,8 @@ class MetaToolProvider(
                 userPrependItems = emptyList(),
                 userPostpendItems = emptyList(),
             )
-            "pet_enabled" -> runBlocking { settings.savePetOverlayEnabled(value.toBooleanStrict()) }
-            "pet_character" -> runBlocking { settings.savePetOverlayCharacter(value) }
+            "pet_enabled" -> settings.savePetOverlayEnabled(value.toBooleanStrict())
+            "pet_character" -> settings.savePetOverlayCharacter(value)
         }
     }
 
@@ -292,8 +297,8 @@ class MetaToolProvider(
         "pet_character" to settings.petOverlayCharacter.value,
     )
 
-    /** Best-effort restore of a config map from a snapshot. */
-    private fun applyConfigMap(configMap: Map<String, String>) {
+    /** Best-effort restore of a config map from a snapshot. 挂起函数：内部经 [applyConfigKey] 触发 suspend 保存。 */
+    private suspend fun applyConfigMap(configMap: Map<String, String>) {
         for ((key, value) in configMap) {
             if (key !in configKeys || value.isEmpty()) continue
             // Skip system_prompt_addon: addSystemPrompt appends rather than replaces,
@@ -407,7 +412,7 @@ class MetaToolProvider(
 
     // ── rollback_config / get_audit_log ───────────────────────
 
-    private fun rollbackConfig(arguments: String, ctx: GenerationContext): String {
+    private suspend fun rollbackConfig(arguments: String, ctx: GenerationContext): String {
         val manager = snapshotManager
             ?: return err("not_supported", "Snapshot manager is not configured")
         val snapshotId = argString("snapshotId", arguments)
