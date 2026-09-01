@@ -170,29 +170,37 @@ class RuntimePackageManager(private val context: Context) {
     /** 解压 zip 到 [dest]，zip-slip 防护：路径逃逸目标目录的条目被跳过。
      *  如果 zip 所有文件都在单个顶层目录下，则自动 strip 这个顶层目录，让文件直接落到 dest。
      * 这处理常见的发布包结构：github release 导出的 zip 通常包含一个顶层同名目录。
+     *
+     * 条目名归一化：zip 规范（APPNOTE）要求路径用 `/` 分隔，但 Windows 打包工具
+     * （如 PowerShell Compress-Archive）可能产出反斜杠条目名（如 `scripts\adapter.py`），
+     * 这类名字在 Android/Linux 上会落成文件名含 `\` 的单个文件而非目录结构。故解压前
+     * 统一把 `\` 归一化为 `/`，顶层目录检测、strip 与落盘均使用归一化名。
      */
     private fun unzip(zipFile: File, dest: File) {
         val canonicalDest = dest.canonicalFile
         ZipFile(zipFile).use { zip ->
+            // 归一化条目名（\ → /）以兼容 Windows 工具产出的反斜杠条目名；
+            // 先 map 成 (归一化名, 原始条目) 列表，下方两处遍历复用，避免重复计算。
             val entries = Collections.list(zip.entries())
-            // 检测是否所有条目都在单个顶层目录下
+                .map { entry -> entry.name.replace('\\', '/') to entry }
+            // 检测是否所有条目都在单个顶层目录下（用归一化名，反斜杠条目才能正确 split 出顶层）
             val topDirs = entries
-                .filterNot { it.isDirectory }
-                .mapNotNull { it.name.split('/').firstOrNull() }
+                .filterNot { it.second.isDirectory }
+                .mapNotNull { it.first.split('/').firstOrNull() }
                 .toSet()
 
             val stripTopDir = topDirs.size == 1 && entries.all {
-                it.name.startsWith(topDirs.first() + "/")
+                it.first.startsWith(topDirs.first() + "/")
             }
 
             val stripPrefix = if (stripTopDir) topDirs.first() + "/" else ""
 
-            entries.forEach { entry ->
+            entries.forEach { (entryName, entry) ->
                 if (entry.isDirectory) return@forEach
-                val entryName = entry.name.removePrefix(stripPrefix)
-                if (entryName.isBlank()) return@forEach
+                val outName = entryName.removePrefix(stripPrefix)
+                if (outName.isBlank()) return@forEach
 
-                val out = File(dest, entryName)
+                val out = File(dest, outName)
                 val canonicalOut = try { out.canonicalFile } catch (e: Exception) { null } ?: return@forEach
                 // 路径前缀比较：追加分隔符避免 /foo/bar 匹配 /foo/barbaz（zip-slip 防护）
                 if (canonicalDest != canonicalOut && !canonicalOut.path.startsWith(canonicalDest.path + File.separator)) {
