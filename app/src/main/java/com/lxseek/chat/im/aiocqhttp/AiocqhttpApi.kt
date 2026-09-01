@@ -1,6 +1,6 @@
 package com.lxseek.chat.im.aiocqhttp
 
-import com.lxseek.chat.util.HttpClient
+import com.lxseek.chat.api.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
