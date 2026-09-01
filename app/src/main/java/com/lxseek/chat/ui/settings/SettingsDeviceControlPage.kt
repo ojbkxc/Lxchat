@@ -652,9 +652,12 @@ private fun ImagePreview(path: String, modifier: Modifier = Modifier) {
         modifier = modifier.clip(RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        if (bitmap != null) {
+        // 局部快照：bitmap 是 Compose 委托状态 var，smart-cast 失效；
+        // 快照后判空直接使用，消除 !!，if / else if (failed) / else 三分支结构不变
+        val current = bitmap
+        if (current != null) {
             androidx.compose.foundation.Image(
-                bitmap = bitmap!!.asImageBitmap(),
+                bitmap = current.asImageBitmap(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth(),
             )

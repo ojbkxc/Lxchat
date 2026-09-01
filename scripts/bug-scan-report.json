@@ -1,7 +1,7 @@
 [
   {
     "file": "com/lxseek/chat/MainActivity.kt",
-    "line": 110,
+    "line": 116,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "runBlocking: blocks thread",
@@ -9,27 +9,11 @@
   },
   {
     "file": "com/lxseek/chat/MainActivity.kt",
-    "line": 161,
+    "line": 167,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
     "code": "LxChatForegroundService.createChannel(this)"
-  },
-  {
-    "file": "com/lxseek/chat/MainActivity.kt",
-    "line": 572,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val info = updateDialogData!!"
-  },
-  {
-    "file": "com/lxseek/chat/MainActivity.kt",
-    "line": 1067,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "com.lxseek.chat.ui.chat.TextFileViewer(content = savedContent!!, fileName = savedName!!, onClose = { viewModel.clearPrev"
   },
   {
     "file": "com/lxseek/chat/adb/ShizukuManager.kt",
@@ -65,7 +49,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 72,
+    "line": 79,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -73,7 +57,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 96,
+    "line": 106,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -81,7 +65,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 110,
+    "line": 121,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -89,7 +73,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 136,
+    "line": 153,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -97,7 +81,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 144,
+    "line": 164,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -105,7 +89,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 152,
+    "line": 175,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -113,7 +97,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 161,
+    "line": 184,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -121,7 +105,15 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 176,
+    "line": 204,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun pinch(cx: Int, cy: Int, startSpanPx: Int, endSpanPx: Int, durationMs: Long = 500L): Boolean = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
+    "line": 222,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -129,7 +121,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 189,
+    "line": 235,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -137,7 +129,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 201,
+    "line": 251,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -145,7 +137,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 205,
+    "line": 255,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -153,7 +145,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 209,
+    "line": 259,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -161,7 +153,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 213,
+    "line": 266,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -169,15 +161,7 @@
   },
   {
     "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 346,
-    "severity": "LOW",
-    "category": "concurrency",
-    "description": "Direct Looper access",
-    "code": "val handler = Handler(Looper.getMainLooper())"
-  },
-  {
-    "file": "com/lxseek/chat/androidcontrol/AndroidUiControllerService.kt",
-    "line": 356,
+    "line": 466,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -193,7 +177,7 @@
   },
   {
     "file": "com/lxseek/chat/api/EncryptedDns.kt",
-    "line": 124,
+    "line": 139,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -201,7 +185,7 @@
   },
   {
     "file": "com/lxseek/chat/api/HttpClient.kt",
-    "line": 399,
+    "line": 425,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "execute() without exception handling",
@@ -209,7 +193,7 @@
   },
   {
     "file": "com/lxseek/chat/api/HttpClient.kt",
-    "line": 459,
+    "line": 485,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "execute() without exception handling",
@@ -217,7 +201,7 @@
   },
   {
     "file": "com/lxseek/chat/api/HttpClient.kt",
-    "line": 503,
+    "line": 529,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "execute() without exception handling",
@@ -225,7 +209,7 @@
   },
   {
     "file": "com/lxseek/chat/api/HttpClient.kt",
-    "line": 538,
+    "line": 564,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "execute() without exception handling",
@@ -233,7 +217,7 @@
   },
   {
     "file": "com/lxseek/chat/api/HttpClient.kt",
-    "line": 563,
+    "line": 590,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "execute() without exception handling",
@@ -241,7 +225,7 @@
   },
   {
     "file": "com/lxseek/chat/api/LlamaEngine.kt",
-    "line": 4,
+    "line": 5,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "runBlocking: blocks thread",
@@ -249,7 +233,7 @@
   },
   {
     "file": "com/lxseek/chat/api/LlamaEngine.kt",
-    "line": 32,
+    "line": 88,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "runBlocking: blocks thread",
@@ -257,7 +241,7 @@
   },
   {
     "file": "com/lxseek/chat/api/LlamaEngine.kt",
-    "line": 39,
+    "line": 95,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "runBlocking: blocks thread",
@@ -272,108 +256,20 @@
     "code": "val parsed = runCatching { modelFetchErrorJson.parseToJsonElement(body) }.getOrNull()"
   },
   {
-    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
-    "line": 322,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "json.parseToJsonElement(msg.toolCall!!.arguments) as? JsonObject"
-  },
-  {
-    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
-    "line": 328,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "id = msg.toolCall!!.toolCallId,"
-  },
-  {
-    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
-    "line": 329,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "name = msg.toolCall!!.toolName,"
-  },
-  {
-    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
-    "line": 332,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "thoughtSignature = msg.toolCall!!.signature"
-  },
-  {
-    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
-    "line": 353,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val response = buildGeminiFunctionResponse(msg.toolCall!!.result)"
-  },
-  {
-    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
-    "line": 357,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "id = msg.toolCall!!.toolCallId,"
-  },
-  {
-    "file": "com/lxseek/chat/api/gemini/GeminiProvider.kt",
-    "line": 358,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "name = msg.toolCall!!.toolName,"
-  },
-  {
     "file": "com/lxseek/chat/api/local/LocalProvider.kt",
-    "line": 340,
+    "line": 356,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "runBlocking: blocks thread",
     "code": "kotlinx.coroutines.runBlocking { releaseEngine() }"
   },
   {
-    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
-    "line": 154,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val toolId = msg.toolCall!!.toolCallId ?: buildToolCallId(msg.toolCall!!.toolName, msg.toolCall!!.arguments)"
-  },
-  {
-    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
-    "line": 155,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val argsObj = try { json.parseToJsonElement(msg.toolCall!!.arguments) as? JsonObject } catch (_: Exception) { JsonObject"
-  },
-  {
-    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
-    "line": 163,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "function = OpenAiFunctionCall(name = msg.toolCall!!.toolName, arguments = argsObj ?: JsonObject(emptyMap()))"
-  },
-  {
-    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
-    "line": 184,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "content = msg.toolCall!!.result,"
-  },
-  {
-    "file": "com/lxseek/chat/api/ollama/OllamaProvider.kt",
-    "line": 185,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "toolName = msg.toolCall!!.toolName,"
+    "file": "com/lxseek/chat/api/oauth/OAuthLoginManager.kt",
+    "line": 40,
+    "severity": "LOW",
+    "category": "style",
+    "description": "Suppressed unused warning",
+    "code": "@Suppress(\"UNUSED_PARAMETER\") scope: CoroutineScope,"
   },
   {
     "file": "com/lxseek/chat/api/openai/ToolCallTextParser.kt",
@@ -384,36 +280,12 @@
     "code": "return (runCatching { Json.parseToJsonElement(raw) }.getOrNull() as? JsonObject)?.toString()"
   },
   {
-    "file": "com/lxseek/chat/api/router/RateLimiterRegistry.kt",
-    "line": 49,
+    "file": "com/lxseek/chat/api/router/SmartModelRouter.kt",
+    "line": 576,
     "severity": "HIGH",
     "category": "npe",
     "description": "Force unwrap (!!): potential NPE",
-    "code": "}!!.limiter"
-  },
-  {
-    "file": "com/lxseek/chat/api/router/RateLimiterRegistry.kt",
-    "line": 70,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "}!!.semaphore"
-  },
-  {
-    "file": "com/lxseek/chat/api/util/MessageConverter.kt",
-    "line": 93,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val tc = msg.toolCall!!"
-  },
-  {
-    "file": "com/lxseek/chat/api/util/MessageConverter.kt",
-    "line": 121,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val tc = msg.toolCall!!"
+    "code": "val fresh = apiKeySource!!.keysFor(providerName)"
   },
   {
     "file": "com/lxseek/chat/api/util/RequestFormatValidation.kt",
@@ -465,7 +337,7 @@
   },
   {
     "file": "com/lxseek/chat/automation/TaskExecutionEngine.kt",
-    "line": 108,
+    "line": 112,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -473,7 +345,7 @@
   },
   {
     "file": "com/lxseek/chat/automation/TaskExecutionEngine.kt",
-    "line": 113,
+    "line": 117,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -481,7 +353,7 @@
   },
   {
     "file": "com/lxseek/chat/automation/TaskExecutionEngine.kt",
-    "line": 119,
+    "line": 123,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -561,7 +433,7 @@
   },
   {
     "file": "com/lxseek/chat/data/DataExporter.kt",
-    "line": 300,
+    "line": 303,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -569,7 +441,7 @@
   },
   {
     "file": "com/lxseek/chat/data/DataExporter.kt",
-    "line": 332,
+    "line": 335,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -577,7 +449,7 @@
   },
   {
     "file": "com/lxseek/chat/data/DataImporter.kt",
-    "line": 319,
+    "line": 324,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -665,15 +537,7 @@
   },
   {
     "file": "com/lxseek/chat/data/PortableSettingsArchive.kt",
-    "line": 250,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "json.decodeFromJsonElement<List<EmbeddingModelConfig>>(remoteModelsElement!!)"
-  },
-  {
-    "file": "com/lxseek/chat/data/PortableSettingsArchive.kt",
-    "line": 327,
+    "line": 332,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -681,7 +545,7 @@
   },
   {
     "file": "com/lxseek/chat/data/PortableSettingsArchive.kt",
-    "line": 365,
+    "line": 370,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -689,23 +553,15 @@
   },
   {
     "file": "com/lxseek/chat/data/PortableSettingsArchive.kt",
-    "line": 476,
+    "line": 481,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
     "code": "runCatching { json.decodeFromJsonElement<T>(element) }.getOrNull()"
   },
   {
-    "file": "com/lxseek/chat/data/SettingsModelPreferenceStore.kt",
-    "line": 327,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "ids[newProvider] = ids.remove(oldProvider)!!"
-  },
-  {
     "file": "com/lxseek/chat/data/repository/ConversationRepository.kt",
-    "line": 572,
+    "line": 573,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -713,7 +569,7 @@
   },
   {
     "file": "com/lxseek/chat/data/repository/ConversationRepository.kt",
-    "line": 616,
+    "line": 617,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -816,20 +672,20 @@
     "code": "val config = configForChannel(channelKey)"
   },
   {
+    "file": "com/lxseek/chat/im/ImCommandProcessor.kt",
+    "line": 290,
+    "severity": "LOW",
+    "category": "concurrency",
+    "description": "Unlimited Channel: potential memory",
+    "code": "val autoReply = configForChannel(channelKey)?.autoReplyModel.orEmpty()"
+  },
+  {
     "file": "com/lxseek/chat/im/ImPollingReceiver.kt",
-    "line": 128,
+    "line": 127,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
     "code": "pollChannel(channelKey, channel)"
-  },
-  {
-    "file": "com/lxseek/chat/im/ImPollingReceiver.kt",
-    "line": 282,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val lxchatConvId = if (bindValid) existingBind!!"
   },
   {
     "file": "com/lxseek/chat/im/ImPollingReceiver.kt",
@@ -1072,14 +928,6 @@
     "code": "synchronized(queued) { queued.clear() }"
   },
   {
-    "file": "com/lxseek/chat/im/office/OfficeJobExecutor.kt",
-    "line": 357,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "api.failJob(jobId, leaseToken!!, buildJsonObject {"
-  },
-  {
     "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
     "line": 101,
     "severity": "MEDIUM",
@@ -1105,23 +953,7 @@
   },
   {
     "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
-    "line": 408,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "\"C2C_MESSAGE_CREATE\" -> handleMessageCreate(data, isGroup = false, event = event!!)"
-  },
-  {
-    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
-    "line": 409,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "\"GROUP_AT_MESSAGE_CREATE\" -> handleMessageCreate(data, isGroup = true, event = event!!)"
-  },
-  {
-    "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
-    "line": 485,
+    "line": 486,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -1129,7 +961,7 @@
   },
   {
     "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
-    "line": 487,
+    "line": 488,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -1137,7 +969,7 @@
   },
   {
     "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
-    "line": 489,
+    "line": 490,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -1145,7 +977,7 @@
   },
   {
     "file": "com/lxseek/chat/im/qq/QqBotApi.kt",
-    "line": 491,
+    "line": 492,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -1297,7 +1129,7 @@
   },
   {
     "file": "com/lxseek/chat/im/weixin/WeixinChannel.kt",
-    "line": 329,
+    "line": 328,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -1305,7 +1137,7 @@
   },
   {
     "file": "com/lxseek/chat/im/weixin/WeixinChannel.kt",
-    "line": 835,
+    "line": 834,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1313,7 +1145,7 @@
   },
   {
     "file": "com/lxseek/chat/im/weixin/WeixinChannel.kt",
-    "line": 845,
+    "line": 844,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1321,7 +1153,7 @@
   },
   {
     "file": "com/lxseek/chat/im/weixin/WeixinChannel.kt",
-    "line": 847,
+    "line": 846,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1337,87 +1169,7 @@
   },
   {
     "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 68,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "if (spec.kind == WeixinMediaKind.IMAGE && spec.thumbBytes != null && spec.thumbBytes!!.isNotEmpty()) {"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 70,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val tEncrypted = encryptWeixinMedia(spec.thumbBytes!!, tKey)"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 74,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "rawMd5 = md5Hex(spec.thumbBytes!!),"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 75,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "rawSize = spec.thumbBytes!!.size,"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 89,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "put(\"thumb_rawsize\", thumb!!.rawSize)"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 90,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "put(\"thumb_rawfilemd5\", thumb!!.rawMd5)"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 91,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "put(\"thumb_filesize\", thumb!!.encrypted.size)"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 120,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "thumb!!.aesKeyHex.toByteArray(Charsets.UTF_8), Base64.NO_WRAP,"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 122,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "uploadCdn(thumbUploadParam, \"${filekey}_thumb\", thumb!!.encrypted, thumbAesKeyB64)"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 135,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "put(\"thumb_size\", thumb!!.encrypted.size)"
-  },
-  {
-    "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 211,
+    "line": 215,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -1425,7 +1177,7 @@
   },
   {
     "file": "com/lxseek/chat/im/weixin/WeixinMediaSender.kt",
-    "line": 221,
+    "line": 225,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "execute() without exception handling",
@@ -1446,6 +1198,14 @@
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
     "code": "val root = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull() ?: return null to null"
+  },
+  {
+    "file": "com/lxseek/chat/localmodels/GgufDownloader.kt",
+    "line": 59,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "return instance ?: synchronized(this) {"
   },
   {
     "file": "com/lxseek/chat/mcp/McpClientTransport.kt",
@@ -1561,7 +1321,7 @@
   },
   {
     "file": "com/lxseek/chat/mcp/McpRegistry.kt",
-    "line": 91,
+    "line": 98,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1569,7 +1329,7 @@
   },
   {
     "file": "com/lxseek/chat/mcp/McpRegistry.kt",
-    "line": 110,
+    "line": 117,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1577,7 +1337,7 @@
   },
   {
     "file": "com/lxseek/chat/mcp/McpRegistry.kt",
-    "line": 144,
+    "line": 151,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -1585,7 +1345,7 @@
   },
   {
     "file": "com/lxseek/chat/mcp/McpRegistry.kt",
-    "line": 196,
+    "line": 214,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1593,7 +1353,7 @@
   },
   {
     "file": "com/lxseek/chat/mcp/McpRegistry.kt",
-    "line": 228,
+    "line": 246,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1601,7 +1361,7 @@
   },
   {
     "file": "com/lxseek/chat/mcp/McpRegistry.kt",
-    "line": 281,
+    "line": 303,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1609,7 +1369,7 @@
   },
   {
     "file": "com/lxseek/chat/mcp/McpRegistry.kt",
-    "line": 392,
+    "line": 423,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1617,7 +1377,7 @@
   },
   {
     "file": "com/lxseek/chat/mcp/McpRegistry.kt",
-    "line": 427,
+    "line": 465,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1625,11 +1385,35 @@
   },
   {
     "file": "com/lxseek/chat/mcp/McpRegistry.kt",
-    "line": 435,
+    "line": 473,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
     "code": "val uri = runCatching { java.net.URI(value) }.getOrNull()"
+  },
+  {
+    "file": "com/lxseek/chat/membership/MembershipRuntime.kt",
+    "line": 28,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(this) {"
+  },
+  {
+    "file": "com/lxseek/chat/membership/PlanCatalog.kt",
+    "line": 108,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val ba = runCatching { BigDecimal(a.trim()) }.getOrNull() ?: return false"
+  },
+  {
+    "file": "com/lxseek/chat/membership/PlanCatalog.kt",
+    "line": 109,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "val bb = runCatching { BigDecimal(b.trim()) }.getOrNull() ?: return false"
   },
   {
     "file": "com/lxseek/chat/metrics/ScoreFeedbackLoop.kt",
@@ -1665,23 +1449,15 @@
   },
   {
     "file": "com/lxseek/chat/pet/PetFloatingView.kt",
-    "line": 532,
+    "line": 386,
     "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "} catch (_: IllegalArgumentException) { }"
-  },
-  {
-    "file": "com/lxseek/chat/pet/PetFloatingView.kt",
-    "line": 566,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { context.startActivity(intent) } catch (_: Exception) { }"
+    "category": "npe",
+    "description": "Force unwrap (!!): potential NPE",
+    "code": "layout = tipLayoutCache!!"
   },
   {
     "file": "com/lxseek/chat/pet/PetOverlayController.kt",
-    "line": 93,
+    "line": 109,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
@@ -1689,7 +1465,7 @@
   },
   {
     "file": "com/lxseek/chat/pet/PetOverlayWindowService.kt",
-    "line": 58,
+    "line": 60,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
@@ -1697,7 +1473,7 @@
   },
   {
     "file": "com/lxseek/chat/pet/PetOverlayWindowService.kt",
-    "line": 367,
+    "line": 466,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
@@ -1776,16 +1552,8 @@
     "code": "private val main = Handler(Looper.getMainLooper())"
   },
   {
-    "file": "com/lxseek/chat/runtime/RuntimeEngineManager.kt",
-    "line": 133,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "ensureDependencyRoot(manifest.requiresEngine!!)?.absolutePath"
-  },
-  {
     "file": "com/lxseek/chat/runtime/RuntimeToolProvider.kt",
-    "line": 405,
+    "line": 517,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -1793,7 +1561,7 @@
   },
   {
     "file": "com/lxseek/chat/runtime/RuntimeToolProvider.kt",
-    "line": 414,
+    "line": 526,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -1920,24 +1688,8 @@
     "code": "if (Looper.myLooper() == Looper.getMainLooper()) {"
   },
   {
-    "file": "com/lxseek/chat/service/RemoteDeviceSession.kt",
-    "line": 205,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val r = sshClient!!.executeCommand(command, wd, timeoutMs)"
-  },
-  {
-    "file": "com/lxseek/chat/service/RemoteDeviceSession.kt",
-    "line": 225,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val client = shellClient!!"
-  },
-  {
     "file": "com/lxseek/chat/skill/SkillHost.kt",
-    "line": 49,
+    "line": 50,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1945,7 +1697,7 @@
   },
   {
     "file": "com/lxseek/chat/skill/SkillHost.kt",
-    "line": 60,
+    "line": 61,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1953,7 +1705,7 @@
   },
   {
     "file": "com/lxseek/chat/skill/SkillHost.kt",
-    "line": 82,
+    "line": 83,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1961,7 +1713,7 @@
   },
   {
     "file": "com/lxseek/chat/skill/SkillHost.kt",
-    "line": 91,
+    "line": 92,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -1993,23 +1745,7 @@
   },
   {
     "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
-    "line": 467,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "else -> e.message!!"
-  },
-  {
-    "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
-    "line": 497,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val secondaryResult = recognizeWithModel(secondaryModel!!, audioBytes, \"secondary\")"
-  },
-  {
-    "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
-    "line": 693,
+    "line": 701,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2017,7 +1753,7 @@
   },
   {
     "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
-    "line": 722,
+    "line": 730,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2025,7 +1761,7 @@
   },
   {
     "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
-    "line": 755,
+    "line": 763,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2033,11 +1769,43 @@
   },
   {
     "file": "com/lxseek/chat/speech/VoskTranscriber.kt",
-    "line": 772,
+    "line": 780,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
     "code": "synchronized(streamingLock) { stopStreamingSessionInternal() }"
+  },
+  {
+    "file": "com/lxseek/chat/tool/AndroidAppControllerToolProvider.kt",
+    "line": 855,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "Thread.sleep: blocks thread",
+    "code": "Thread.sleep(200)"
+  },
+  {
+    "file": "com/lxseek/chat/tool/AndroidAppControllerToolProvider.kt",
+    "line": 867,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "Thread.sleep: blocks thread",
+    "code": "Thread.sleep(300)"
+  },
+  {
+    "file": "com/lxseek/chat/tool/AndroidAppControllerToolProvider.kt",
+    "line": 882,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "Thread.sleep: blocks thread",
+    "code": "Thread.sleep(300)"
+  },
+  {
+    "file": "com/lxseek/chat/tool/AndroidAppControllerToolProvider.kt",
+    "line": 923,
+    "severity": "MEDIUM",
+    "category": "exception",
+    "description": "runCatching.getOrNull(): silent failure",
+    "code": "?.let { runCatching { parse(it.trim()) }.getOrNull() }"
   },
   {
     "file": "com/lxseek/chat/tool/DeviceToolProvider.kt",
@@ -2057,15 +1825,7 @@
   },
   {
     "file": "com/lxseek/chat/tool/DeviceToolProvider.kt",
-    "line": 1069,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "} catch (_: Exception) { }"
-  },
-  {
-    "file": "com/lxseek/chat/tool/DeviceToolProvider.kt",
-    "line": 1129,
+    "line": 1132,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "Thread.sleep: blocks thread",
@@ -2073,7 +1833,7 @@
   },
   {
     "file": "com/lxseek/chat/tool/ImageGenToolProvider.kt",
-    "line": 150,
+    "line": 146,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2081,7 +1841,7 @@
   },
   {
     "file": "com/lxseek/chat/tool/ImageGenToolProvider.kt",
-    "line": 154,
+    "line": 150,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2113,7 +1873,7 @@
   },
   {
     "file": "com/lxseek/chat/tool/MetaToolProvider.kt",
-    "line": 266,
+    "line": 275,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "runBlocking: blocks thread",
@@ -2121,19 +1881,11 @@
   },
   {
     "file": "com/lxseek/chat/tool/MetaToolProvider.kt",
-    "line": 267,
+    "line": 276,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "runBlocking: blocks thread",
     "code": "\"pet_character\" -> runBlocking { settings.savePetOverlayCharacter(value) }"
-  },
-  {
-    "file": "com/lxseek/chat/tool/RagToolProvider.kt",
-    "line": 173,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val centerIdx = if (centerId != null) indexMap[centerId]!! else (range.first + range.last) / 2"
   },
   {
     "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
@@ -2177,7 +1929,7 @@
   },
   {
     "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 377,
+    "line": 342,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2185,7 +1937,7 @@
   },
   {
     "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 411,
+    "line": 376,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
@@ -2193,7 +1945,7 @@
   },
   {
     "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 440,
+    "line": 405,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
@@ -2201,7 +1953,7 @@
   },
   {
     "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 442,
+    "line": 407,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
@@ -2209,51 +1961,11 @@
   },
   {
     "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 516,
+    "line": 481,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
     "code": "synchronized(this) {"
-  },
-  {
-    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 707,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { c.stop() } catch (_: Exception) {}"
-  },
-  {
-    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 708,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { c.release() } catch (_: Exception) {}"
-  },
-  {
-    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 715,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { v.release() } catch (_: Exception) {}"
-  },
-  {
-    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 723,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { m.release() } catch (_: Exception) {}"
-  },
-  {
-    "file": "com/lxseek/chat/tool/ScreenRecordToolProvider.kt",
-    "line": 728,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { mediaProjection.stop() } catch (_: Exception) {}"
   },
   {
     "file": "com/lxseek/chat/tool/ShellDurableJobExecutor.kt",
@@ -2312,16 +2024,8 @@
     "code": "val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {"
   },
   {
-    "file": "com/lxseek/chat/ui/settings/SettingsAppearancePage.kt",
-    "line": 116,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "} catch (_: Exception) {}"
-  },
-  {
     "file": "com/lxseek/chat/ui/settings/SettingsDeviceControlPage.kt",
-    "line": 625,
+    "line": 647,
     "severity": "MEDIUM",
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
@@ -2329,51 +2033,11 @@
   },
   {
     "file": "com/lxseek/chat/ui/settings/SettingsDeviceControlPage.kt",
-    "line": 635,
+    "line": 657,
     "severity": "HIGH",
     "category": "npe",
     "description": "Force unwrap (!!): potential NPE",
     "code": "bitmap = bitmap!!.asImageBitmap(),"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/SettingsGenerationPage.kt",
-    "line": 480,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { ttsContext.startActivity(webIntent) } catch (_: Throwable) {}"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt",
-    "line": 143,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val effectiveBots = if (bots.isEmpty() && isLegacyForThis) listOf(legacyBot!!) else bots"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt",
-    "line": 999,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "content = qrcodeUrl!!,"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt",
-    "line": 1005,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "Text(text = statusText!!, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/SettingsImGatewayPage.kt",
-    "line": 1013,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "Text(text = errorMsg!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)"
   },
   {
     "file": "com/lxseek/chat/ui/settings/SettingsMcpPage.kt",
@@ -2392,16 +2056,8 @@
     "code": "@Suppress(\"UNUSED_PARAMETER\") viewModel: ChatViewModel,"
   },
   {
-    "file": "com/lxseek/chat/ui/settings/SettingsProviderDetailPage.kt",
-    "line": 534,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "viewModel.modelManager.addLocalChatModel(LocalChatModelConfig(modelId = id, alias = modelAlias.ifBlank { id }, localFile"
-  },
-  {
     "file": "com/lxseek/chat/ui/settings/SettingsReplySections.kt",
-    "line": 392,
+    "line": 407,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
@@ -2409,7 +2065,7 @@
   },
   {
     "file": "com/lxseek/chat/ui/settings/SettingsReplySections.kt",
-    "line": 393,
+    "line": 408,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
@@ -2417,99 +2073,11 @@
   },
   {
     "file": "com/lxseek/chat/ui/settings/SettingsReplySections.kt",
-    "line": 394,
+    "line": 409,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Unlimited Channel: potential memory",
     "code": "ChannelToggleRow(label = stringResource(R.string.reply_channel_email), checked = ReplyChannelConfig.CHANNEL_EMAIL in sel"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/SettingsRuntimeStatusPage.kt",
-    "line": 265,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "market.installRuntimeInternal(meta!!)"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/SettingsSandboxPage.kt",
-    "line": 136,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "} catch (_: Exception) {}"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/SettingsSandboxPage.kt",
-    "line": 158,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { diskUsageMB = sandboxManager.getDiskUsageMB() } catch (_: Exception) {}"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
-    "line": 305,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "text = { Text(invalidImportMessage!!) },"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
-    "line": 317,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "manifest = importManifest!!,"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
-    "line": 318,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "preview = importPreview!!,"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
-    "line": 332,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val preview = claudeImportPreview!!"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
-    "line": 435,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val result = claudeImportResult!!"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
-    "line": 469,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val preview = gptImportPreview!!"
-  },
-  {
-    "file": "com/lxseek/chat/ui/settings/datacontrol/SettingsDataControlPage.kt",
-    "line": 570,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val result = gptImportResult!!"
-  },
-  {
-    "file": "com/lxseek/chat/ui/theme/Color.kt",
-    "line": 37,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "val seedArgb = seedColors[preset]!!.toInt()"
   },
   {
     "file": "com/lxseek/chat/util/AppLog.kt",
@@ -2560,14 +2128,6 @@
     "code": "val obj = runCatching { JSONObject(reportJson) }.getOrNull() ?: JSONObject()"
   },
   {
-    "file": "com/lxseek/chat/util/NetworkMonitor.kt",
-    "line": 68,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { cm.unregisterNetworkCallback(cb) } catch (_: Throwable) {}"
-  },
-  {
     "file": "com/lxseek/chat/util/ProgressThrottle.kt",
     "line": 51,
     "severity": "MEDIUM",
@@ -2616,30 +2176,6 @@
     "code": "synchronized(bucket) {"
   },
   {
-    "file": "com/lxseek/chat/util/ShellClient.kt",
-    "line": 68,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "DebugLog.e(\"ShellClient\", lastError!!)"
-  },
-  {
-    "file": "com/lxseek/chat/util/ShellClient.kt",
-    "line": 82,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "DebugLog.e(\"ShellClient\", lastError!!)"
-  },
-  {
-    "file": "com/lxseek/chat/util/ShellClient.kt",
-    "line": 90,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "DebugLog.w(\"ShellClient\", lastError!!)"
-  },
-  {
     "file": "com/lxseek/chat/util/SshClient.kt",
     "line": 129,
     "severity": "MEDIUM",
@@ -2648,8 +2184,16 @@
     "code": "try { Thread.sleep(100) } catch (_: InterruptedException) { break }"
   },
   {
+    "file": "com/lxseek/chat/util/TtlCache.kt",
+    "line": 83,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(this) {"
+  },
+  {
     "file": "com/lxseek/chat/util/TtsManager.kt",
-    "line": 63,
+    "line": 74,
     "severity": "LOW",
     "category": "concurrency",
     "description": "Direct Looper access",
@@ -2657,7 +2201,23 @@
   },
   {
     "file": "com/lxseek/chat/util/TtsManager.kt",
-    "line": 113,
+    "line": 132,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "get() = synchronized(recentSpokenLock) { recentSpoken.toList() }"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 136,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(recentSpokenLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 215,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2665,7 +2225,7 @@
   },
   {
     "file": "com/lxseek/chat/util/TtsManager.kt",
-    "line": 134,
+    "line": 236,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2673,7 +2233,7 @@
   },
   {
     "file": "com/lxseek/chat/util/TtsManager.kt",
-    "line": 138,
+    "line": 240,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2681,27 +2241,43 @@
   },
   {
     "file": "com/lxseek/chat/util/TtsManager.kt",
-    "line": 144,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { tts?.stop(); tts?.shutdown() } catch (_: Throwable) {}"
+    "line": 357,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamLock) {"
   },
   {
     "file": "com/lxseek/chat/util/TtsManager.kt",
-    "line": 204,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { appCtx.unbindService(this) } catch (_: Throwable) {}"
+    "line": 432,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamLock) {"
   },
   {
     "file": "com/lxseek/chat/util/TtsManager.kt",
-    "line": 345,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { tts?.shutdown() } catch (_: Throwable) {}"
+    "line": 490,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 505,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamLock) {"
+  },
+  {
+    "file": "com/lxseek/chat/util/TtsManager.kt",
+    "line": 765,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
+    "code": "synchronized(streamLock) { pendingStreamUtterances.clear() }"
   },
   {
     "file": "com/lxseek/chat/util/UpdateChecker.kt",
@@ -2801,15 +2377,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 203,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "applyActivatedSlotLocked(transition.newState.identityOrNull()!!, loading = false)"
-  },
-  {
-    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 212,
+    "line": 218,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2817,15 +2385,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 221,
-    "severity": "HIGH",
-    "category": "npe",
-    "description": "Force unwrap (!!): potential NPE",
-    "code": "applyActivatedSlotLocked(transition.newState.identityOrNull()!!, loading = true)"
-  },
-  {
-    "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 241,
+    "line": 253,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2833,7 +2393,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 253,
+    "line": 265,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2841,7 +2401,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 274,
+    "line": 286,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2849,7 +2409,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 349,
+    "line": 361,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2857,7 +2417,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 353,
+    "line": 365,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2865,7 +2425,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 359,
+    "line": 371,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2873,7 +2433,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 362,
+    "line": 374,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2881,7 +2441,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 365,
+    "line": 377,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2889,7 +2449,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 499,
+    "line": 511,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2897,7 +2457,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 515,
+    "line": 527,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -2905,7 +2465,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/ConversationGenerationState.kt",
-    "line": 634,
+    "line": 649,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -3029,11 +2589,19 @@
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
+    "code": "fun removeAll(): List<QueuedSend> = synchronized(lock) {"
+  },
+  {
+    "file": "com/lxseek/chat/viewmodel/QueuedGuidanceStore.kt",
+    "line": 109,
+    "severity": "MEDIUM",
+    "category": "concurrency",
+    "description": "synchronized: consider Mutex for coroutines",
     "code": "fun claim(): GuidanceBatchLease? = synchronized(lock) {"
   },
   {
     "file": "com/lxseek/chat/viewmodel/QueuedGuidanceStore.kt",
-    "line": 113,
+    "line": 120,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -3041,7 +2609,7 @@
   },
   {
     "file": "com/lxseek/chat/viewmodel/QueuedGuidanceStore.kt",
-    "line": 126,
+    "line": 133,
     "severity": "MEDIUM",
     "category": "concurrency",
     "description": "synchronized: consider Mutex for coroutines",
@@ -3118,13 +2686,5 @@
     "category": "exception",
     "description": "runCatching.getOrNull(): silent failure",
     "code": "runCatching { Json.decodeFromString<AttachmentMeta>(raw) }.getOrNull()"
-  },
-  {
-    "file": "com/lxseek/chat/viewmodel/VoiceConversationController.kt",
-    "line": 431,
-    "severity": "HIGH",
-    "category": "exception",
-    "description": "Empty catch block: exception swallowed",
-    "code": "try { audioCaptureManager.cancelCapture() } catch (e: Throwable) {}"
   }
 ]

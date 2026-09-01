@@ -2,7 +2,10 @@
 """Scan all Kotlin files for common bug patterns."""
 import os, re, json
 
-root = r"C:\GitHub\Lxchat\app\src\main\java"
+# 基于脚本自身定位项目根（脚本位于 <项目根>/scripts/ 下，上跳一级即为项目根），
+# 项目迁盘/换路径后无需改代码，放在任何盘符/路径下都能正常扫描
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+root = os.path.join(PROJECT_ROOT, 'app', 'src', 'main', 'java')
 findings = []
 
 BUG_PATTERNS = [
@@ -72,7 +75,8 @@ if len(high) > 50:
     print(f"  ... and {len(high) - 50} more")
 
 # Save full report
-report_path = r"C:\GitHub\Lxchat\scripts\bug-scan-report.json"
+# 报告输出到脚本所在目录（scripts/），同样避免硬编码盘符路径
+report_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bug-scan-report.json')
 with open(report_path, 'w', encoding='utf-8') as out:
     json.dump(findings, out, indent=2, ensure_ascii=False)
 print(f"\nFull report saved to: {report_path}")

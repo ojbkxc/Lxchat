@@ -382,8 +382,11 @@ class PetFloatingView @JvmOverloads constructor(
         // overlay visibly janky. Rebuild only when text or width actually changed.
         val cacheKey = "${text.hashCode()}:${maxTextWidth.toInt()}"
         val layout: StaticLayout
-        if (tipLayoutCache != null && tipLayoutCacheKey == cacheKey) {
-            layout = tipLayoutCache!!
+        // 局部快照：tipLayoutCache 是可变 var，判空与使用之间 smart-cast 失效，
+        // 快照到局部 val 后直接使用，消除 !! 并避免两次读取间的状态变化
+        val cached = tipLayoutCache
+        if (cached != null && tipLayoutCacheKey == cacheKey) {
+            layout = cached
         } else {
             val tipText = text.toString()
             layout = StaticLayout.Builder.obtain(tipText, 0, tipText.length, tipTextPaint, maxTextWidth.toInt())

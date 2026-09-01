@@ -572,8 +572,11 @@ class SmartModelRouter(
         val now = SystemClock.elapsedRealtime()
         val cached = keysCache[providerName]
         if (cached != null && now - cached.createdAtMs < KEYS_CACHE_TTL_MS) return cached.keys
-        // 仅在 enableKeyRotation && apiKeySource != null 时被调用，此处可安全断言非空
-        val fresh = apiKeySource!!.keysFor(providerName)
+        // 契约上仅在 enableKeyRotation && apiKeySource != null 时被调用，但不依赖
+        // 隐式契约做 !! 断言：局部快照后判空，为 null 时返回空列表，调用方对空
+        // 列表的处理是回退到原始配置 Key（见 resolveApiKey），语义完全兼容
+        val src = apiKeySource ?: return emptyList()
+        val fresh = src.keysFor(providerName)
         keysCache[providerName] = KeysCacheEntry(fresh, now)
         return fresh
     }
