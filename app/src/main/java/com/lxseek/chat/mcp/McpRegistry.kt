@@ -184,6 +184,17 @@ class McpRegistry(
             )
         } catch (e: CancellationException) {
             throw e
+        } catch (e: McpProtocolException) {
+            // P2-9：服务器对本次调用返回了明确的 JSON-RPC error——协议层错误而非
+            // 连接故障，仅记录日志，不置 ERROR 也不重连。
+            DebugLog.w(
+                "McpRegistry",
+                "MCP tool ${descriptor.remote.name} returned a protocol error: ${e.message}",
+            )
+            ToolExecutionResult(
+                text = "MCP tool '${descriptor.remote.name}' failed: ${userMessage(e)}",
+                isError = true,
+            )
         } catch (e: Exception) {
             // M6：连接层失败（IOException，含会话过期）才置 ERROR 并重连；工具级
             // 失败（参数错、响应解析失败等）不重连也不降级快照，避免"工具失败
@@ -408,20 +419,9 @@ class McpRegistry(
                     ),
                 )
                 return@launch
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: McpProtocolException) {
-            // P2-9：服务器对本次调用返回了明确的 JSON-RPC error——协议层错误而非
-            // 连接故障，仅记录日志，不置 ERROR 也不重连。
-            DebugLog.w(
-                "McpRegistry",
-                "MCP tool ${descriptor.remote.name} returned a protocol error: ${e.message}",
-            )
-            ToolExecutionResult(
-                text = "MCP tool '${descriptor.remote.name}' failed: ${userMessage(e)}",
-                isError = true,
-            )
-        } catch (e: Exception) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 markError(runtime, e)
                 // M6：退避读/写在 Runtime 字段上，跨重连循环保留，不因循环重启从头计。
                 delay(runtime.retryMs)
