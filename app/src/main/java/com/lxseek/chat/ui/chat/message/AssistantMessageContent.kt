@@ -84,8 +84,8 @@ internal fun tokenUsagePresentation(
             usage.uncachedInputTokenCount != null
         ) {
             TokenUsage.addCounts(
-                usage.cachedInputTokenCount,
-                usage.uncachedInputTokenCount,
+                usage.cachedInputTokenCount!!,
+                usage.uncachedInputTokenCount!!,
             )
         } else {
             usage.outputTokenCount
