@@ -28,4 +28,6 @@ dependencies {
     // ChatMessage/TokenUsage 上的 @Immutable 注解。与 app 一致走 Compose BOM。
     implementation(platform(libs.androidx.compose.bom))
     implementation("androidx.compose.runtime:runtime")
+
+    testImplementation("junit:junit:4.13.2")
 }
