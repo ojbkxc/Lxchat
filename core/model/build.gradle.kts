@@ -1,6 +1,8 @@
 plugins {
+    // AGP 9 内置 Kotlin 编译（与 app 一致，不单独应用 kotlin-android）。
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
+    // model 类使用 @Serializable（ChatMessage/AttachmentMeta/TokenUsage）。
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
