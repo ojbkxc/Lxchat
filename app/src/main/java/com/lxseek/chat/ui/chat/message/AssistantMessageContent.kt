@@ -78,14 +78,14 @@ internal fun tokenUsagePresentation(
     usage: TokenUsage?,
 ): TokenUsagePresentation {
     if (usage == null) return TokenUsagePresentation(null, null, null)
+    // TokenUsage 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
+    val cachedInput = usage.cachedInputTokenCount
+    val uncachedInput = usage.uncachedInputTokenCount
     val input = usage.inputTokenCount
-        ?: if (
-            usage.cachedInputTokenCount != null &&
-            usage.uncachedInputTokenCount != null
-        ) {
+        ?: if (cachedInput != null && uncachedInput != null) {
             TokenUsage.addCounts(
-                usage.cachedInputTokenCount!!,
-                usage.uncachedInputTokenCount!!,
+                cachedInput,
+                uncachedInput,
             )
         } else {
             usage.outputTokenCount
