@@ -72,6 +72,12 @@ jobs:
           git push --force origin ci-logs 2>&1 | tail -2
           exit $CODE
 
+      # Release 构建验证：ArtProfile / Baseline Profile 任务只在 release 构建中
+      # 执行，debug 构建覆盖不到。此步骤确保 profile 任务在 AGP 升级或配置
+      # 变更后依然可用（签名缺失时自动回退 debug keystore）。
+      - name: Build F-Droid Release APK (validates ArtProfile tasks)
+        run: ./gradlew assembleFdroidRelease --console=plain
+
       - uses: actions/upload-artifact@v4
         with:
           name: lxchat-fdroid-debug

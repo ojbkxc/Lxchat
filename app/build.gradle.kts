@@ -262,10 +262,10 @@ dependencies {
     testImplementation("androidx.arch.core:core-testing:2.2.0")
 }
 
+// Baseline Profile (ArtProfile) 任务保持启用：AGP 会为 release 构建内置默认启动
+// profile，冷启动/首帧可提速约 20-30%，APK 仅增大几十 KB。
+// 之前禁用无记录原因，本次重新启用并通过 CI 验证。
 tasks.whenTaskAdded {
-    if (name.contains("ArtProfile") || name.contains("BaselineProfile") || name.contains("baselineProfile")) {
-        enabled = false
-    }
     if (name.contains("StripDebugSymbols") || name.contains("MergeNativeDebugMetadata")) {
         enabled = false
     }
