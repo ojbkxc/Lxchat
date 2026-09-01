@@ -1,6 +1,6 @@
 package com.lxseek.chat.tool
 
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 
 /** Tool tier classification for staged tool delivery to the model. */
 enum class ToolTier {
@@ -40,7 +40,7 @@ object ToolTierPolicy {
      */
     fun descriptorMap(
         providers: List<ToolProvider>,
-        ctx: com.lxseek.chat.viewmodel.GenerationContext,
+        ctx: com.lxseek.chat.agent.GenerationContext,
     ): Map<String, ToolDescriptor> {
         val map = LinkedHashMap<String, ToolDescriptor>()
         for (provider in providers) {
@@ -51,7 +51,7 @@ object ToolTierPolicy {
         return map
     }
 
-    fun allowedTiers(ctx: com.lxseek.chat.viewmodel.GenerationContext): Set<ToolTier> =
+    fun allowedTiers(ctx: com.lxseek.chat.agent.GenerationContext): Set<ToolTier> =
         when (ctx.toolTier) {
             "core" -> setOf(ToolTier.Core)
             "extended" -> setOf(ToolTier.Core, ToolTier.Extended)

@@ -1,5 +1,6 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationContext
 import com.lxseek.chat.data.EmbeddingModelConfig
 import com.lxseek.chat.data.local.MessageEntity
 import com.lxseek.chat.data.repository.SettingsRepository

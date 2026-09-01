@@ -10,7 +10,7 @@ import com.lxseek.chat.git.domain.GitRepository
 import com.lxseek.chat.git.domain.model.GitCommandResult
 import com.lxseek.chat.git.domain.model.GitRemote
 import com.lxseek.chat.sandbox.SandboxManagerFactory
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json

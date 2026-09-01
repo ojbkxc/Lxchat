@@ -5,7 +5,7 @@ import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.automation.TaskManager
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

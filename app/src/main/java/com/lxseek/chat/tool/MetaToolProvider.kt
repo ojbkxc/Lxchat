@@ -11,7 +11,7 @@ import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.plugin.PluginHost
 import com.lxseek.chat.skill.SkillHost
 import com.lxseek.chat.util.DebugLog
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive

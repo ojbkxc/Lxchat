@@ -9,7 +9,7 @@ import android.provider.Settings
 import androidx.core.content.ContextCompat
 import com.lxseek.chat.tool.ToolDescriptor
 import com.lxseek.chat.tool.ToolProvider
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 

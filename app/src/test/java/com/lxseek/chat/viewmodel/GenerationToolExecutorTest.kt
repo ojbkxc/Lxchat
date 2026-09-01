@@ -1,5 +1,6 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationContext
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.model.RunEffectIdentity
 import com.lxseek.chat.tool.ToolExecutionEvent

@@ -12,7 +12,7 @@ import com.lxseek.chat.automation.TaskManager
 import com.lxseek.chat.data.ActivityJournal
 import com.lxseek.chat.data.local.LoopEntity
 import com.lxseek.chat.data.local.TaskEntity
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject

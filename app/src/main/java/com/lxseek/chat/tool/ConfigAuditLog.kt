@@ -16,7 +16,7 @@ package com.lxseek.chat.tool
  * - [oldValue] / [newValue]: string projections of the before/after state.
  *   For complex changes these may be a summary or the tool name.
  * - [agentId]: the conversation or agent that triggered the change, taken
- *   from [com.lxseek.chat.viewmodel.GenerationContext.conversationId].
+ *   from [com.lxseek.chat.agent.GenerationContext.conversationId].
  */
 data class AuditLogEntry(
     val timestamp: Long,

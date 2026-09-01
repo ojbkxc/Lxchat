@@ -1,5 +1,6 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationContext
 import com.lxseek.chat.api.StreamEvent
 import com.lxseek.chat.model.MessageSegment
 import com.lxseek.chat.model.RunEffect

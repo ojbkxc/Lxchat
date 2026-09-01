@@ -11,7 +11,7 @@ import com.lxseek.chat.im.ImSendResult
 import com.lxseek.chat.im.MessageChannel
 import com.lxseek.chat.im.MultiSegmentMessageSender
 import com.lxseek.chat.im.weixin.WeixinCompanionChannel
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject

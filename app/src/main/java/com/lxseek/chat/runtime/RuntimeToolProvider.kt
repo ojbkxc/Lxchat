@@ -8,7 +8,7 @@ import com.lxseek.chat.tool.RiskLevel
 import com.lxseek.chat.tool.ToolDescriptor
 import com.lxseek.chat.tool.ToolProvider
 import com.lxseek.chat.tool.ToolTier
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray

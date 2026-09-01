@@ -1,5 +1,6 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationContext
 import android.app.Application
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.data.MemoryManager

@@ -5,7 +5,7 @@ import com.lxseek.chat.tool.RiskLevel
 import com.lxseek.chat.tool.ToolDescriptor
 import com.lxseek.chat.tool.ToolPresentationMetadata
 import com.lxseek.chat.tool.ToolProvider
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 
 /**
  * Decorator that marks all tools from the wrapped provider as requiring membership.

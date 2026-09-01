@@ -1,5 +1,8 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationCallbacks
+import com.lxseek.chat.agent.GenerationConfig
+import com.lxseek.chat.agent.GenerationContext
 import com.lxseek.chat.data.ConversationSettings
 import com.lxseek.chat.data.local.MessageEntity
 import com.lxseek.chat.data.repository.ConversationRepository

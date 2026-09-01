@@ -1,5 +1,6 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationCallbacks
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.RunEffect
 import com.lxseek.chat.model.RunEffectIdentity

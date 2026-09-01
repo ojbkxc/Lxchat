@@ -1,7 +1,7 @@
 package com.lxseek.chat.tool
 
 import com.lxseek.chat.data.MemoryManager
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk

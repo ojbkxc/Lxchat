@@ -9,7 +9,7 @@ import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.util.Constants
 import com.lxseek.chat.util.DebugLog
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
