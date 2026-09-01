@@ -41,6 +41,7 @@ import com.lxseek.chat.ui.chat.resolveAttachmentType
 import com.lxseek.chat.ui.common.LocalLxChatHaptics
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
 import com.lxseek.chat.ui.theme.ChatType
+import com.lxseek.chat.ui.theme.LxDesign
 
 /**
  * The right-aligned user message bubble: attachment thumbnails, the message text
@@ -289,7 +290,7 @@ internal fun UserMessageBubble(
                     DropdownMenu(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         tonalElevation = 6.dp,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = LxDesign.shapeS,
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {

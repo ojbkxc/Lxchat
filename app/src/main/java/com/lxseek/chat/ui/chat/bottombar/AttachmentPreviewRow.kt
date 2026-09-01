@@ -35,6 +35,7 @@ import com.lxseek.chat.R
 import com.lxseek.chat.ui.chat.FileThumbnail
 import com.lxseek.chat.ui.chat.readFileContent
 import com.lxseek.chat.ui.common.LocalLxChatHaptics
+import com.lxseek.chat.ui.theme.LxDesign
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -139,7 +140,7 @@ internal fun AttachmentPreviewRow(
                     }
                     val thumbModifier = Modifier
                         .size(64.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(LxDesign.shapeS)
                         .then(clickableMod)
 
                     val thumb = videoThumb
@@ -197,7 +198,7 @@ internal fun AttachmentPreviewRow(
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(LxDesign.shapeS)
                                 .background(Color.Black.copy(alpha = 0.4f)),
                             contentAlignment = Alignment.Center
                         ) {

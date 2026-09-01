@@ -189,9 +189,23 @@ fun ChatApp(
     val webSearchEnabled = globalWebSearch && (convOverride?.webSearchEnabled ?: true)
     val shellEnabled = globalShell && (convOverride?.shellEnabled ?: true)
     val contextWindow = ContextBudget.normalize(convOverride?.contextWindow ?: maxContextWindow)
-    val contextUsage = remember(messagesState.value, allMessagesState.value, contextWindow) {
+    // remember keys must stay stable: the message List is not @Stable, so passing the
+    // instance makes this block re-run on every list identity change even when the
+    // conversation content did not. The stable (size, first/last id) pair captures the
+    // projections this computation actually depends on without holding an unstable key.
+    val messagesSnapshot = messagesState.value
+    val allMessagesSnapshot = allMessagesState.value
+    val contextUsage = remember(
+        messagesSnapshot.size,
+        allMessagesSnapshot.size,
+        messagesSnapshot.firstOrNull()?.id,
+        messagesSnapshot.lastOrNull()?.id,
+        allMessagesSnapshot.firstOrNull()?.id,
+        allMessagesSnapshot.lastOrNull()?.id,
+        contextWindow,
+    ) {
         contextWindowUsage(
-            expandSelectedToolProtocolRows(messagesState.value, allMessagesState.value),
+            expandSelectedToolProtocolRows(messagesSnapshot, allMessagesSnapshot),
             contextWindow,
         )
     }

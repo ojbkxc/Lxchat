@@ -270,12 +270,6 @@ internal fun ImPlatform.bindMethod(): BindMethod = when (this) {
     ImPlatform.SMS -> BindMethod.SMS
 }
 
-/**
- * Platforms whose native long-connection channel is not yet plugged into [ImChannelFactory]
- * All push channels are now implemented in ImChannelFactory, so this set is empty.
- */
-internal val PUSH_PENDING_PLATFORMS: Set<ImPlatform> = emptySet()
-
 // ── Credential field schema per platform ───────────────────────────────────
 
 internal enum class FieldKind { TEXT, SECRET, URL, NUMBER }
@@ -543,16 +537,6 @@ internal fun PlatformChannelCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-
-            if (platform in PUSH_PENDING_PLATFORMS) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.im_channel_push_pending),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
 
             // Bound bots list.
             if (bots.isNotEmpty()) {

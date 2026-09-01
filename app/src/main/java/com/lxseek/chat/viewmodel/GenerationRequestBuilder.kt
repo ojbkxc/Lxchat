@@ -238,14 +238,50 @@ class GenerationRequestBuilder(
                 val systemItems = entry.resolvedSystemItems
                 // Prepend/postpend: {sent_time}/{sent_date} stay as placeholders resolved per-message in applyUserTemplate
                 val perMsgValues = runtimeValues.filterKeys { it !in PredefinedVariables.PER_MESSAGE_VARS }
-                return@coroutineScope ResolvedPrompt(
-                    systemPrompt = PredefinedVariables.compile(systemItems, runtimeValues).ifBlank { null },
-                    userPrepend = PredefinedVariables.compile(entry.userPrependItems, perMsgValues, emptyMap()).ifBlank { null },
-                    userPostpend = PredefinedVariables.compile(entry.userPostpendItems, perMsgValues, emptyMap()).ifBlank { null }
+                val compiledSystem = PredefinedVariables.compile(systemItems, runtimeValues).ifBlank { null }
+                val compiledPrepend = PredefinedVariables.compile(entry.userPrependItems, perMsgValues, emptyMap()).ifBlank { null }
+                val compiledPostpend = PredefinedVariables.compile(entry.userPostpendItems, perMsgValues, emptyMap()).ifBlank { null }
+                return@coroutineScope injectActivePet(
+                    ResolvedPrompt(compiledSystem, compiledPrepend, compiledPostpend),
                 )
             }
 
-            ResolvedPrompt(null, null, null)
+            injectActivePet(ResolvedPrompt(null, null, null))
         }
+    }
+
+    /**
+     * 把当前活动宠物的人设段落注入到系统提示词末尾，参照 cc-haha 的 `companionIntroText`。
+     * 仅在用户启用了「注入宠物人设」且选中了一只宠物时生效。注入内容告诉模型：
+     * 这只宠物是独立的旁观者，当用户直接以宠物名字呼唤时由 bubble 应答，模型本体应保持简短。
+     */
+    private suspend fun injectActivePet(resolved: ResolvedPrompt): ResolvedPrompt {
+        if (!settings.petPromptInjectionEnabled.value) return resolved
+        val activeId = settings.activePetId.value
+        if (activeId.isBlank()) return resolved
+        val pet = settings.petsLibrary.value.firstOrNull { it.id == activeId } ?: return resolved
+        val intro = buildPetIntro(pet)
+        val merged = if (resolved.systemPrompt.isNullOrBlank()) intro
+        else "${resolved.systemPrompt}\n\n$intro"
+        return resolved.copy(systemPrompt = merged)
+    }
+
+    private fun buildPetIntro(pet: com.lxseek.chat.pet.CustomPet): String {
+        val species = pet.species.name.lowercase()
+        val rarity = pet.rarity.name.lowercase()
+        val statsLine = listOf(
+            "DEBUGGING" to pet.stats.debugging,
+            "PATIENCE" to pet.stats.patience,
+            "CHAOS" to pet.stats.chaos,
+            "WISDOM" to pet.stats.wisdom,
+            "SNARK" to pet.stats.snark,
+        ).joinToString(", ") { (n, v) -> "$n=$v" }
+        return """
+# Companion
+
+A small $species named ${pet.name} ($rarity, $statsLine) sits beside the user and occasionally comments in a speech bubble. ${pet.personality}
+
+You are NOT ${pet.name} — it is a separate watcher. When the user addresses ${pet.name} directly (by name), its bubble will answer. In that moment, stay out of the way: respond in ONE line or less, or answer only any part of the message meant for you. Do not explain that you are not ${pet.name} — they know. Do not narrate what ${pet.name} might say — the bubble handles that.
+""".trim()
     }
 }

@@ -783,15 +783,22 @@ object TtsManager {
     fun installTtsDataIntent(): Intent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
     fun installGoogleTtsIntent(): Intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=com.google.android.tts"))
 
-    fun stripMarkdown(text: String): String =
-        text
-            .replace(Regex("`{1,3}[^`]*`{1,3}"), "")
-            .replace(Regex("!\\[[^\\]]*\\]\\([^)]*\\)"), "")
-            .replace(Regex("\\[([^\\]]*)\\]\\([^)]*\\)"), "$1")
-            .replace(Regex("#+\\s*", RegexOption.MULTILINE), "")
-            .replace(Regex("[*_~>|]"), "")
-            .replace(Regex("^[-*+]\\s+", RegexOption.MULTILINE), "")
-            .replace(Regex("^\\d+\\.\\s+", RegexOption.MULTILINE), "")
-            .replace(Regex("\\s+"), " ")
-            .trim()
+    fun stripMarkdown(text: String): String {
+        if (text.isEmpty()) return text
+        var s = text
+        for ((pattern, replacement) in STRIP_MARKDOWN_RULES) s = s.replace(pattern, replacement)
+        return s.trim()
+    }
+
+    /** [stripMarkdown] 的正则只编译一次；顺序即剥离顺序。 */
+    private val STRIP_MARKDOWN_RULES = listOf(
+        Regex("`{1,3}[^`]*`{1,3}") to "",
+        Regex("!\\[[^\\]]*\\]\\([^)]*\\)") to "",
+        Regex("\\[([^\\]]*)\\]\\([^)]*\\)") to "$1",
+        Regex("#+\\s*", RegexOption.MULTILINE) to "",
+        Regex("[*_~>|]") to "",
+        Regex("^[-*+]\\s+", RegexOption.MULTILINE) to "",
+        Regex("^\\d+\\.\\s+", RegexOption.MULTILINE) to "",
+        Regex("\\s+") to " ",
+    )
 }

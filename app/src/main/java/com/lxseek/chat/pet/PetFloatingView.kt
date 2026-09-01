@@ -84,6 +84,20 @@ class PetFloatingView @JvmOverloads constructor(
     private val eyeHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = PET_WHITE }
     private val blushPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val accentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    /** drawCharacterAccents 专用描边笔（onDraw 每帧复用，不再 new Paint）。 */
+    private val accentStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeCap = Paint.Cap.ROUND }
+    /** drawCharacterAccents HUIHUI 齿形专用填充笔。 */
+    private val accentFillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    /** HUHU 三角描边复用路径，避免每帧分配。 */
+    private val accentPath = Path()
+    /** 平眼线专用笔：固定 1.6dp 圆头，独立于 pupilPaint。 */
+    private val flatEyeLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
+    }
+    /** 平嘴线专用笔：固定 3dp 圆头，独立于 smilePaint。 */
+    private val flatMouthLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = PET_WHITE; style = Paint.Style.STROKE; strokeWidth = dp(3f); strokeCap = Paint.Cap.ROUND
+    }
     private val smilePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = PET_WHITE; style = Paint.Style.STROKE; strokeWidth = dp(3f); strokeCap = Paint.Cap.ROUND
     }
@@ -323,30 +337,27 @@ class PetFloatingView @JvmOverloads constructor(
             PetCharacter.CLASSIC -> Unit
             PetCharacter.DADA -> {
                 val stemTop = cy - r * 0.92f; val stemBottom = cy - r * 0.58f
-                val stemPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = characterPalette.dark; strokeWidth = dp(1.8f); strokeCap = Paint.Cap.ROUND
-                }
-                canvas.drawLine(cx, stemBottom, cx, stemTop, stemPaint)
+                accentStrokePaint.color = characterPalette.dark; accentStrokePaint.strokeWidth = dp(1.8f)
+                canvas.drawLine(cx, stemBottom, cx, stemTop, accentStrokePaint)
                 canvas.drawCircle(cx, stemTop - r * 0.04f, r * 0.13f, accentPaint)
             }
             PetCharacter.HUHU -> {
                 val tipY = cy - r * 0.94f; val baseY = cy - r * 0.62f; val half = r * 0.16f
-                val path = Path().apply { moveTo(cx, tipY); lineTo(cx - half, baseY); lineTo(cx + half, baseY); close() }
-                canvas.drawPath(path, accentPaint)
+                accentPath.rewind()
+                accentPath.moveTo(cx, tipY); accentPath.lineTo(cx - half, baseY); accentPath.lineTo(cx + half, baseY); accentPath.close()
+                canvas.drawPath(accentPath, accentPaint)
             }
             PetCharacter.BUBU -> {
                 val y = cy - r * 0.8f; val arm = r * 0.16f
-                val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = characterPalette.accent; strokeWidth = dp(2f); strokeCap = Paint.Cap.ROUND
-                }
-                canvas.drawLine(cx - arm, y - arm, cx + arm, y + arm, p)
-                canvas.drawLine(cx - arm, y + arm, cx + arm, y - arm, p)
+                accentStrokePaint.color = characterPalette.accent; accentStrokePaint.strokeWidth = dp(2f)
+                canvas.drawLine(cx - arm, y - arm, cx + arm, y + arm, accentStrokePaint)
+                canvas.drawLine(cx - arm, y + arm, cx + arm, y - arm, accentStrokePaint)
             }
             PetCharacter.HUIHUI -> {
                 val y = cy - r * 0.82f; val gap = r * 0.16f; val tWidth = dp(2f)
-                val teeth = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = characterPalette.accent }
+                accentFillPaint.color = characterPalette.accent
                 listOf(-gap, 0f, gap).forEach { dx ->
-                    canvas.drawRoundRect(cx + dx - tWidth / 2, y - r * 0.14f, cx + dx + tWidth / 2, y + r * 0.14f, tWidth / 2, tWidth / 2, teeth)
+                    canvas.drawRoundRect(cx + dx - tWidth / 2, y - r * 0.14f, cx + dx + tWidth / 2, y + r * 0.14f, tWidth / 2, tWidth / 2, accentFillPaint)
                 }
             }
         }
@@ -517,13 +528,11 @@ class PetFloatingView @JvmOverloads constructor(
     }
 
     private fun drawFlatEyes(canvas: Canvas, leftX: Float, rightX: Float, eyeY: Float, eyeRadius: Float) {
-        val stroke = pupilPaint.strokeWidth
-        pupilPaint.strokeWidth = dp(1.6f); pupilPaint.strokeCap = Paint.Cap.ROUND
+        flatEyeLinePaint.strokeWidth = dp(1.6f)
         canvas.drawCircle(leftX, eyeY, eyeRadius, eyeWhitePaint)
-        canvas.drawLine(leftX - eyeRadius * 0.55f, eyeY, leftX + eyeRadius * 0.55f, eyeY, pupilPaint)
+        canvas.drawLine(leftX - eyeRadius * 0.55f, eyeY, leftX + eyeRadius * 0.55f, eyeY, flatEyeLinePaint)
         canvas.drawCircle(rightX, eyeY, eyeRadius, eyeWhitePaint)
-        canvas.drawLine(rightX - eyeRadius * 0.55f, eyeY, rightX + eyeRadius * 0.55f, eyeY, pupilPaint)
-        pupilPaint.strokeWidth = stroke
+        canvas.drawLine(rightX - eyeRadius * 0.55f, eyeY, rightX + eyeRadius * 0.55f, eyeY, flatEyeLinePaint)
     }
 
     private fun drawSmile(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
@@ -544,10 +553,7 @@ class PetFloatingView @JvmOverloads constructor(
     }
 
     private fun drawFlatMouth(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
-        val stroke = smilePaint.strokeWidth
-        smilePaint.strokeWidth = dp(3f); smilePaint.strokeCap = Paint.Cap.ROUND
-        canvas.drawLine(cx - radius * SMILE_WIDTH_RATIO, cy + radius * 0.32f, cx + radius * SMILE_WIDTH_RATIO, cy + radius * 0.32f, smilePaint)
-        smilePaint.strokeWidth = stroke
+        canvas.drawLine(cx - radius * SMILE_WIDTH_RATIO, cy + radius * 0.32f, cx + radius * SMILE_WIDTH_RATIO, cy + radius * 0.32f, flatMouthLinePaint)
     }
 
     // ---- Touch / interaction ----

@@ -46,7 +46,7 @@ import com.lxseek.chat.util.DebugLog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
+fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit, onOpenAddPet: () -> Unit = {}) {
     val themeMode by viewModel.settings.themeMode.collectAsState()
     val colorSchemeName by viewModel.settings.colorScheme.collectAsState()
     val schemeStyleName by viewModel.settings.schemeStyle.collectAsState()
@@ -141,7 +141,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
-            PetSettingsSection(viewModel)
+            PetSettingsSection(viewModel, onOpenAddPet = onOpenAddPet)
             SettingsGroupColumn {
                 // ── App Name ──
                 SettingsGroup(

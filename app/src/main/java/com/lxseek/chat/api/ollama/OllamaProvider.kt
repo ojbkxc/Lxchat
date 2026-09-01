@@ -6,11 +6,11 @@ import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.api.util.StreamingThinkTagParser
 import com.lxseek.chat.api.util.buildToolCallId
 import com.lxseek.chat.api.util.prepareMessages
-import com.lxseek.chat.api.util.RequestFormatException
 import com.lxseek.chat.api.util.ProviderRetryPolicy
 import com.lxseek.chat.api.util.StreamTermination
 import com.lxseek.chat.api.util.asRetryableTransportError
 import com.lxseek.chat.api.util.carriesModelOutput
+import com.lxseek.chat.api.util.emitTransportError
 import com.lxseek.chat.api.util.requireValidSerializedRequest
 import com.lxseek.chat.api.util.safeWireToolCallId
 import com.lxseek.chat.api.util.safeWireToolName
@@ -455,19 +455,8 @@ class OllamaProvider : LlmProvider {
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
-        } catch (e: RequestFormatException) {
-            DebugLog.e("LxChatAPI", "[Ollama] blocked invalid request: ${e.violations.joinToString()}")
-            emit(StreamEvent.Error(GenerationError.RequestFormat("Ollama", e.violations.joinToString())))
-        } catch (e: java.net.SocketTimeoutException) {
-            emit(StreamEvent.Error(GenerationError.Timeout))
-        } catch (e: java.net.ConnectException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Connection refused")))
-        } catch (e: java.net.UnknownHostException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Unknown host")))
         } catch (e: Exception) {
-            if (currentCoroutineContext().isActive) {
-                emit(StreamEvent.Error(GenerationError.Unknown(e)))
-            }
+            emitTransportError("Ollama", "LxChatAPI", e)
         }
     }.flowOn(Dispatchers.IO)
 

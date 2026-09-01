@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
+import com.lxseek.chat.ui.theme.LxDesign
 
 /**
  * Attachment picker anchor button with its dropdown menu.
@@ -91,7 +92,7 @@ internal fun ComposerAttachmentMenu(
                 }
             },
             matchTextFieldWidth = false,
-            shape = RoundedCornerShape(12.dp),
+            shape = LxDesign.shapeS,
         ) {
             DropdownMenuItem(
                 text = {

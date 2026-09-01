@@ -55,7 +55,7 @@ import com.lxseek.chat.channel.ReplyChannelStore
 import com.lxseek.chat.channel.SmtpProviderPresets
 import com.lxseek.chat.channel.SmtpSender
 import com.lxseek.chat.sms.SmsCommandConfigStore
-import com.lxseek.chat.ui.components.MembershipGatedContent
+import com.lxseek.chat.ui.components.GatedSection
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
@@ -332,10 +332,10 @@ internal fun ReplyChannelSection(
 
     Spacer(Modifier.height(12.dp))
 
-    // ── 2. Bark card ── (Premium-gated)
+    // ── 2. Bark card ── (Premium-gated, 区段级：内容保留可读 + 顶部提示条)
     Card(colors = CardDefaults.cardColors()) {
-        MembershipGatedContent(
-            isPremium = isPremium,
+        GatedSection(
+            locked = !isPremium,
             featureName = stringResource(R.string.reply_channel_bark),
             onUpgradeClick = onUpgradeClick,
         ) {
@@ -357,10 +357,10 @@ internal fun ReplyChannelSection(
 
     Spacer(Modifier.height(12.dp))
 
-    // ── 3. Email card ── (Premium-gated)
+    // ── 3. Email card ── (Premium-gated, 区段级)
     Card(colors = CardDefaults.cardColors()) {
-        MembershipGatedContent(
-            isPremium = isPremium,
+        GatedSection(
+            locked = !isPremium,
             featureName = stringResource(R.string.reply_channel_email),
             onUpgradeClick = onUpgradeClick,
         ) {

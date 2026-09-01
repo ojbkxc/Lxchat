@@ -84,6 +84,12 @@ internal val PET_OVERLAY_SIZE_SCALE = floatPreferencesKey("pet_overlay_size_scal
 internal val PET_OVERLAY_ALPHA = floatPreferencesKey("pet_overlay_alpha")
 internal val PET_OVERLAY_CHARACTER = stringPreferencesKey("pet_overlay_character")
 internal val PET_EMOTION_ENABLED = booleanPreferencesKey("pet_emotion_enabled")
+/** JSON array of user-hatched custom pets ([com.lxseek.chat.pet.CustomPet]). */
+internal val PETS_LIBRARY_JSON = stringPreferencesKey("pets_library_json")
+/** Id of the currently-active custom pet, or "" if none. Drives LLM prompt injection. */
+internal val ACTIVE_PET_ID = stringPreferencesKey("active_pet_id")
+/** Whether the active pet's persona should be injected into the LLM system prompt. */
+internal val PET_PROMPT_INJECTION_ENABLED = booleanPreferencesKey("pet_prompt_injection_enabled")
 internal val EXACT_EXECUTION_ENABLED = booleanPreferencesKey("exact_execution_enabled")
 internal val PROXY_ENABLED = booleanPreferencesKey("proxy_enabled")
 internal val PROXY_TYPE = stringPreferencesKey("proxy_type")

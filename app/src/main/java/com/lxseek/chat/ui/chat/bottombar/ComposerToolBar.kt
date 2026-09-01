@@ -45,6 +45,7 @@ import com.lxseek.chat.ui.common.LocalLxChatHaptics
 import com.lxseek.chat.ui.common.openAiServiceTierShortLabel
 import com.lxseek.chat.ui.common.thinkingControlShortLabel
 import com.lxseek.chat.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
+import com.lxseek.chat.ui.theme.LxDesign
 import kotlinx.coroutines.delay
 
 /**
@@ -335,7 +336,7 @@ private fun ModelPickerMenu(
                         .widthIn(max = 180.dp)
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                         .focusRequester(searchFocusRequester),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = LxDesign.shapeS,
                 )
                 val normalizedQuery = modelSearchQuery.trim()
                 val filteredModels = if (normalizedQuery.isBlank()) sortedModels else sortedModels.filter { model ->
@@ -414,7 +415,7 @@ private fun ContextBudgetMenu(
             expanded = isActive,
             onDismissRequest = onDismiss,
             matchTextFieldWidth = false,
-            shape = RoundedCornerShape(12.dp),
+            shape = LxDesign.shapeS,
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -525,7 +526,7 @@ private fun ToolsMenu(
             expanded = isActive,
             onDismissRequest = onDismiss,
             matchTextFieldWidth = false,
-            shape = RoundedCornerShape(12.dp),
+            shape = LxDesign.shapeS,
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                 Text(

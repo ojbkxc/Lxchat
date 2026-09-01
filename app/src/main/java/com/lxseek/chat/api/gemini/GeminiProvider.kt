@@ -8,12 +8,12 @@ import com.lxseek.chat.model.MessageSegment
 import com.lxseek.chat.model.ThinkingLevels
 import com.lxseek.chat.api.util.prepareMessages
 import com.lxseek.chat.api.util.adaptToolRoundsForProvider
-import com.lxseek.chat.api.util.RequestFormatException
 import com.lxseek.chat.api.util.requireValidSerializedRequest
 import com.lxseek.chat.api.util.ProviderRetryPolicy
 import com.lxseek.chat.api.util.StreamTermination
 import com.lxseek.chat.api.util.asRetryableTransportError
 import com.lxseek.chat.api.util.carriesModelOutput
+import com.lxseek.chat.api.util.emitTransportError
 import com.lxseek.chat.api.util.safeWireToolName
 import com.lxseek.chat.api.util.safeWireToolCallId
 import com.lxseek.chat.model.Participant
@@ -710,19 +710,8 @@ class GeminiProvider(
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
-        } catch (e: RequestFormatException) {
-            DebugLog.e("LxChatAPI", "[Gemini] blocked invalid request: ${e.violations.joinToString()}")
-            emit(StreamEvent.Error(GenerationError.RequestFormat("Gemini", e.violations.joinToString())))
-        } catch (e: java.net.SocketTimeoutException) {
-            emit(StreamEvent.Error(GenerationError.Timeout))
-        } catch (e: java.net.ConnectException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Connection refused")))
-        } catch (e: java.net.UnknownHostException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Unknown host")))
         } catch (e: Exception) {
-            if (currentCoroutineContext().isActive) {
-                emit(StreamEvent.Error(GenerationError.Unknown(e)))
-            }
+            emitTransportError("Gemini", "LxChatAPI", e)
         }
     }.flowOn(Dispatchers.IO)
 

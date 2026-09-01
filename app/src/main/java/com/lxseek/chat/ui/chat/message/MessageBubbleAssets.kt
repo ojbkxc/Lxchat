@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.lxseek.chat.ui.chat.caseInsensitiveMatchRanges
 import com.lxseek.chat.ui.chat.visibleMarkdownMatchRanges
 import com.lxseek.chat.ui.theme.ChatType
+import com.lxseek.chat.ui.theme.LxDesign
 import com.mikepenz.markdown.compose.LocalMarkdownColors
 import com.mikepenz.markdown.compose.LocalMarkdownDimens
 import com.mikepenz.markdown.compose.LocalMarkdownPadding
@@ -392,7 +393,7 @@ internal fun ChatMarkdownCodeBlock(
     ) {
         MarkdownCodeBackground(
             color = assets.renderContext.colors.codeBackground,
-            shape = RoundedCornerShape(12.dp),
+            shape = LxDesign.shapeS,
             modifier = modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -794,7 +795,7 @@ private fun SearchHighlightedMarkdownCodeText(
 
     MarkdownCodeBackground(
         color = LocalMarkdownColors.current.codeBackground,
-        shape = RoundedCornerShape(12.dp),
+        shape = LxDesign.shapeS,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),

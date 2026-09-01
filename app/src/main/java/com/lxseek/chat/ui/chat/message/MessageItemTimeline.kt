@@ -125,6 +125,7 @@ import com.lxseek.chat.model.ToolCallDisplayModes
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
 import com.lxseek.chat.ui.theme.MonoFamily
 import com.lxseek.chat.ui.theme.ChatType
+import com.lxseek.chat.ui.theme.LxDesign
 import com.lxseek.chat.ui.components.*
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
@@ -357,7 +358,7 @@ internal fun CompactSegmentBlock(
 
     Surface(
         tonalElevation = 0.dp,
-        shape = RoundedCornerShape(12.dp),
+        shape = LxDesign.shapeS,
         color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.45f),
         modifier = modifier
             .fillMaxWidth()
@@ -371,7 +372,7 @@ internal fun CompactSegmentBlock(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(LxDesign.shapeS)
                     .clickable {
                         if (onHeaderClick != null) {
                             onHeaderClick()
@@ -477,7 +478,7 @@ internal fun CompactSegmentBlock(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(LxDesign.shapeS)
                                     .clickable {
                                         onSegmentClick(segmentIndices.getOrElse(idx) { idx })
                                     }
@@ -520,7 +521,7 @@ internal fun CompactSegmentBlock(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(LxDesign.shapeS)
                                     .clickable {
                                         onSegmentClick(segmentIndices.getOrElse(idx) { idx })
                                     }
@@ -792,13 +793,13 @@ private fun TimelineInfoSegmentCard(
     )
     Surface(
         tonalElevation = 0.dp,
-        shape = RoundedCornerShape(12.dp),
+        shape = LxDesign.shapeS,
         color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.45f),
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp + topPaddingExtra, bottom = 6.dp)
             .then(cardAppearanceModifier)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(LxDesign.shapeS)
             .clickable {
                 onClick()
             }

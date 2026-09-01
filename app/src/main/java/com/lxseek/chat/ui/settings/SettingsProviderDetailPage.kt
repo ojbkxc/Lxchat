@@ -398,9 +398,23 @@ fun SettingsProviderDetailPage(
             if (!isLocal && currentName == Constants.PROVIDER_GROK) {
                 val grokManager = (context.applicationContext as? LxChatApplication)?.container?.grokXOAuthManager
                 if (grokManager != null) {
-                    GrokOAuthSettingsSection(
-                        manager = grokManager,
-
+                    val grokState by grokManager.loginState.collectAsState()
+                    OAuthAccountSettingsSection(
+                        phase = when (grokState.phase) {
+                            GrokLoginPhase.IDLE -> OAuthUiPhase.IDLE
+                            GrokLoginPhase.IN_PROGRESS -> OAuthUiPhase.IN_PROGRESS
+                            GrokLoginPhase.SUCCESS -> OAuthUiPhase.SUCCESS
+                            GrokLoginPhase.FAILED -> OAuthUiPhase.FAILED
+                        },
+                        phaseMessage = grokState.message,
+                        loggedInByToken = grokManager.isLoggedIn(),
+                        currentEmail = grokManager.currentEmail(),
+                        strings = GrokOAuthStrings,
+                        startLogin = { grokManager.startLogin() },
+                        logout = grokManager::logout,
+                        cancelLogin = grokManager::cancelLogin,
+                        handleCallbackUrl = grokManager::handleCallbackUrl,
+                        getCallbackUrlPrefix = grokManager::getCallbackUrlPrefix,
                         onLoginSuccess = {
                             // 先保存预置模型列表(立即可用),再异步拉取远端模型列表(成功则覆盖)。
                             val presetModels = GrokXProvider.PRESET_MODELS.map { "${Constants.PROVIDER_GROK}:$it" }
@@ -426,9 +440,23 @@ fun SettingsProviderDetailPage(
             if (!isLocal && currentName == Constants.PROVIDER_CHATGPT) {
                 val openAIManager = (context.applicationContext as? LxChatApplication)?.container?.openAIXOAuthManager
                 if (openAIManager != null) {
-                    ChatGPTOAuthSettingsSection(
-                        manager = openAIManager,
-
+                    val openAiState by openAIManager.loginState.collectAsState()
+                    OAuthAccountSettingsSection(
+                        phase = when (openAiState.phase) {
+                            OpenAILoginPhase.IDLE -> OAuthUiPhase.IDLE
+                            OpenAILoginPhase.IN_PROGRESS -> OAuthUiPhase.IN_PROGRESS
+                            OpenAILoginPhase.SUCCESS -> OAuthUiPhase.SUCCESS
+                            OpenAILoginPhase.FAILED -> OAuthUiPhase.FAILED
+                        },
+                        phaseMessage = openAiState.message,
+                        loggedInByToken = openAIManager.isLoggedIn(),
+                        currentEmail = openAIManager.currentEmail(),
+                        strings = ChatGPTOAuthStrings,
+                        startLogin = { openAIManager.startLogin() },
+                        logout = openAIManager::logout,
+                        cancelLogin = openAIManager::cancelLogin,
+                        handleCallbackUrl = openAIManager::handleCallbackUrl,
+                        getCallbackUrlPrefix = openAIManager::getCallbackUrlPrefix,
                         onLoginSuccess = {
                             // Codex OAuth 不兼容 /v1/models,直接使用预置模型列表。
                             val presetModels = OpenAIXProvider.PRESET_MODELS.map { "${Constants.PROVIDER_CHATGPT}:$it" }
@@ -717,16 +745,76 @@ fun SettingsProviderDetailPage(
     }
 }
 
-/** x.ai Grok 官方账号登录卡片:登录 / 状态展示 / 登出 / 失败提示。 */
+/** 通用 OAuth 登录状态（Grok / ChatGPT 两个 manager 的 phase 的公共投影）。 */
+private enum class OAuthUiPhase { IDLE, IN_PROGRESS, SUCCESS, FAILED }
+
+/** [OAuthAccountSettingsSection] 的文案差异：两套 string 资源 + 品牌字形。 */
+private class OAuthSectionStrings(
+    val titleRes: Int,
+    val loggedInAsRes: Int,
+    val loggedInRes: Int,
+    val loginHintRes: Int,
+    val descAuthRes: Int,
+    val descFailedRes: Int,
+    val descBoundRes: Int,
+    val descNoKeyRes: Int,
+    val loginButtonRes: Int,
+    val waitingAuthRes: Int,
+    val logoutRes: Int,
+    val iconGlyph: String,
+)
+
+private val GrokOAuthStrings = OAuthSectionStrings(
+    titleRes = R.string.settings_grok_login_title,
+    loggedInAsRes = R.string.settings_grok_logged_in_as,
+    loggedInRes = R.string.settings_grok_logged_in,
+    loginHintRes = R.string.settings_grok_login_hint,
+    descAuthRes = R.string.settings_grok_desc_auth,
+    descFailedRes = R.string.settings_grok_desc_failed,
+    descBoundRes = R.string.settings_grok_desc_bound,
+    descNoKeyRes = R.string.settings_grok_desc_no_key,
+    loginButtonRes = R.string.settings_grok_login_button,
+    waitingAuthRes = R.string.settings_grok_waiting_auth,
+    logoutRes = R.string.settings_grok_logout,
+    iconGlyph = "ꭥ",
+)
+
+private val ChatGPTOAuthStrings = OAuthSectionStrings(
+    titleRes = R.string.settings_chatgpt_login_title,
+    loggedInAsRes = R.string.settings_chatgpt_logged_in_as,
+    loggedInRes = R.string.settings_chatgpt_logged_in,
+    loginHintRes = R.string.settings_chatgpt_login_hint,
+    descAuthRes = R.string.settings_chatgpt_desc_auth,
+    descFailedRes = R.string.settings_chatgpt_desc_failed,
+    descBoundRes = R.string.settings_chatgpt_desc_bound,
+    descNoKeyRes = R.string.settings_chatgpt_desc_no_key,
+    loginButtonRes = R.string.settings_chatgpt_login_button,
+    waitingAuthRes = R.string.settings_chatgpt_waiting_auth,
+    logoutRes = R.string.settings_chatgpt_logout,
+    iconGlyph = "✦",
+)
+
+/**
+ * 官方账号 OAuth 登录卡片（Grok / ChatGPT 共用）：登录 / 状态展示 / 登出 / 失败提示。
+ *
+ * [startLogin] 返回授权页 Uri；[handleCallbackUrl] 处理 WebView 拦截到的回调；
+ * [getCallbackUrlPrefix] 返回 null 表示当前没有进行中的会话（不弹 WebView）。
+ */
 @Composable
-private fun GrokOAuthSettingsSection(
-    manager: GrokXOAuthManager,
-    onLoginSuccess: () -> Unit = {},
+private fun OAuthAccountSettingsSection(
+    phase: OAuthUiPhase,
+    phaseMessage: String?,
+    loggedInByToken: Boolean,
+    currentEmail: String?,
+    strings: OAuthSectionStrings,
+    startLogin: suspend () -> android.net.Uri?,
+    logout: () -> Unit,
+    cancelLogin: () -> Unit,
+    handleCallbackUrl: suspend (String) -> Boolean,
+    getCallbackUrlPrefix: () -> String?,
+    onLoginSuccess: () -> Unit,
 ) {
-    val loginState by manager.loginState.collectAsState()
-    val phase = loginState.phase
-    val email = manager.currentEmail()
-    val loggedIn = manager.isLoggedIn() || phase == GrokLoginPhase.SUCCESS
+    val loggedIn = loggedInByToken || phase == OAuthUiPhase.SUCCESS
     val scope = rememberCoroutineScope()
     var launchingNow by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf<String?>(null) }
@@ -734,35 +822,35 @@ private fun GrokOAuthSettingsSection(
 
     LaunchedEffect(phase) {
         when (phase) {
-            GrokLoginPhase.IN_PROGRESS -> launchingNow = true
-            GrokLoginPhase.SUCCESS -> {
+            OAuthUiPhase.IN_PROGRESS -> launchingNow = true
+            OAuthUiPhase.SUCCESS -> {
                 launchingNow = false
                 showError = null
                 onLoginSuccess()
             }
-            GrokLoginPhase.FAILED -> {
+            OAuthUiPhase.FAILED -> {
                 launchingNow = false
-                showError = loginState.message
+                showError = phaseMessage
             }
-            GrokLoginPhase.IDLE -> { /* 初始态 */ }
+            OAuthUiPhase.IDLE -> { /* 初始态 */ }
         }
     }
 
     SettingsGroup(
-        title = stringResource(R.string.settings_grok_login_title),
+        title = stringResource(strings.titleRes),
         items = buildList {
             add {
                 SettingsItem(
                     headlineContent = {
                         Text(
-                            if (loggedIn) (email?.let { stringResource(R.string.settings_grok_logged_in_as, it) } ?: stringResource(R.string.settings_grok_logged_in))
-                            else stringResource(R.string.settings_grok_login_hint),
+                            if (loggedIn) (currentEmail?.let { stringResource(strings.loggedInAsRes, it) } ?: stringResource(strings.loggedInRes))
+                            else stringResource(strings.loginHintRes),
                             fontWeight = FontWeight.Medium,
                         )
                     },
                     supportingContent = {
                         Text(
-                            accountStatusDescription(phase, loggedIn),
+                            oAuthStatusDescription(phase, loggedIn, strings),
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         )
                     },
@@ -772,7 +860,7 @@ private fun GrokOAuthSettingsSection(
                                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             } else {
                                 Text(
-                                    "ꭥ",
+                                    strings.iconGlyph,
                                     style = MaterialTheme.typography.titleLarge,
                                     color = if (loggedIn) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -801,24 +889,24 @@ private fun GrokOAuthSettingsSection(
                         Button(
                             onClick = {
                                 scope.launch {
-                                    val uri = manager.startLogin()
+                                    val uri = startLogin()
                                     if (uri != null) authUrl = uri
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                        ) { Text(stringResource(R.string.settings_grok_login_button)) }
+                        ) { Text(stringResource(strings.loginButtonRes)) }
                     } else if (launchingNow) {
                         Button(
                             onClick = {},
                             enabled = false,
                             modifier = Modifier.weight(1f),
-                        ) { Text(stringResource(R.string.settings_grok_waiting_auth)) }
+                        ) { Text(stringResource(strings.waitingAuthRes)) }
                     } else {
                         TextButton(
-                            onClick = { manager.logout() },
+                            onClick = logout,
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        ) { Text(stringResource(R.string.settings_grok_logout)) }
+                        ) { Text(stringResource(strings.logoutRes)) }
                     }
                 }
             }
@@ -826,14 +914,14 @@ private fun GrokOAuthSettingsSection(
     )
 
     authUrl?.let { url ->
-        val callbackPrefix = manager.getCallbackUrlPrefix()
+        val callbackPrefix = getCallbackUrlPrefix()
         if (callbackPrefix != null) {
             OAuthWebViewDialog(
                 authUrl = url,
                 callbackUrlPrefix = callbackPrefix,
                 onCallback = { callbackUrl ->
                     scope.launch {
-                        val success = manager.handleCallbackUrl(callbackUrl)
+                        val success = handleCallbackUrl(callbackUrl)
                         if (success) {
                             authUrl = null
                             onLoginSuccess()
@@ -844,7 +932,7 @@ private fun GrokOAuthSettingsSection(
                     // User closed the auth WebView: abort the in-flight login
                     // session so the login button is not stuck disabled until
                     // app restart (startLogin's CAS flag would never reset).
-                    manager.cancelLogin()
+                    cancelLogin()
                     launchingNow = false
                     authUrl = null
                 },
@@ -854,155 +942,11 @@ private fun GrokOAuthSettingsSection(
 }
 
 @Composable
-private fun accountStatusDescription(phase: GrokLoginPhase, loggedIn: Boolean): String = when {
-    phase == GrokLoginPhase.IN_PROGRESS -> stringResource(R.string.settings_grok_desc_auth)
-    phase == GrokLoginPhase.FAILED -> stringResource(R.string.settings_grok_desc_failed)
-    loggedIn -> stringResource(R.string.settings_grok_desc_bound)
-    else -> stringResource(R.string.settings_grok_desc_no_key)
-}
-
-/** ChatGPT(OpenAI) 官方账号登录卡片:登录 / 状态展示 / 登出 / 失败提示。 */
-@Composable
-private fun ChatGPTOAuthSettingsSection(
-    manager: OpenAIXOAuthManager,
-    onLoginSuccess: () -> Unit = {},
-) {
-    val loginState by manager.loginState.collectAsState()
-    val phase = loginState.phase
-    val email = manager.currentEmail()
-    val loggedIn = manager.isLoggedIn() || phase == OpenAILoginPhase.SUCCESS
-    val scope = rememberCoroutineScope()
-    var launchingNow by remember { mutableStateOf(false) }
-    var showError by remember { mutableStateOf<String?>(null) }
-    var authUrl by remember { mutableStateOf<android.net.Uri?>(null) }
-
-    LaunchedEffect(phase) {
-        when (phase) {
-            OpenAILoginPhase.IN_PROGRESS -> launchingNow = true
-            OpenAILoginPhase.SUCCESS -> {
-                launchingNow = false
-                showError = null
-                onLoginSuccess()
-            }
-            OpenAILoginPhase.FAILED -> {
-                launchingNow = false
-                showError = loginState.message
-            }
-            OpenAILoginPhase.IDLE -> { /* 初始态 */ }
-        }
-    }
-
-    SettingsGroup(
-        title = stringResource(R.string.settings_chatgpt_login_title),
-        items = buildList {
-            add {
-                SettingsItem(
-                    headlineContent = {
-                        Text(
-                            if (loggedIn) (email?.let { stringResource(R.string.settings_chatgpt_logged_in_as, it) } ?: stringResource(R.string.settings_chatgpt_logged_in))
-                            else stringResource(R.string.settings_chatgpt_login_hint),
-                            fontWeight = FontWeight.Medium,
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            openAIAccountStatusDescription(phase, loggedIn),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        )
-                    },
-                    leadingContent = {
-                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                            if (launchingNow) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                            } else {
-                                Text(
-                                    "✦",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = if (loggedIn) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                )
-                            }
-                        }
-                    },
-                )
-                showError?.let { err ->
-                    add {
-                        Text(
-                            err,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-            }
-            add {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    if (!loggedIn && !launchingNow) {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    val uri = manager.startLogin()
-                                    if (uri != null) authUrl = uri
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                        ) { Text(stringResource(R.string.settings_chatgpt_login_button)) }
-                    } else if (launchingNow) {
-                        Button(
-                            onClick = {},
-                            enabled = false,
-                            modifier = Modifier.weight(1f),
-                        ) { Text(stringResource(R.string.settings_chatgpt_waiting_auth)) }
-                    } else {
-                        TextButton(
-                            onClick = { manager.logout() },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        ) { Text(stringResource(R.string.settings_chatgpt_logout)) }
-                    }
-                }
-            }
-        },
-    )
-
-    authUrl?.let { url ->
-        val callbackPrefix = manager.getCallbackUrlPrefix()
-        if (callbackPrefix != null) {
-            OAuthWebViewDialog(
-                authUrl = url,
-                callbackUrlPrefix = callbackPrefix,
-                onCallback = { callbackUrl ->
-                    scope.launch {
-                        val success = manager.handleCallbackUrl(callbackUrl)
-                        if (success) {
-                            authUrl = null
-                            onLoginSuccess()
-                        }
-                    }
-                },
-                onDismiss = {
-                    // User closed the auth WebView: abort the in-flight login
-                    // session so the login button is not stuck disabled until
-                    // app restart (startLogin's CAS flag would never reset).
-                    manager.cancelLogin()
-                    launchingNow = false
-                    authUrl = null
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun openAIAccountStatusDescription(phase: OpenAILoginPhase, loggedIn: Boolean): String = when {
-    phase == OpenAILoginPhase.IN_PROGRESS -> stringResource(R.string.settings_chatgpt_desc_auth)
-    phase == OpenAILoginPhase.FAILED -> stringResource(R.string.settings_chatgpt_desc_failed)
-    loggedIn -> stringResource(R.string.settings_chatgpt_desc_bound)
-    else -> stringResource(R.string.settings_chatgpt_desc_no_key)
+private fun oAuthStatusDescription(phase: OAuthUiPhase, loggedIn: Boolean, strings: OAuthSectionStrings): String = when {
+    phase == OAuthUiPhase.IN_PROGRESS -> stringResource(strings.descAuthRes)
+    phase == OAuthUiPhase.FAILED -> stringResource(strings.descFailedRes)
+    loggedIn -> stringResource(strings.descBoundRes)
+    else -> stringResource(strings.descNoKeyRes)
 }
 
 /**

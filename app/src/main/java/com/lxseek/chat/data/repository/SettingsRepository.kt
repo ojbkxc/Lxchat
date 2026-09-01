@@ -183,6 +183,9 @@ class SettingsRepository(
     val petOverlayAlpha: StateFlow<Float> = hot(settingsManager.petOverlayAlpha, 1.0f)
     val petOverlayCharacter: StateFlow<String> = hot(settingsManager.petOverlayCharacter, PetCharacter.HUHU.prefKey)
     val petEmotionEnabled: StateFlow<Boolean> = hot(settingsManager.petEmotionEnabled, true)
+    val petsLibrary: StateFlow<List<com.lxseek.chat.pet.CustomPet>> = hot(settingsManager.petsLibrary, emptyList())
+    val activePetId: StateFlow<String> = hot(settingsManager.activePetId, "")
+    val petPromptInjectionEnabled: StateFlow<Boolean> = hot(settingsManager.petPromptInjectionEnabled, true)
     val exactExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.exactExecutionEnabled, false)
     val proxyEnabled: StateFlow<Boolean> = hot(settingsManager.proxyEnabled, false)
     val proxyType: StateFlow<String> = hot(settingsManager.proxyType, "http")
@@ -691,6 +694,11 @@ class SettingsRepository(
     suspend fun savePetOverlayAlpha(alpha: Float) = settingsManager.savePetOverlayAlpha(alpha)
     suspend fun savePetOverlayCharacter(character: String) = settingsManager.savePetOverlayCharacter(character)
     suspend fun savePetEmotionEnabled(enabled: Boolean) = settingsManager.savePetEmotionEnabled(enabled)
+    suspend fun savePetsLibrary(pets: List<com.lxseek.chat.pet.CustomPet>) =
+        settingsManager.savePetsLibrary(pets)
+    suspend fun saveActivePetId(id: String) = settingsManager.saveActivePetId(id)
+    suspend fun savePetPromptInjectionEnabled(enabled: Boolean) =
+        settingsManager.savePetPromptInjectionEnabled(enabled)
     suspend fun saveAutoBackupPeriodHours(hours: Int) = settingsManager.saveAutoBackupPeriodHours(hours)
     suspend fun saveAutoBackupCategories(categories: String) = settingsManager.saveAutoBackupCategories(categories)
     suspend fun saveAutoBackupDirectory(path: String) = settingsManager.saveAutoBackupDirectory(path)

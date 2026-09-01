@@ -1472,6 +1472,7 @@
     <string name="membership_gated_locked">已锁定</string>
     <string name="membership_gated_upgrade_hint">升级到 Premium 解锁此功能</string>
     <string name="membership_gated_upgrade_button">升级</string>
+    <string name="gate_unlock_hint">高级功能</string>
 
     <!-- SMS 命令系统：接收 smsf# 命令并在手机本地执行。 -->
     <string name="settings_sms_command">SMS 命令</string>
@@ -1566,6 +1567,39 @@
     <string name="pet_tip_error">连接出错</string>
     <string name="pet_tip_waiting">等待审批中…</string>
     <string name="pet_needs_download">点击下载</string>
+    <!-- ── 添加宠物（参照 cc-haha companion 孵化）────────────────────────────────── -->
+    <string name="pet_add_title">添加宠物</string>
+    <string name="pet_add_desc">孵化一只独一无二的桌面宠物。外观由种子锁定——同种子永远孵化出同一只。它的人设可注入到 LLM，让模型知道它的存在。</string>
+    <string name="pet_add_entry">添加宠物</string>
+    <string name="pet_library_title">我的宠物</string>
+    <string name="pet_library_empty">还没有宠物。点击「孵化」带一只回家。</string>
+    <string name="pet_hatch_action">孵化</string>
+    <string name="pet_hatch_again">重新摇号</string>
+    <string name="pet_hatch_confirm">孵化 %1$s</string>
+    <string name="pet_activate">设为当前宠物</string>
+    <string name="pet_release">放生</string>
+    <string name="pet_edit_name">名字</string>
+    <string name="pet_edit_personality">人设</string>
+    <string name="pet_edit_personality_desc">一段简短描述，会注入到模型系统提示词中，让助手知道你的宠物。</string>
+    <string name="pet_prompt_injection">注入宠物人设</string>
+    <string name="pet_prompt_injection_desc">把当前宠物的人设注入到 LLM 系统提示词</string>
+    <string name="pet_field_rarity">稀有度</string>
+    <string name="pet_field_species">物种</string>
+    <string name="pet_field_eye">眼睛</string>
+    <string name="pet_field_hat">帽子</string>
+    <string name="pet_field_stats">属性</string>
+    <string name="pet_shiny">✦ 闪光个体！</string>
+    <string name="pet_species_duck">鸭子</string>
+    <string name="pet_species_cat">猫咪</string>
+    <string name="pet_species_dragon">小龙</string>
+    <string name="pet_species_robot">机器人</string>
+    <string name="pet_species_ghost">幽灵</string>
+    <string name="pet_species_blob">果冻</string>
+    <string name="pet_species_rabbit">兔子</string>
+    <string name="pet_species_owl">猫头鹰</string>
+    <string name="pet_hatch_success">✨ 你孵化出了 %1$s，一只 %2$s %3$s！跟它打个招呼吧。</string>
+    <string name="pet_active_now">当前宠物：%1$s</string>
+    <string name="pet_none_active">未选中宠物</string>
     <string name="settings_plugins">插件与技能</string>
     <string name="settings_plugins_desc">管理扩展、技能和市场</string>
 
@@ -1625,7 +1659,6 @@
     <string name="im_channel_bind_qr">扫描二维码绑定</string>
     <string name="im_channel_bind_qr_placeholder">扫码功能即将上线，请暂用下方手动配置</string>
     <string name="im_channel_manual_config">手动配置</string>
-    <string name="im_channel_push_pending">长连接通道开发中，配置将在通道实现后自动生效</string>
     <string name="im_channel_legacy_tag">旧版</string>
     <string name="im_channel_migrate">迁移</string>
     <string name="im_channel_bound_success">机器人已绑定</string>

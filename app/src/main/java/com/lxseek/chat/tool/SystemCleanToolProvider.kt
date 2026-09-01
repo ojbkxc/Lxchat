@@ -11,7 +11,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
-import java.util.concurrent.TimeUnit
 
 /**
  * 系统清理/优化工具集（root-only）。
@@ -53,7 +52,7 @@ class SystemCleanToolProvider : ToolProvider {
         )
     }
 
-    private data class RootResult(val exitCode: Int, val output: String)
+
 
     private var binaryAvailable: Boolean? = null
 
@@ -117,41 +116,13 @@ class SystemCleanToolProvider : ToolProvider {
         }
     }
 
-    // ── 底层执行 ──
+    // ── 底层执行（公共实现见 ShellToolJson.kt） ──
 
-    private fun runRoot(cmd: String, timeoutMs: Int = TIMEOUT_DEFAULT): RootResult {
-        return try {
-            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-            // Read stdout/stderr on worker threads BEFORE waitFor to avoid the classic
-            // deadlock where a full pipe buffer blocks the child while we wait for it.
-            val stdoutHolder = arrayOf("")
-            val stderrHolder = arrayOf("")
-            val stdoutThread = Thread {
-                stdoutHolder[0] = try { p.inputStream.bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
-            }.also { it.start() }
-            val stderrThread = Thread {
-                stderrHolder[0] = try { p.errorStream.bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
-            }.also { it.start() }
-            val waitOk = p.waitFor(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            if (!waitOk) p.destroyForcibly()
-            stdoutThread.join(1_000)
-            stderrThread.join(1_000)
-            val output = (stdoutHolder[0] + stderrHolder[0]).trim()
-            val exitCode = if (waitOk) runCatching { p.exitValue() }.getOrDefault(-1) else -1
-            RootResult(exitCode, output)
-        } catch (e: Exception) {
-            RootResult(-1, "error: ${e.message}")
-        }
-    }
+    private fun runRoot(cmd: String, timeoutMs: Int = TIMEOUT_DEFAULT): RootResult =
+        com.lxseek.chat.tool.runRoot(cmd, timeoutMs)
 
-    private fun result(name: String, cmd: String, res: RootResult): String {
-        return buildJsonObject {
-            put("type", name)
-            put("command", cmd)
-            put("exit_code", res.exitCode)
-            put("output", res.output.take(MAX_OUTPUT))
-        }.toString()
-    }
+    private fun result(name: String, cmd: String, res: RootResult): String =
+        rootToolResult(name, cmd, res, MAX_OUTPUT)
 
     // ── 只读工具 ──
 

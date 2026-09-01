@@ -253,30 +253,28 @@ class WeixinChannel(
 
     // ── 媒体发送（无 UI 场景：协议能力 + 命令触发） ──────────────────────
 
-    override suspend fun sendImageUrl(conversationId: String, url: String): ImSendResult {
-        val trimmed = url.trim()
-        if (!isConfigured) return ImSendResult.NotConfigured
-        val bytes = withContext(Dispatchers.IO) { HttpClient.getBytes(trimmed) }
-            ?: return ImSendResult.Failure("图片下载失败，请检查 URL。")
-        val name = fileNameFromUrl(trimmed)
-        return sendMedia(conversationId, WeixinMediaSpec(
-            kind = WeixinMediaKind.IMAGE,
-            rawBytes = bytes,
-            fileName = name,
-            thumbBytes = imageThumb(bytes),
-        ))
-    }
+    override suspend fun sendImageUrl(conversationId: String, url: String): ImSendResult =
+        sendUrlAsMedia(conversationId, url, WeixinMediaKind.IMAGE, "图片")
 
-    override suspend fun sendFileUrl(conversationId: String, url: String): ImSendResult {
+    override suspend fun sendFileUrl(conversationId: String, url: String): ImSendResult =
+        sendUrlAsMedia(conversationId, url, WeixinMediaKind.FILE, "文件")
+
+    /** URL 直链媒体发送公共实现：下载 → 构造 [WeixinMediaSpec] → [sendMedia]（图片附缩略图）。 */
+    private suspend fun sendUrlAsMedia(
+        conversationId: String,
+        url: String,
+        kind: WeixinMediaKind,
+        label: String,
+    ): ImSendResult {
         val trimmed = url.trim()
         if (!isConfigured) return ImSendResult.NotConfigured
         val bytes = withContext(Dispatchers.IO) { HttpClient.getBytes(trimmed) }
-            ?: return ImSendResult.Failure("文件下载失败，请检查 URL。")
-        val name = fileNameFromUrl(trimmed)
+            ?: return ImSendResult.Failure("${label}下载失败，请检查 URL。")
         return sendMedia(conversationId, WeixinMediaSpec(
-            kind = WeixinMediaKind.FILE,
+            kind = kind,
             rawBytes = bytes,
-            fileName = name,
+            fileName = fileNameFromUrl(trimmed),
+            thumbBytes = if (kind == WeixinMediaKind.IMAGE) imageThumb(bytes) else null,
         ))
     }
 

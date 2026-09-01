@@ -122,59 +122,39 @@ class AppContainer(private val appContext: Context) {
         // Install the encrypted-DNS resolver into HttpClient (inert while the mode is off).
         encryptedDns
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                conversationRepository.ensureRunRecovery()
-            } catch (e: Throwable) {
-                com.lxseek.chat.util.DebugLog.e("AppContainer", "ensureRunRecovery failed", e)
-            }
-            try {
-                automationScheduler.start()
-            } catch (e: Throwable) {
-                com.lxseek.chat.util.DebugLog.e("AppContainer", "automationScheduler.start failed", e)
-            }
+            launchService("ensureRunRecovery") { conversationRepository.ensureRunRecovery() }
+            launchService("automationScheduler.start") { automationScheduler.start() }
         }
         // IM automatic reply loop: a self-healing receiver that polls once IM is enabled.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                imPollingReceiver.start()
-            } catch (e: Throwable) {
-                com.lxseek.chat.util.DebugLog.e("AppContainer", "imPollingReceiver.start failed", e)
-            }
+            launchService("imPollingReceiver.start") { imPollingReceiver.start() }
         }
         // Proactive messaging: self-healing loop, inert while disabled.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                proactiveMessagingService.start()
-            } catch (e: Throwable) {
-                com.lxseek.chat.util.DebugLog.e("AppContainer", "proactiveMessagingService.start failed", e)
-            }
+            launchService("proactiveMessagingService.start") { proactiveMessagingService.start() }
         }
         // Auto-download Chinese Vosk model for ASR on first launch.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
+            launchService("zh Vosk model auto-download") {
                 val vosk = com.lxseek.chat.speech.VoskTranscriber(appContext)
                 if ("zh" !in vosk.getDownloadedLanguages()) {
-                    com.lxseek.chat.util.DebugLog.d("AppContainer", "Auto-downloading zh Vosk model")
+                    DebugLog.d("AppContainer", "Auto-downloading zh Vosk model")
                     vosk.downloadModel("zh").collect { /* swallow progress states */ }
-                    com.lxseek.chat.util.DebugLog.d("AppContainer", "zh Vosk model auto-download finished")
+                    DebugLog.d("AppContainer", "zh Vosk model auto-download finished")
                 } else {
-                    com.lxseek.chat.util.DebugLog.d("AppContainer", "zh Vosk model already downloaded, skip")
+                    DebugLog.d("AppContainer", "zh Vosk model already downloaded, skip")
                 }
-            } catch (e: Throwable) {
-                com.lxseek.chat.util.DebugLog.e("AppContainer", "zh Vosk model auto-download failed", e)
             }
         }
         // Desktop pet: restore the floating bubble at launch when the user enabled it.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
+            launchService("Desktop pet startup restore") {
                 // .first() waits for DataStore's first emission, so a cold start never races the
                 // persisted preference.
                 com.lxseek.chat.pet.PetEmotionController.enabled = settingsManager.petEmotionEnabled.first()
                 if (settingsManager.petOverlayEnabled.first()) {
                     com.lxseek.chat.pet.PetOverlayWindowService.start(appContext)
                 }
-            } catch (e: Throwable) {
-                com.lxseek.chat.util.DebugLog.e("AppContainer", "Desktop pet startup restore failed", e)
             }
         }
         // Condition trigger: dynamically register battery/network receivers. Android O+ no longer
@@ -186,17 +166,13 @@ class AppContainer(private val appContext: Context) {
             com.lxseek.chat.trigger.BatteryTriggerReceiver.registerDynamic(appContext)
             com.lxseek.chat.trigger.NetworkTriggerReceiver.registerDynamic(appContext)
         } catch (e: Throwable) {
-            com.lxseek.chat.util.DebugLog.e("AppContainer", "trigger receivers register failed", e)
+            DebugLog.e("AppContainer", "trigger receivers register failed", e)
         }
         // Cron scheduled tasks: scan all enabled CronTasks on startup and arm WorkManager chains.
         // The scheduler self-heals on every tasks Flow emission (add/edit/delete/toggle), so this
         // call only needs to happen once per process. Inert when no tasks are configured.
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                cronScheduler.start()
-            } catch (e: Throwable) {
-                com.lxseek.chat.util.DebugLog.e("AppContainer", "cronScheduler.start failed", e)
-            }
+            launchService("cronScheduler.start") { cronScheduler.start() }
         }
         // Token 日预算重置（TokenBudgetManager 既有设计：本地午夜清零 dailyUsed）。
         // 自愈循环：计算到下一个午夜的延迟并等待，重置失败时 1 分钟后重试。
@@ -214,12 +190,21 @@ class AppContainer(private val appContext: Context) {
                     }
                     kotlinx.coroutines.delay(nextMidnight.timeInMillis - now.timeInMillis)
                     tokenBudgetManager.resetDaily()
-                    com.lxseek.chat.util.DebugLog.d("AppContainer", "Token daily budget reset at local midnight")
+                    DebugLog.d("AppContainer", "Token daily budget reset at local midnight")
                 } catch (e: Throwable) {
-                    com.lxseek.chat.util.DebugLog.e("AppContainer", "Token daily budget reset failed", e)
+                    DebugLog.e("AppContainer", "Token daily budget reset failed", e)
                     kotlinx.coroutines.delay(60_000L)
                 }
             }
+        }
+    }
+
+    /** 单个后台服务的启动护栏：失败记日志，不向上传播（服务之间互不级联失败）。 */
+    private inline fun launchService(name: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (e: Throwable) {
+            DebugLog.e("AppContainer", "$name failed", e)
         }
     }
 

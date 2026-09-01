@@ -44,6 +44,7 @@ import com.lxseek.chat.R
 import com.lxseek.chat.model.MessageSegment
 import com.lxseek.chat.model.ToolImageAttachment
 import com.lxseek.chat.ui.theme.ChatType
+import com.lxseek.chat.ui.theme.LxDesign
 import com.lxseek.chat.ui.theme.MonoFamily
 import com.lxseek.chat.util.NoAutoScrollSelectionContainer
 import kotlinx.serialization.json.JsonArray
@@ -62,7 +63,7 @@ internal fun ToolDetailContent(
     val args = presentation.rawArguments
     // 结果卡片：圆角 16dp、surfaceVariant 背景、轻 tonalElevation，让工具结果成为独立视觉块
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = LxDesign.shapeM,
         color = MaterialTheme.colorScheme.surfaceVariant,
         tonalElevation = 1.dp,
         modifier = Modifier.fillMaxWidth(),
@@ -211,7 +212,7 @@ private fun ToolImagePreview(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(previewHeight)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(LxDesign.shapeS)
                 .background(
                     MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.45f),
                 )
@@ -290,7 +291,7 @@ private fun ToolErrorContent(message: String) {
     Surface(
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        shape = RoundedCornerShape(12.dp),
+        shape = LxDesign.shapeS,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -552,7 +553,7 @@ private fun WebSearchResult(
                     .fillMaxWidth()
                     .background(
                         MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
-                        RoundedCornerShape(12.dp),
+                        LxDesign.shapeS,
                     )
                     .padding(12.dp),
             ) {
@@ -609,7 +610,7 @@ private fun TerminalOutput(output: String) {
     // 代码/终端块：圆角 12dp，surfaceContainerHighest 与外层 surfaceVariant 卡片形成对比
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
-        shape = RoundedCornerShape(12.dp),
+        shape = LxDesign.shapeS,
         modifier = Modifier.fillMaxWidth(),
     ) {
         NoAutoScrollSelectionContainer {

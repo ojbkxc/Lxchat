@@ -12,7 +12,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
@@ -44,6 +42,7 @@ import com.lxseek.chat.R
 import com.lxseek.chat.model.ChatConversation
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
 import com.lxseek.chat.ui.theme.ChatType
+import com.lxseek.chat.ui.theme.LxDesign
 
 /**
  * The chat screen's top bar: a title capsule (drawer menu + brand/conversation
@@ -105,13 +104,8 @@ internal fun ChatTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 80.dp)
-            .background(
-                Brush.verticalGradient(
-                    0.0f to MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
-                    0.6f to MaterialTheme.colorScheme.background.copy(alpha = 0.80f),
-                    1.0f to Color.Transparent
-                )
-            )
+            // 工作台顶栏：纯色底 + 2dp 强调底线，替代 Agora 式渐变
+            .background(MaterialTheme.colorScheme.background)
     ) {
         AnimatedContent(
             targetState = searchActive,
@@ -160,13 +154,12 @@ internal fun ChatTopBar(
                 // 增大水平内边距，让顶栏内容有更多呼吸空间，更现代简洁
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp)
                 .height(52.dp),
-        ) { targetSearchActive ->
-            Row(
-                modifier = Modifier
-                    .fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (targetSearchActive) {
+            ) { targetSearchActive ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {                if (targetSearchActive) {
                     ChatTopBarCapsule(
                         modifier = Modifier.fillMaxSize(),
                     ) {
@@ -358,6 +351,13 @@ internal fun ChatTopBar(
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
         }
+        // 工作台顶栏底线：2dp 强调色分隔，无渐变无阴影
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+        )
     }
 }
 
@@ -366,11 +366,10 @@ private fun ChatTopBarCapsule(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    // 胶囊圆角从 12dp 提升到 16dp，更圆润现代，与底栏卡片圆角呼应
-    val shape = RoundedCornerShape(16.dp)
+    // 工作台胶囊：圆角走 LxDesign 令牌，透明底、零 elevation
     Surface(
         modifier = modifier,
-        shape = shape,
+        shape = LxDesign.shapeM,
         color = Color.Transparent,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,

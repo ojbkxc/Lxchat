@@ -1,6 +1,7 @@
 package com.lxseek.chat.data
 
 import android.content.Context
+import com.lxseek.chat.pet.CustomPet
 import com.lxseek.chat.pet.PetCharacter
 import com.lxseek.chat.model.OpenAiServiceTiers
 import com.lxseek.chat.model.ThinkingLevels
@@ -11,6 +12,7 @@ import com.lxseek.chat.util.DebugLog
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
@@ -39,6 +41,130 @@ class SettingsManager(private val context: Context) {
             "*.workers.dev", "*.pages.dev", "*.cloudflare.com",
             "api.openai.com", "*.openai.com",
         )
+
+        /**
+         * DataStore keys cleared by [resetPortableSettingsForImport]: everything portable across
+         * devices, plus derived fetch state that must not survive an import. Secrets,
+         * conversation-scoped overrides, local model files, sandbox state, onboarding/rating
+         * metadata, and auto-backup configuration are deliberately outside this boundary.
+         */
+        private val PORTABLE_IMPORT_RESET_KEYS = listOf(
+            SELECTED_MODEL,
+            CUSTOM_MODELS,
+            ENABLED_MODELS,
+            ACTIVE_SYSTEM_PROMPT_ID,
+            MODEL_ALIASES_JSON,
+            CONTEXT_TOKEN_BUDGET,
+            MAX_CONTEXT_WINDOW,
+            VISUALIZE_CONTEXT_ROLLOUT,
+            CONTEXT_COMPACT_ENABLED,
+            CONTEXT_COMPACT_MODEL,
+            CONTEXT_COMPACT_PROMPT,
+            CONTEXT_COMPACT_RETAIN_COUNT,
+            CODE_EXECUTION_ENABLED,
+            GOOGLE_SEARCH_ENABLED,
+            THINKING_ENABLED,
+            TTS_ENABLED,
+            TTS_LANGUAGE,
+            TTS_SPEECH_RATE,
+            TTS_AUTOPLAY,
+            SHARE_INCLUDE_THINKING,
+            SHARE_INCLUDE_TOOLS,
+            VOICE_CONVERSATION_ENABLED,
+            ASR_ENGINE_PREF,
+            VOICE_LANGUAGE,
+            ASR_USE_REMOTE,
+            ASR_REMOTE_BASE_URL,
+            ASR_REMOTE_API_KEY,
+            ASR_REMOTE_MODEL,
+            ASR_PROVIDER_MODEL,
+            TTS_PROVIDER_MODEL,
+            TTS_PROVIDER_VOICE,
+            VAD_THRESHOLD,
+            VAD_MIN_SILENCE,
+            VAD_MAX_SPEECH,
+            THINKING_LEVEL,
+            THINKING_BUDGET_ENABLED,
+            THINKING_BUDGET_TOKENS,
+            OPENAI_SERVICE_TIER_ENABLED,
+            OPENAI_SERVICE_TIER,
+            PROVIDER_BASE_URLS,
+            TITLE_GENERATION_ENABLED,
+            TITLE_GENERATION_MODEL,
+            TITLE_GENERATION_PROMPT,
+            TITLE_GENERATION_NOTIFICATIONS_ENABLED,
+            IMAGE_TRANSCRIPTION_ENABLED,
+            IMAGE_TRANSCRIPTION_ENABLED_MODELS,
+            IMAGE_TRANSCRIPTION_MODEL,
+            IMAGE_TRANSCRIPTION_BATCH_SIZE,
+            IMAGE_TRANSCRIPTION_PROMPT,
+            ACCESS_PAST_CONVERSATIONS,
+            ACCESS_SAVED_MEMORIES,
+            ACCESS_ACTIVE_MEMORY,
+            RAG_SEARCH_ENABLED,
+            MODEL_SEARCH_METHOD,
+            MANUAL_SEARCH_METHOD,
+            APP_LANGUAGE,
+            WEB_SEARCH_ENABLED,
+            WEB_SEARCH_PROVIDER,
+            WEB_SEARCH_NUM_RESULTS,
+            WEB_SEARCH_BASE_URL,
+            IMAGE_GEN_ENABLED,
+            IMAGE_GEN_MODEL,
+            IMAGE_GEN_SIZE,
+            SEARCH_CONTEXT_WINDOW,
+            SEARCH_MATCH_LIMIT,
+            RAG_THRESHOLD,
+            AUTO_CACHE_ENABLED,
+            AUTO_UPDATE_CHECK,
+            CUSTOM_PROVIDERS_JSON,
+            SHELL_ENABLED,
+            AUTOMATION_TOOLS_ENABLED,
+            PET_OVERLAY_ENABLED,
+            PET_OVERLAY_IMAGE_PATH,
+            PET_OVERLAY_CHARACTER,
+            PET_OVERLAY_SIZE_SCALE,
+            PET_EMOTION_ENABLED,
+            PETS_LIBRARY_JSON,
+            ACTIVE_PET_ID,
+            PET_PROMPT_INJECTION_ENABLED,
+            EXACT_EXECUTION_ENABLED,
+            PROXY_ENABLED,
+            PROXY_TYPE,
+            PROXY_HOST,
+            PROXY_PORT,
+            PROXY_USERNAME,
+            PROXY_BYPASS,
+            DNS_MODE,
+            DNS_PRIMARY_URL,
+            DNS_FALLBACK_URL,
+            DNS_WHITELIST,
+            SHELL_CONFIRM_ENABLED,
+            THEME_MODE,
+            COLOR_SCHEME,
+            DYNAMIC_COLOR,
+            BLUR_EFFECTS_ENABLED,
+            REDUCE_MOTION,
+            HAPTICS_ENABLED,
+            DETAILED_TOKEN_USAGE,
+            TOOL_CALL_DISPLAY_MODE,
+            THINKING_SEGMENT_DISPLAY_MODE,
+            AUTO_EXPAND_ACTIVE_GROUP,
+            SCHEME_STYLE,
+            FONT_PREFERENCE,
+            SHOW_DOCUMENTATION_FAB,
+            DEFAULT_TEMPERATURE,
+            DEFAULT_MAX_TOKENS,
+            DEFAULT_TOP_P,
+            DEFAULT_FREQUENCY_PENALTY,
+            DEFAULT_PRESENCE_PENALTY,
+            // Derived fetch state is never restored. Invalidate it when portable provider/model
+            // configuration is replaced so stale results cannot masquerade as imported data.
+            AVAILABLE_MODELS_JSON,
+            CUSTOM_ENDPOINT_RESOLUTIONS_JSON,
+            LAST_MODELS_FETCH_FINGERPRINT,
+            SANDBOX_ENABLED,
+        )
     }
 
     val selectedModel: Flow<String> = modelPreferenceStore.selectedModel
@@ -53,10 +179,12 @@ class SettingsManager(private val context: Context) {
     val apiKeys: Flow<List<ApiKeyEntry>> = modelPreferenceStore.apiKeys
     val activeApiKeyIds: Flow<Map<String, String>> = modelPreferenceStore.activeApiKeyIds
 
-    val systemPrompts: Flow<List<SystemPromptEntry>> = context.dataStore.data.map { pref ->
-        val jsonStr = pref[SYSTEM_PROMPTS_JSON] ?: "[]"
-        try { json.decodeFromString<List<SystemPromptEntry>>(jsonStr) } catch (e: Exception) { emptyList() }
-    }
+    val systemPrompts: Flow<List<SystemPromptEntry>> = context.dataStore.data
+        .map { it[SYSTEM_PROMPTS_JSON] }
+        .distinctUntilChanged()
+        .map { jsonStr ->
+            try { json.decodeFromString<List<SystemPromptEntry>>(jsonStr ?: "[]") } catch (e: Exception) { emptyList() }
+        }
     
     val activeSystemPromptId: Flow<String?> = context.dataStore.data.map { it[ACTIVE_SYSTEM_PROMPT_ID] }
 
@@ -133,10 +261,12 @@ class SettingsManager(private val context: Context) {
     val ragSearchEnabled: Flow<Boolean> = context.dataStore.data.map { it[RAG_SEARCH_ENABLED] ?: false }
     val modelSearchMethod: Flow<String> = context.dataStore.data.map { it[MODEL_SEARCH_METHOD] ?: "keyword" }
     val manualSearchMethod: Flow<String> = context.dataStore.data.map { it[MANUAL_SEARCH_METHOD] ?: "keyword" }
-    val embeddingModels: Flow<List<EmbeddingModelConfig>> = context.dataStore.data.map { pref ->
-        val jsonStr = pref[EMBEDDING_MODELS_JSON] ?: "[]"
-        try { json.decodeFromString<List<EmbeddingModelConfig>>(jsonStr) } catch (e: Exception) { emptyList() }
-    }
+    val embeddingModels: Flow<List<EmbeddingModelConfig>> = context.dataStore.data
+        .map { it[EMBEDDING_MODELS_JSON] }
+        .distinctUntilChanged()
+        .map { jsonStr ->
+            try { json.decodeFromString<List<EmbeddingModelConfig>>(jsonStr ?: "[]") } catch (e: Exception) { emptyList() }
+        }
     val activeEmbeddingModelId: Flow<String> = context.dataStore.data.map { it[ACTIVE_EMBEDDING_MODEL_ID] ?: "" }
 
     val appLanguage: Flow<String> = context.dataStore.data.map { it[APP_LANGUAGE] ?: "system" }
@@ -165,10 +295,12 @@ class SettingsManager(private val context: Context) {
     val defaultTopP: Flow<Float?> = context.dataStore.data.map { it[DEFAULT_TOP_P]?.toFloatOrNull() }
     val defaultFrequencyPenalty: Flow<Float?> = context.dataStore.data.map { it[DEFAULT_FREQUENCY_PENALTY]?.toFloatOrNull() }
     val defaultPresencePenalty: Flow<Float?> = context.dataStore.data.map { it[DEFAULT_PRESENCE_PENALTY]?.toFloatOrNull() }
-    val conversationSettings: Flow<Map<String, ConversationSettings>> = context.dataStore.data.map { pref ->
-        val jsonStr = pref[CONVERSATION_SETTINGS_JSON] ?: "{}"
-        try { json.decodeFromString<Map<String, ConversationSettings>>(jsonStr) } catch (e: Exception) { emptyMap() }
-    }
+    val conversationSettings: Flow<Map<String, ConversationSettings>> = context.dataStore.data
+        .map { it[CONVERSATION_SETTINGS_JSON] }
+        .distinctUntilChanged()
+        .map { jsonStr ->
+            try { json.decodeFromString<Map<String, ConversationSettings>>(jsonStr ?: "{}") } catch (e: Exception) { emptyMap() }
+        }
     val autoCacheEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTO_CACHE_ENABLED] ?: true }
     val autoUpdateCheck: Flow<Boolean> = context.dataStore.data.map { it[AUTO_UPDATE_CHECK] ?: true }
     val lastUpdateCheckTime: Flow<Long> = context.dataStore.data.map { it[LAST_UPDATE_CHECK_TIME] ?: 0L }
@@ -187,6 +319,14 @@ class SettingsManager(private val context: Context) {
         PetCharacter.fromKey(it[PET_OVERLAY_CHARACTER]).prefKey
     }
     val petEmotionEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_EMOTION_ENABLED] ?: true }
+    val petsLibrary: Flow<List<CustomPet>> = context.dataStore.data
+        .map { it[PETS_LIBRARY_JSON] }
+        .distinctUntilChanged()
+        .map { jsonStr ->
+            try { json.decodeFromString<List<CustomPet>>(jsonStr ?: "[]") } catch (e: Exception) { emptyList() }
+        }
+    val activePetId: Flow<String> = context.dataStore.data.map { it[ACTIVE_PET_ID] ?: "" }
+    val petPromptInjectionEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_PROMPT_INJECTION_ENABLED] ?: true }
     val exactExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[EXACT_EXECUTION_ENABLED] ?: false }
     val proxyEnabled: Flow<Boolean> = context.dataStore.data.map { it[PROXY_ENABLED] ?: false }
     val proxyType: Flow<String> = context.dataStore.data.map { it[PROXY_TYPE] ?: "http" }
@@ -805,6 +945,13 @@ class SettingsManager(private val context: Context) {
         context.dataStore.edit { it[PET_OVERLAY_CHARACTER] = PetCharacter.fromKey(character).prefKey }
     }
     suspend fun savePetEmotionEnabled(enabled: Boolean) { context.dataStore.edit { it[PET_EMOTION_ENABLED] = enabled } }
+    suspend fun savePetsLibrary(pets: List<CustomPet>) {
+        context.dataStore.edit { it[PETS_LIBRARY_JSON] = json.encodeToString(pets) }
+    }
+    suspend fun saveActivePetId(id: String) { context.dataStore.edit { it[ACTIVE_PET_ID] = id } }
+    suspend fun savePetPromptInjectionEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[PET_PROMPT_INJECTION_ENABLED] = enabled }
+    }
     suspend fun saveExactExecutionEnabled(enabled: Boolean) { context.dataStore.edit { it[EXACT_EXECUTION_ENABLED] = enabled } }
     suspend fun saveProxyEnabled(enabled: Boolean) { context.dataStore.edit { it[PROXY_ENABLED] = enabled } }
     suspend fun saveProxyType(type: String) { context.dataStore.edit { it[PROXY_TYPE] = type } }
@@ -985,118 +1132,7 @@ class SettingsManager(private val context: Context) {
      */
     suspend fun resetPortableSettingsForImport() {
         context.dataStore.edit { prefs ->
-            prefs.remove(SELECTED_MODEL)
-            prefs.remove(CUSTOM_MODELS)
-            prefs.remove(ENABLED_MODELS)
-            prefs.remove(ACTIVE_SYSTEM_PROMPT_ID)
-            prefs.remove(MODEL_ALIASES_JSON)
-            prefs.remove(CONTEXT_TOKEN_BUDGET)
-            prefs.remove(MAX_CONTEXT_WINDOW)
-            prefs.remove(VISUALIZE_CONTEXT_ROLLOUT)
-            prefs.remove(CONTEXT_COMPACT_ENABLED)
-            prefs.remove(CONTEXT_COMPACT_MODEL)
-            prefs.remove(CONTEXT_COMPACT_PROMPT)
-            prefs.remove(CONTEXT_COMPACT_RETAIN_COUNT)
-            prefs.remove(CODE_EXECUTION_ENABLED)
-            prefs.remove(GOOGLE_SEARCH_ENABLED)
-            prefs.remove(THINKING_ENABLED)
-            prefs.remove(TTS_ENABLED)
-            prefs.remove(TTS_LANGUAGE)
-            prefs.remove(TTS_SPEECH_RATE)
-            prefs.remove(TTS_AUTOPLAY)
-            prefs.remove(SHARE_INCLUDE_THINKING)
-            prefs.remove(SHARE_INCLUDE_TOOLS)
-            prefs.remove(VOICE_CONVERSATION_ENABLED)
-            prefs.remove(ASR_ENGINE_PREF)
-            prefs.remove(VOICE_LANGUAGE)
-            prefs.remove(ASR_USE_REMOTE)
-            prefs.remove(ASR_REMOTE_BASE_URL)
-            prefs.remove(ASR_REMOTE_API_KEY)
-            prefs.remove(ASR_REMOTE_MODEL)
-            prefs.remove(ASR_PROVIDER_MODEL)
-            prefs.remove(TTS_PROVIDER_MODEL)
-            prefs.remove(TTS_PROVIDER_VOICE)
-            prefs.remove(VAD_THRESHOLD)
-            prefs.remove(VAD_MIN_SILENCE)
-            prefs.remove(VAD_MAX_SPEECH)
-            prefs.remove(THINKING_LEVEL)
-            prefs.remove(THINKING_BUDGET_ENABLED)
-            prefs.remove(THINKING_BUDGET_TOKENS)
-            prefs.remove(OPENAI_SERVICE_TIER_ENABLED)
-            prefs.remove(OPENAI_SERVICE_TIER)
-            prefs.remove(PROVIDER_BASE_URLS)
-            prefs.remove(TITLE_GENERATION_ENABLED)
-            prefs.remove(TITLE_GENERATION_MODEL)
-            prefs.remove(TITLE_GENERATION_PROMPT)
-            prefs.remove(TITLE_GENERATION_NOTIFICATIONS_ENABLED)
-            prefs.remove(IMAGE_TRANSCRIPTION_ENABLED)
-            prefs.remove(IMAGE_TRANSCRIPTION_ENABLED_MODELS)
-            prefs.remove(IMAGE_TRANSCRIPTION_MODEL)
-            prefs.remove(IMAGE_TRANSCRIPTION_BATCH_SIZE)
-            prefs.remove(IMAGE_TRANSCRIPTION_PROMPT)
-            prefs.remove(ACCESS_PAST_CONVERSATIONS)
-            prefs.remove(ACCESS_SAVED_MEMORIES)
-            prefs.remove(ACCESS_ACTIVE_MEMORY)
-            prefs.remove(RAG_SEARCH_ENABLED)
-            prefs.remove(MODEL_SEARCH_METHOD)
-            prefs.remove(MANUAL_SEARCH_METHOD)
-            prefs.remove(APP_LANGUAGE)
-            prefs.remove(WEB_SEARCH_ENABLED)
-            prefs.remove(WEB_SEARCH_PROVIDER)
-            prefs.remove(WEB_SEARCH_NUM_RESULTS)
-            prefs.remove(WEB_SEARCH_BASE_URL)
-            prefs.remove(IMAGE_GEN_ENABLED)
-            prefs.remove(IMAGE_GEN_MODEL)
-            prefs.remove(IMAGE_GEN_SIZE)
-            prefs.remove(SEARCH_CONTEXT_WINDOW)
-            prefs.remove(SEARCH_MATCH_LIMIT)
-            prefs.remove(RAG_THRESHOLD)
-            prefs.remove(AUTO_CACHE_ENABLED)
-            prefs.remove(AUTO_UPDATE_CHECK)
-            prefs.remove(CUSTOM_PROVIDERS_JSON)
-            prefs.remove(SHELL_ENABLED)
-            prefs.remove(AUTOMATION_TOOLS_ENABLED)
-            prefs.remove(PET_OVERLAY_ENABLED)
-            prefs.remove(PET_OVERLAY_IMAGE_PATH)
-            prefs.remove(PET_OVERLAY_CHARACTER)
-            prefs.remove(PET_OVERLAY_SIZE_SCALE)
-            prefs.remove(EXACT_EXECUTION_ENABLED)
-            prefs.remove(PROXY_ENABLED)
-            prefs.remove(PROXY_TYPE)
-            prefs.remove(PROXY_HOST)
-            prefs.remove(PROXY_PORT)
-            prefs.remove(PROXY_USERNAME)
-            prefs.remove(PROXY_BYPASS)
-            prefs.remove(DNS_MODE)
-            prefs.remove(DNS_PRIMARY_URL)
-            prefs.remove(DNS_FALLBACK_URL)
-            prefs.remove(DNS_WHITELIST)
-            prefs.remove(SHELL_CONFIRM_ENABLED)
-            prefs.remove(THEME_MODE)
-            prefs.remove(COLOR_SCHEME)
-            prefs.remove(DYNAMIC_COLOR)
-            prefs.remove(BLUR_EFFECTS_ENABLED)
-            prefs.remove(REDUCE_MOTION)
-            prefs.remove(HAPTICS_ENABLED)
-            prefs.remove(DETAILED_TOKEN_USAGE)
-            prefs.remove(TOOL_CALL_DISPLAY_MODE)
-            prefs.remove(THINKING_SEGMENT_DISPLAY_MODE)
-            prefs.remove(AUTO_EXPAND_ACTIVE_GROUP)
-            prefs.remove(SCHEME_STYLE)
-            prefs.remove(FONT_PREFERENCE)
-            prefs.remove(SHOW_DOCUMENTATION_FAB)
-            prefs.remove(DEFAULT_TEMPERATURE)
-            prefs.remove(DEFAULT_MAX_TOKENS)
-            prefs.remove(DEFAULT_TOP_P)
-            prefs.remove(DEFAULT_FREQUENCY_PENALTY)
-            prefs.remove(DEFAULT_PRESENCE_PENALTY)
-
-            // Derived fetch state is never restored. Invalidate it when portable provider/model
-            // configuration is replaced so stale results cannot masquerade as imported data.
-            prefs.remove(AVAILABLE_MODELS_JSON)
-            prefs.remove(CUSTOM_ENDPOINT_RESOLUTIONS_JSON)
-            prefs.remove(LAST_MODELS_FETCH_FINGERPRINT)
-            prefs.remove(SANDBOX_ENABLED)
+            PORTABLE_IMPORT_RESET_KEYS.forEach { prefs.remove(it) }
         }
     }
 

@@ -10,12 +10,12 @@ import com.lxseek.chat.model.ThinkingLevels
 import com.lxseek.chat.api.util.buildToolCallId
 import com.lxseek.chat.api.util.prepareMessages
 import com.lxseek.chat.api.util.adaptToolRoundsForProvider
-import com.lxseek.chat.api.util.RequestFormatException
 import com.lxseek.chat.api.util.requireValidSerializedRequest
 import com.lxseek.chat.api.util.StreamTermination
 import com.lxseek.chat.api.util.TextToolCallRecovery
 import com.lxseek.chat.api.util.asRetryableTransportError
 import com.lxseek.chat.api.util.carriesModelOutput
+import com.lxseek.chat.api.util.emitTransportError
 import com.lxseek.chat.api.util.ProviderRetryPolicy
 import com.lxseek.chat.util.Constants
 import kotlinx.coroutines.delay
@@ -550,19 +550,8 @@ class AnthropicProvider(
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
-        } catch (e: RequestFormatException) {
-            DebugLog.e("LxChatAPI", "[Anthropic] blocked invalid request: ${e.violations.joinToString()}")
-            emit(StreamEvent.Error(GenerationError.RequestFormat("Anthropic", e.violations.joinToString())))
-        } catch (e: java.net.SocketTimeoutException) {
-            emit(StreamEvent.Error(GenerationError.Timeout))
-        } catch (e: java.net.ConnectException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Connection refused")))
-        } catch (e: java.net.UnknownHostException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Unknown host")))
         } catch (e: Exception) {
-            if (currentCoroutineContext().isActive) {
-                emit(StreamEvent.Error(GenerationError.Unknown(e)))
-            }
+            emitTransportError("Anthropic", "LxChatAPI", e)
         }
     }.flowOn(Dispatchers.IO)
 

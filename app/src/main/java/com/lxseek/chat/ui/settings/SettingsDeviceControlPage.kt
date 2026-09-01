@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
@@ -105,7 +106,7 @@ private data class DeviceControlStatus(
  * duplicating the pet-overlay logic. Contains only the pet settings content (no page scaffold).
  */
 @Composable
-fun PetSettingsSection(viewModel: ChatViewModel) {
+fun PetSettingsSection(viewModel: ChatViewModel, onOpenAddPet: () -> Unit = {}) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -199,6 +200,24 @@ fun PetSettingsSection(viewModel: ChatViewModel) {
     )
 
     SettingsGroupColumn(modifier = Modifier.fillMaxWidth()) {
+        SettingsGroup(
+            title = stringResource(R.string.pet_library_title),
+            items = listOf({
+                SettingsItem(
+                    headlineContent = { Text(stringResource(R.string.pet_add_entry)) },
+                    supportingContent = { Text(stringResource(R.string.pet_add_desc)) },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.Pets,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
+                    modifier = Modifier.clickable(onClick = onOpenAddPet),
+                )
+            }),
+        )
+
         SettingsGroup(
             title = stringResource(R.string.pet_group_builtin_title),
             items = listOf({

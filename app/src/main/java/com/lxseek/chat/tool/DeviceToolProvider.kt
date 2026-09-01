@@ -402,12 +402,19 @@ class DeviceToolProvider(private val app: Application) : ToolProvider {
         put("type", "device_time")
         put("epochMillis", System.currentTimeMillis())
         val now = Date()
-        put("iso", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(now))
-        put("date", SimpleDateFormat("yyyy-MM-dd", Locale.US).format(now))
-        put("time", SimpleDateFormat("HH:mm:ss", Locale.US).format(now))
+        put("iso", ISO_FORMAT.get()!!.format(now))
+        put("date", DATE_FORMAT.get()!!.format(now))
+        put("time", TIME_FORMAT.get()!!.format(now))
         put("timezone", TimeZone.getDefault().id)
         put("timezoneOffsetHours", TimeZone.getDefault().getOffset(now.time) / 3600000.0)
     }.toString()
+
+    private companion object {
+        /** SimpleDateFormat 非线程安全，按调用线程缓存，避免每次工具调用重复解析格式串。 */
+        private val ISO_FORMAT = ThreadLocal.withInitial { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US) }
+        private val DATE_FORMAT = ThreadLocal.withInitial { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
+        private val TIME_FORMAT = ThreadLocal.withInitial { SimpleDateFormat("HH:mm:ss", Locale.US) }
+    }
 
     private fun screenJson(): String = buildJsonObject {
         put("type", "device_screen")

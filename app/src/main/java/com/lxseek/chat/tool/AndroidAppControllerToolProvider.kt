@@ -925,8 +925,7 @@ class AndroidAppControllerToolProvider(private val app: Application) : ToolProvi
     private fun resolvePackage(appId: String): String? {
         val id = appId.trim()
         if (id.contains('.')) return id
-        KNOWN_APPS.firstOrNull { it.first == id.lowercase() || it.second == id }?.let { return it.third }
-        return KNOWN_APPS.firstOrNull { it.second.contains(id, ignoreCase = true) }?.third
+        return KNOWN_APPS.firstOrNull { it.first == id.lowercase() || it.second == id }?.third
     }
 
     private fun err(code: String, message: String?): String = toolError("android_error", code, message)

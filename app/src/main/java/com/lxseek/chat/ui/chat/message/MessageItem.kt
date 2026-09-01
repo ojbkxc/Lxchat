@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.text.input.*
@@ -49,6 +48,7 @@ import com.lxseek.chat.ui.chat.conversationSearchMatchRanges
 import com.lxseek.chat.ui.common.LocalLxChatHaptics
 import com.lxseek.chat.ui.components.*
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
+import com.lxseek.chat.ui.theme.LxDesign
 import com.mikepenz.markdown.compose.components.markdownComponents
 
 internal fun usesExplicitDetailBackHandler(thinkingSegmentDisplayMode: String): Boolean =
@@ -139,7 +139,7 @@ internal fun MessageItem(
         DropdownMenu(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 6.dp,
-            shape = RoundedCornerShape(12.dp),
+            shape = LxDesign.shapeS,
             expanded = true,
             onDismissRequest = { showLongPressMenu = false },
         ) {
@@ -222,16 +222,16 @@ internal fun MessageItem(
         Participant.ERROR -> MaterialTheme.colorScheme.onErrorContainer
     }
 
-    // Modern bubble geometry: a larger 18dp radius reads softer and more contemporary.
-    // The user bubble uses an asymmetric top-end corner (6dp) so it visually points
-    // toward the sender side, reinforcing left/right authorship at a glance.
+    // Bubble geometry from LxDesign tokens: the user bubble uses an asymmetric
+    // bottom-end corner (8dp) as a "tail" toward the sender side, reinforcing
+    // left/right authorship at a glance without any decoration.
     val shape = when (message.participant) {
-        Participant.USER -> RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp, topEnd = 6.dp)
-        Participant.MODEL -> RoundedCornerShape(18.dp)
-        Participant.ERROR -> RoundedCornerShape(18.dp)
+        Participant.USER -> LxDesign.shapeBubbleUser
+        Participant.MODEL -> LxDesign.shapeBubbleModel
+        Participant.ERROR -> LxDesign.shapeBubbleModel
     }
     val selectionRippleShape = when (message.participant) {
-        Participant.MODEL -> RoundedCornerShape(18.dp)
+        Participant.MODEL -> LxDesign.shapeBubbleModel
         else -> shape
     }
 

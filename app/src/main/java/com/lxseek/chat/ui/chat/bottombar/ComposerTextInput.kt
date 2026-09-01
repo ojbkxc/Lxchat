@@ -16,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.ui.theme.ChatType
+import com.lxseek.chat.ui.theme.LxDesign
 
 /**
  * Composer text input area with conversation variable insertion support.
@@ -71,7 +72,7 @@ internal fun ComposerTextInput(
         enabled = true,
         lineLimits = TextFieldLineLimits.MultiLine(1, 6),
         // 圆角背景 + surfaceVariant 容器色，内边距 horizontal 16dp vertical 12dp
-        shape = RoundedCornerShape(12.dp),
+        shape = LxDesign.shapeS,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         colors = TextFieldDefaults.colors(
             focusedIndicatorColor = Color.Transparent,

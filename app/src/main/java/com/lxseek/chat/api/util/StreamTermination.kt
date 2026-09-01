@@ -2,6 +2,13 @@ package com.lxseek.chat.api.util
 
 import com.lxseek.chat.api.GenerationError
 import com.lxseek.chat.api.StreamEvent
+import com.lxseek.chat.util.DebugLog
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.isActive
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 /**
  * How a streaming provider response actually ended.
@@ -117,4 +124,30 @@ internal fun StreamEvent.carriesModelOutput(): Boolean = when (this) {
     is StreamEvent.UsageUpdate -> false
     is StreamEvent.Retrying -> false
     is StreamEvent.Error -> false
+}
+
+/**
+ * Terminal catch-chain shared by every streaming provider: maps the transport/validation
+ * exception raised around the retry loop to its [GenerationError] and emits it.
+ *
+ * [CancellationException] must NOT be caught here — the caller rethrows it before calling, so
+ * coroutine cancellation keeps its normal semantics.
+ */
+internal suspend fun FlowCollector<StreamEvent>.emitTransportError(
+    provider: String,
+    logTag: String,
+    e: Exception,
+) {
+    when (e) {
+        is RequestFormatException -> {
+            DebugLog.e(logTag, "[$provider] blocked invalid request: ${e.violations.joinToString()}")
+            emit(StreamEvent.Error(GenerationError.RequestFormat(provider, e.violations.joinToString())))
+        }
+        is SocketTimeoutException -> emit(StreamEvent.Error(GenerationError.Timeout))
+        is ConnectException -> emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Connection refused")))
+        is UnknownHostException -> emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Unknown host")))
+        else -> if (currentCoroutineContext().isActive) {
+            emit(StreamEvent.Error(GenerationError.Unknown(e)))
+        }
+    }
 }

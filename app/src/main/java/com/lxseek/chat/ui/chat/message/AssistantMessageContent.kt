@@ -52,6 +52,7 @@ import com.lxseek.chat.model.ToolCallDisplayModes
 import com.lxseek.chat.model.ThinkingSegmentDisplayModes
 import com.lxseek.chat.ui.common.LocalLxChatHaptics
 import com.lxseek.chat.ui.theme.ChatType
+import com.lxseek.chat.ui.theme.LxDesign
 
 internal val AssistantMessageHorizontalInset = 8.dp
 
@@ -429,7 +430,7 @@ internal fun AssistantMessageContent(
                         .noOpBringIntoView()
                 ) {
                     if (isError) {
-                        Surface(color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f), contentColor = MaterialTheme.colorScheme.onErrorContainer, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Surface(color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f), contentColor = MaterialTheme.colorScheme.onErrorContainer, shape = LxDesign.shapeM, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                                 Row(verticalAlignment = Alignment.Top) {
                                     Icon(Icons.Default.Info, contentDescription = "Error", modifier = Modifier.size(16.dp).padding(top = 2.dp), tint = MaterialTheme.colorScheme.error)
@@ -497,7 +498,7 @@ internal fun AssistantMessageContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(LxDesign.shapeS)
                                     .combinedClickable(
                                         onClick = { onMediaClick(genImages, idx) },
                                         onLongClick = { haptics.longPress() },
@@ -683,7 +684,7 @@ internal fun AssistantMessageContent(
                             DropdownMenu(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 tonalElevation = 6.dp,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = LxDesign.shapeS,
                                 expanded = showMenu && actionAvailability.informationVisible,
                                 onDismissRequest = { showMenu = false },
                             ) {

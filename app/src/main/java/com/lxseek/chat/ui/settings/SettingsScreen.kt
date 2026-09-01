@@ -3,6 +3,7 @@ package com.lxseek.chat.ui.settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
@@ -32,6 +33,7 @@ import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.model.ModelId
 import com.lxseek.chat.model.apiModelName
 import com.lxseek.chat.ui.settings.datacontrol.SettingsDataControlPage
+import com.lxseek.chat.ui.theme.LxDesign
 import com.lxseek.chat.util.Constants
 import com.lxseek.chat.viewmodel.ChatViewModel
 
@@ -39,12 +41,12 @@ import com.lxseek.chat.viewmodel.ChatViewModel
  *  (spacing is handled by the column's [Arrangement.spacedBy] instead). */
 val LocalSettingsGroupSpacing = staticCompositionLocalOf { false }
 
-/** Settings page content container: uniform 24dp spacing between groups (and any other elements),
+/** Settings page content container: uniform 20dp spacing between groups (and any other elements),
  *  with zero trailing after the last element. */
 @Composable
 fun SettingsGroupColumn(
     modifier: Modifier = Modifier,
-    spacing: Dp = 24.dp,
+    spacing: Dp = 20.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
     CompositionLocalProvider(LocalSettingsGroupSpacing provides true) {
@@ -60,37 +62,44 @@ fun SettingsGroupColumn(
 fun SettingsGroup(
     title: String,
     modifier: Modifier = Modifier,
-    bottomPadding: androidx.compose.ui.unit.Dp = 24.dp,
+    bottomPadding: androidx.compose.ui.unit.Dp = 20.dp,
     items: List<@Composable () -> Unit>
 ) {
     val effectiveBottom = if (LocalSettingsGroupSpacing.current) 0.dp else bottomPadding
     Column(modifier = modifier.fillMaxWidth().padding(bottom = effectiveBottom)) {
-        // 分组标题：更小更轻的字体，类似 iOS section header
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-        )
-        // 卡片包裹：圆角 + 微妙的 tonal elevation，营造 iOS 设置卡片的层次感
-        Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 1.dp,
-            shadowElevation = 0.dp,
+        // 分区标题：工作台风 —— 首栏强调条，全宽无卡片容器
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                items.forEachIndexed { index, item ->
-                    item()
-                    if (index != items.lastIndex) {
-                        // 更细更柔和的分割线，缩进以贴合卡片内边距
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                        )
-                    }
+            Box(
+                modifier = Modifier
+                    .width(LxDesign.accentBarThickness)
+                    .height(14.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(1.dp))
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        // 内容区：全宽底面（background 直接绘制，省一层 Surface 嵌套）
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+        ) {
+            items.forEachIndexed { index, item ->
+                item()
+                if (index != items.lastIndex) {
+                    HorizontalDivider(
+                        thickness = LxDesign.dividerThickness,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
                 }
             }
         }
@@ -106,9 +115,9 @@ fun SettingsIconContent(
 ) {
     Column(modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            // 图标圆角背景容器（iOS 设置风格）：用 primaryContainer 作底，图标用 onPrimaryContainer
+            // 图标方片（工作台风）：primaryContainer 底 + LxDesign cornerS 圆角
             Surface(
-                shape = RoundedCornerShape(10.dp),
+                shape = LxDesign.shapeS,
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.size(32.dp),
             ) {
@@ -283,8 +292,8 @@ private val settingsGroups = listOf(
     // runtime_status 已合并进 sandbox 页面：三个运行时引擎（Python/Node/FFmpeg）
     // 现在都跑在 proot 沙箱里，沙箱页面顶部展示它们的就绪状态，不再单列菜单入口。
     SettingsGroupData(titleRes = R.string.settings_group_capabilities, items = listOf(
-        SettingsCategory("adb_shell", R.string.settings_adb_shell, R.string.settings_adb_shell_desc, Icons.Default.Terminal),
-        SettingsCategory("sandbox", R.string.settings_sandbox, R.string.settings_sandbox_desc, Icons.Default.Security),
+        SettingsCategory("adb_shell", R.string.settings_adb_shell, R.string.settings_adb_shell_desc, Icons.Default.Terminal, requiresMembership = true),
+        SettingsCategory("sandbox", R.string.settings_sandbox, R.string.settings_sandbox_desc, Icons.Default.Security, requiresMembership = true),
         SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Code),
     )),
     // Group 7 — 接入与自动化（连接/插件/代理/任务归位，proxy 归入网络接入）
@@ -297,10 +306,10 @@ private val settingsGroups = listOf(
             iconRes = R.drawable.ic_mcp,
         ),
         SettingsCategory("plugins", R.string.settings_plugins, R.string.settings_plugins_desc, Icons.Default.Extension),
-        SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store),
+        SettingsCategory("market", R.string.settings_market, R.string.settings_market_desc, Icons.Default.Store, requiresMembership = true),
         SettingsCategory("search", R.string.search_title, R.string.search_desc, Icons.Default.Search),
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
-        SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
+        SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat, requiresMembership = true),
         SettingsCategory("cron", R.string.settings_cron, R.string.settings_cron_desc, Icons.Default.Schedule),
     )),
     // Group 8 — 数据与系统（about 入口已移除：关于内容由会员页面内部承载）
@@ -308,7 +317,7 @@ private val settingsGroups = listOf(
         SettingsCategory("memory", R.string.settings_memory, R.string.settings_memory_desc, Icons.Default.Description),
         SettingsCategory("datacontrol", R.string.settings_data_control, R.string.settings_data_control_desc, Icons.Default.Storage),
         SettingsCategory("logs", R.string.settings_logs, R.string.settings_logs_desc, Icons.Default.ReceiptLong),
-        SettingsCategory("statistics", R.string.settings_statistics, R.string.settings_statistics_desc, Icons.Default.BarChart),
+        SettingsCategory("statistics", R.string.settings_statistics, R.string.settings_statistics_desc, Icons.Default.BarChart, requiresMembership = true),
     )),
     // Group 9 — 系统（权限与诊断，所有用户可见）
     SettingsGroupData(titleRes = R.string.settings_group_system, items = listOf(
@@ -453,7 +462,12 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "memory" -> SettingsMemoryPage(viewModel, onBack = { selectedCategory = null })
                 "statistics" -> SettingsStatisticsPage(viewModel, onBack = { selectedCategory = null })
                 "datacontrol" -> SettingsDataControlPage(viewModel, onBack = { selectedCategory = null })
-                "appearance" -> SettingsAppearancePage(viewModel, onBack = { selectedCategory = null })
+                "appearance" -> SettingsAppearancePage(
+                    viewModel,
+                    onBack = { selectedCategory = null },
+                    onOpenAddPet = { selectedCategory = "add_pet" },
+                )
+                "add_pet" -> SettingsAddPetPage(viewModel, onBack = { selectedCategory = null })
 
                 "logs" -> SettingsLogsPage(viewModel, onBack = { selectedCategory = null })
 
@@ -561,24 +575,37 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     if (group.titleRes != null) {
-                                        Text(
-                                            text = stringResource(group.titleRes),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                        )
+                                        // 工作台分区头：强调条 + 标题，无卡片容器
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(LxDesign.accentBarThickness)
+                                                    .height(14.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.primary,
+                                                        RoundedCornerShape(1.dp)
+                                                    )
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                text = stringResource(group.titleRes),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                                modifier = Modifier.padding(vertical = 6.dp)
+                                            )
+                                        }
                                     }
-                                    Card(
+                                    // 全宽底面（surfaceContainerLow），行内细分隔线，不嵌套卡片
+                                    Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 16.dp),
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                                        ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
                                     ) {
-                                        Column(modifier = Modifier.fillMaxWidth()) {
                                             group.items.forEachIndexed { index, cat ->
                                                 val isLastItem = index == group.items.lastIndex
                                                 val itemEnabled = !cat.requiresMembership || hasMembership
@@ -647,8 +674,8 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                 }
                                                 if (!isLastItem) {
                                                     HorizontalDivider(
-                                                        thickness = 0.5.dp,
-                                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                                        thickness = LxDesign.dividerThickness,
+                                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                                                         modifier = Modifier.padding(horizontal = 16.dp),
                                                     )
                                                 }
@@ -657,7 +684,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                     }
                                 }
                                 if (groupIndex < settingsGroups.size - 1) {
-                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Spacer(modifier = Modifier.height(LxDesign.spaceXL))
                                 }
                             }
                         }
@@ -703,6 +730,6 @@ private fun SettingsSearchField(
             }
         },
         singleLine = true,
-        shape = RoundedCornerShape(12.dp),
+        shape = LxDesign.shapeS,
     )
 }

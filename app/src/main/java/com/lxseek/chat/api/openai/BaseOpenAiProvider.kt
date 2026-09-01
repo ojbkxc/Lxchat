@@ -6,11 +6,9 @@ import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.api.util.StreamingThinkTagParser
 import com.lxseek.chat.api.util.convertToOpenAiMessages
 import com.lxseek.chat.api.util.prepareMessages
-import com.lxseek.chat.api.util.RequestFormatException
-import com.lxseek.chat.api.util.requireValidSerializedRequest
-import com.lxseek.chat.api.util.StreamTermination
 import com.lxseek.chat.api.util.asRetryableTransportError
 import com.lxseek.chat.api.util.carriesModelOutput
+import com.lxseek.chat.api.util.emitTransportError
 import com.lxseek.chat.api.util.ProviderRetryPolicy
 import com.lxseek.chat.api.util.safeWireToolCallId
 import com.lxseek.chat.api.util.safeWireToolName
@@ -27,9 +25,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import java.net.ConnectException
 import java.net.SocketTimeoutException
-import java.net.UnknownHostException
 
 abstract class BaseOpenAiProvider : LlmProvider {
 
@@ -268,19 +264,8 @@ abstract class BaseOpenAiProvider : LlmProvider {
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: RequestFormatException) {
-            DebugLog.e("LxChatAPI", "[$name] blocked invalid request: ${e.violations.joinToString()}")
-            emit(StreamEvent.Error(GenerationError.RequestFormat(name, e.violations.joinToString())))
-        } catch (e: SocketTimeoutException) {
-            emit(StreamEvent.Error(GenerationError.Timeout))
-        } catch (e: ConnectException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Connection refused")))
-        } catch (e: UnknownHostException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Unknown host")))
         } catch (e: Exception) {
-            if (currentCoroutineContext().isActive) {
-                emit(StreamEvent.Error(GenerationError.Unknown(e)))
-            }
+            emitTransportError(name, "LxChatAPI", e)
         }
     }.flowOn(Dispatchers.IO)
 
@@ -304,7 +289,9 @@ abstract class BaseOpenAiProvider : LlmProvider {
         val pendingToolCalls = mutableMapOf<Int, PendingToolCall>()
         // Accumulate answer content so that, if the server emits tool calls as content text rather
         // than as structured delta.tool_calls (#33 path B), we can recover them at stream end.
-        val contentBuf = StringBuilder()
+        // Only needed when tools are offered: plain answers skip the buffer entirely and avoid
+        // holding a second copy of a potentially very long response in memory.
+        val contentBuf = if (!config.tools.isNullOrEmpty()) StringBuilder() else null
         var producedContent = false
         var reportedError = false
         var streamError: GenerationError? = null
@@ -317,7 +304,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
             emit(event)
         }
         val emitAndAccumulate: suspend (StreamEvent) -> Unit = { event ->
-            if (event is StreamEvent.TextChunk) contentBuf.append(event.text)
+            if (event is StreamEvent.TextChunk) contentBuf?.append(event.text)
             emitTracked(event)
         }
         var structuredToolCallsEmitted = false
@@ -606,7 +593,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
             !textToolCallsEmitted &&
             !config.tools.isNullOrEmpty()
         ) {
-            val parsed = ToolCallTextParser.parse(contentBuf.toString())
+            val parsed = contentBuf?.let { ToolCallTextParser.parse(it.toString()) } ?: emptyList()
             if (parsed.size == 1) {
                 emitTracked(StreamEvent.ToolCallRequest(syntheticToolCallId(), parsed[0].name, parsed[0].arguments))
             } else if (parsed.size > 1) {

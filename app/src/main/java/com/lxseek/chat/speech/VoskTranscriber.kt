@@ -595,20 +595,16 @@ class VoskTranscriber(private val context: Context) {
         destDir: File,
         onProgress: (Int) -> Unit = {}
     ) {
-        var totalEntries = 0
-        java.util.zip.ZipInputStream(zipFile.inputStream()).use { zis ->
-            while (zis.nextEntry != null) {
-                totalEntries++
-                zis.closeEntry()
-            }
-        }
+        // ZipFile 从中央目录直接拿条目数，不用像 ZipInputStream 那样为统计条目
+        // 预先完整扫一遍压缩包（1GB+ 模型下载场景下省掉一整轮磁盘读取）。
+        java.util.zip.ZipFile(zipFile).use { zip ->
+            val totalEntries = zip.size()
+            Log.i(TAG, "Extracting $totalEntries files from ${zipFile.name}")
 
-        Log.i(TAG, "Extracting $totalEntries files from ${zipFile.name}")
-
-        var extractedCount = 0
-        java.util.zip.ZipInputStream(zipFile.inputStream()).use { zis ->
-            var entry = zis.nextEntry
-            while (entry != null) {
+            var extractedCount = 0
+            val entries = zip.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
                 val newFile = File(destDir, entry.name)
 
                 // Zip Slip protection: reject entries that escape the destination directory.
@@ -627,11 +623,13 @@ class VoskTranscriber(private val context: Context) {
                         newFile.mkdirs()
                     } else {
                         newFile.parentFile?.mkdirs()
-                        newFile.outputStream().use { fos ->
-                            val buffer = ByteArray(8192)
-                            var len: Int
-                            while (zis.read(buffer).also { len = it } > 0) {
-                                fos.write(buffer, 0, len)
+                        zip.getInputStream(entry).use { zis ->
+                            newFile.outputStream().use { fos ->
+                                val buffer = ByteArray(8192)
+                                var len: Int
+                                while (zis.read(buffer).also { len = it } > 0) {
+                                    fos.write(buffer, 0, len)
+                                }
                             }
                         }
                     }
@@ -647,13 +645,10 @@ class VoskTranscriber(private val context: Context) {
                     Log.e(TAG, "Failed to extract ${entry.name}", e)
                     throw e
                 }
-
-                zis.closeEntry()
-                entry = zis.nextEntry
             }
         }
 
-        Log.i(TAG, "Extracted $extractedCount files successfully")
+        Log.i(TAG, "Extraction complete")
     }
 
     private fun getModelDirectory(languageCode: String = currentLanguage): File {

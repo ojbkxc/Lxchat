@@ -11,6 +11,7 @@ import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.api.util.ProviderRetryPolicy
 import com.lxseek.chat.api.util.asRetryableTransportError
 import com.lxseek.chat.api.util.buildToolCallId
+import com.lxseek.chat.api.util.emitTransportError
 import com.lxseek.chat.api.util.prepareMessages
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.Participant
@@ -27,9 +28,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.ConnectException
 import java.net.SocketTimeoutException
-import java.net.UnknownHostException
 
 /**
  * OpenAI 官方 ChatGPT 提供商(Codex Responses API)。
@@ -209,16 +208,8 @@ class OpenAIXProvider(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: SocketTimeoutException) {
-            emit(StreamEvent.Error(GenerationError.Timeout))
-        } catch (e: ConnectException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Connection refused")))
-        } catch (e: UnknownHostException) {
-            emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Unknown host")))
         } catch (e: Exception) {
-            if (currentCoroutineContext().isActive) {
-                emit(StreamEvent.Error(GenerationError.Unknown(e)))
-            }
+            emitTransportError(name, TAG, e)
         }
     }.flowOn(Dispatchers.IO)
 

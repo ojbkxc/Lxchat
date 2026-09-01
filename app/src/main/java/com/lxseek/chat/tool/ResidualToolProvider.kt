@@ -18,7 +18,6 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import java.io.File
 import java.security.MessageDigest
-import java.util.concurrent.TimeUnit
 
 /**
  * 残留/重复文件维护工具集（双模式）。
@@ -148,8 +147,6 @@ class ResidualToolProvider(private val context: Context) : ToolProvider {
             return n
         }
 
-        private fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
-
         /** 简单 glob（*.log / foo?.txt）转正则。 */
         private fun globToRegex(glob: String): Regex {
             val sb = StringBuilder("^")
@@ -180,8 +177,6 @@ class ResidualToolProvider(private val context: Context) : ToolProvider {
             ""
         }
     }
-
-    private data class RootResult(val exitCode: Int, val output: String)
 
     private val rootMode: Boolean get() = RootDetector.isRootAvailable()
     private val sharedMode: Boolean get() = SandboxSharedStorageAccess.isGranted(context)
@@ -234,28 +229,11 @@ class ResidualToolProvider(private val context: Context) : ToolProvider {
 
     // ── 底层执行（root shell / 普通文件遍历） ──
 
-    private fun runRoot(cmd: String, timeoutMs: Int = TIMEOUT_DEFAULT): RootResult {
-        return try {
-            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-            val waitOk = p.waitFor(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
-            val output = (p.inputStream.bufferedReader().use { it.readText() } +
-                p.errorStream.bufferedReader().use { it.readText() }).trim()
-            val exitCode = if (waitOk) p.exitValue() else -1
-            if (!waitOk) p.destroy()
-            RootResult(exitCode, output)
-        } catch (e: Exception) {
-            RootResult(-1, "error: ${e.message}")
-        }
-    }
+    private fun runRoot(cmd: String, timeoutMs: Int = TIMEOUT_DEFAULT): RootResult =
+        com.lxseek.chat.tool.runRoot(cmd, timeoutMs)
 
-    private fun result(name: String, cmd: String, res: RootResult): String {
-        return buildJsonObject {
-            put("type", name)
-            put("command", cmd)
-            put("exit_code", res.exitCode)
-            put("output", res.output.take(MAX_OUTPUT))
-        }.toString()
-    }
+    private fun result(name: String, cmd: String, res: RootResult): String =
+        rootToolResult(name, cmd, res, MAX_OUTPUT)
 
     private fun installedPackages(): Set<String> {
         return runRoot("pm list packages 2>/dev/null | sed 's/^package://'", TIMEOUT_DEFAULT)

@@ -47,9 +47,10 @@ import com.lxseek.chat.ui.components.clearFocusOnTap
 internal val SettingsBarHeight = 64.dp
 
 /**
- * Flat ChatGPT-style settings top bar: a plain back arrow on the left, the title centered, optional
- * [actions] on the right. No circular button, no gradient, no elevation. An opaque bar (including
- * its status-bar strip) hides list content scrolling underneath it.
+ * Flat workbench settings top bar: a plain back arrow on the left, the title centered, optional
+ * [actions] on the right. No circular button, no elevation — but unlike a plain bar it carries a
+ * 2dp primary-tinted bottom rule, the LxChat workbench signature shared with the chat top bar.
+ * An opaque bar (including its status-bar strip) hides list content scrolling underneath it.
  */
 @Composable
 private fun SettingsTopBar(
@@ -58,39 +59,51 @@ private fun SettingsTopBar(
     statusBarTop: Dp,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(statusBarTop + SettingsBarHeight)
             .background(MaterialTheme.colorScheme.background)
     ) {
-        IconButton(
-            onClick = onBack,
+        Box(
             modifier = Modifier
-                .padding(start = 4.dp, top = statusBarTop)
-                .size(SettingsBarHeight),
+                .fillMaxWidth()
+                .height(statusBarTop + SettingsBarHeight)
         ) {
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.back),
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .padding(start = 4.dp, top = statusBarTop)
+                    .size(SettingsBarHeight),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back),
+                )
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.align(Alignment.Center),
+            )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = 4.dp, top = statusBarTop),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+                content = actions,
             )
         }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.align(Alignment.Center),
-        )
-        Row(
+        // 工作台签名：2dp 主色底规则线（与聊天顶栏同源）
+        Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 4.dp, top = statusBarTop),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-            content = actions,
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
         )
     }
 }
@@ -126,7 +139,7 @@ fun CollapsingSettingsScaffold(
                 .clearFocusOnTap()
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(statusBarTop + SettingsBarHeight))
+            Spacer(modifier = Modifier.height(statusBarTop + SettingsBarHeight + 2.dp))
             content()
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -181,7 +194,7 @@ fun CollapsingSettingsLazyScaffold(
                 .imePadding()
                 .clearFocusOnTap()
                 .padding(horizontal = contentHorizontalPadding),
-            contentPadding = PaddingValues(top = statusBarTop + SettingsBarHeight)
+            contentPadding = PaddingValues(top = statusBarTop + SettingsBarHeight + 2.dp)
         ) {
             item { header() }
             content()

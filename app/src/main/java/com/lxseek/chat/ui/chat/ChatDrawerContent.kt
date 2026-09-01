@@ -99,6 +99,7 @@ import com.lxseek.chat.ui.common.LocalLxChatHaptics
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
 import com.lxseek.chat.ui.motion.closeWithMotionPolicy
 import com.lxseek.chat.ui.theme.ChatType
+import com.lxseek.chat.ui.theme.LxDesign
 import com.lxseek.chat.util.verticalEdgeFade
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -186,7 +187,7 @@ internal fun DrawerSwipeToDelete(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .background(MaterialTheme.colorScheme.error, RoundedCornerShape(12.dp)),
+                    .background(MaterialTheme.colorScheme.error, LxDesign.shapeS),
                 contentAlignment = Alignment.CenterEnd,
             ) {
                 Icon(
@@ -238,7 +239,7 @@ internal fun ChatDrawerContent(
 
 
     ModalDrawerSheet(
-        drawerShape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
+        drawerShape = LxDesign.shapeDrawer,
         drawerContainerColor = MaterialTheme.colorScheme.surface,
         drawerTonalElevation = 0.dp,
         modifier = Modifier
@@ -307,7 +308,7 @@ internal fun ChatDrawerContent(
                         scope.launch { drawerState.closeWithMotionPolicy(motionPolicy) }
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = LxDesign.shapeS
                 ) {
                     Icon(Icons.Default.Repeat, null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
@@ -368,7 +369,7 @@ internal fun ChatDrawerContent(
                                     .fillMaxWidth()
                                     .height(52.dp)
                                     .padding(vertical = 3.dp)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(LxDesign.shapeS)
                                     .pointerInput(showMenu) {
                                         if (!showMenu) {
                                             awaitPointerEventScope {
@@ -398,7 +399,7 @@ internal fun ChatDrawerContent(
                                         }
                                     ),
                                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = LxDesign.shapeS
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -409,9 +410,9 @@ internal fun ChatDrawerContent(
                                     if (isSelected) {
                                         Box(
                                             modifier = Modifier
-                                                .width(3.dp)
+                                                .width(LxDesign.accentBarThickness)
                                                 .height(18.dp)
-                                                .clip(RoundedCornerShape(2.dp))
+                                                .clip(RoundedCornerShape(1.dp))
                                                 .background(MaterialTheme.colorScheme.primary)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -487,7 +488,7 @@ internal fun ChatDrawerContent(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false },
                                 offset = pressOffset,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = LxDesign.shapeS
                             ) {
                                 DropdownMenuItem(
                                     text = { Text(if (conversation.pinned) stringResource(R.string.unpin_conversation) else stringResource(R.string.pin_conversation)) },
@@ -548,7 +549,7 @@ internal fun ChatDrawerContent(
                         val buttonTopPx = coords.positionInWindow().y
                         onSettingsButtonTop((windowHeightPx - buttonTopPx) / density.density)
                     },
-                shape = RoundedCornerShape(12.dp)
+                shape = LxDesign.shapeS
             ) {
                 Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))

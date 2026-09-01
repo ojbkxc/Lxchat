@@ -342,14 +342,50 @@ class SmartModelRouter(
         baseConfig: ProviderConfig,
         emit: suspend (StreamEvent) -> Unit,
     ) {
-        // 白名单检查
+        // 白名单拒绝：直接 emit 配置错误（公共管道返回 null 的语义）。
         if (!routerConfig.allowlist.isAllowed(modelId)) {
             emit(StreamEvent.Error(GenerationError.Configuration(
                 "模型 '$modelId' 不在白名单中或已被黑名单禁止",
             )))
             return
         }
+        var sawError = false
+        executeWithLimits(provider, modelId, apiKeyOverride, baseUrlOverride, messages, baseConfig) { entryConfig ->
+            provider.generateResponse(messages, entryConfig).collect { event ->
+                if (event is StreamEvent.Error) sawError = true
+                emit(event)
+            }
+        }
+        // 反馈环：成功打分已在 executeWithLimits 内完成；Provider 自报 Error
+        // （未抛异常）同样计为失败（与 AdaptiveFallbackTracker 的口径一致）。
+        if (sawError) {
+            recordRouteScore(
+                providerName = provider.name,
+                modelId = modelId,
+                success = false,
+                latencyMs = 0L,
+                boosters = routeBoosters(baseConfig),
+            )
+        }
+    }
 
+    /**
+     * 两条执行路径（streamDirect / attemptEntry）的公共管道：
+     * Key 解析 → 构建条目配置 → 速率限制 → 并发限制 → 执行 → 打质量分 → release。
+     *
+     * 调用方需先自行做白名单检查（拒绝时的错误上报方式不同：emit vs AttemptResult）。
+     * [run] 接收一个「收集回调」：以 Provider Flow 的每次事件回调一次；
+     * 正常结束时记录 success 打分，抛异常时记录 failure 打分并向上传播。
+     */
+    private suspend fun executeWithLimits(
+        provider: LlmProvider,
+        modelId: String,
+        apiKeyOverride: String?,
+        baseUrlOverride: String?,
+        messages: List<ChatMessage>,
+        baseConfig: ProviderConfig,
+        run: suspend (entryConfig: ProviderConfig) -> Unit,
+    ) {
         // 解析 API Key 与构建配置
         val resolvedKey = resolveApiKey(provider.name, apiKeyOverride, baseConfig.apiKey)
         val entryConfig = baseConfig.copy(
@@ -371,26 +407,18 @@ class SmartModelRouter(
         concurrencySemaphore?.acquire()
 
         try {
-            var sawError = false
             val startMs = SystemClock.elapsedRealtime()
-            provider.generateResponse(messages, entryConfig).collect { event ->
-                if (event is StreamEvent.Error) sawError = true
-                emit(event)
-            }
-            // 反馈环：主路径（无 fallback 快速路径）也写入质量分，
-            // 让分数簿覆盖真实生成流量的每一次路由决策。
+            run(entryConfig)
             recordRouteScore(
                 providerName = provider.name,
                 modelId = modelId,
-                success = !sawError,
+                success = true,
                 latencyMs = SystemClock.elapsedRealtime() - startMs,
                 boosters = routeBoosters(entryConfig),
             )
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {
-            emit(StreamEvent.Error(GenerationError.Unknown(e)))
-            // 反馈环：异常同样计为失败（计分与 AdaptiveFallbackTracker 的口径一致）
             recordRouteScore(
                 providerName = provider.name,
                 modelId = modelId,
@@ -398,6 +426,7 @@ class SmartModelRouter(
                 latencyMs = 0L,
                 boosters = routeBoosters(entryConfig),
             )
+            throw e
         } finally {
             concurrencySemaphore?.release()
         }
@@ -454,59 +483,36 @@ class SmartModelRouter(
             )
         }
 
-        // 解析 API Key
-        val resolvedKey = resolveApiKey(provider.name, apiKeyOverride, baseConfig.apiKey)
-
-        // 构建条目配置
-        val entryConfig = baseConfig.copy(
-            modelId = modelId,
-            apiKey = resolvedKey,
-            baseUrl = baseUrlOverride ?: baseConfig.baseUrl,
-        )
-
-        // 速率限制
-        val rateLimiter = routerConfig.rateLimitPerMinute[provider.name]?.let { rpm ->
-            RateLimiterRegistry.getOrCreateRateLimiter(provider.name, rpm)
-        }
-        rateLimiter?.acquire()
-
-        // 并发限制
-        val concurrencySemaphore = routerConfig.maxConcurrentPerProvider[provider.name]?.let { max ->
-            RateLimiterRegistry.getOrCreateConcurrencySemaphore(provider.name, max)
-        }
-        concurrencySemaphore?.acquire()
-
         val events = mutableListOf<StreamEvent>()
         var producedContent = false
         var error: GenerationError? = null
         val startMs = SystemClock.elapsedRealtime()
 
         try {
-            provider.generateResponse(messages, entryConfig).collect { event ->
-                when (event) {
-                    is StreamEvent.TextChunk,
-                    is StreamEvent.ThoughtChunk,
-                    is StreamEvent.ToolCallUpdate,
-                    is StreamEvent.ToolCallRequest,
-                    is StreamEvent.ToolCallsRequest -> {
-                        producedContent = true
-                        events.add(event)
+            executeWithLimits(provider, modelId, apiKeyOverride, baseUrlOverride, messages, baseConfig) { entryConfig ->
+                provider.generateResponse(messages, entryConfig).collect { event ->
+                    when (event) {
+                        is StreamEvent.TextChunk,
+                        is StreamEvent.ThoughtChunk,
+                        is StreamEvent.ToolCallUpdate,
+                        is StreamEvent.ToolCallRequest,
+                        is StreamEvent.ToolCallsRequest -> {
+                            producedContent = true
+                            events.add(event)
+                        }
+                        is StreamEvent.Error -> {
+                            error = event.error
+                            // 仅当已产出内容时转发错误（未产出内容的错误由路由器决定是否转发）
+                            if (producedContent) events.add(event)
+                        }
+                        is StreamEvent.UsageUpdate,
+                        is StreamEvent.Retrying -> events.add(event)
                     }
-                    is StreamEvent.Error -> {
-                        error = event.error
-                        // 仅当已产出内容时转发错误（未产出内容的错误由路由器决定是否转发）
-                        if (producedContent) events.add(event)
-                    }
-                    is StreamEvent.UsageUpdate,
-                    is StreamEvent.Retrying -> events.add(event)
                 }
             }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             error = GenerationError.Unknown(e)
-        } finally {
-            concurrencySemaphore?.release()
         }
 
         // D1：记录本条目的成功率与延迟，供自适应 fallback 打分
@@ -516,14 +522,7 @@ class SmartModelRouter(
             success = error == null,
             latencyMs = SystemClock.elapsedRealtime() - startMs,
         )
-        // 反馈环：兜底缓冲路径同样写入质量分，保持两条路径打分口径一致
-        recordRouteScore(
-            providerName = provider.name,
-            modelId = modelId,
-            success = error == null,
-            latencyMs = SystemClock.elapsedRealtime() - startMs,
-            boosters = routeBoosters(entryConfig),
-        )
+        // 反馈环：兜底缓冲路径的打分已由 executeWithLimits 统一记录（成功/异常两条路径）。
 
         return AttemptResult(
             events = events,
