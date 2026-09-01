@@ -393,17 +393,20 @@ object TtsManager {
             initialized = true; _isAvailable.value = true
             _lastInitStatus.value = "SUCCESS:$engineLabel"
             log("D", "init SUCCESS with engine=$engineLabel, engines=${tts?.engines?.map { it.name }}")
-            // H2(b)：系统 TTS 也走语音通信 usage，尽量让系统 AEC 生效（API 30+）。
+            // 用 ASSISTANT 走扬声器正常音量。此前 fed296a8 曾用 VOICE_COMMUNICATION 想让
+            // 系统 AEC 生效（2.5（避免语音对话时 VAD 把播报当用户说话），但会把所有普通 TTS
+            // 路由到通信流→听筒/小音量。语音对话模式的 AEC/VAD 避让应在该模式自身层面处理，
+            // 不污染全局 TTS 默认路由。
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 try {
                     tts?.setAudioAttributes(
                         AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                            .setUsage(AudioAttributes.USAGE_ASSISTANT)
                             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                             .build()
                     )
                 } catch (e: Throwable) {
-                    log("W", "setAudioAttributes(VOICE_COMMUNICATION) rejected: ${e.message}")
+                    log("W", "setAudioAttributes(ASSISTANT) rejected: ${e.message}")
                 }
             }
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -658,11 +661,12 @@ object TtsManager {
         try {
             netPlayer?.let { runCatching { it.release() } }
             val mp = MediaPlayer()
-            // H2(b)：网络 TTS 用 VOICE_COMMUNICATION usage，让设备 AEC 把麦克风端的
-            // 回声抵消掉（此前 USAGE_MEDIA 不参与语音通信消回声，VAD 会把播报当用户说话）。
+            // 用 MEDIA 走扬声器正常音量。此前 fed296a8 曾用 VOICE_COMMUNICATION 想让设备 AEC
+            // 把麦克风端回声抵消（避免语音对话时 VAD 把播报当用户说话），但会把普通 TTS 路由
+            // 到通信流→听筒/小音量。语音对话模式的 AEC 应在该模式自身层面处理。
             mp.setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )
