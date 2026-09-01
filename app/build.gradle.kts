@@ -216,6 +216,11 @@ afterEvaluate {
 
 dependencies {
 
+    // 领域模型层（ChatMessage/RunState 等）与共享常量（Constants）。
+    // :core:model 以 api 方式暴露 :core:util，故 app 可直接引用 Constants。
+    implementation(project(":core:model"))
+    implementation(project(":core:util"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
