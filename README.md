@@ -5,7 +5,7 @@
 
   **BYOK LLM client with multi-provider access, agentic workflows, and remote device control.**
 
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
   [![Platform: Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
   [![Kotlin](https://img.shields.io/badge/Kotlin-Native-blue.svg)](https://kotlinlang.org/)
   <br/>**English** | [中文](README_CN.md)
@@ -30,7 +30,7 @@
 
 ---
 
-**LxChat** — a BYOK Android client for AI power users. Connect to 9+ built-in providers (plus unlimited custom endpoints) with your own keys, branch conversations non-linearly, run models locally via llama.cpp, control remote machines through encrypted shell, and automate workflows on a schedule. Everything stored on-device, nothing logged elsewhere. Open source, MIT licensed.
+**LxChat** — a BYOK Android client for AI power users. Connect to 9+ built-in providers (plus unlimited custom endpoints) with your own keys, branch conversations non-linearly, run models locally via llama.cpp, control remote machines through encrypted shell, and automate workflows on a schedule. Everything stored on-device, nothing logged elsewhere. Open source, AGPL-3.0 licensed.
 
 ## Based On
 
@@ -224,4 +224,6 @@ LxChat does not collect, store, or transmit any personal data. All conversations
 
 ## License
 
-This project is open-source under the [MIT License](LICENSE).
+This project is open-source under the [GNU AGPL v3](LICENSE).
+
+> **Note on the license change:** LxChat was originally released under the MIT License. It has been relicensed under AGPL-3.0 going forward. Versions prior to this change remain available under MIT from their original commits; all commits from this point on are AGPL-3.0.

@@ -53,4 +53,4 @@ LxChat 是一款面向 AI 高级用户的 BYOK Android 客户端：
 - **非线形对话**：编辑任意历史消息，探索替代分支
 - **原生代理**：多轮工具调用，支持网络搜索、Shell 执行、文件操作、图像生成、代码执行和记忆
 - **远程控制**：通过加密的 Conch 协议管理服务器
-- **开源**：MIT 协议，[源码在 GitHub](https://github.com/ojbkxc/lxchat)
+- **开源**：AGPL-3.0 协议，[源码在 GitHub](https://github.com/ojbkxc/lxchat)

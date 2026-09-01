@@ -5,7 +5,7 @@
 
   **BYOK LLM 客户端 — 多提供商接入、智能代理工作流、远程设备控制**
 
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
   [![Platform: Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
   [![Kotlin](https://img.shields.io/badge/Kotlin-Native-blue.svg)](https://kotlinlang.org/)
   <br/>[English](README.md) | **中文**
@@ -28,7 +28,7 @@
 
 ---
 
-**LxChat** — 为 AI 重度用户打造的 BYOK Android 客户端。接入 9+ 内置提供商（外加无限自定义端点），使用自己的 API 密钥，支持对话分支树、llama.cpp 本地推理、加密远程 Shell 控制，并可将工作流定时自动化。所有数据存储在本地，无日志泄露。开源，MIT 协议。
+**LxChat** — 为 AI 重度用户打造的 BYOK Android 客户端。接入 9+ 内置提供商（外加无限自定义端点），使用自己的 API 密钥，支持对话分支树、llama.cpp 本地推理、加密远程 Shell 控制，并可将工作流定时自动化。所有数据存储在本地，无日志泄露。开源，AGPL-3.0 协议。
 
 ## 基于 Agora
 
@@ -209,4 +209,6 @@ LxChat 不会收集、存储或传输任何个人数据。所有对话、API 密
 
 ## 许可证
 
-本项目基于 [MIT License](LICENSE) 开源。
+本项目基于 [GNU AGPL v3](LICENSE) 开源。
+
+> **关于许可证变更的说明：** LxChat 最初以 MIT 协议发布，现起改为 AGPL-3.0 继续开发。变更前的历史版本仍可从其原始提交中按 MIT 协议获取；自本次变更之后的所有提交均适用 AGPL-3.0。
