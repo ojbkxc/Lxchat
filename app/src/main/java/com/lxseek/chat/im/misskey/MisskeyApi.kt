@@ -1,0 +1,104 @@
+package com.lxseek.chat.im.misskey
+
+import com.lxseek.chat.api.HttpClient
+import com.lxseek.chat.util.DebugLog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+
+/**
+ * Misskey API 客户端。
+ *
+ * 仅依赖 [HttpClient] 共享 OkHttp 实例。鉴权用 `Bearer <access_token>` 请求头，
+ * 也可在 body 里带 `i` 字段（Misskey 双鉴权风格）。本客户端统一用请求头。
+ *
+ * Misskey 同时提供 WebSocket Streaming（`/streaming?i=<token>`）用于实时推送，
+ * 但手机端长连接受限，本客户端只封装 REST polling 部分（notes/timeline、notes/create），
+ * 实时由 [MisskeyChannel] 通过轮询 timeline 拉取。
+ *
+ * 参照 AstrBot `astrbot/core/platform/sources/misskey/misskey_api.py` 的接口路径与鉴权方式，
+ * 适配到 Kotlin/OkHttp 风格。
+ */
+class MisskeyApi(
+    /** Misskey 实例基址，如 `https://misskey.io`。 */
+    val baseUrl: String,
+    /** 用户访问令牌（Access Token），从设置 → API → 生成 Token。 */
+    val token: String,
+) {
+    init {
+        require(baseUrl.isNotBlank()) { "Misskey baseUrl 不能为空" }
+        require(token.isNotBlank()) { "Misskey token 不能为空" }
+    }
+
+    private val json = Json { ignoreUnknownKeys = true }
+    private val base = baseUrl.trim().trimEnd('/')
+    private val authHeaders = mapOf("Authorization" to "Bearer ${token.trim()}")
+
+    /** POST /api/i — 获取自身账号信息。 */
+    suspend fun getI(): JsonObject = post("i", buildJsonObject {})
+
+    /**
+     * POST /api/notes/timeline — 拉取主页时间线（含关注者最新 note）。
+     * [sinceId] / [untilId] 用于增量拉取；[limit] 上限 100。
+     */
+    suspend fun getTimeline(limit: Int = 30, sinceId: String? = null): JsonObject =
+        post("notes/timeline", buildJsonObject {
+            put("limit", limit)
+            if (sinceId != null) put("sinceId", sinceId)
+        })
+
+    /** POST /api/notes/mentions — 拉取提及自己的 note（机器人常用入口）。 */
+    suspend fun getMentions(limit: Int = 30, sinceId: String? = null): JsonObject =
+        post("notes/mentions", buildJsonObject {
+            put("limit", limit)
+            if (sinceId != null) put("sinceId", sinceId)
+        })
+
+    /** POST /api/notes/show — 查询指定 note 详情。 */
+    suspend fun showNote(noteId: String): JsonObject = post("notes/show", buildJsonObject {
+        put("noteId", noteId)
+    })
+
+    /**
+     * POST /api/notes/create — 创建 note（发帖）。
+     * [replyId] 非空时作为回复；[visibility] 默认 public。
+     */
+    suspend fun createNote(
+        text: String,
+        replyId: String? = null,
+        visibility: String = "public",
+    ): JsonObject = post("notes/create", buildJsonObject {
+        put("text", text)
+        put("visibility", visibility)
+        if (replyId != null) put("replyId", replyId)
+    })
+
+    private suspend fun post(path: String, payload: JsonObject): JsonObject = withContext(Dispatchers.IO) {
+        val url = "$base/api/$path"
+        val response = HttpClient.postTextResponse(url, payload.toString(), authHeaders)
+        if (response.code >= 400) {
+            val apiMsg = runCatching {
+                json.parseToJsonElement(response.body).jsonObject.let {
+                    it["message"]?.jsonPrimitive?.contentOrNull ?: it["error"]?.jsonPrimitive?.contentOrNull
+                }
+            }.getOrNull()
+            throw MisskeyApiException(apiMsg ?: "Misskey $path 失败 (HTTP ${response.code})", response.code)
+        }
+        runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull() ?: JsonObject(emptyMap())
+    }
+
+    companion object {
+        fun isValidToken(value: String): Boolean = value.trim().isNotBlank()
+        fun isValidBaseUrl(value: String): Boolean = value.trim().let { it.startsWith("http://") || it.startsWith("https://") }
+    }
+}
+
+/** Misskey API 异常。 */
+class MisskeyApiException(message: String, val httpCode: Int?) : Exception(message)

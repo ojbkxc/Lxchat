@@ -217,6 +217,12 @@ internal fun ImPlatform.emoji(): String = when (this) {
     ImPlatform.SLACK -> "💼"
     ImPlatform.WHATSAPP -> "🟢"
     ImPlatform.SMS -> "📱"
+    ImPlatform.AIOcqhttp -> "🤖"
+    ImPlatform.KOOK -> "🎤"
+    ImPlatform.LINE -> "🟢"
+    ImPlatform.MATTERMOST -> "📋"
+    ImPlatform.MISSKEY -> "📝"
+    ImPlatform.WEIXIN_MP -> "📢"
 }
 
 /** Localized display name resource for a platform. */
@@ -231,6 +237,12 @@ internal fun ImPlatform.nameRes(): Int = when (this) {
     ImPlatform.SLACK -> R.string.im_platform_slack
     ImPlatform.WHATSAPP -> R.string.im_platform_whatsapp
     ImPlatform.SMS -> R.string.im_platform_sms
+    ImPlatform.AIOcqhttp -> R.string.im_platform_aiocqhttp
+    ImPlatform.KOOK -> R.string.im_platform_kook
+    ImPlatform.LINE -> R.string.im_platform_line
+    ImPlatform.MATTERMOST -> R.string.im_platform_mattermost
+    ImPlatform.MISSKEY -> R.string.im_platform_misskey
+    ImPlatform.WEIXIN_MP -> R.string.im_platform_mp
 }
 
 /** Short bind-method hint shown under the platform name. */
@@ -245,6 +257,12 @@ internal fun ImPlatform.hintRes(): Int = when (this) {
     ImPlatform.SLACK -> R.string.im_hint_slack
     ImPlatform.WHATSAPP -> R.string.im_hint_whatsapp
     ImPlatform.SMS -> R.string.im_hint_sms
+    ImPlatform.AIOcqhttp -> R.string.im_hint_aiocqhttp
+    ImPlatform.KOOK -> R.string.im_hint_kook
+    ImPlatform.LINE -> R.string.im_hint_line
+    ImPlatform.MATTERMOST -> R.string.im_hint_mattermost
+    ImPlatform.MISSKEY -> R.string.im_hint_misskey
+    ImPlatform.WEIXIN_MP -> R.string.im_hint_mp
 }
 
 /** Longer description shown in the card body. */
@@ -259,6 +277,12 @@ internal fun ImPlatform.descRes(): Int = when (this) {
     ImPlatform.SLACK -> R.string.im_desc_slack
     ImPlatform.WHATSAPP -> R.string.im_desc_whatsapp
     ImPlatform.SMS -> R.string.im_desc_sms
+    ImPlatform.AIOcqhttp -> R.string.im_desc_aiocqhttp
+    ImPlatform.KOOK -> R.string.im_desc_kook
+    ImPlatform.LINE -> R.string.im_desc_line
+    ImPlatform.MATTERMOST -> R.string.im_desc_mattermost
+    ImPlatform.MISSKEY -> R.string.im_desc_misskey
+    ImPlatform.WEIXIN_MP -> R.string.im_desc_mp
 }
 
 /** Bind method drives which form section the platform card shows. */
@@ -267,9 +291,13 @@ internal enum class BindMethod { QR, TOKEN, SMS }
 internal fun ImPlatform.bindMethod(): BindMethod = when (this) {
     ImPlatform.WECHAT, ImPlatform.WECOM, ImPlatform.QQ -> BindMethod.QR
     ImPlatform.TELEGRAM, ImPlatform.DISCORD, ImPlatform.SLACK,
-    ImPlatform.DINGTALK, ImPlatform.LARK, ImPlatform.WHATSAPP -> BindMethod.TOKEN
+    ImPlatform.DINGTALK, ImPlatform.LARK, ImPlatform.WHATSAPP,
+    // 新增 6 个平台均走 Token 绑定（填写凭据而非扫码）。
+    ImPlatform.AIOcqhttp, ImPlatform.KOOK, ImPlatform.LINE,
+    ImPlatform.MATTERMOST, ImPlatform.MISSKEY, ImPlatform.WEIXIN_MP -> BindMethod.TOKEN
     ImPlatform.SMS -> BindMethod.SMS
 }
+
 
 // ── Credential field schema per platform ───────────────────────────────────
 
@@ -323,6 +351,38 @@ internal fun ImPlatform.credentialFields(): List<CredField> = when (this) {
         CredField("phone_number_id", R.string.im_channel_field_phone_number_id, FieldKind.TEXT, placeholder = "123456789012345"),
         CredField("access_token", R.string.im_channel_field_access_token, FieldKind.SECRET),
         CredField("verify_token", R.string.im_channel_field_verify_token, FieldKind.TEXT, required = false),
+    )
+    // aiocqhttp: OneBot v11 HTTP 端点 + accessToken。
+    ImPlatform.AIOcqhttp -> listOf(
+        CredField("base_url", R.string.im_channel_field_base_url, FieldKind.URL, "http(s)://host:port"),
+        CredField("token", R.string.im_channel_field_token, FieldKind.SECRET, required = false),
+    )
+    // kook: KOOK Bot Token（单凭据）。
+    ImPlatform.KOOK -> listOf(
+        CredField("bot_token", R.string.im_channel_field_bot_token, FieldKind.SECRET),
+    )
+    // line: Channel Access Token + Channel Secret（baseUrl 可选，默认官方）。
+    ImPlatform.LINE -> listOf(
+        CredField("channel_access_token", R.string.im_channel_field_access_token, FieldKind.SECRET),
+        CredField("channel_secret", R.string.im_channel_field_app_secret, FieldKind.SECRET),
+        CredField("base_url", R.string.im_channel_field_base_url, FieldKind.URL, required = false),
+    )
+    // mattermost: 实例基址 + Bot Token + Team ID（可选）。
+    ImPlatform.MATTERMOST -> listOf(
+        CredField("base_url", R.string.im_channel_field_base_url, FieldKind.URL, "https://mattermost.example.com"),
+        CredField("bot_token", R.string.im_channel_field_bot_token, FieldKind.SECRET),
+        CredField("team_id", R.string.im_channel_field_agent_id, FieldKind.TEXT, required = false),
+    )
+    // misskey: 实例基址 + Access Token。
+    ImPlatform.MISSKEY -> listOf(
+        CredField("base_url", R.string.im_channel_field_base_url, FieldKind.URL, "https://misskey.io"),
+        CredField("access_token", R.string.im_channel_field_access_token, FieldKind.SECRET),
+    )
+    // mp: 微信公众号 AppID + AppSecret（baseUrl 可选，默认官方 cgi-bin）。
+    ImPlatform.WEIXIN_MP -> listOf(
+        CredField("app_id", R.string.im_channel_field_app_id, FieldKind.TEXT),
+        CredField("app_secret", R.string.im_channel_field_app_secret, FieldKind.SECRET),
+        CredField("base_url", R.string.im_channel_field_base_url, FieldKind.URL, required = false),
     )
 }
 
@@ -449,6 +509,51 @@ internal fun buildBotConfig(
             botId = values["phone_number_id"].orEmpty(),    // phone number id
             agentPreset = preset,
         )
+        // aiocqhttp: baseUrl = OneBot HTTP 端点, token = accessToken。
+        ImPlatform.AIOcqhttp -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["base_url"].orEmpty().trim(),
+            token = values["token"].orEmpty(),
+            agentPreset = preset,
+        )
+        // kook: token = Bot Token（单凭据）。
+        ImPlatform.KOOK -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = "",
+            token = values["bot_token"].orEmpty(),
+            agentPreset = preset,
+        )
+        // line: token = channel_access_token, botId = channel_secret, baseUrl = 可选 API 基址。
+        ImPlatform.LINE -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["base_url"].orEmpty().trim(),
+            token = values["channel_access_token"].orEmpty(),
+            botId = values["channel_secret"].orEmpty(),
+            agentPreset = preset,
+        )
+        // mattermost: baseUrl = 实例基址, token = Bot Token, botId = Team ID。
+        ImPlatform.MATTERMOST -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["base_url"].orEmpty().trim(),
+            token = values["bot_token"].orEmpty(),
+            botId = values["team_id"].orEmpty(),
+            agentPreset = preset,
+        )
+        // misskey: baseUrl = 实例基址, token = Access Token。
+        ImPlatform.MISSKEY -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["base_url"].orEmpty().trim(),
+            token = values["access_token"].orEmpty(),
+            agentPreset = preset,
+        )
+        // mp: token = AppID, botId = AppSecret, baseUrl = 可选 API 基址。
+        ImPlatform.WEIXIN_MP -> ImGatewayConfig(
+            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
+            baseUrl = values["base_url"].orEmpty().trim(),
+            token = values["app_id"].orEmpty(),
+            botId = values["app_secret"].orEmpty(),
+            agentPreset = preset,
+        )
     }
 }
 
@@ -474,6 +579,16 @@ internal fun botSummary(bot: ImGatewayConfig, platform: ImPlatform): Pair<String
         ImPlatform.DINGTALK -> bot.token.takeIf { it.isNotBlank() }.orEmpty()  // client_id
         ImPlatform.LARK -> bot.token.takeIf { it.isNotBlank() }.orEmpty()      // app_id
         ImPlatform.WHATSAPP -> bot.botId.takeIf { it.isNotBlank() }.orEmpty()  // phone_number_id
+        // 新增 6 个平台摘要。
+        ImPlatform.AIOcqhttp -> bot.baseUrl.takeIf { it.isNotBlank() }.orEmpty()  // OneBot 端点
+        ImPlatform.KOOK -> bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
+        ImPlatform.LINE -> bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
+        ImPlatform.MATTERMOST -> listOfNotNull(
+            bot.baseUrl.takeIf { it.isNotBlank() },
+            bot.botId.takeIf { it.isNotBlank() },        // team_id
+        ).joinToString(" · ")
+        ImPlatform.MISSKEY -> bot.baseUrl.takeIf { it.isNotBlank() }.orEmpty()  // 实例基址
+        ImPlatform.WEIXIN_MP -> bot.token.takeIf { it.isNotBlank() }.orEmpty()  // app_id
     }
     return title to subtitle
 }

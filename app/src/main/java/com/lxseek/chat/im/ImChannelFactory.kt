@@ -1,8 +1,14 @@
 package com.lxseek.chat.im
 
+import com.lxseek.chat.im.aiocqhttp.AiocqhttpChannel
 import com.lxseek.chat.im.dingtalk.DingtalkChannel
 import com.lxseek.chat.im.discord.DiscordChannel
 import com.lxseek.chat.im.feishu.FeishuChannel
+import com.lxseek.chat.im.kook.KookChannel
+import com.lxseek.chat.im.line.LineChannel
+import com.lxseek.chat.im.mattermost.MattermostChannel
+import com.lxseek.chat.im.misskey.MisskeyChannel
+import com.lxseek.chat.im.mp.WeixinMpChannel
 import com.lxseek.chat.im.qq.QqChannel
 import com.lxseek.chat.im.slack.SlackChannel
 import com.lxseek.chat.im.telegram.TelegramChannel
@@ -31,6 +37,12 @@ import java.io.File
  *  - **slack** → [SlackChannel] (Socket Mode WebSocket).
  *  - **whatsapp** → [WhatsappChannel] (Meta Cloud API, send-only on mobile).
  *  - **sms** → [GatewayChannel] HTTP fallback.
+ *  - **aiocqhttp** → [AiocqhttpChannel] (OneBot v11 HTTP, push via event poll).
+ *  - **kook** → [KookChannel] (KOOK Gateway WebSocket).
+ *  - **line** → [LineChannel] (LINE Messaging API, send-only on mobile).
+ *  - **mattermost** → [MattermostChannel] (Mattermost WebSocket v4).
+ *  - **misskey** → [MisskeyChannel] (Misskey API, mentions polling).
+ *  - **mp** → [WeixinMpChannel] (微信公众号 cgi-bin, send-only on mobile).
  *  - unknown platform → [GatewayChannel] HTTP fallback so existing custom gateways still work.
  */
 object ImChannelFactory {
@@ -67,6 +79,20 @@ object ImChannelFactory {
 
             // SMS: HTTP gateway fallback (no native channel).
             ImPlatform.SMS -> if (config.isConfigured) GatewayChannel(config) else null
+
+            // 新增 6 个平台（aiocqhttp 已有文件，此处注册）。
+            // aiocqhttp: OneBot v11 HTTP，push 模式（事件轮询）。
+            ImPlatform.AIOcqhttp -> AiocqhttpChannel(config)
+            // kook: KOOK Gateway WebSocket push。
+            ImPlatform.KOOK -> KookChannel(config)
+            // line: LINE Messaging API，webhook-only，手机端仅发送。
+            ImPlatform.LINE -> LineChannel(config)
+            // mattermost: Mattermost WebSocket v4 push。
+            ImPlatform.MATTERMOST -> MattermostChannel(config)
+            // misskey: Misskey API，mentions 轮询。
+            ImPlatform.MISSKEY -> MisskeyChannel(config)
+            // mp: 微信公众号 cgi-bin，webhook-only，手机端仅发送。
+            ImPlatform.WEIXIN_MP -> WeixinMpChannel(config)
 
             // Unknown platform: legacy HTTP fallback so existing custom gateways keep working.
             null -> if (config.isConfigured) GatewayChannel(config) else null

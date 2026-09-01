@@ -1623,6 +1623,12 @@
     <string name="im_platform_slack">Slack</string>
     <string name="im_platform_whatsapp">WhatsApp</string>
     <string name="im_platform_sms">SMS Gateway</string>
+    <string name="im_platform_aiocqhttp">QQ (OneBot)</string>
+    <string name="im_platform_kook">KOOK</string>
+    <string name="im_platform_line">LINE</string>
+    <string name="im_platform_mattermost">Mattermost</string>
+    <string name="im_platform_misskey">Misskey</string>
+    <string name="im_platform_mp">WeChat Official Account</string>
     <!-- Platform bind hints (short) -->
     <string name="im_hint_wechat">iLink QR Bind</string>
     <string name="im_hint_telegram">Bot Token Bind</string>
@@ -1634,6 +1640,12 @@
     <string name="im_hint_slack">Bot Token + App Token</string>
     <string name="im_hint_whatsapp">Phone Number ID + Access Token</string>
     <string name="im_hint_sms">Gateway URL + Token</string>
+    <string name="im_hint_aiocqhttp">OneBot HTTP URL + Token</string>
+    <string name="im_hint_kook">Bot Token Bind</string>
+    <string name="im_hint_line">Channel Token + Secret</string>
+    <string name="im_hint_mattermost">Server URL + Bot Token</string>
+    <string name="im_hint_misskey">Instance URL + Access Token</string>
+    <string name="im_hint_mp">App ID + App Secret</string>
     <!-- Platform descriptions (long) -->
     <string name="im_desc_wechat">Bind WeChat account via iLink QR scan. App connects directly to WeChat servers.</string>
     <string name="im_desc_telegram">Telegram Bot. Get Bot Token from @BotFather.</string>
@@ -1645,6 +1657,12 @@
     <string name="im_desc_slack">Slack Bot. Bot Token starts with xoxb-, App Token starts with xapp-.</string>
     <string name="im_desc_whatsapp">WhatsApp Business Cloud API. Fill Phone Number ID and Access Token. Mobile only supports sending.</string>
     <string name="im_desc_sms">SMS gateway. Fill REST API URL and Auth Token.</string>
+    <string name="im_desc_aiocqhttp">OneBot v11 HTTP adapter (NapCat / Lagrange / go-cqhttp). Fill HTTP endpoint URL and access token.</string>
+    <string name="im_desc_kook">KOOK Bot. Get Bot Token from the KOOK open platform. Push via WebSocket gateway.</string>
+    <string name="im_desc_line">LINE Official Account. Fill Channel Access Token and Channel Secret. Mobile only supports sending.</string>
+    <string name="im_desc_mattermost">Mattermost Bot. Fill instance URL and Personal Access Token. Push via WebSocket v4.</string>
+    <string name="im_desc_misskey">Misskey Bot. Fill instance URL and Access Token. Polls mentions timeline.</string>
+    <string name="im_desc_mp">WeChat Official Account. Fill App ID and App Secret. Mobile only supports sending (customer service messages).</string>
     <!-- Credential field labels -->
     <string name="im_channel_field_base_url">Server URL</string>
     <string name="im_channel_field_token">Auth Token</string>

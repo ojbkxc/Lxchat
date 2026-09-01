@@ -12,11 +12,11 @@ enum class ImMessageDirection {
 }
 
 /**
- * Built-in IM platforms supported by LxChat. Each entry carries the wire identifier
+ * Built-in IM platforms supported by LxChat. Each entry carries the wire identifiers
  * ([id]) used in configs and tool payloads, plus whether the platform delivers messages
  * via a long-lived push connection ([push]) or must be polled.
  *
- * Ten platforms are enumerated; concrete channel implementations are plugged in by
+ * Sixteen platforms are enumerated; concrete channel implementations are plugged in by
  * [ImChannelFactory]. Polling platforms reuse the legacy [GatewayChannel] HTTP bridge
  * until a native SDK channel is provided; push platforms return null from the factory
  * until their long-connection channel is implemented by a downstream task.
@@ -38,7 +38,13 @@ enum class ImPlatform(
     DISCORD("discord", "Discord", true),
     SLACK("slack", "Slack", true),
     WHATSAPP("whatsapp", "WhatsApp", false),
-    SMS("sms", "SMS", false);
+    SMS("sms", "SMS", false),
+    AIOcqhttp("aiocqhttp", "QQ (OneBot)", true),
+    KOOK("kook", "KOOK", true),
+    LINE("line", "LINE", false),
+    MATTERMOST("mattermost", "Mattermost", true),
+    MISSKEY("misskey", "Misskey", false),
+    WEIXIN_MP("mp", "公众号", false);
 
     companion object {
         /** All wire identifiers, for validation / factory fallback. */
