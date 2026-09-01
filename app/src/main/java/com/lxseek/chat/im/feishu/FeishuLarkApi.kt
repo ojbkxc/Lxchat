@@ -339,19 +339,31 @@ class FeishuLarkApi(
      * text, and surface the fields Lxchat needs.
      */
     internal fun parseInbound(frame: String): FeishuInboundMessage? {
-        val envelope = runCatching { json.parseToJsonElement(frame).jsonObject }.getOrNull()
+        val envelope = runCatching { json.parseToJsonElement(frame).jsonObject }.onFailure { e ->
+            DebugLog.w(TAG, "入站事件帧解析失败，已丢弃: ${frame.take(200)}", e)
+        }.getOrNull()
             ?: return null
         // Feishu long-connection frames carry type="event" for deliveries; ping/pong and
         // system frames have other types and are handled by the WebSocket listener directly.
         val type = envelope["type"]?.jsonPrimitive?.contentOrNull
         if (type != "event") return null
-        val header = envelope["header"]?.let { runCatching { it.jsonObject }.getOrNull() }
-            ?: return null
+        val header = envelope["header"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站事件 header 字段解析失败，已丢弃: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: return null
         if (header["event_type"]?.jsonPrimitive?.contentOrNull != EVENT_MESSAGE_RECEIVE) return null
-        val event = envelope["event"]?.let { runCatching { it.jsonObject }.getOrNull() }
-            ?: return null
+        val event = envelope["event"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站事件 event 字段解析失败，已丢弃: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: return null
 
-        val message = event["message"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: return null
+        val message = event["message"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站事件 message 字段解析失败，已丢弃: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: return null
         val messageId = message["message_id"]?.jsonPrimitive?.contentOrNull ?: return null
         val chatId = message["chat_id"]?.jsonPrimitive?.contentOrNull ?: return null
         val chatType = message["chat_type"]?.jsonPrimitive?.contentOrNull ?: "p2p"
@@ -359,14 +371,29 @@ class FeishuLarkApi(
         val createTimeMs = message["create_time"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
             ?: System.currentTimeMillis()
 
-        val sender = event["sender"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: JsonObject(emptyMap())
-        val senderId = sender["sender_id"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: JsonObject(emptyMap())
+        val sender = event["sender"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站事件 sender 字段解析失败，按空发送者处理: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: JsonObject(emptyMap())
+        val senderId = sender["sender_id"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站事件 sender_id 字段解析失败，按空发送者处理: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: JsonObject(emptyMap())
         val senderOpenId = senderId["open_id"]?.jsonPrimitive?.contentOrNull
             ?: senderId["user_id"]?.jsonPrimitive?.contentOrNull ?: ""
         val senderType = sender["sender_type"]?.jsonPrimitive?.contentOrNull ?: "user"
 
-        val mentions = message["mentions"]?.let { runCatching { it.jsonArray }.getOrNull() }
-            ?.mapNotNull { runCatching { it.jsonObject }.getOrNull() } ?: emptyList()
+        val mentions = message["mentions"]?.let { raw ->
+            runCatching { raw.jsonArray }.onFailure { e ->
+                DebugLog.w(TAG, "入站消息 mentions 字段解析失败，按无提及处理: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        }?.mapNotNull { element ->
+            runCatching { element.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站消息 mentions 元素解析失败，已跳过: ${element.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: emptyList()
 
         // Text-only for now; post/image/voice arrive with a blank text and are skipped by the
         // channel. The dsh-im bridge supports post (rich text) and image, but those need the
@@ -468,6 +495,7 @@ class FeishuLarkApi(
         /** Feishu event type for inbound robot messages. */
         const val EVENT_MESSAGE_RECEIVE = "im.message.receive_v1"
         private const val HEADER_AUTH = "Authorization"
+        private const val TAG = "FeishuLarkApi"
     }
 }
 
@@ -576,7 +604,11 @@ class FeishuLarkConnection(
                         kotlinx.serialization.json.Json.parseToJsonElement(text).jsonObject
                     }.getOrNull()
                     val header = envelope?.get("header")
-                        ?.let { runCatching { it.jsonObject }.getOrNull() }
+                        ?.let { raw ->
+                            runCatching { raw.jsonObject }.onFailure { e ->
+                                DebugLog.w(TAG, "入站事件 header 字段解析失败，跳过 ACK: ${raw.toString().take(200)}", e)
+                            }.getOrNull()
+                        }
                     if (header != null) {
                         runCatching { webSocket.send(api.ackFrame(header)) }
                     }

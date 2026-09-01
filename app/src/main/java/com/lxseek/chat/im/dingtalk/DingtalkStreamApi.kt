@@ -329,22 +329,36 @@ class DingtalkStreamApi(
      * robot-message push (e.g. a system event, a ping, or malformed JSON). Public for tests.
      */
     internal fun parseInbound(frame: String): DingtalkInbound? {
-        val envelope = runCatching { json.parseToJsonElement(frame).jsonObject }.getOrNull()
+        val envelope = runCatching { json.parseToJsonElement(frame).jsonObject }.onFailure { e ->
+            DebugLog.w(TAG, "入站帧解析失败，已丢弃: ${frame.take(200)}", e)
+        }.getOrNull()
             ?: return null
-        val headers = envelope["headers"]?.let { runCatching { it.jsonObject }.getOrNull() }
-            ?: return null
+        val headers = envelope["headers"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站帧 headers 解析失败，已丢弃: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: return null
         val messageId = headers["messageId"]?.jsonPrimitive?.contentOrNull ?: return null
         val topic = headers["topic"]?.jsonPrimitive?.contentOrNull ?: ""
-        val dataRaw = envelope["data"]?.let {
-            runCatching { it.jsonPrimitive.contentOrNull }.getOrNull()
-                ?: runCatching { it.toString() }.getOrNull()
+        val dataRaw = envelope["data"]?.let { raw ->
+            runCatching { raw.jsonPrimitive.contentOrNull }.onFailure { e ->
+                DebugLog.w(TAG, "入站帧 data 为非字符串类型，改用序列化兜底解析: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+                ?: runCatching { raw.toString() }.onFailure { e ->
+                    DebugLog.w(TAG, "入站帧 data 序列化兜底失败，已丢弃: ${raw.toString().take(200)}", e)
+                }.getOrNull()
         } ?: return null
-        val data = runCatching { json.parseToJsonElement(dataRaw).jsonObject }.getOrNull()
+        val data = runCatching { json.parseToJsonElement(dataRaw).jsonObject }.onFailure { e ->
+            DebugLog.w(TAG, "入站帧 data 载荷解析失败，已丢弃: ${dataRaw.take(200)}", e)
+        }.getOrNull()
             ?: return null
 
         // Robot messages carry text.content; everything else (card events, lifecycle) is ignored.
-        val text = data["text"]?.let { runCatching { it.jsonObject }.getOrNull() }
-            ?.get("content")?.jsonPrimitive?.contentOrNull
+        val text = data["text"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站消息 text 字段解析失败: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        }?.get("content")?.jsonPrimitive?.contentOrNull
             ?: return null
         val conversationId = data["conversationId"]?.jsonPrimitive?.contentOrNull ?: return null
         return DingtalkInbound(
@@ -391,6 +405,7 @@ class DingtalkStreamApi(
         const val DEFAULT_API_BASE = "https://api.dingtalk.com"
         const val TOPIC_ROBOT = "/v1.0/im/bot/messages/get"
         const val HEADER_ACCESS_TOKEN = "x-acs-dingtalk-access-token"
+        private const val TAG = "DingtalkStreamApi"
     }
 }
 

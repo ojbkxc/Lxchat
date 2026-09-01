@@ -205,7 +205,9 @@ class WecomBotApi(
      * @return 解析失败的帧返回 null（调用方应忽略而非崩溃）。
      */
     fun parseFrame(raw: String): WecomFrame? {
-        val root = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return null
+        val root = runCatching { json.parseToJsonElement(raw).jsonObject }.onFailure { e ->
+            DebugLog.w(TAG, "入站协议帧解析失败，已丢弃: ${raw.take(200)}", e)
+        }.getOrNull() ?: return null
         val cmd = root["cmd"]?.str()
         val headers = root["headers"]?.obj()
         val reqId = headers?.get("req_id")?.str()
@@ -265,6 +267,8 @@ class WecomBotApi(
     }
 
     companion object {
+        private const val TAG = "WecomBotApi"
+
         /**
          * 企业微信 AI 机器人 WebSocket 端点。
          *

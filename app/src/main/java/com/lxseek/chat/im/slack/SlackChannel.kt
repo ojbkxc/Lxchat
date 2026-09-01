@@ -300,7 +300,9 @@ class SlackChannel(
             sender = user,
             timestampMs = parseTsToMillis(ts),
         )
-        runCatching { onMessage(message) }
+        runCatching { onMessage(message) }.onFailure {
+            DebugLog.e(TAG, "onMessage callback threw: ${it.message}", it)
+        }
     }
 
     /**
@@ -346,6 +348,8 @@ class SlackChannel(
     companion object {
         /** Platform identifier stored in [ImGatewayConfig.platform] for this channel. */
         const val PLATFORM = "slack"
+
+        private const val TAG = "SlackChannel"
 
         private const val CHANNEL_ID = "slack"
         private const val INITIAL_RECONNECT_DELAY_MS = 1_000L

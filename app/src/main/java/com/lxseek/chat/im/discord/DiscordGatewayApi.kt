@@ -303,7 +303,9 @@ class DiscordGatewayClient(
     // ── Payload dispatch ─────────────────────────────────────────────────────
 
     private fun handlePayload(text: String, scope: CoroutineScope) {
-        val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
+        val root = runCatching { json.parseToJsonElement(text).jsonObject }.onFailure { e ->
+            DebugLog.w(TAG, "入站网关帧解析失败，已丢弃: ${text.take(200)}", e)
+        }.getOrNull() ?: return
         val op = root["op"]?.jsonPrimitive?.intOrNull ?: return
         val eventName = root["t"]?.jsonPrimitive?.contentOrNull
         val seq = root["s"]?.jsonPrimitive?.longOrNull

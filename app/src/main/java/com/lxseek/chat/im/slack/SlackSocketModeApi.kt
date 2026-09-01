@@ -145,7 +145,9 @@ class SlackSocketModeApi(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                val envelope = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()
+                val envelope = runCatching { json.parseToJsonElement(text).jsonObject }.onFailure { e ->
+                    DebugLog.w(TAG, "入站信封解析失败，已丢弃: ${text.take(200)}", e)
+                }.getOrNull()
                     ?: return
                 // ACK every envelope so Slack doesn't retry delivery.
                 val envelopeId = envelope["envelope_id"]?.jsonPrimitive?.contentOrNull
@@ -179,6 +181,8 @@ class SlackSocketModeApi(
     }
 
     companion object {
+        private const val TAG = "SlackSocketMode"
+
         /** Official Slack Web API base. */
         const val DEFAULT_BASE_URL = "https://slack.com/api"
 

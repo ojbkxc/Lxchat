@@ -358,7 +358,9 @@ class QqBotWebSocketClient(
 
     /** [connectToken] is the access token captured for this connection cycle, used for IDENTIFY/RESUME. */
     private fun handlePayload(text: String, connectToken: String, scope: CoroutineScope) {
-        val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
+        val root = runCatching { json.parseToJsonElement(text).jsonObject }.onFailure { e ->
+            DebugLog.w(TAG, "入站网关帧解析失败，已丢弃: ${text.take(200)}", e)
+        }.getOrNull() ?: return
         val op = root["op"]?.jsonPrimitive?.intOrNull ?: return
         val eventName = root["t"]?.jsonPrimitive?.contentOrNull
         val seq = root["s"]?.jsonPrimitive?.longOrNull
@@ -483,13 +485,27 @@ class QqBotWebSocketClient(
         if (attachments.isEmpty()) return emptyList()
         val urls = ArrayList<String>(attachments.size)
         for (element in attachments) {
-            val obj = runCatching { element.jsonObject }.getOrNull() ?: continue
+            val obj = runCatching { element.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "附件元素解析失败，已跳过: ${element.toString().take(200)}", e)
+            }.getOrNull() ?: continue
             val contentType = (obj["content_type"] ?: obj["contentType"])
-                ?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+                ?.let { raw ->
+                    runCatching { raw.jsonPrimitive.contentOrNull }.onFailure { e ->
+                        DebugLog.w(TAG, "附件 contentType 字段解析失败: ${raw.toString().take(200)}", e)
+                    }.getOrNull()
+                }
             val filename = obj["filename"]
-                ?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+                ?.let { raw ->
+                    runCatching { raw.jsonPrimitive.contentOrNull }.onFailure { e ->
+                        DebugLog.w(TAG, "附件 filename 字段解析失败: ${raw.toString().take(200)}", e)
+                    }.getOrNull()
+                }
             val url = obj["url"]
-                ?.let { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+                ?.let { raw ->
+                    runCatching { raw.jsonPrimitive.contentOrNull }.onFailure { e ->
+                        DebugLog.w(TAG, "附件 url 字段解析失败，已跳过: ${raw.toString().take(200)}", e)
+                    }.getOrNull()
+                }
                 ?: continue  // no download URL — nothing we can surface to the agent
             val isImage = (contentType != null && contentType.startsWith("image/", ignoreCase = true))
                 || (filename != null && IMAGE_FILENAME_REGEX.matches(filename))

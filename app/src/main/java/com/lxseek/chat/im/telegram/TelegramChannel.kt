@@ -142,7 +142,9 @@ class TelegramChannel(
             val latest = api.getUpdates(offset = -1L, timeout = 0)
             var maxUpdateId: Long? = null
             for (update in latest) {
-                val obj = runCatching { update.jsonObject }.getOrNull() ?: continue
+                val obj = runCatching { update.jsonObject }.onFailure { e ->
+                    DebugLog.w(TAG, "入站 update 解析失败，已丢弃: ${update.toString().take(200)}", e)
+                }.getOrNull() ?: continue
                 val updateId = obj["update_id"]?.jsonPrimitive?.longOrNull ?: continue
                 if (maxUpdateId == null || updateId > maxUpdateId) maxUpdateId = updateId
             }
@@ -152,10 +154,16 @@ class TelegramChannel(
         val updates = api.getUpdates(offset = updateOffset, timeout = POLL_TIMEOUT_SECONDS)
         var maxUpdateId: Long? = null
         for (update in updates) {
-            val obj = runCatching { update.jsonObject }.getOrNull() ?: continue
+            val obj = runCatching { update.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站 update 解析失败，已丢弃: ${update.toString().take(200)}", e)
+            }.getOrNull() ?: continue
             val updateId = obj["update_id"]?.jsonPrimitive?.longOrNull ?: continue
             if (maxUpdateId == null || updateId > maxUpdateId) maxUpdateId = updateId
-            val message = obj["message"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: continue
+            val message = obj["message"]?.let { raw ->
+                runCatching { raw.jsonObject }.onFailure { e ->
+                    DebugLog.w(TAG, "入站 update 的 message 字段解析失败，已丢弃: ${raw.toString().take(200)}", e)
+                }.getOrNull()
+            } ?: continue
             handleMessage(updateId, message)
         }
         // Telegram expects offset = last_update_id + 1 to confirm we've processed them; without
@@ -177,7 +185,11 @@ class TelegramChannel(
 
     /** Convert one Telegram `message` into an [ImMessage] and file it under its chat. */
     private fun handleMessage(updateId: Long, message: JsonObject) {
-        val chat = message["chat"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: return
+        val chat = message["chat"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站消息 chat 字段解析失败，已丢弃: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: return
         val chatId = chat["id"]?.jsonPrimitive?.longOrNull ?: return
         val chatType = chat["type"]?.jsonPrimitive?.contentOrNull ?: "private"
         val isGroup = chatType != "private"
@@ -191,7 +203,11 @@ class TelegramChannel(
             ?: return
         val messageId = message["message_id"]?.jsonPrimitive?.contentOrNull ?: return
         val date = message["date"]?.jsonPrimitive?.longOrNull ?: 0L
-        val from = message["from"]?.let { runCatching { it.jsonObject }.getOrNull() }
+        val from = message["from"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站消息 from 字段解析失败，发送者按空处理: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        }
         val sender = from?.let {
             it["username"]?.jsonPrimitive?.contentOrNull
                 ?: it["first_name"]?.jsonPrimitive?.contentOrNull
@@ -224,24 +240,37 @@ class TelegramChannel(
     /** True when [message] is a reply to one of the bot's own messages (group reply gate). */
     private fun isReplyToBot(message: JsonObject): Boolean {
         val id = botId ?: return false
-        val replyTo = message["reply_to_message"]?.let { runCatching { it.jsonObject }.getOrNull() }
-            ?: return false
-        val from = replyTo["from"]?.let { runCatching { it.jsonObject }.getOrNull() }
-            ?: return false
+        val replyTo = message["reply_to_message"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站消息 reply_to_message 解析失败，按非回复消息处理: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: return false
+        val from = replyTo["from"]?.let { raw ->
+            runCatching { raw.jsonObject }.onFailure { e ->
+                DebugLog.w(TAG, "入站消息 reply_to_message.from 解析失败，按非回复消息处理: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: return false
         return from["id"]?.jsonPrimitive?.longOrNull == id
     }
 
     /** True when [message] carries an `@<botUsername>` mention entity. */
     private fun isMentionedForUs(message: JsonObject, text: String): Boolean {
         val username = botUsername ?: return false
-        val entities = message["entities"]?.let { runCatching { it.jsonArray }.getOrNull() }
-            ?: return false
+        val entities = message["entities"]?.let { raw ->
+            runCatching { raw.jsonArray }.onFailure { e ->
+                DebugLog.w(TAG, "入站消息 entities 解析失败，按无提及处理: ${raw.toString().take(200)}", e)
+            }.getOrNull()
+        } ?: return false
         for (entity in entities) {
-            val e = runCatching { entity.jsonObject }.getOrNull() ?: continue
+            val e = runCatching { entity.jsonObject }.onFailure { err ->
+                DebugLog.w(TAG, "入站消息 entities 元素解析失败，已跳过: ${entity.toString().take(200)}", err)
+            }.getOrNull() ?: continue
             if (e["type"]?.jsonPrimitive?.contentOrNull != "mention") continue
             val offset = e["offset"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: continue
             val length = e["length"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: continue
-            val mention = runCatching { text.substring(offset, offset + length) }.getOrNull()
+            val mention = runCatching { text.substring(offset, offset + length) }.onFailure { ex ->
+                DebugLog.w(TAG, "入站消息 mention 区间提取失败，已跳过: offset=$offset length=$length text=${text.take(200)}", ex)
+            }.getOrNull()
                 ?: continue
             if (mention.equals("@$username", ignoreCase = true)) return true
         }
@@ -281,6 +310,7 @@ class TelegramChannel(
         const val PLATFORM = "telegram"
 
         private const val CHANNEL_ID = "telegram"
+        private const val TAG = "TelegramChannel"
         private const val POLL_TIMEOUT_SECONDS = 30
         private const val MILLIS_PER_SEC = 1000L
         /** Telegram message char cap is 4096; we split at 4000 to match dsh-im and leave headroom. */
