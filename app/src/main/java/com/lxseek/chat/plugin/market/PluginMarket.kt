@@ -367,28 +367,56 @@ class PluginMarket(
      * 拉取 SKILL 插件正文。对 ClawHub / SkillHub 内置源走各自的适配器；自定义源沿用
      * `manifestUrl`（SKILL.md 正文直接地址）的单文件下载。根据来源判定，规避静态清单
      * 在分页 API 源上不可用的问题。
+     *
+     * 兜底策略（与 cc-haha 一致）：上游正文拉取失败时回退到目录里的 description 摘要，
+     * 保证安装始终产出一条可用的技能条目，而不是抛「技能插件缺少 manifestUrl」中断。
      */
     private suspend fun fetchSkillContent(meta: MarketPluginMeta): String {
         val source = _sources.value.firstOrNull { it.id == meta.sourceId }
         return when (source?.kind) {
             MarketSourceKind.CLAWHUB -> BuiltinMarketSources.fetchClawhubSkillBody(meta.id)
             MarketSourceKind.SKILLHUB -> BuiltinMarketSources.fetchSkillhubSkillBody(meta.id)
-            MarketSourceKind.BUILTIN_ASSET -> {
-                // Curated skills are served from assets; non-curated fall back to manifestUrl.
-                val body = BuiltinAssetSource.fetchSkillBody(context, meta.id)
-                if (body.isNotBlank()) body
-                else {
-                    val manifestUrl = meta.manifestUrl
-                        ?: throw IllegalArgumentException("技能插件缺少 manifestUrl")
-                    fetchText(manifestUrl)
+            MarketSourceKind.BUILTIN_ASSET -> fetchBuiltinAssetSkillContent(meta)
+            else -> {
+                // 内置 SKILL 目录条目（webnovel-writer / inkos）不带 sourceId 前缀，
+                // 但其 SKILL.md 已打包进本地资产 —— 先尝试本地，避免走到 manifestUrl 报错。
+                if (BuiltinAssetSource.isAppAuthored(meta.id)) {
+                    val localBody = BuiltinAssetSource.fetchSkillBody(context, meta.id)
+                    localBody.takeIf { it.isNotBlank() }
+                        ?: throw IllegalArgumentException("内置技能 ${meta.id} 的本地资产缺失")
+                } else {
+                    val manifestUrl = meta.manifestUrl ?: run {
+                        // 目录条目缺 manifestUrl 时不再直接中断：回退到描述摘要，保持安装可用。
+                        meta.description?.takeIf { it.isNotBlank() }
+                            ?: throw IllegalArgumentException("技能插件缺少 manifestUrl")
+                    }
+                    runCatching { fetchText(manifestUrl) }.getOrNull()
+                        ?: meta.description?.takeIf { it.isNotBlank() }
+                        ?: throw IllegalArgumentException("技能正文下载失败且目录描述为空")
                 }
             }
-            else -> {
-                val manifestUrl = meta.manifestUrl
-                    ?: throw IllegalArgumentException("技能插件缺少 manifestUrl")
-                fetchText(manifestUrl)
-            }
         }
+    }
+
+    /**
+     * BUILTIN_ASSET 源的正文解析：curated 技能走本地 SKILL.md；OpenCode 插件条目
+     * （builtin-asset:plugin:*）由 .plugin.json 的 markdown 章节拼装；非 curated
+     * 条目回退 manifestUrl 在线下载；全部失败时用目录描述兜底，安装不再死路。
+     */
+    private suspend fun fetchBuiltinAssetSkillContent(meta: MarketPluginMeta): String {
+        val skillBody = BuiltinAssetSource.fetchSkillBody(context, meta.id)
+        if (skillBody.isNotBlank()) return skillBody
+        val pluginBody = BuiltinAssetSource.fetchPluginBody(context, meta.id)
+        if (pluginBody.isNotBlank()) return pluginBody
+        val manifestUrl = meta.manifestUrl
+        val downloaded = if (manifestUrl != null) {
+            runCatching { fetchText(manifestUrl) }.getOrNull()
+        } else {
+            null
+        }
+        return downloaded?.takeIf { it.isNotBlank() }
+            ?: meta.description?.takeIf { it.isNotBlank() }
+            ?: throw IllegalArgumentException("技能插件缺少可用的正文（无本地资产、manifestUrl 且目录描述为空）")
     }
 
     /** 启动时按持久化记录重建插件并注册（离线可用）；单个坏记录不阻断整体恢复。 */

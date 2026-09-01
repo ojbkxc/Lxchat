@@ -17,6 +17,12 @@ import java.io.IOException
  * metadata for all 828 skills across skill-manager, ia and agent-skills-hub
  * repos, plus 49 OpenCode plugin definitions. 69 skills are curated (full
  * SKILL.md bundled offline); the rest are browse-only until downloaded.
+ *
+ * Two app-authored skills (`runtime-node-inkos` / `runtime-python-webnovel`)
+ * are also bundled in `skills/builtin/` even though they are not part of the
+ * generated index — [PluginMarket] merges their catalog metas separately via
+ * [BuiltinMarketSources.fetchBuiltinSkillCatalog], and their SKILL.md bodies
+ * are served from here.
  */
 object BuiltinAssetSource {
 
@@ -24,6 +30,9 @@ object BuiltinAssetSource {
     private const val INDEX_ASSET = "builtin-skills-index.json"
     private const val SKILLS_DIR = "skills/builtin"
     private const val PLUGINS_DIR = "plugins/builtin"
+
+    /** App-authored skills bundled outside the generated index (bodies live in SKILLS_DIR). */
+    private val APP_AUTHORED = setOf("runtime-node-inkos", "runtime-python-webnovel")
 
     /** GitHub raw URL base for downloading non-curated SKILL.md on demand. */
     private val REPO_BASE = mapOf(
@@ -56,6 +65,21 @@ object BuiltinAssetSource {
         val fileName: String = "",
     )
 
+    /** Bundled OpenCode `.plugin.json` shape — only the fields used to compose a skill body. */
+    @Serializable
+    private data class BundledPluginFile(
+        val displayName: String = "",
+        val description: String = "",
+        val installation: MarkdownSection? = null,
+        val usage: MarkdownSection? = null,
+    )
+
+    @Serializable
+    private data class MarkdownSection(
+        val summary: String = "",
+        val markdown: String = "",
+    )
+
     @Serializable
     private data class BuiltinIndex(
         val version: Int = 0,
@@ -77,13 +101,42 @@ object BuiltinAssetSource {
         MarketIndex(plugins = metas)
     }
 
+    /** Whether [pluginId] (raw id, no prefix) is one of the app-authored bundled skills. */
+    fun isAppAuthored(pluginId: String): Boolean = pluginId in APP_AUTHORED
+
     /**
-     * Read a curated SKILL.md from `assets/skills/builtin/{name}.md`.
+     * Read a curated SKILL.md from `assets/skills/builtin/{name}.md`. App-authored
+     * skill ids (e.g. `runtime-python-webnovel`) are also resolved here — their
+     * bodies are bundled in the same directory even though they are not part of
+     * the generated index.
      * Returns empty string if the file is not bundled (non-curated skill).
      */
     suspend fun fetchSkillBody(context: Context, pluginId: String): String = withContext(Dispatchers.IO) {
         val name = slugAfterPrefix(pluginId)
         readAsset(context, "$SKILLS_DIR/$name.md") ?: ""
+    }
+
+    /**
+     * Read a bundled OpenCode `.plugin.json` from `assets/plugins/builtin/{name}.plugin.json`
+     * and compose a SKILL.md-equivalent body from its installation/usage markdown sections.
+     * Returns empty string when the file is not bundled.
+     */
+    suspend fun fetchPluginBody(context: Context, pluginId: String): String = withContext(Dispatchers.IO) {
+        val name = slugAfterPrefix(pluginId)
+        val raw = readAsset(context, "$PLUGINS_DIR/$name.plugin.json") ?: return@withContext ""
+        val plugin = runCatching { json.decodeFromString<BundledPluginFile>(raw) }.getOrNull()
+            ?: return@withContext ""
+        buildString {
+            plugin.displayName.takeIf { it.isNotBlank() }?.let { appendLine("# $it") ; appendLine() }
+            plugin.description.takeIf { it.isNotBlank() }?.let { appendLine(it.trim()); appendLine() }
+            plugin.installation?.let { section ->
+                section.summary.takeIf { it.isNotBlank() }?.let { appendLine("## 安装"); appendLine(it.trim()); appendLine() }
+                section.markdown.takeIf { it.isNotBlank() }?.let { appendLine(it.trim()); appendLine() }
+            }
+            plugin.usage?.let { section ->
+                section.markdown.takeIf { it.isNotBlank() }?.let { appendLine("## 用法"); appendLine(it.trim()); appendLine() }
+            }
+        }.trim()
     }
 
     // ── Mapping ───────────────────────────────────────────────
