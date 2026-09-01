@@ -122,9 +122,8 @@ object TtsManager {
     /** Utterances buffered while the system engine is still initializing. */
     private val pendingStreamUtterances = ArrayDeque<Triple<String, String, Float>>()
     /** Enqueued-but-not-yet-finished utterances; keeps isPlaying true across a queued stream. */
-    // P2-7：主线程（入队）与 TTS 引擎 binder 线程（onDone/onError 回调）并发增减，
-    // `@Volatile var` 的 `++/--` 是读-改-写三步操作，交错时会丢更新导致计数漂移；
-    // 改用 AtomicInteger 保证单句计数原子化。
+    // P2-7：主线程 speak* 与 TTS 引擎 binder 线程的 onDone/onError 会并发增减该计数，
+    // 用 AtomicInteger 消除 ++/-- 的读-改-写竞态，避免计数漂移导致 isPlaying 卡死或提前归零。
     private val activeUtterances = AtomicInteger(0)
 
     // ── 回声抑制（H2c）：记录最近提交播放的文本，供语音对话侧比对识别结果 ──
