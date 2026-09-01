@@ -223,7 +223,8 @@ internal fun compactSegmentTitle(
         isToolCalling || isToolInProgress -> toolDisplayName(lastSeg)
         thoughtMs != null && thoughtMs > 0 -> thoughtDurationTitle(thoughtMs, toolCount)
         toolCount > 0 -> stringResource(R.string.called_n_tools, toolCount)
-        message.thoughtTitle != null -> message.thoughtTitle
+        // ChatMessage 来自 :core:model，跨模块属性无法 smart cast；null 分支已被条件排除。
+        message.thoughtTitle != null -> message.thoughtTitle.orEmpty()
         segs.any { it.type == "transcription" } -> "Image Transcription"
         else -> stringResource(R.string.thinking_complete)
     }

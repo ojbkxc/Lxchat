@@ -88,14 +88,16 @@ class MessagePayloadBuilder(
                         att.uri
                     }
 
-                    if (att.processedFrames != null && att.processedFrames.isNotEmpty()) {
+                    // SelectedAttachment 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
+                    val frames = att.processedFrames
+                    if (!frames.isNullOrEmpty()) {
                         metaItems.add(AttachmentItem(
                             originalUri = localVideoUri, type = "video",
                             fileName = att.fileName, mimeType = att.mimeType,
                             imageIndex = nextImageIndex, pageCount = att.frameCount
                         ))
-                        directPaths.addAll(att.processedFrames)
-                        nextImageIndex += att.processedFrames.size
+                        directPaths.addAll(frames)
+                        nextImageIndex += frames.size
                     } else {
                         val frameCount = att.frameCount ?: 1
                         metaItems.add(AttachmentItem(
@@ -104,10 +106,12 @@ class MessagePayloadBuilder(
                             imageIndex = nextImageIndex, pageCount = att.frameCount
                         ))
                         mediaUris.add(att.uri)
-                        if (att.frameCount != null && att.frameCount > 1 && att.sliceIntervalMs != null) {
+                        val attFrameCount = att.frameCount
+                        val intervalMs = att.sliceIntervalMs
+                        if (attFrameCount != null && attFrameCount > 1 && intervalMs != null) {
                             sliceConfigs[att.uri] = VideoSliceConfig(
-                                intervalMicros = att.sliceIntervalMs * 1000L,
-                                frameCount = att.frameCount
+                                intervalMicros = intervalMs * 1000L,
+                                frameCount = attFrameCount
                             )
                         }
                         nextImageIndex += frameCount

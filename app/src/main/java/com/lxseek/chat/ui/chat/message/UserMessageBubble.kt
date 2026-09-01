@@ -152,8 +152,10 @@ internal fun UserMessageBubble(
                             if (meta != null) {
                                 for (item in meta.items) {
                                     val count = item.pageCount ?: 1
-                                    if (item.imageIndex != null && count > 1 && (item.type == "video" || item.type == "pdf")) {
-                                        for (i in item.imageIndex + 1 until item.imageIndex + count) {
+                                    // AttachmentItem 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
+                                    val idx = item.imageIndex
+                                    if (idx != null && count > 1 && (item.type == "video" || item.type == "pdf")) {
+                                        for (i in idx + 1 until idx + count) {
                                             skipIndices.add(i)
                                         }
                                     }
@@ -230,8 +232,10 @@ internal fun UserMessageBubble(
                                         onPdfClick = onPdfPagesClick
                                     )
                                 )
-                                if (type == "pdf" && metaItem?.warning != null) {
-                                    Text(metaItem.warning, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                // AttachmentItem 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
+                                val warning = metaItem?.warning
+                                if (type == "pdf" && warning != null) {
+                                    Text(warning, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
                         }

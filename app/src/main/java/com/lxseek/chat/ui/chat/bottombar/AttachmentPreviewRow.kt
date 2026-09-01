@@ -238,9 +238,11 @@ internal fun AttachmentPreviewRow(
                     )
                 }
                 }
-                if ((isFile || isPdf) && attachment.fileName != null) {
+                // SelectedAttachment 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
+                val fileName = attachment.fileName
+                if ((isFile || isPdf) && fileName != null) {
                     Text(
-                        text = attachment.fileName,
+                        text = fileName,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

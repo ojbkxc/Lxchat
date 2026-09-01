@@ -29,7 +29,8 @@ object MessagePersistenceGuard {
      *  uselessly tiny one, and guarantees termination when a row has many small segments). */
     private const val TRIM_FLOOR_CHARS = 2000
 
-    internal const val TRUNCATION_MARKER = "\n…[truncated for persistence]"
+    // 跨模块可见：app 的 Migration19To20 校验历史行是否已被截断。
+    const val TRUNCATION_MARKER = "\n…[truncated for persistence]"
 
     /**
      * Trim a persisted text column to a safe length. Avoid ending on an unmatched UTF-16 high

@@ -62,8 +62,10 @@ fun findMetaForIndex(meta: AttachmentMeta?, index: Int): AttachmentItem? {
     if (meta == null) return null
     meta.items.firstOrNull { it.imageIndex == index }?.let { return it }
     return meta.items.firstOrNull { m ->
-        m.imageIndex != null && (m.pageCount ?: 1) > 0 &&
-        index in m.imageIndex until m.imageIndex + (m.pageCount ?: 1)
+        // AttachmentItem 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
+        val idx = m.imageIndex
+        idx != null && (m.pageCount ?: 1) > 0 &&
+        index in idx until idx + (m.pageCount ?: 1)
     }
 }
 

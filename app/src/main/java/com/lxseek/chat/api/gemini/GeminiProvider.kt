@@ -68,15 +68,17 @@ private fun ChatMessage.isGeminiToolRoundCompatible(
             }.orEmpty()
         }
     if (calls.isEmpty()) return false
+    // ChatMessage 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
+    val model = modelName
     return calls.all { call ->
         if (signatureRequired && call.signature.isNullOrBlank()) return@all false
         if (call.signature.isNullOrBlank()) return@all true
         call.signatureProvider?.let { provider ->
             return@all provider.equals(Constants.PROVIDER_GOOGLE, ignoreCase = true)
         }
-        modelName == null ||
-            modelName.equals(targetModel, ignoreCase = true) ||
-            modelName.contains("gemini", ignoreCase = true)
+        model == null ||
+            model.equals(targetModel, ignoreCase = true) ||
+            model.contains("gemini", ignoreCase = true)
     }
 }
 

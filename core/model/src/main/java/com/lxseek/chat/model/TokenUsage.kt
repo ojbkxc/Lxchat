@@ -84,7 +84,8 @@ data class TokenUsage(
             )
         }
 
-        internal fun addCounts(first: Int, second: Int): Int =
+        // 跨模块可见：app 内多个 Provider 直接用它做 token 计数饱和相加。
+        fun addCounts(first: Int, second: Int): Int =
             (first.toLong() + second.toLong())
                 .coerceAtMost(Int.MAX_VALUE.toLong())
                 .toInt()
@@ -103,7 +104,8 @@ data class TokenUsage(
  * current request snapshot. Only [finishRequest] adds that final snapshot to previous tool-loop
  * rounds.
  */
-internal class RequestTokenUsageAccumulator {
+// 跨模块可见：app 的 GenerationManager 直接持有并驱动该累加器。
+class RequestTokenUsageAccumulator {
     private var completedUsage: TokenUsage? = null
     private var currentRequestUsage: TokenUsage? = null
     private var requestActive = false

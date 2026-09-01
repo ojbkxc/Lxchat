@@ -278,11 +278,15 @@ class LocalProvider(
                             content = "Tool call: ${seg.toolName}\nArguments: ${seg.toolArgs}"
                         ))
                     }
-                } else if (msg.toolCall != null) {
-                    result.add(ChatTemplateMessage(
-                        role = "assistant",
-                        content = "Tool call: ${msg.toolCall.toolName}\nArguments: ${msg.toolCall.arguments}"
-                    ))
+                } else {
+                    // ChatMessage 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
+                    val call = msg.toolCall
+                    if (call != null) {
+                        result.add(ChatTemplateMessage(
+                            role = "assistant",
+                            content = "Tool call: ${call.toolName}\nArguments: ${call.arguments}"
+                        ))
+                    }
                 }
                 continue
             }
@@ -297,11 +301,14 @@ class LocalProvider(
                             content = "Tool result: ${seg.toolResult ?: ""}"
                         ))
                     }
-                } else if (msg.toolCall != null) {
-                    result.add(ChatTemplateMessage(
-                        role = "user",
-                        content = "Tool result: ${msg.toolCall.result}"
-                    ))
+                } else {
+                    val call = msg.toolCall
+                    if (call != null) {
+                        result.add(ChatTemplateMessage(
+                            role = "user",
+                            content = "Tool result: ${call.result}"
+                        ))
+                    }
                 }
                 continue
             }
