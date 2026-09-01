@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import com.lxseek.chat.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -433,7 +434,7 @@ internal fun SegmentDetailSheet(
                                                 .padding(
                                                     top = if (index == 0) 0.dp else 10.dp,
                                                 ),
-                                            shape = RoundedCornerShape(16.dp),
+                                            shape = RoundedCornerShape(LxDesign.cornerM),
                                             color = MaterialTheme.colorScheme.surfaceContainerHighest,
                                             tonalElevation = 0.dp,
                                         ) {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
@@ -108,7 +109,7 @@ fun SettingsVoskModelsSection(
         // common reason Vosk ASR silently fails to transcribe).
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(LxDesign.cornerS),
             color = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 2.dp,
         ) {
@@ -142,7 +143,7 @@ fun SettingsVoskModelsSection(
                         onDismissRequest = { langMenuOpen = false },
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         tonalElevation = 6.dp,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                     ) {
                         for (code in baseLanguages) {
                             val hasModel = downloadedBaseCodes.contains(code)

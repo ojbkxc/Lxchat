@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -261,14 +262,14 @@ fun SettingsAddPetPage(viewModel: ChatViewModel, onBack: () -> Unit) {
 private fun PetPreview(pet: CustomPet, sizeDp: androidx.compose.ui.unit.Dp) {
     val previewRes = pet.species.previewCharacter.previewResId
     Surface(
-        modifier = Modifier.size(sizeDp).clip(RoundedCornerShape(12.dp)),
+        modifier = Modifier.size(sizeDp).clip(RoundedCornerShape(LxDesign.cornerS)),
         color = Color(PetPalette.of(pet.species.previewCharacter).accent).copy(alpha = 0.12f),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
             androidx.compose.foundation.Image(
                 painter = painterResource(previewRes),
                 contentDescription = null,
-                modifier = Modifier.size(sizeDp).clip(RoundedCornerShape(12.dp)),
+                modifier = Modifier.size(sizeDp).clip(RoundedCornerShape(LxDesign.cornerS)),
             )
         }
     }

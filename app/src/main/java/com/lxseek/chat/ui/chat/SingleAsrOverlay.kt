@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
@@ -70,7 +71,7 @@ internal fun SingleAsrOverlay(
             exit = fadeOut(tween(200)) + slideOutVertically(tween(220)) { it },
         ) {
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(LxDesign.cornerL),
             color = MaterialTheme.colorScheme.surfaceContainer,
             shadowElevation = 4.dp,
             modifier = Modifier.fillMaxWidth(),

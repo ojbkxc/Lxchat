@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -142,7 +143,7 @@ private fun AutoBackupPeriodDropdown(currentHours: Int, onSelect: (Int) -> Unit)
             onDismissRequest = { expanded = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 6.dp,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(LxDesign.cornerS)
         ) {
             periods.forEach { (hours, labelRes) ->
                 DropdownMenuItem(
@@ -179,7 +180,7 @@ private fun AutoDeletePeriodDropdown(currentHours: Int, backupHours: Int, onSele
             onDismissRequest = { expanded = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 6.dp,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(LxDesign.cornerS)
         ) {
             validPeriods.forEach { (hours, labelRes) ->
                 DropdownMenuItem(

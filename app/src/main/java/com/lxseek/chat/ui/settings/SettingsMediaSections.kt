@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -170,7 +171,7 @@ internal fun ImageGenSection(viewModel: ChatViewModel) {
                                     placeholder = { Text("1024") },
                                     lineLimits = TextFieldLineLimits.SingleLine,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(LxDesign.cornerS),
                                     modifier = Modifier.weight(1f),
                                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 )
@@ -180,7 +181,7 @@ internal fun ImageGenSection(viewModel: ChatViewModel) {
                                     placeholder = { Text("1024") },
                                     lineLimits = TextFieldLineLimits.SingleLine,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(LxDesign.cornerS),
                                     modifier = Modifier.weight(1f),
                                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 )
@@ -328,7 +329,7 @@ internal fun WebSearchSection(viewModel: ChatViewModel) {
                                                 )
                                             },
                                             visualTransformation = PasswordVisualTransformation(),
-                                            shape = RoundedCornerShape(12.dp),
+                                            shape = RoundedCornerShape(LxDesign.cornerS),
                                             modifier = Modifier.fillMaxWidth(),
                                             textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         )
@@ -369,7 +370,7 @@ internal fun WebSearchSection(viewModel: ChatViewModel) {
                                         OutlinedTextField(
                                             state = urlState,
                                             placeholder = { Text(stringResource(R.string.web_search_searxng_url_hint)) },
-                                            shape = RoundedCornerShape(12.dp),
+                                            shape = RoundedCornerShape(LxDesign.cornerS),
                                             modifier = Modifier.fillMaxWidth(),
                                             textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         )

@@ -38,6 +38,7 @@ import java.util.Collections
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Connection details for provider-backed (network) TTS synthesis via the OpenAI-compatible
@@ -121,7 +122,10 @@ object TtsManager {
     /** Utterances buffered while the system engine is still initializing. */
     private val pendingStreamUtterances = ArrayDeque<Triple<String, String, Float>>()
     /** Enqueued-but-not-yet-finished utterances; keeps isPlaying true across a queued stream. */
-    @Volatile private var activeUtterances = 0
+    // P2-7：主线程（入队）与 TTS 引擎 binder 线程（onDone/onError 回调）并发增减，
+    // `@Volatile var` 的 `++/--` 是读-改-写三步操作，交错时会丢更新导致计数漂移；
+    // 改用 AtomicInteger 保证单句计数原子化。
+    private val activeUtterances = AtomicInteger(0)
 
     // ── 回声抑制（H2c）：记录最近提交播放的文本，供语音对话侧比对识别结果 ──
     private val recentSpokenLock = Any()
@@ -149,7 +153,9 @@ object TtsManager {
         val am = audioManager ?: (ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)
             ?.also { audioManager = it }
             ?: return false
-        val listener = AudioManager.OnAudioFocusChangeListener { change ->
+        // P2-8：listener 单例复用——此前每句朗读都 new 一个 listener 覆盖成员字段，
+        // abandon 只能释放最后一个，被覆盖的旧条目永久滞留在 AudioManager 侧。
+        val listener = focusListener ?: AudioManager.OnAudioFocusChangeListener { change ->
             when (change) {
                 AudioManager.AUDIOFOCUS_LOSS,
                 AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
@@ -158,10 +164,11 @@ object TtsManager {
                     stop()
                 }
             }
-        }
-        focusListener = listener
+        }.also { focusListener = it }
         val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            // P2-8：AudioFocusRequest 同样单例复用——重复 request/abandon 均针对同一条目，
+            // 不再出现"每句新建请求覆盖成员、旧请求失去引用无法 abandon"的泄漏。
+            val request = focusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
                 .setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ASSISTANT)
@@ -170,7 +177,7 @@ object TtsManager {
                 )
                 .setOnAudioFocusChangeListener(listener)
                 .build()
-            focusRequest = request
+                .also { focusRequest = it }
             am.requestAudioFocus(request)
         } else {
             @Suppress("DEPRECATION")
@@ -196,10 +203,9 @@ object TtsManager {
             }
         } catch (e: Throwable) {
             log("W", "abandonAudioFocus failed: ${e.message}")
-        } finally {
-            focusRequest = null
-            focusListener = null
         }
+        // P2-8：不再把 focusRequest/focusListener 置 null——二者单例复用，下次
+        // request 直接重用同一条目；重复 abandon 同一请求对象系统侧幂等无害。
     }
 
     private fun log(level: String, msg: String) {
@@ -536,9 +542,8 @@ object TtsManager {
      * （isPlaying 复位 + 释放焦点），队列中还有后续句子时看门狗继续续期。
      */
     private fun onUtteranceFinished() {
-        activeUtterances--
-        if (activeUtterances <= 0) {
-            activeUtterances = 0
+        if (activeUtterances.decrementAndGet() <= 0) {
+            activeUtterances.set(0)
             _isPlaying.value = false
             watchdogJob?.cancel()
             watchdogJob = null
@@ -560,7 +565,7 @@ object TtsManager {
             delay(WATCHDOG_TIMEOUT_MS)
             if (_isPlaying.value) {
                 log("E", "Watchdog timeout (${WATCHDOG_TIMEOUT_MS}ms) — forcing isPlaying=false")
-                activeUtterances = 0
+                activeUtterances.set(0)
                 _isPlaying.value = false
                 abandonPlaybackFocus()
             }
@@ -730,7 +735,7 @@ object TtsManager {
         if (speakResult != TextToSpeech.SUCCESS) { _isPlaying.value = false; return false }
         // Count at enqueue time so isPlaying stays true across a queued sentence stream;
         // QUEUE_FLUSH replaces everything, so reset the count instead of accumulating.
-        if (queueAdd) activeUtterances++ else activeUtterances = 1
+        if (queueAdd) activeUtterances.incrementAndGet() else activeUtterances.set(1)
         _isPlaying.value = true
         restartWatchdog()
         return true
@@ -751,7 +756,7 @@ object TtsManager {
         // Drop chunks still waiting in the streaming queue and zero the counter, so a Stop
         // mid-stream doesn't leave stale utterances playing or isPlaying stuck true.
         while (streamChannel.tryReceive().isSuccess) { /* drain */ }
-        activeUtterances = 0
+        activeUtterances.set(0)
         _isPlaying.value = false
         abandonPlaybackFocus()
     }
@@ -763,7 +768,7 @@ object TtsManager {
         pendingText = null
         while (streamChannel.tryReceive().isSuccess) { /* drain */ }
         synchronized(streamLock) { pendingStreamUtterances.clear() }
-        activeUtterances = 0
+        activeUtterances.set(0)
         abandonPlaybackFocus()
     }
 

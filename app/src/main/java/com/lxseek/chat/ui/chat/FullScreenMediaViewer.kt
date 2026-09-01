@@ -13,6 +13,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import com.lxseek.chat.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
@@ -201,9 +202,9 @@ private fun PdfPager(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(20.dp), // 圆角矩形
+                    shape = RoundedCornerShape(LxDesign.cornerL), // 圆角矩形
                     color = Color.Black.copy(alpha = 0.55f), // 半透明黑色背景
-                    modifier = Modifier.shadow(8.dp, RoundedCornerShape(20.dp))
+                    modifier = Modifier.shadow(8.dp, RoundedCornerShape(LxDesign.cornerL))
                 ) {
                     Text(
                         "${pagerState.currentPage + 1} / ${pdfPages.size}",
@@ -328,9 +329,9 @@ private fun MediaPager(
             ) {
                 if (urls.size > 1) {
                     Surface(
-                        shape = RoundedCornerShape(20.dp), // 圆角矩形
+                        shape = RoundedCornerShape(LxDesign.cornerL), // 圆角矩形
                         color = Color.Black.copy(alpha = 0.55f), // 半透明黑色背景
-                        modifier = Modifier.shadow(8.dp, RoundedCornerShape(20.dp))
+                        modifier = Modifier.shadow(8.dp, RoundedCornerShape(LxDesign.cornerL))
                     ) {
                         Text(
                             "${pagerState.currentPage + 1} / ${urls.size}",

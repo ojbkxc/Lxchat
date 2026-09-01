@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -163,7 +164,7 @@ fun SettingsTranscriptionPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                 tonalElevation = 6.dp,
                                                 expanded = showMenuForModel == model,
                                                 onDismissRequest = { showMenuForModel = null },
-                                                shape = RoundedCornerShape(12.dp)
+                                                shape = RoundedCornerShape(LxDesign.cornerS)
                                             ) {
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },

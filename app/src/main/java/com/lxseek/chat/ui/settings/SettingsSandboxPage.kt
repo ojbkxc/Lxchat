@@ -53,6 +53,7 @@ import com.lxseek.chat.sandbox.SandboxManager
 import com.lxseek.chat.sandbox.SandboxSharedStorageAccess
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.launch
+import com.lxseek.chat.ui.theme.LxDesign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -223,7 +224,7 @@ fun SettingsSandboxPage(
                                         installError?.let { err ->
                                             Spacer(Modifier.height(8.dp))
                                             Surface(
-                                                shape = RoundedCornerShape(8.dp),
+                                                shape = RoundedCornerShape(LxDesign.cornerXS),
                                                 color = MaterialTheme.colorScheme.errorContainer
                                             ) {
                                                 Text(
@@ -444,7 +445,7 @@ fun SettingsSandboxPage(
                                         label = { Text(stringResource(R.string.sandbox_package_name)) },
                                         placeholder = { Text(stringResource(R.string.sandbox_package_placeholder)) },
                                         singleLine = true,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(LxDesign.cornerS),
                                         modifier = Modifier.weight(1f)
                                     )
                                     Spacer(Modifier.width(8.dp))
@@ -470,7 +471,7 @@ fun SettingsSandboxPage(
                                     Button(
                                         onClick = { if (installPkg.isNotBlank() && !isBusy && lastInstallResult == null) installPackage(installPkg.trim()) },
                                         enabled = true,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(LxDesign.cornerS),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = btnBgColor,
                                             contentColor = btnContentColor,
@@ -516,7 +517,7 @@ fun SettingsSandboxPage(
                                     }
                                     val terminalFg = MaterialTheme.colorScheme.onSurface
                                     Surface(
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = RoundedCornerShape(LxDesign.cornerXS),
                                         color = MaterialTheme.colorScheme.surface,
                                         tonalElevation = 0.dp,
                                         modifier = Modifier.padding(top = 16.dp).fillMaxWidth().height(260.dp)
@@ -587,7 +588,7 @@ fun SettingsSandboxPage(
                         }
                         backendPackages.isEmpty() -> item(key = "empty") {
                             Surface(
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(LxDesign.cornerS),
                                 color = MaterialTheme.colorScheme.surface,
                                 tonalElevation = 0.dp,
                                 modifier = Modifier.fillMaxWidth()
@@ -607,10 +608,10 @@ fun SettingsSandboxPage(
                             val isFirst = idx == 0
                             val isLast = idx == backendPackages.lastIndex
                             val shape = when {
-                                backendPackages.size == 1 -> RoundedCornerShape(12.dp)
-                                isFirst -> RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-                                isLast -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
-                                else -> RoundedCornerShape(4.dp)
+                                backendPackages.size == 1 -> RoundedCornerShape(LxDesign.cornerS)
+                                isFirst -> RoundedCornerShape(topStart = LxDesign.cornerS, topEnd = LxDesign.cornerS, bottomStart = LxDesign.cornerXS, bottomEnd = LxDesign.cornerXS)
+                                isLast -> RoundedCornerShape(topStart = LxDesign.cornerXS, topEnd = LxDesign.cornerXS, bottomStart = LxDesign.cornerS, bottomEnd = LxDesign.cornerS)
+                                else -> RoundedCornerShape(LxDesign.cornerXS)
                             }
                             Surface(
                                 shape = shape,

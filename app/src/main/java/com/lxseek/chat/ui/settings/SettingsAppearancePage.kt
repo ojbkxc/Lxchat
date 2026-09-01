@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BrightnessLow
@@ -211,7 +212,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit, onOpenA
                                         onDismissRequest = { expanded = false },
                                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                         tonalElevation = 6.dp,
-                                        shape = RoundedCornerShape(12.dp)
+                                        shape = RoundedCornerShape(LxDesign.cornerS)
                                     ) {
                                         options.forEach { (mode, pair) ->
                                             val (label, icon) = pair
@@ -314,7 +315,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit, onOpenA
                                             onDismissRequest = { expanded = false },
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                             tonalElevation = 6.dp,
-                                            shape = RoundedCornerShape(12.dp),
+                                            shape = RoundedCornerShape(LxDesign.cornerS),
                                         ) {
                                             listOf(
                                                 ThinkingSegmentDisplayModes.CARD to
@@ -377,7 +378,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit, onOpenA
                                             tonalElevation = 6.dp,
                                             expanded = expanded,
                                             onDismissRequest = { expanded = false },
-                                            shape = RoundedCornerShape(12.dp)
+                                            shape = RoundedCornerShape(LxDesign.cornerS)
                                         ) {
                                             options.forEach { (mode, label) ->
                                                 DropdownMenuItem(
@@ -509,7 +510,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit, onOpenA
                                             onDismissRequest = { expanded = false },
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                             tonalElevation = 6.dp,
-                                            shape = RoundedCornerShape(12.dp)
+                                            shape = RoundedCornerShape(LxDesign.cornerS)
                                         ) {
                                             ColorSchemePreset.entries.forEach { preset ->
                                                 val presetPrimary = remember(preset, currentStyle, isDark) {
@@ -554,7 +555,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit, onOpenA
                                             onDismissRequest = { expanded = false },
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                             tonalElevation = 6.dp,
-                                            shape = RoundedCornerShape(12.dp)
+                                            shape = RoundedCornerShape(LxDesign.cornerS)
                                         ) {
                                             SchemeStyle.entries.forEach { style ->
                                                 DropdownMenuItem(
@@ -609,7 +610,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit, onOpenA
                                             onDismissRequest = { expanded = false },
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                             tonalElevation = 6.dp,
-                                            shape = RoundedCornerShape(12.dp)
+                                            shape = RoundedCornerShape(LxDesign.cornerS)
                                         ) {
                                             options.forEach { (value, label) ->
                                                 DropdownMenuItem(

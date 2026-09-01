@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -83,7 +84,7 @@ fun FileThumbnail(
     if (isPdf) {
         Box(
             modifier = modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(LxDesign.cornerXS))
                 .background(MaterialTheme.colorScheme.error.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
@@ -93,7 +94,7 @@ fun FileThumbnail(
         val ext = (fileName ?: "").substringAfterLast('.', "").uppercase().take(4).ifEmpty { "TXT" }
         Box(
             modifier = modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(LxDesign.cornerXS))
                 .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
             contentAlignment = Alignment.Center
         ) {
@@ -128,7 +129,7 @@ fun AttachmentThumbnailItem(
     val scope = rememberCoroutineScope()
     val thumbModifier = modifier
         .size(120.dp, 90.dp)
-        .clip(RoundedCornerShape(8.dp))
+        .clip(RoundedCornerShape(LxDesign.cornerXS))
 
     when (type) {
         "file" -> {
@@ -136,7 +137,7 @@ fun AttachmentThumbnailItem(
                 (textContent != null || originalUri != null)
             val clickMod = if (canOpen) {
                 Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(LxDesign.cornerXS))
                     .clickable {
                         scope.launch {
                             val content = textContent ?: originalUri?.let {
@@ -164,7 +165,7 @@ fun AttachmentThumbnailItem(
         "pdf" -> {
             val hasPages = pdfPages.isNotEmpty()
             val clickMod = if (hasPages && handlers.onPdfClick != null)
-                Modifier.clip(RoundedCornerShape(8.dp)).clickable { handlers.onPdfClick(pdfPages, 0) } else Modifier
+                Modifier.clip(RoundedCornerShape(LxDesign.cornerXS)).clickable { handlers.onPdfClick(pdfPages, 0) } else Modifier
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(72.dp)) {
                 FileThumbnail(fileName = null, isPdf = true, modifier = Modifier.size(64.dp).then(clickMod))
                 if (showFileName && fileName != null) {
@@ -174,7 +175,7 @@ fun AttachmentThumbnailItem(
         }
         "video" -> {
             val clickMod = if (originalUri != null && handlers.onMediaClick != null)
-                Modifier.clip(RoundedCornerShape(8.dp)).clickable { handlers.onMediaClick(allMediaUrls, mediaIndex) } else Modifier
+                Modifier.clip(RoundedCornerShape(LxDesign.cornerXS)).clickable { handlers.onMediaClick(allMediaUrls, mediaIndex) } else Modifier
             Box(modifier = clickMod) {
                 coil.compose.AsyncImage(
                     model = imagePath,
@@ -198,7 +199,7 @@ fun AttachmentThumbnailItem(
             if (imagePath.isNotEmpty()) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(LxDesign.cornerXS))
                         .combinedClickable(
                             onClick = { handlers.onMediaClick?.invoke(allMediaUrls, mediaIndex) },
                             onLongClick = { haptics.longPress() },
@@ -215,11 +216,11 @@ fun AttachmentThumbnailItem(
             } else {
                 // No image data available (e.g. Claude import), show file-style thumbnail
                 val clickMod = if (fileName != null && handlers.onFileClick != null)
-                    Modifier.clip(RoundedCornerShape(8.dp)).clickable { handlers.onFileClick(fileName, textContent ?: "") } else Modifier
+                    Modifier.clip(RoundedCornerShape(LxDesign.cornerXS)).clickable { handlers.onFileClick(fileName, textContent ?: "") } else Modifier
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(72.dp)) {
                     Box(
                         modifier = Modifier.size(64.dp).then(clickMod)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(LxDesign.cornerXS))
                             .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
                         contentAlignment = Alignment.Center
                     ) {

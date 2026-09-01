@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
@@ -668,7 +669,7 @@ private fun ImagePreview(path: String, modifier: Modifier = Modifier) {
         if (loaded != null) bitmap = loaded else failed = true
     }
     Box(
-        modifier = modifier.clip(RoundedCornerShape(8.dp)),
+        modifier = modifier.clip(RoundedCornerShape(LxDesign.cornerXS)),
         contentAlignment = Alignment.Center,
     ) {
         // 局部快照：bitmap 是 Compose 委托状态 var，smart-cast 失效；

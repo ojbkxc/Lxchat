@@ -13,6 +13,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Provider 无关的 OAuth 登录编排基类（R1 重构）。
@@ -79,6 +80,25 @@ abstract class BaseXOAuthManager<S>(
     private val loginInProgress = AtomicBoolean(false)
 
     /**
+     * 会话状态锁：把「代际计数 + challenge + redirectUri + loginInProgress」的
+     * 检查与写入放进同一临界区，消除取消/重登与在途回调交错时的状态错配。
+     */
+    private val sessionLock = Any()
+
+    /**
+     * 会话代际计数器：startLogin / cancelLogin 每次会话换代时递增，
+     * 用于识别在途回调是否仍属于当前会话。
+     */
+    private val loginGeneration = AtomicInteger(0)
+
+    /** [handleCallbackUrl] 开头在 [sessionLock] 临界区内读取的会话状态原子快照。 */
+    private class LoginSessionSnapshot(
+        val generation: Int,
+        val challenge: OAuthPkceChallenge?,
+        val redirectUri: String?,
+    )
+
+    /**
      * H2 修复：刷新临界区——把「检查-刷新-落盘」整段串行化。多协程并发请求
      * token 时只有一个真正执行刷新，其余排队后命中快路径，杜绝旋转式
      * refresh token 互相作废（invalid_grant → 永久登出）。
@@ -125,20 +145,34 @@ abstract class BaseXOAuthManager<S>(
      * 把 WebView 拦截到的回调 URL 交给 [handleCallbackUrl]。
      */
     suspend fun startLogin(): Uri? = withContext(Dispatchers.IO) {
-        // M6：CAS 保证同一时刻只有一个进行中的登录会话。
-        if (!loginInProgress.compareAndSet(false, true)) return@withContext null
         try {
-            val redirectUri = "http://127.0.0.1:$FIXED_CALLBACK_PORT${config.callbackPath}"
-            val challenge = OAuthPkceChallenge()
-            currentChallenge = challenge
-            currentRedirectUri = redirectUri
+            val authorizeUrl = synchronized(sessionLock) {
+                // M6：CAS 保证同一时刻只有一个进行中的登录会话；CAS 与代际递增、
+                // 会话状态写入同处临界区，与 cancelLogin / 在途回调的清理串行化。
+                if (!loginInProgress.compareAndSet(false, true)) return@withContext null
+                val redirectUri = "http://127.0.0.1:$FIXED_CALLBACK_PORT${config.callbackPath}"
+                val challenge = OAuthPkceChallenge()
+                // 会话代际递增：新会话生效，此前仍在途的旧回调随即作废。
+                loginGeneration.incrementAndGet()
+                currentChallenge = challenge
+                currentRedirectUri = redirectUri
+                Uri.parse(OAuthTokenClient.buildAuthorizeUrl(config, redirectUri, challenge))
+            }
             _loginState.value = inProgressState()
-            Uri.parse(OAuthTokenClient.buildAuthorizeUrl(config, redirectUri, challenge))
+            authorizeUrl
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // 协程取消必须继续向上传播，不能当作启动失败吞掉（防御性：try 内
+            // 暂无 suspend 点，正常不会进入此分支）。
+            throw e
         } catch (e: Throwable) {
             DebugLog.e(tag, "startLogin failed", e)
-            currentChallenge = null
-            currentRedirectUri = null
-            loginInProgress.set(false)
+            synchronized(sessionLock) {
+                // 启动失败：作废本会话代际并复位全部占用状态。
+                loginGeneration.incrementAndGet()
+                currentChallenge = null
+                currentRedirectUri = null
+                loginInProgress.set(false)
+            }
             _loginState.value = failedState(e.message ?: "无法启动登录")
             null
         }
@@ -149,8 +183,14 @@ abstract class BaseXOAuthManager<S>(
 
     /** 处理 WebView 拦截到的回调 URL，完成 token 交换。 */
     suspend fun handleCallbackUrl(url: String): Boolean = withContext(Dispatchers.IO) {
-        val challenge = currentChallenge ?: return@withContext false
-        val redirectUri = currentRedirectUri ?: return@withContext false
+        // 开头原子快照：代际必须与 challenge/redirectUri 同临界区读取，避免与并发
+        // startLogin/cancelLogin 交错时读到错配组合（新代际+旧 challenge）。
+        val snapshot = synchronized(sessionLock) {
+            LoginSessionSnapshot(loginGeneration.get(), currentChallenge, currentRedirectUri)
+        }
+        val challenge = snapshot.challenge ?: return@withContext false
+        val redirectUri = snapshot.redirectUri ?: return@withContext false
+        val myGen = snapshot.generation
         try {
             val uri = Uri.parse(url)
             val code = uri.getQueryParameter("code")
@@ -166,6 +206,13 @@ abstract class BaseXOAuthManager<S>(
                 return@withContext false
             }
             val response = OAuthTokenClient.exchangeCodeForTokens(config, code, redirectUri, challenge)
+            // 会话代际校验：token 交换期间用户可能已取消登录或重新发起新会话，
+            // 代际不符则旧会话 token 不得落盘；静默放弃（登录状态已由
+            // cancelLogin 归位，这里不得覆盖新会话的 UI 状态）。
+            if (loginGeneration.get() != myGen) {
+                DebugLog.w(tag, "login session superseded, drop stale tokens")
+                return@withContext false
+            }
             val tokens = tokenStore.parseTokenResponse(response)
             // M4：oauth 元数据文件只存 refresh 元数据；access token 唯一落盘到
             // settings 活动 API Key。save 失败会抛异常 → 走 FAILED，不会出现
@@ -178,14 +225,24 @@ abstract class BaseXOAuthManager<S>(
             )
             _loginState.value = successState(tokens.email)
             true
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // 协程取消必须继续向上传播，不能当作登录失败吞掉（防御性：try 内
+            // 暂无 suspend 点，正常不会进入此分支）。
+            throw e
         } catch (e: Throwable) {
             DebugLog.e(tag, "handleCallbackUrl failed", e)
             _loginState.value = failedState(e.message ?: "token 交换失败")
             false
         } finally {
-            currentChallenge = null
-            currentRedirectUri = null
-            loginInProgress.set(false)
+            // 仅当回调仍属于当前会话时才清理，避免旧回调的 finally 误清用户新发起
+            // 会话的 challenge/loginInProgress；检查与清理同临界区原子完成。
+            synchronized(sessionLock) {
+                if (loginGeneration.get() == myGen) {
+                    currentChallenge = null
+                    currentRedirectUri = null
+                    loginInProgress.set(false)
+                }
+            }
         }
     }
 
@@ -202,12 +259,18 @@ abstract class BaseXOAuthManager<S>(
      * logged-in state.
      */
     fun cancelLogin() {
-        // CAS ensures we only tear down when a session is actually in progress;
-        // otherwise this is a harmless no-op (idempotent).
-        if (!loginInProgress.compareAndSet(true, false)) return
-        currentChallenge = null
-        currentRedirectUri = null
-        _loginState.value = idleState()
+        synchronized(sessionLock) {
+            // CAS ensures we only tear down when a session is actually in progress;
+            // otherwise this is a harmless no-op (idempotent).
+            if (!loginInProgress.compareAndSet(true, false)) return
+            // 会话代际作废：此后仍在途的旧回调因代际不符，既不会持久化 token，
+            // 也不会在 finally 中清理状态；CAS 与清理同临界区，与并发的
+            // startLogin 串行化，不会误伤用户刚发起的新会话。
+            loginGeneration.incrementAndGet()
+            currentChallenge = null
+            currentRedirectUri = null
+            _loginState.value = idleState()
+        }
     }
 
     fun logout() {

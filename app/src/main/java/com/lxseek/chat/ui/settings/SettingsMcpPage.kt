@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
@@ -213,7 +214,7 @@ fun SettingsMcpPage(
                                                             },
                                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                                             tonalElevation = 6.dp,
-                                                            shape = RoundedCornerShape(12.dp),
+                                                            shape = RoundedCornerShape(LxDesign.cornerS),
                                                         ) {
                                                             DropdownMenuItem(
                                                                 text = {
@@ -492,7 +493,7 @@ private fun McpHeaderField(
             VisualTransformation.None
         },
         trailingIcon = trailingContent,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(LxDesign.cornerS),
         textStyle = MaterialTheme.typography.bodyMedium.copy(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
@@ -613,7 +614,7 @@ internal fun McpLabeledField(
                     VisualTransformation.None
                 },
                 trailingIcon = trailingContent,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(LxDesign.cornerS),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),

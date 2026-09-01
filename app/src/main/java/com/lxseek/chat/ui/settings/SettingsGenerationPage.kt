@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.GraphicEq
@@ -325,7 +326,7 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             onDismissRequest = { langExpanded = false },
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                             tonalElevation = 6.dp,
-                                            shape = RoundedCornerShape(12.dp),
+                                            shape = RoundedCornerShape(LxDesign.cornerS),
                                         ) {
                                             DropdownMenuItem(
                                                 text = { Text(stringResource(R.string.tts_language_system)) },
@@ -647,7 +648,7 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                         label = { Text(stringResource(R.string.asr_remote_base_url)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(LxDesign.cornerS),
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     OutlinedTextField(
@@ -656,7 +657,7 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                         label = { Text(stringResource(R.string.asr_remote_api_key)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(LxDesign.cornerS),
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     OutlinedTextField(
@@ -665,7 +666,7 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                         label = { Text(stringResource(R.string.asr_remote_model)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(LxDesign.cornerS),
                                     )
                                 }
                             }

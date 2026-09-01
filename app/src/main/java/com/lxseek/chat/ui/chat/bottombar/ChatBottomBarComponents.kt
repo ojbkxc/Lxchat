@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.ui.theme.ChatType
 import com.lxseek.chat.ui.theme.ProviderPalette
+import com.lxseek.chat.ui.theme.LxDesign
 
 fun Modifier.verticalScrollbar(
     scrollState: ScrollState,
@@ -45,7 +46,7 @@ internal fun ProviderBadge(provider: String) {
         else -> badgeColor.copy(alpha = 0.15f)
     }
     Surface(
-        shape = RoundedCornerShape(4.dp),
+        shape = RoundedCornerShape(LxDesign.cornerXS),
         color = badgeBackground
     ) {
         Text(

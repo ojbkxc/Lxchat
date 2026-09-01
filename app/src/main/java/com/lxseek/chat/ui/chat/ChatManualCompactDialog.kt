@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -86,7 +87,7 @@ internal fun ChatManualCompactDialog(
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelMenu)
                         },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerM),
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(
@@ -117,7 +118,7 @@ internal fun ChatManualCompactDialog(
                     enabled = !busy,
                     minLines = 3,
                     maxLines = 7,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerM),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
@@ -126,7 +127,7 @@ internal fun ChatManualCompactDialog(
                     label = { Text(stringResource(R.string.context_compact_retain)) },
                     enabled = !busy,
                     singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerM),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 error?.let { message ->

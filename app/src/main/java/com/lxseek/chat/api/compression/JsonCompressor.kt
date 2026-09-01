@@ -33,29 +33,64 @@ object JsonCompressor {
 
     private val json = Json { prettyPrint = false }
 
+    /**
+     * 最近一次 [looksLikeJson] 探测成功的原文引用（仅做 identity 比较），
+     * 与 [probeElement] 配对：ContentRouter 的调用顺序是「先探测、后压缩」，
+     * 让紧随其后的 [compress] 复用解析结果，避免对同一文本二次 parse。
+     */
+    private val probeSource = ThreadLocal<String?>()
+
+    /** [probeSource] 对应的已解析元素。 */
+    private val probeElement = ThreadLocal<JsonElement?>()
+
     /** 快速探测：文本以 [ 或 { 开头且能被完整解析为 JSON。 */
     fun looksLikeJson(text: String): Boolean {
         val trimmed = text.trimStart()
-        if (!trimmed.startsWith("[") && !trimmed.startsWith("{")) return false
+        if (!trimmed.startsWith("[") && !trimmed.startsWith("{")) {
+            clearProbeCache()
+            return false
+        }
         // 全文必须整体是 JSON，而不是"夹着 JSON 的散文"。
         return try {
-            json.parseToJsonElement(trimmed)
+            val element = json.parseToJsonElement(trimmed)
+            // 缓存解析结果，让紧随其后的 compress 直接复用。
+            probeSource.set(text)
+            probeElement.set(element)
             true
         } catch (_: Exception) {
+            clearProbeCache()
             false
         }
     }
 
     fun compress(text: String): String {
-        val element = try {
-            json.parseToJsonElement(text)
-        } catch (_: Exception) {
-            return text
-        }
+        // 命中探测缓存则复用解析结果，未命中（独立调用）自行 parse。
+        val element = takeProbedElement(text)
+            ?: try {
+                json.parseToJsonElement(text)
+            } catch (_: Exception) {
+                return text
+            }
         val compacted = compact(element)
         // 同构数组折叠（仅顶层对象数组）。
         val folded = foldHomogeneousArray(compacted)
         return render(folded)
+    }
+
+    /** 取走与 [text] 同一实例的探测缓存；未命中返回 null 并清空槽位。 */
+    private fun takeProbedElement(text: String): JsonElement? {
+        if (probeSource.get() !== text) {
+            clearProbeCache()
+            return null
+        }
+        val element = probeElement.get()
+        clearProbeCache()
+        return element
+    }
+
+    private fun clearProbeCache() {
+        probeSource.set(null)
+        probeElement.set(null)
     }
 
     // ── 递归紧凑化：去 null/空值、截断超长字符串 ──────────────────────────

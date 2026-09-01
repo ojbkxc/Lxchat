@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -186,7 +187,7 @@ fun SettingsMemoryPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                 tonalElevation = 6.dp,
                                                 expanded = showFileMenu,
                                                 onDismissRequest = { showFileMenu = false },
-                                                shape = RoundedCornerShape(12.dp)
+                                                shape = RoundedCornerShape(LxDesign.cornerS)
                                             ) {
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(R.string.provider_edit)) },
@@ -314,7 +315,7 @@ fun SettingsMemoryPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             onValueChange = { editFileName = it },
                             label = { Text(stringResource(R.string.memory_title_hint)) },
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -325,7 +326,7 @@ fun SettingsMemoryPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             onValueChange = { editDesc = it },
                             label = { Text(stringResource(R.string.memory_desc_hint)) },
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -334,7 +335,7 @@ fun SettingsMemoryPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         value = editContent,
                         onValueChange = { editContent = it },
                         label = { Text(stringResource(R.string.memory_content_hint)) },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 200.dp, max = 400.dp),
@@ -413,7 +414,7 @@ fun SettingsMemoryPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         onValueChange = { newFileName = it },
                         label = { Text(stringResource(R.string.memory_title_hint)) },
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -422,7 +423,7 @@ fun SettingsMemoryPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         onValueChange = { newFileDesc = it },
                         label = { Text(stringResource(R.string.memory_desc_hint)) },
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -430,7 +431,7 @@ fun SettingsMemoryPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         value = newFileContent,
                         onValueChange = { newFileContent = it },
                         label = { Text(stringResource(R.string.memory_content_hint)) },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 150.dp),

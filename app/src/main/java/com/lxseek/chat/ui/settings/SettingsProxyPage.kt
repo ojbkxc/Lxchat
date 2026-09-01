@@ -3,6 +3,7 @@ package com.lxseek.chat.ui.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AltRoute
@@ -244,7 +245,7 @@ fun SettingsProxyPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                         },
                                         singleLine = false,
                                         minLines = 4,
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(LxDesign.cornerS),
                                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                                         modifier = Modifier.fillMaxWidth()
                                     )
@@ -298,7 +299,7 @@ private fun ProxyLabeledField(
                 singleLine = singleLine,
                 keyboardOptions = KeyboardOptions(keyboardType = keyboard),
                 visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(LxDesign.cornerS),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -329,7 +330,7 @@ private fun DnsLabeledField(
                 onValueChange = { draft = it; onChange(it) },
                 placeholder = placeholder?.let { ph -> { Text(ph, style = MaterialTheme.typography.bodyMedium) } },
                 singleLine = singleLine,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(LxDesign.cornerS),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                 modifier = Modifier.fillMaxWidth()
             )

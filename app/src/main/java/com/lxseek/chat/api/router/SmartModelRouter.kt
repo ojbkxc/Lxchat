@@ -342,7 +342,7 @@ class SmartModelRouter(
         baseConfig: ProviderConfig,
         emit: suspend (StreamEvent) -> Unit,
     ) {
-        // 白名单拒绝：直接 emit 配置错误（公共管道返回 null 的语义）。
+        // 白名单拒绝：直接 emit 配置错误并结束（不经公共管道，不计入评分）。
         if (!routerConfig.allowlist.isAllowed(modelId)) {
             emit(StreamEvent.Error(GenerationError.Configuration(
                 "模型 '$modelId' 不在白名单中或已被黑名单禁止",
@@ -355,17 +355,9 @@ class SmartModelRouter(
                 if (event is StreamEvent.Error) sawError = true
                 emit(event)
             }
-        }
-        // 反馈环：成功打分已在 executeWithLimits 内完成；Provider 自报 Error
-        // （未抛异常）同样计为失败（与 AdaptiveFallbackTracker 的口径一致）。
-        if (sawError) {
-            recordRouteScore(
-                providerName = provider.name,
-                modelId = modelId,
-                success = false,
-                latencyMs = 0L,
-                boosters = routeBoosters(baseConfig),
-            )
+            // 自报 Error（未抛异常）视为失败，返回 false 交由 executeWithLimits 统一
+            // 记 failure 分数（含真实延迟），此处不再补记，避免同一次请求双计。
+            !sawError
         }
     }
 
@@ -374,8 +366,11 @@ class SmartModelRouter(
      * Key 解析 → 构建条目配置 → 速率限制 → 并发限制 → 执行 → 打质量分 → release。
      *
      * 调用方需先自行做白名单检查（拒绝时的错误上报方式不同：emit vs AttemptResult）。
-     * [run] 接收一个「收集回调」：以 Provider Flow 的每次事件回调一次；
-     * 正常结束时记录 success 打分，抛异常时记录 failure 打分并向上传播。
+     * [run] 接收一个「收集回调」：以 Provider Flow 的每次事件回调一次，返回本次流
+     * 是否未自报 [StreamEvent.Error]（Provider 以事件而非异常上报失败时返回 false）。
+     * 回调返回 true 记录 success 打分，返回 false 或抛异常时记录 failure 打分
+     * （异常继续向上传播）。成功/自报 Error/异常三种情形的评分记账统一在本管道完成，
+     * 调用方不得另行补记，避免双计或漏记。
      */
     private suspend fun executeWithLimits(
         provider: LlmProvider,
@@ -384,7 +379,7 @@ class SmartModelRouter(
         baseUrlOverride: String?,
         messages: List<ChatMessage>,
         baseConfig: ProviderConfig,
-        run: suspend (entryConfig: ProviderConfig) -> Unit,
+        run: suspend (entryConfig: ProviderConfig) -> Boolean,
     ) {
         // 解析 API Key 与构建配置
         val resolvedKey = resolveApiKey(provider.name, apiKeyOverride, baseConfig.apiKey)
@@ -408,11 +403,13 @@ class SmartModelRouter(
 
         try {
             val startMs = SystemClock.elapsedRealtime()
-            run(entryConfig)
+            // 回调返回 false = 流中自报 Error（Provider 以事件而非异常上报失败），
+            // 与抛异常一样计为失败，且携带真实延迟（区别于异常路径的 latencyMs=0）。
+            val streamSucceeded = run(entryConfig)
             recordRouteScore(
                 providerName = provider.name,
                 modelId = modelId,
-                success = true,
+                success = streamSucceeded,
                 latencyMs = SystemClock.elapsedRealtime() - startMs,
                 boosters = routeBoosters(entryConfig),
             )
@@ -509,6 +506,9 @@ class SmartModelRouter(
                         is StreamEvent.Retrying -> events.add(event)
                     }
                 }
+                // 自报 Error（未抛异常）视为失败，返回 false 交由 executeWithLimits
+                // 统一记 failure 分数，补上此前缺失的失败记账。
+                error == null
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -522,7 +522,8 @@ class SmartModelRouter(
             success = error == null,
             latencyMs = SystemClock.elapsedRealtime() - startMs,
         )
-        // 反馈环：兜底缓冲路径的打分已由 executeWithLimits 统一记录（成功/异常两条路径）。
+        // 反馈环：打分已由 executeWithLimits 统一记录（成功/自报 Error/异常三种情形），
+        // 与 streamDirect 路径口径一致，此处不重复记账。
 
         return AttemptResult(
             events = events,

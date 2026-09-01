@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -112,7 +113,7 @@ private fun ProviderVoiceItem(
             onDismissRequest = { expanded = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 6.dp,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(LxDesign.cornerS),
         ) {
             NETWORK_TTS_VOICES.forEach { voice ->
                 DropdownMenuItem(

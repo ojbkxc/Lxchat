@@ -76,6 +76,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.JsonPrimitive
+import com.lxseek.chat.ui.theme.LxDesign
 
 /**
  * IM multi-channel management page. Lists every [ImPlatform] as a card showing bind status,
@@ -598,7 +599,7 @@ private fun BindStatusBadge(bound: Boolean, count: Int) {
     val color = if (bound) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
     Surface(
         color = color.copy(alpha = 0.12f),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(LxDesign.cornerS),
     ) {
         Text(
             text = if (bound) stringResource(R.string.im_channel_bound, count) else stringResource(R.string.im_channel_unbound),
@@ -785,7 +786,7 @@ internal fun BindFormSection(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(LxDesign.cornerS),
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(20.dp),

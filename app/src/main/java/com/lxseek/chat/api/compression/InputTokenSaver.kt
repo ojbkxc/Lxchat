@@ -26,6 +26,9 @@ object InputTokenSaver {
     /** 单条工具结果低于此字符数不处理（与 [ContentRouter.MIN_COMPRESS_LENGTH] 对齐）。 */
     private const val MIN_RESULT_CHARS = ContentRouter.MIN_COMPRESS_LENGTH
 
+    /** Markdown 代码围栏分隔符。 */
+    private const val FENCE_DELIMITER = "```"
+
     /**
      * 压缩消息列表中的历史工具结果。
      *
@@ -98,20 +101,47 @@ object InputTokenSaver {
 
     /**
      * 压缩一段工具结果：保护代码围栏，其余交给 [ContentRouter]。
+     *
+     * 围栏边界用 indexOf 循环定位：围栏外散文分段压缩，围栏内文本
+     * （含语言标注）原样保留，开、闭分隔符在重建时逐个补回。
+     * 旧实现按 split("```") 重建时只补开分隔符，闭合 "```" 全部丢失，
+     * 发给模型的代码围栏永不闭合、后续文本被吞进代码块。
      */
     internal fun compressToolResult(result: String): String {
-        val fenceIndex = result.indexOf("```")
-        if (fenceIndex >= 0) {
-            // 含代码围栏的结果按围栏切分：围栏内不动，围栏外的散文部分单独压缩。
-            val parts = result.split("```")
-            val rebuilt = parts.mapIndexed { index, part ->
-                // 偶数下标在围栏外，奇数下标在围栏内（含语言标注行）。
-                if (index % 2 == 0) ContentRouter.compress(part) else "```$part"
-            }
-            val joined = rebuilt.joinToString("")
-            return if (joined.length < result.length) joined else result
+        if (!result.contains(FENCE_DELIMITER)) {
+            // 无围栏：整体交给 ContentRouter。
+            return ContentRouter.compress(result)
         }
-        return ContentRouter.compress(result)
+        val rebuilt = StringBuilder()
+        var cursor = 0
+        var insideFence = false
+        while (true) {
+            val fence = result.indexOf(FENCE_DELIMITER, cursor)
+            if (!insideFence) {
+                if (fence < 0) {
+                    // 收尾：最后一段围栏外散文压缩后结束。
+                    rebuilt.append(ContentRouter.compress(result.substring(cursor)))
+                    break
+                }
+                // 围栏开始：压缩其前的散文，原样补回开分隔符。
+                rebuilt.append(ContentRouter.compress(result.substring(cursor, fence)))
+                rebuilt.append(FENCE_DELIMITER)
+                insideFence = true
+            } else {
+                if (fence < 0) {
+                    // 未闭合围栏：剩余文本视作围栏内容原样保留，不丢文本也不报错。
+                    rebuilt.append(result.substring(cursor))
+                    break
+                }
+                // 围栏闭合：围栏内文本原样保留，原样补回闭分隔符。
+                rebuilt.append(result.substring(cursor, fence))
+                rebuilt.append(FENCE_DELIMITER)
+                insideFence = false
+            }
+            cursor = fence + FENCE_DELIMITER.length
+        }
+        val joined = rebuilt.toString()
+        return if (joined.length < result.length) joined else result
     }
 
     private fun ChatMessage.isToolProtocolMessage(): Boolean =

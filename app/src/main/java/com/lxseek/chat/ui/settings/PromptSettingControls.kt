@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.AlertDialog
@@ -74,7 +75,7 @@ fun PromptEditDialog(
                 value = draft,
                 onValueChange = { draft = it },
                 label = { Text(stringResource(R.string.prompt_content)) },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(LxDesign.cornerS),
                 minLines = 6,
                 maxLines = 12,
                 modifier = Modifier

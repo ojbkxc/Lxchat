@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import com.lxseek.chat.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -194,7 +195,7 @@ internal fun ZoomableImageItem(
             onSuccess = { state -> imageSize = state.painter.intrinsicSize },
             modifier = Modifier
                 .fillMaxSize()
-                .clip(RoundedCornerShape(16.dp)) // 图片圆角16dp
+                .clip(RoundedCornerShape(LxDesign.cornerM)) // 图片圆角16dp
                 .pointerInput(url, motionPolicy.allowSpatialTransitions) {
                     val velocityTracker = VelocityTracker()
                     awaitEachGesture {

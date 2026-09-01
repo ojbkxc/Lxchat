@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -182,7 +183,7 @@ private fun SuggestionSurface(content: @Composable () -> Unit) {
             .fillMaxWidth()
             .padding(bottom = 4.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(LxDesign.cornerM),
         tonalElevation = 2.dp,
     ) {
         Column(

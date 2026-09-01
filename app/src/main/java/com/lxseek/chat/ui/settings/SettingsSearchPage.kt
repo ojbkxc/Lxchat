@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material3.*
 import com.lxseek.chat.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
 import androidx.compose.runtime.*
@@ -151,7 +152,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                         tonalElevation = 6.dp,
                                         expanded = expanded,
                                         onDismissRequest = { expanded = false },
-                                        shape = RoundedCornerShape(12.dp)
+                                        shape = RoundedCornerShape(LxDesign.cornerS)
                                     ) {
                                         val noEmbedding = embeddingModels.isEmpty()
                                         searchMethods.forEach { method ->
@@ -196,7 +197,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                         tonalElevation = 6.dp,
                                         expanded = expanded,
                                         onDismissRequest = { expanded = false },
-                                        shape = RoundedCornerShape(12.dp)
+                                        shape = RoundedCornerShape(LxDesign.cornerS)
                                     ) {
                                         val noEmbedding = embeddingModels.isEmpty()
                                         searchMethods.forEach { method ->
@@ -294,7 +295,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                     tonalElevation = 6.dp,
                                                     expanded = showMenuForModel == model.id,
                                                     onDismissRequest = { showMenuForModel = null },
-                                                    shape = RoundedCornerShape(12.dp)
+                                                    shape = RoundedCornerShape(LxDesign.cornerS)
                                                 ) {
                                                     DropdownMenuItem(
                                                         text = { Text(stringResource(R.string.edit)) },
@@ -563,7 +564,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             onValueChange = { localName = it },
                             label = { Text(stringResource(R.string.model_name_label)) },
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -573,7 +574,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             label = { Text(stringResource(R.string.embedding_batch_size)) },
                             supportingText = { Text(stringResource(R.string.embedding_batch_size_desc)) },
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -679,7 +680,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             onValueChange = { renameText = it },
                             label = { Text(stringResource(R.string.model_name_label)) },
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -689,7 +690,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             label = { Text(stringResource(R.string.embedding_batch_size)) },
                             supportingText = { Text(stringResource(R.string.embedding_batch_size_desc)) },
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }

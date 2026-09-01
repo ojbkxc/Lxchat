@@ -1,4 +1,4 @@
-package com.lxseek.chat.viewmodel
+package com.lxseek.chat.agent
 
 import com.lxseek.chat.model.ContextBudget
 import com.lxseek.chat.model.ProviderPassResult
