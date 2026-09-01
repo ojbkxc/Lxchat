@@ -25,6 +25,7 @@ dependencies {
     api(project(":core:util"))
 
     implementation(libs.kotlinx.serialization.json)
-    // ChatMessage/TokenUsage 上的 @Immutable 注解。
-    implementation("androidx.compose.runtime:runtime:1.9.4")
+    // ChatMessage/TokenUsage 上的 @Immutable 注解。与 app 一致走 Compose BOM。
+    implementation(platform(libs.androidx.compose.bom))
+    implementation("androidx.compose.runtime:runtime")
 }
