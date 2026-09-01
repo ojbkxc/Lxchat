@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -139,7 +140,7 @@ fun SettingsProviderPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             leadingContent = { Icon(Icons.Default.Cloud, null, tint = if (configured) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), modifier = Modifier.size(24.dp)) },
                                             trailingContent = {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primaryContainer) { Text(config.protocol.displayName(), modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer) }
+                                                    Surface(shape = RoundedCornerShape(LxDesign.cornerXS), color = MaterialTheme.colorScheme.primaryContainer) { Text(config.protocol.displayName(), modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer) }
                                                     Spacer(modifier = Modifier.width(4.dp))
                                                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                                                 }
@@ -260,7 +261,7 @@ private fun CustomProviderDialogContent(
             } else {
                 null
             },
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(LxDesign.cornerS),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
         )
@@ -274,7 +275,7 @@ private fun CustomProviderDialogContent(
             } else {
                 null
             },
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(LxDesign.cornerS),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
         )

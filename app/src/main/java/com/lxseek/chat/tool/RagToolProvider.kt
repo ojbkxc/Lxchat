@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 import com.lxseek.chat.model.Participant
 import com.lxseek.chat.util.Constants
 import com.lxseek.chat.util.DebugLog
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext

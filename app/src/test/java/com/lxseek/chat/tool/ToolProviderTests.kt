@@ -1,6 +1,6 @@
 package com.lxseek.chat.tool
 
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import io.mockk.mockk
 import org.junit.Assert.*
 import org.junit.Test

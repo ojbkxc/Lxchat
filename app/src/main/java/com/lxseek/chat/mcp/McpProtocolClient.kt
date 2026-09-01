@@ -281,7 +281,9 @@ internal class McpProtocolClient(
             val errorObj = error.asObjectOrNull()
             val message = (errorObj?.get("message") as? JsonPrimitive)?.contentOrNull
                 ?: error.toString()
-            throw IOException("MCP $method failed: $message")
+            // P2-9：服务器已应答但返回了 JSON-RPC error——属于协议层错误而非
+            // 连接失败，抛协议异常以避免上层误触发 markError/scheduleRetry。
+            throw McpProtocolException("MCP $method failed: $message")
         }
         return response["result"]?.asObjectOrNull()
             ?: throw IOException("MCP $method returned no result")

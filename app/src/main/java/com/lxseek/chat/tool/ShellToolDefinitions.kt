@@ -4,7 +4,7 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 
 internal object ShellToolDefinitions {
     fun build(ctx: GenerationContext, adbShellAvailable: Boolean = false): List<ToolDefinition> {

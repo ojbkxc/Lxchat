@@ -1,6 +1,6 @@
 package com.lxseek.chat.tool
 
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext

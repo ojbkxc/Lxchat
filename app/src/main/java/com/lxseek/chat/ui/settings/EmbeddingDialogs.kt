@@ -7,6 +7,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
@@ -107,7 +108,7 @@ internal fun AddRemoteEmbeddingDialog(
                                 onDismissRequest = { provExpanded = false },
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 tonalElevation = 6.dp,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(LxDesign.cornerS)
                             ) {
                                 providers.forEachIndexed { idx, p ->
                                     DropdownMenuItem(
@@ -134,7 +135,7 @@ internal fun AddRemoteEmbeddingDialog(
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(LxDesign.cornerS)
                 )
                 Box(
                     Modifier
@@ -155,7 +156,7 @@ internal fun AddRemoteEmbeddingDialog(
                     placeholder = { Text(stringResource(R.string.embedding_api_key_hint)) },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerS),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -166,7 +167,7 @@ internal fun AddRemoteEmbeddingDialog(
                     readOnly = !state.isCustomModel,
                     label = { Text(stringResource(R.string.embedding_base_url_label)) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerS),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -190,7 +191,7 @@ internal fun AddRemoteEmbeddingDialog(
                                 onDismissRequest = { state.showModelDropdown = false },
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 tonalElevation = 6.dp,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(LxDesign.cornerS)
                             ) {
                                 provider.models.forEach { model ->
                                     DropdownMenuItem(
@@ -214,7 +215,7 @@ internal fun AddRemoteEmbeddingDialog(
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(LxDesign.cornerS)
                 )
                 Box(
                     Modifier
@@ -233,7 +234,7 @@ internal fun AddRemoteEmbeddingDialog(
                         placeholder = { Text("model-name") },
                         supportingText = { Text(stringResource(R.string.embedding_custom_model_desc)) },
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -245,7 +246,7 @@ internal fun AddRemoteEmbeddingDialog(
                     label = { Text(stringResource(R.string.model_name_label)) },
                     placeholder = { Text(state.modelName) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerS),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -256,7 +257,7 @@ internal fun AddRemoteEmbeddingDialog(
                     label = { Text(stringResource(R.string.embedding_batch_size)) },
                     supportingText = { Text(stringResource(R.string.embedding_batch_size_desc)) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerS),
                     modifier = Modifier.fillMaxWidth()
                 )
                 state.testStatus?.let { status ->

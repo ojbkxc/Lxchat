@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -213,7 +214,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                 )
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerS),
                     color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 0.dp,
                     modifier = Modifier.fillMaxWidth()

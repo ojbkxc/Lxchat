@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -98,7 +99,7 @@ fun RatingForm(
             onValueChange = { name = it },
             label = { Text(stringResource(R.string.rating_your_name)) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(LxDesign.cornerS),
             modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
         )
 
@@ -112,7 +113,7 @@ fun RatingForm(
             label = { Text(stringResource(R.string.rating_comment)) },
             minLines = 3,
             maxLines = 5,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(LxDesign.cornerS),
             modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)
         )
         Text(
@@ -136,7 +137,7 @@ fun RatingForm(
         // Error message
         if (submitError) {
             Surface(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(LxDesign.cornerS),
                 color = MaterialTheme.colorScheme.errorContainer,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
             ) {

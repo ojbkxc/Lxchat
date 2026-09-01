@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -273,7 +274,7 @@ private fun DeviceEditor(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(device.name.ifBlank { stringResource(R.string.search_untitled) }, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.width(8.dp))
-                    Surface(shape = RoundedCornerShape(4.dp),
+                    Surface(shape = RoundedCornerShape(LxDesign.cornerXS),
                         color = if (typeInput == "ssh") MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(if (typeInput == "ssh") stringResource(R.string.shell_type_ssh) else stringResource(R.string.shell_type_conch),
@@ -320,7 +321,7 @@ private fun DeviceEditor(
                         label = { Text(stringResource(R.string.shell_device_type)) },
                         leadingIcon = { Icon(Icons.Default.Cable, null) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeMenuExpanded) },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
@@ -328,7 +329,7 @@ private fun DeviceEditor(
                         onDismissRequest = { typeMenuExpanded = false },
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         tonalElevation = 6.dp,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(LxDesign.cornerS)
                     ) {
                         DropdownMenuItem(text = { Text(stringResource(R.string.shell_type_conch)) }, onClick = { typeInput = "conch"; typeMenuExpanded = false }, leadingIcon = { Icon(Icons.Default.Cable, null) })
                         DropdownMenuItem(text = { Text(stringResource(R.string.shell_type_ssh)) }, onClick = { typeInput = "ssh"; typeMenuExpanded = false }, leadingIcon = { Icon(Icons.Default.Cable, null) })
@@ -340,28 +341,28 @@ private fun DeviceEditor(
                 if (typeInput == "conch") {
                     OutlinedTextField(value = urlInput, onValueChange = { urlInput = it }, label = { Text(stringResource(R.string.shell_device_url)) },
                         placeholder = { Text(stringResource(R.string.shell_device_url_hint)) }, leadingIcon = { Icon(Icons.Default.Link, null) },
-                        singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().focusRequester(urlFocusRequester))
+                        singleLine = true, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth().focusRequester(urlFocusRequester))
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(value = keyInput, onValueChange = { keyInput = it }, label = { Text(stringResource(R.string.shell_device_key)) },
                         placeholder = { Text(stringResource(R.string.shell_device_key_hint)) }, leadingIcon = { Icon(Icons.Default.Key, null) },
-                        visualTransformation = PasswordVisualTransformation(), singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                        visualTransformation = PasswordVisualTransformation(), singleLine = true, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 } else {
                     OutlinedTextField(value = sshHostInput, onValueChange = { sshHostInput = it }, label = { Text(stringResource(R.string.shell_device_host)) },
                         placeholder = { Text(stringResource(R.string.shell_device_host_hint)) }, leadingIcon = { Icon(Icons.Default.Dns, null) },
-                        singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().focusRequester(urlFocusRequester))
+                        singleLine = true, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth().focusRequester(urlFocusRequester))
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(value = sshPortInput, onValueChange = { sshPortInput = it.filter { c -> c.isDigit() } },
                             label = { Text(stringResource(R.string.shell_device_port)) }, leadingIcon = { Icon(Icons.Default.SettingsEthernet, null) },
-                            singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(0.4f))
+                            singleLine = true, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.weight(0.4f))
                         OutlinedTextField(value = sshUserInput, onValueChange = { sshUserInput = it },
                             label = { Text(stringResource(R.string.shell_device_user)) }, leadingIcon = { Icon(Icons.Default.Person, null) },
-                            singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(0.6f))
+                            singleLine = true, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.weight(0.6f))
                     }
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(value = sshPwInput, onValueChange = { sshPwInput = it }, label = { Text(stringResource(R.string.shell_device_password)) },
                         leadingIcon = { Icon(Icons.Default.Password, null) }, visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                        singleLine = true, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
 
                     // ── Host-key pinning (TOFU) ──
                     Spacer(Modifier.height(10.dp))
@@ -424,11 +425,11 @@ private fun DeviceEditor(
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(value = nameInput, onValueChange = { nameInput = it }, label = { Text(stringResource(R.string.shell_device_name)) },
                     placeholder = { Text(stringResource(R.string.shell_device_name_hint)) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Label, null) },
-                    singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().focusRequester(nameFocusRequester))
+                    singleLine = true, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth().focusRequester(nameFocusRequester))
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(value = descInput, onValueChange = { descInput = it }, label = { Text(stringResource(R.string.shell_device_desc)) },
                     placeholder = { Text(stringResource(R.string.shell_device_desc_hint)) }, leadingIcon = { Icon(Icons.Default.Description, null) },
-                    singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                    singleLine = true, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
 
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -463,7 +464,7 @@ private fun DeviceEditor(
                     Column {
                         Text(stringResource(R.string.shell_ssh_verify_message))
                         Spacer(Modifier.height(12.dp))
-                        Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                        Surface(shape = RoundedCornerShape(LxDesign.cornerXS), color = MaterialTheme.colorScheme.surfaceVariant) {
                             Text(
                                 fingerprint,
                                 modifier = Modifier.padding(12.dp),

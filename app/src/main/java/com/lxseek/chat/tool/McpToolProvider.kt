@@ -7,7 +7,7 @@ import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.mcp.McpOutputGuard
 import com.lxseek.chat.mcp.McpRegistry
 import com.lxseek.chat.mcp.McpResourceListing
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.encodeToString

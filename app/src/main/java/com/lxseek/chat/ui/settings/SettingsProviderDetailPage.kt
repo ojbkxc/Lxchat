@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
@@ -177,7 +178,7 @@ fun SettingsProviderDetailPage(
             if (isCustom) {
                 Box {
                     IconButton(onClick = { providerMenuExpanded = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.options)) }
-                    DropdownMenu(expanded = providerMenuExpanded, onDismissRequest = { providerMenuExpanded = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 6.dp, shape = RoundedCornerShape(12.dp)) {
+                    DropdownMenu(expanded = providerMenuExpanded, onDismissRequest = { providerMenuExpanded = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 6.dp, shape = RoundedCornerShape(LxDesign.cornerS)) {
                         DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, leadingIcon = { Icon(Icons.Default.Edit, null) }, onClick = { providerMenuExpanded = false; showRenameProvider = true })
                         DropdownMenuItem(text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }, leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }, onClick = { providerMenuExpanded = false; showDeleteProvider = true })
                     }
@@ -239,7 +240,7 @@ fun SettingsProviderDetailPage(
                                             OutlinedTextField(
                                                 state = baseUrlState,
                                                 placeholder = { Text(defaultUrl, style = MaterialTheme.typography.bodyMedium) },
-                                                shape = RoundedCornerShape(12.dp),
+                                                shape = RoundedCornerShape(LxDesign.cornerS),
                                                 modifier = Modifier.fillMaxWidth(),
                                                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             )
@@ -309,7 +310,7 @@ fun SettingsProviderDetailPage(
                                         ) {
                                             if (model.mmprojPath.isNotBlank()) {
                                                 Surface(
-                                                    shape = RoundedCornerShape(4.dp),
+                                                    shape = RoundedCornerShape(LxDesign.cornerXS),
                                                     color = MaterialTheme.colorScheme.tertiaryContainer,
                                                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                                                 ) {
@@ -321,7 +322,7 @@ fun SettingsProviderDetailPage(
                                                 }
                                             }
                                             Surface(
-                                                shape = RoundedCornerShape(4.dp),
+                                                shape = RoundedCornerShape(LxDesign.cornerXS),
                                                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
                                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                             ) {
@@ -332,7 +333,7 @@ fun SettingsProviderDetailPage(
                                                 )
                                             }
                                             Surface(
-                                                shape = RoundedCornerShape(4.dp),
+                                                shape = RoundedCornerShape(LxDesign.cornerXS),
                                                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
                                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                             ) {
@@ -347,7 +348,7 @@ fun SettingsProviderDetailPage(
                                     trailingContent = {
                                         Box {
                                             IconButton(onClick = { showMenu = true }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.MoreVert, stringResource(R.string.options), modifier = Modifier.size(18.dp)) }
-                                            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 6.dp, shape = RoundedCornerShape(12.dp)) {
+                                            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 6.dp, shape = RoundedCornerShape(LxDesign.cornerS)) {
                                                 DropdownMenuItem(text = { Text(stringResource(R.string.edit)) }, leadingIcon = { Icon(Icons.Default.Edit, null) }, onClick = { showMenu = false; showEditModelDialog = model })
                                                 DropdownMenuItem(text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }, leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; showDeleteModelConfirm = model })
                                             }
@@ -515,7 +516,7 @@ fun SettingsProviderDetailPage(
                                         trailingContent = {
                                             Box {
                                                 IconButton(onClick = { showMenu = true }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.MoreVert, stringResource(R.string.options), modifier = Modifier.size(18.dp)) }
-                                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 6.dp, shape = RoundedCornerShape(12.dp)) {
+                                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 6.dp, shape = RoundedCornerShape(LxDesign.cornerS)) {
                                                     DropdownMenuItem(text = { Text(stringResource(R.string.provider_edit)) }, leadingIcon = { Icon(Icons.Default.Edit, null) }, onClick = { showMenu = false; showKeyDialog = entry })
                                                     DropdownMenuItem(text = { Text(stringResource(R.string.provider_delete), color = MaterialTheme.colorScheme.error) }, leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; showDeleteKeyConfirm = entry })
                                                 }
@@ -573,15 +574,15 @@ fun SettingsProviderDetailPage(
             },
             title = { Text(stringResource(R.string.add_local_chat_model), fontWeight = FontWeight.Bold) },
             text = { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-                OutlinedTextField(value = modelId, onValueChange = { modelId = it; idError = null }, label = { Text(stringResource(R.string.model_id_label)) }, supportingText = idError?.let { err -> { Text(err, color = MaterialTheme.colorScheme.error) } }, isError = idError != null, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = modelId, onValueChange = { modelId = it; idError = null }, label = { Text(stringResource(R.string.model_id_label)) }, supportingText = idError?.let { err -> { Text(err, color = MaterialTheme.colorScheme.error) } }, isError = idError != null, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = modelAlias, onValueChange = { modelAlias = it }, label = { Text(stringResource(R.string.model_alias_label)) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = modelAlias, onValueChange = { modelAlias = it }, label = { Text(stringResource(R.string.model_alias_label)) }, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = nCtx, onValueChange = { nCtx = it }, label = { Text(stringResource(R.string.local_ctx_size)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = nCtx, onValueChange = { nCtx = it }, label = { Text(stringResource(R.string.local_ctx_size)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val hasMmproj = addMmprojPath.isNotBlank()
-                    OutlinedButton(onClick = { mmprojLauncher.launch(arrayOf("*/*")) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f), colors = ButtonDefaults.outlinedButtonColors(contentColor = if (hasMmproj) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)) {
+                    OutlinedButton(onClick = { mmprojLauncher.launch(arrayOf("*/*")) }, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.weight(1f), colors = ButtonDefaults.outlinedButtonColors(contentColor = if (hasMmproj) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)) {
                         Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp)); Spacer(modifier = Modifier.width(6.dp)); Text(if (hasMmproj) addMmprojPath.split("/").lastOrNull() ?: "" else stringResource(R.string.local_mmproj_path_label), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (hasMmproj) {
@@ -594,11 +595,11 @@ fun SettingsProviderDetailPage(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = temperature, onValueChange = { temperature = it }, label = { Text(stringResource(R.string.local_temperature)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = temperature, onValueChange = { temperature = it }, label = { Text(stringResource(R.string.local_temperature)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = topP, onValueChange = { topP = it }, label = { Text(stringResource(R.string.local_top_p)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = topP, onValueChange = { topP = it }, label = { Text(stringResource(R.string.local_top_p)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = maxTokens, onValueChange = { maxTokens = it }, label = { Text(stringResource(R.string.local_max_tokens)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = maxTokens, onValueChange = { maxTokens = it }, label = { Text(stringResource(R.string.local_max_tokens)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 formError?.let { Spacer(modifier = Modifier.height(8.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }},
             confirmButton = { TextButton(onClick = {
@@ -648,15 +649,15 @@ fun SettingsProviderDetailPage(
             },
             title = { Text(stringResource(R.string.edit), fontWeight = FontWeight.Bold) },
             text = { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-                OutlinedTextField(value = editModelId, onValueChange = { editModelId = it; editIdError = null }, label = { Text(stringResource(R.string.model_id_label)) }, supportingText = editIdError?.let { err -> { Text(err, color = MaterialTheme.colorScheme.error) } }, isError = editIdError != null, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = editModelId, onValueChange = { editModelId = it; editIdError = null }, label = { Text(stringResource(R.string.model_id_label)) }, supportingText = editIdError?.let { err -> { Text(err, color = MaterialTheme.colorScheme.error) } }, isError = editIdError != null, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = editAlias, onValueChange = { editAlias = it }, label = { Text(stringResource(R.string.model_alias_label)) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = editAlias, onValueChange = { editAlias = it }, label = { Text(stringResource(R.string.model_alias_label)) }, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = editNCtx, onValueChange = { editNCtx = it }, label = { Text(stringResource(R.string.local_ctx_size)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = editNCtx, onValueChange = { editNCtx = it }, label = { Text(stringResource(R.string.local_ctx_size)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val hasMmproj = editMmprojPath.isNotBlank()
-                    OutlinedButton(onClick = { mmprojLauncher.launch(arrayOf("*/*")) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f), colors = ButtonDefaults.outlinedButtonColors(contentColor = if (hasMmproj) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)) {
+                    OutlinedButton(onClick = { mmprojLauncher.launch(arrayOf("*/*")) }, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.weight(1f), colors = ButtonDefaults.outlinedButtonColors(contentColor = if (hasMmproj) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)) {
                         Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp)); Spacer(modifier = Modifier.width(6.dp)); Text(if (hasMmproj) editMmprojPath.split("/").lastOrNull() ?: "" else stringResource(R.string.local_mmproj_path_label), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (hasMmproj) {
@@ -669,11 +670,11 @@ fun SettingsProviderDetailPage(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = editTemp, onValueChange = { editTemp = it }, label = { Text(stringResource(R.string.local_temperature)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = editTemp, onValueChange = { editTemp = it }, label = { Text(stringResource(R.string.local_temperature)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = editTopP, onValueChange = { editTopP = it }, label = { Text(stringResource(R.string.local_top_p)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = editTopP, onValueChange = { editTopP = it }, label = { Text(stringResource(R.string.local_top_p)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = editMaxTokens, onValueChange = { editMaxTokens = it }, label = { Text(stringResource(R.string.local_max_tokens)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = editMaxTokens, onValueChange = { editMaxTokens = it }, label = { Text(stringResource(R.string.local_max_tokens)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth())
                 editFormError?.let { Spacer(modifier = Modifier.height(8.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }},
             confirmButton = { TextButton(onClick = {
@@ -706,9 +707,9 @@ fun SettingsProviderDetailPage(
         val isEdit = apiKeys.any { it.id == entry.id }
         AlertDialog(modifier = Modifier.clearFocusOnTap(), containerColor = MaterialTheme.colorScheme.surfaceContainer, onDismissRequest = { showKeyDialog = null }, title = { Text(if (isEdit) stringResource(R.string.provider_edit_key) else stringResource(R.string.provider_add_key_title), fontWeight = FontWeight.Bold) }, text = {
             Column(Modifier.fillMaxWidth()) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.provider_key_name_hint)) }, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().noOpBringIntoView())
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.provider_key_name_hint)) }, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth().noOpBringIntoView())
                 Spacer(modifier = Modifier.height(8.dp))
-                Box(modifier = Modifier.noOpBringIntoView()) { OutlinedTextField(value = key, onValueChange = { key = it }, label = { Text("${currentName} API Key") }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) }
+                Box(modifier = Modifier.noOpBringIntoView()) { OutlinedTextField(value = key, onValueChange = { key = it }, label = { Text("${currentName} API Key") }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth()) }
             }
         }, confirmButton = { TextButton(onClick = { if (name.isNotBlank() && key.isNotBlank()) { if (isEdit) viewModel.settings.updateApiKey(entry.id, name, key) else viewModel.settings.addApiKey(name, key, currentName); showKeyDialog = null } }) { Text(if (isEdit) stringResource(R.string.provider_save) else stringResource(R.string.provider_add)) } }, dismissButton = { TextButton(onClick = { showKeyDialog = null }) { Text(stringResource(R.string.cancel)) } })
     }
@@ -723,7 +724,7 @@ fun SettingsProviderDetailPage(
         var renameValue by remember(currentName) { mutableStateOf(currentName) }
         var renameError by remember { mutableStateOf(false) }
         AlertDialog(modifier = Modifier.clearFocusOnTap(), containerColor = MaterialTheme.colorScheme.surfaceContainer, onDismissRequest = { showRenameProvider = false }, title = { Text(stringResource(R.string.custom_provider_rename_title), fontWeight = FontWeight.Bold) }, text = {
-            OutlinedTextField(value = renameValue, onValueChange = { renameValue = it; renameError = false }, label = { Text(stringResource(R.string.custom_provider_name_label)) }, isError = renameError, supportingText = if (renameError) {{ Text(stringResource(R.string.custom_provider_name_error)) }} else null, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(value = renameValue, onValueChange = { renameValue = it; renameError = false }, label = { Text(stringResource(R.string.custom_provider_name_label)) }, isError = renameError, supportingText = if (renameError) {{ Text(stringResource(R.string.custom_provider_name_error)) }} else null, shape = RoundedCornerShape(LxDesign.cornerS), modifier = Modifier.fillMaxWidth(), singleLine = true)
         }, confirmButton = { TextButton(onClick = {
             val trimmed = renameValue.trim()
             renameError = CustomProviderNamePolicy.hasConflict(
@@ -1016,7 +1017,7 @@ private fun GgufModelDownloadCard(
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 entry.tags.forEach { tag ->
                     Surface(
-                        shape = RoundedCornerShape(4.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerXS),
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     ) {

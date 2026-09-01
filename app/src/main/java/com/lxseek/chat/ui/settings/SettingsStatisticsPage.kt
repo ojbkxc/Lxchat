@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -244,7 +245,7 @@ private fun StatGrid(overall: UsageStatistics, modifier: Modifier = Modifier) {
 private fun MetricCard(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(LxDesign.cornerM))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(16.dp),
     ) {

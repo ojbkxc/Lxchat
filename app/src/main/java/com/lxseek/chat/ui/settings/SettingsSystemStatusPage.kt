@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -475,9 +476,9 @@ private fun SectionCard(
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(LxDesign.cornerS))
             .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(LxDesign.cornerS))
             .padding(14.dp),
     ) {
         Text(

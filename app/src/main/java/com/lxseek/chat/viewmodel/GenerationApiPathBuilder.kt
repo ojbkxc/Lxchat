@@ -1,5 +1,7 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationConfig
+import com.lxseek.chat.agent.GenerationContext
 import com.lxseek.chat.api.ProviderConfig
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.util.projectGenerationStatusesForApi

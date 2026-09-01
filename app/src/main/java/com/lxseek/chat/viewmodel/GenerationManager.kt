@@ -1,5 +1,8 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationCallbacks
+import com.lxseek.chat.agent.GenerationConfig
+import com.lxseek.chat.agent.GenerationContext
 import android.app.Application
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.api.LlmProvider

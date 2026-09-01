@@ -4,7 +4,7 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.data.ActivityJournal
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray

@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -150,7 +151,7 @@ fun SystemPromptEditorPage(
                 supportingText = if (titleError) {
                     { Text(stringResource(R.string.template_title_required)) }
                 } else null,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(LxDesign.cornerS),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -306,7 +307,7 @@ fun SystemPromptEditorPage(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Surface(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(LxDesign.cornerS),
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 0.dp,
                 modifier = Modifier
@@ -406,7 +407,7 @@ private fun InsertBetweenButton(
                 tonalElevation = 6.dp,
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(LxDesign.cornerS)
             ) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.template_add_text)) },
@@ -461,13 +462,13 @@ private fun TemplateItemRow(
                         onChange(item.copy(value = newValue))
                     },
                     label = { Text(stringResource(R.string.template_custom_text_label)) },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerS),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
             PromptItemType.PREDEFINED -> {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerS),
                     color = MaterialTheme.colorScheme.surfaceContainer,
                     tonalElevation = 0.dp,
                     modifier = Modifier.fillMaxWidth()

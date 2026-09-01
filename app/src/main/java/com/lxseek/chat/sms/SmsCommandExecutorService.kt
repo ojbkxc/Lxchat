@@ -13,7 +13,7 @@ import com.lxseek.chat.R
 import com.lxseek.chat.adb.AdbLog
 import com.lxseek.chat.tool.ShellToolProvider
 import com.lxseek.chat.util.DebugLog
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

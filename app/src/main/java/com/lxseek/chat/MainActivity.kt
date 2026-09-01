@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.BugReport
@@ -738,7 +739,7 @@ fun MainNavigation(
                     Spacer(Modifier.height(4.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(LxDesign.cornerXS))
                             .pointerInput(Unit) { detectTapGestures { alwaysAllow = !alwaysAllow } }
                     ) {
                         Checkbox(checked = alwaysAllow, onCheckedChange = { alwaysAllow = it })
@@ -815,7 +816,7 @@ fun MainNavigation(
                     Spacer(Modifier.height(14.dp))
                     // Privacy reassurance as a distinct fine-print block, not just smaller text.
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     ) {
                         Row(
@@ -862,7 +863,7 @@ fun MainNavigation(
                         }
                         Spacer(Modifier.height(6.dp))
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             modifier = Modifier.heightIn(max = 200.dp)
                         ) {
@@ -937,7 +938,7 @@ fun MainNavigation(
             }
         ) {
             Surface(
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(LxDesign.cornerXL),
                 color = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 RatingForm(
@@ -1194,8 +1195,8 @@ fun MainNavigation(
             ) {
                 content?.let { data ->
                     Snackbar(
-                        modifier = Modifier.padding(horizontal = 12.dp).padding(vertical = 10.dp).shadow(6.dp, RoundedCornerShape(12.dp), clip = false),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp).padding(vertical = 10.dp).shadow(6.dp, RoundedCornerShape(LxDesign.cornerS), clip = false),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         actionContentColor = MaterialTheme.colorScheme.primary,

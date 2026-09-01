@@ -412,7 +412,7 @@ internal fun ChatDrawerContent(
                                             modifier = Modifier
                                                 .width(LxDesign.accentBarThickness)
                                                 .height(18.dp)
-                                                .clip(RoundedCornerShape(1.dp))
+                                                .clip(RoundedCornerShape(LxDesign.cornerXS))
                                                 .background(MaterialTheme.colorScheme.primary)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))

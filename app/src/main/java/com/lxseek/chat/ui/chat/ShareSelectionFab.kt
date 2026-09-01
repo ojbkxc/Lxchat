@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Check
@@ -39,7 +40,7 @@ internal fun ShareSelectionFab(
 ) {
     Surface(
         modifier = modifier.height(52.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(LxDesign.cornerM),
         color = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 2.dp,

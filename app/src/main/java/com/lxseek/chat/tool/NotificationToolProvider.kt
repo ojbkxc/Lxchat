@@ -11,7 +11,7 @@ import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
 import com.lxseek.chat.api.ToolProperty
 import com.lxseek.chat.util.DebugLog
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
 import java.util.Date

@@ -76,7 +76,7 @@ fun SettingsGroup(
                 modifier = Modifier
                     .width(LxDesign.accentBarThickness)
                     .height(14.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(1.dp))
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(LxDesign.cornerXS))
             )
             Spacer(Modifier.width(8.dp))
             Text(
@@ -588,7 +588,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                     .height(14.dp)
                                                     .background(
                                                         MaterialTheme.colorScheme.primary,
-                                                        RoundedCornerShape(1.dp)
+                                                        RoundedCornerShape(LxDesign.cornerXS)
                                                     )
                                             )
                                             Spacer(Modifier.width(8.dp))

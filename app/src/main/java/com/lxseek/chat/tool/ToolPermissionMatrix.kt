@@ -3,7 +3,7 @@ package com.lxseek.chat.tool
 import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.membership.MembershipTier
 import com.lxseek.chat.plugin.PluginHost
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 
 /**
  * Per-tool permission entry in the [ToolPermissionMatrix].

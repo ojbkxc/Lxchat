@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -48,7 +49,7 @@ fun AdvancedSettingsDialog(
 
     AlertDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(LxDesign.cornerXL),
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -168,18 +169,18 @@ fun AdvancedSettingsDialog(
                         contextWindow = null; temperature = null; maxTokens = null
                         topP = null; frequencyPenalty = null; presencePenalty = null
                     },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(LxDesign.cornerM),
                 ) { Text(stringResource(R.string.gen_reset)) }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     TextButton(
                         onClick = onDismiss,
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerM),
                     ) {
                         Text(stringResource(R.string.provider_cancel))
                     }
                     TextButton(
                         onClick = { onSave(currentSettings()) },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerM),
                     ) {
                         Text(stringResource(R.string.provider_save))
                     }

@@ -72,6 +72,7 @@ import com.lxseek.chat.plugin.market.MarketPluginMeta
 import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.lxseek.chat.ui.theme.LxDesign
 
 /**
  * Online plugin market: browse the merged catalog of all enabled market sources and
@@ -515,7 +516,7 @@ private fun KindBadge(kind: MarketPluginKind) {
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(LxDesign.cornerXS))
             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
             .padding(horizontal = 6.dp, vertical = 1.dp),
     )

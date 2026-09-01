@@ -10,7 +10,7 @@ import com.lxseek.chat.plugin.PluginContext
 import com.lxseek.chat.plugin.PluginManifest
 import com.lxseek.chat.tool.ToolDescriptor
 import com.lxseek.chat.tool.ToolProvider
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

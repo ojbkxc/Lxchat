@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -115,7 +116,7 @@ private fun VoiceServiceHero() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(LxDesign.cornerL))
             .background(
                 Brush.horizontalGradient(
                     listOf(cs.primary.copy(alpha = 0.18f), cs.primary.copy(alpha = 0.05f))
@@ -127,7 +128,7 @@ private fun VoiceServiceHero() {
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(LxDesign.cornerS))
                 .background(cs.primary.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -161,9 +162,9 @@ private fun CapabilityTile(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(LxDesign.cornerS))
             .background(cs.surface)
-            .border(1.dp, cs.outlineVariant, RoundedCornerShape(14.dp))
+            .border(1.dp, cs.outlineVariant, RoundedCornerShape(LxDesign.cornerS))
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -171,7 +172,7 @@ private fun CapabilityTile(
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(LxDesign.cornerS))
                 .background(cs.primary.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center,
         ) {

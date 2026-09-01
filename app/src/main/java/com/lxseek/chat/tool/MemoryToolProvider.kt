@@ -8,7 +8,7 @@ import com.lxseek.chat.data.ActivityJournal
 import com.lxseek.chat.data.MemoryImportanceScorer
 import com.lxseek.chat.data.MemoryManager
 import com.lxseek.chat.util.DebugLog
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json

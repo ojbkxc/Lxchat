@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Terminal
@@ -92,7 +93,7 @@ fun AskUserQuestionPanel(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(LxDesign.cornerXS))
                                 .clickable { toggleOption(option) }
                                 .padding(horizontal = 4.dp, vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -102,7 +103,7 @@ fun AskUserQuestionPanel(
                                 Checkbox(checked = isSelected, onCheckedChange = { toggleOption(option) })
                             } else {
                                 Box(
-                                    modifier = Modifier.size(20.dp).clip(RoundedCornerShape(10.dp))
+                                    modifier = Modifier.size(20.dp).clip(RoundedCornerShape(LxDesign.cornerS))
                                         .clickable { toggleOption(option) },
                                     contentAlignment = Alignment.Center,
                                 ) {
@@ -126,7 +127,7 @@ fun AskUserQuestionPanel(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(LxDesign.cornerXS))
                             .clickable { showOther = !showOther }
                             .padding(horizontal = 4.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -153,7 +154,7 @@ fun AskUserQuestionPanel(
                             modifier = Modifier.fillMaxWidth(),
                             textStyle = MaterialTheme.typography.bodyMedium,
                             maxLines = 3,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerXS),
                         )
                     }
                 } else {
@@ -165,7 +166,7 @@ fun AskUserQuestionPanel(
                         modifier = Modifier.fillMaxWidth(),
                         textStyle = MaterialTheme.typography.bodyMedium,
                         maxLines = 4,
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerXS),
                     )
                 }
             }

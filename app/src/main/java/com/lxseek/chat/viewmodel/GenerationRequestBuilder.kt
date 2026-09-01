@@ -1,5 +1,7 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationConfig
+import com.lxseek.chat.agent.GenerationContext
 import android.content.Context
 import com.lxseek.chat.R
 import com.lxseek.chat.data.ConversationSettings

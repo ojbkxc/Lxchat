@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -118,7 +119,7 @@ fun VideoSliceDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(LxDesign.cornerM),
             color = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 3.dp,
             modifier = Modifier.fillMaxWidth()
@@ -144,8 +145,8 @@ fun VideoSliceDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(120.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(LxDesign.cornerXS))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(LxDesign.cornerXS))
                     ) {
                         Image(
                             bitmap = previewBitmap.asImageBitmap(),

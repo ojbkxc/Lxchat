@@ -8,7 +8,7 @@ import com.lxseek.chat.data.ActivityJournal
 import com.lxseek.chat.skill.Skill
 import com.lxseek.chat.skill.SkillHost
 import com.lxseek.chat.skill.UserSkillStore
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive

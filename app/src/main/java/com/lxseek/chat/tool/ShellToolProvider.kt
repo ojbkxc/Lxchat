@@ -7,7 +7,7 @@ import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.data.ShellDeviceConfig
 import com.lxseek.chat.sandbox.SandboxManagerFactory
 import com.lxseek.chat.util.Constants
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

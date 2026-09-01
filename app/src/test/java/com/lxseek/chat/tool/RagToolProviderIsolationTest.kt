@@ -5,7 +5,7 @@ import com.lxseek.chat.data.local.MessageEntity
 import com.lxseek.chat.data.repository.ConversationRepository
 import com.lxseek.chat.model.MessageStatus
 import com.lxseek.chat.model.Participant
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk

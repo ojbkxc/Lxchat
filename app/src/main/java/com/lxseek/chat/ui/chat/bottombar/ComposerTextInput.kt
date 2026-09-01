@@ -3,7 +3,6 @@ package com.lxseek.chat.ui.chat.bottombar
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable

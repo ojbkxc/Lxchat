@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -157,7 +158,7 @@ private fun InfoBox(text: String) {
     val cs = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(LxDesign.cornerS),
         color = cs.surfaceVariant.copy(alpha = 0.6f),
     ) {
         Text(
@@ -203,7 +204,7 @@ private fun FeatureModelRow(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(LxDesign.cornerS))
                     .background(cs.surfaceVariant.copy(alpha = 0.5f))
                     .clickable(onClick = onPick)
                     .padding(12.dp),

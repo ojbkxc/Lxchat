@@ -2,7 +2,7 @@ package com.lxseek.chat.tool
 
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.model.ToolImageAttachment
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 

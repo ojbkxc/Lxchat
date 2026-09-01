@@ -2,7 +2,7 @@ package com.lxseek.chat.skill
 
 import com.lxseek.chat.tool.ToolDescriptor
 import com.lxseek.chat.tool.ToolProvider
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 
 /**
  * Decorator that sinks the skill-level `requiresMembership` flag onto the

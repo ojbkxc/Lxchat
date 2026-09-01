@@ -60,6 +60,7 @@ import com.lxseek.chat.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
 import java.util.Locale
 import java.util.UUID
+import com.lxseek.chat.ui.theme.LxDesign
 
 /**
  * Tasks feature root: a saved prompt + model you can run on demand or on a schedule.
@@ -388,7 +389,7 @@ private fun TaskCard(
                         expanded = menuOpen,
                         onDismissRequest = { menuOpen = false },
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.task_run_now)) },
@@ -447,9 +448,9 @@ private fun NewAutomationRow(
  * card while reading slightly more rounded and elevated than the legacy 12/4 stack.
  */
 internal fun stackedShape(index: Int, count: Int): RoundedCornerShape = when {
-    count <= 1 -> RoundedCornerShape(16.dp)
-    index == 0 -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
-    index == count - 1 -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+    count <= 1 -> RoundedCornerShape(LxDesign.cornerM)
+    index == 0 -> RoundedCornerShape(topStart = LxDesign.cornerM, topEnd = LxDesign.cornerM, bottomStart = 6.dp, bottomEnd = 6.dp)
+    index == count - 1 -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = LxDesign.cornerM, bottomEnd = LxDesign.cornerM)
     else -> RoundedCornerShape(6.dp)
 }
 

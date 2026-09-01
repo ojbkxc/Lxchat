@@ -219,11 +219,23 @@ class GgufDownloader private constructor(private val context: Context) {
                 registerCall(entry.id, getCall)
                 try {
                     getCall.execute().use { resp ->
-                        if (!resp.isSuccessful && resp.code != 206) {
-                            // Server doesn't support range or other error — restart from scratch.
-                            if (resp.code == 200) {
+                        // P1-3 修复：三分支处理响应码。此前外层判断为
+                        // !isSuccessful && code != 206，而 isSuccessful 覆盖
+                        // 200..299，code==200 的重置分支恒不可达（死代码）：
+                        // 服务器忽略 Range 返回 200 全量时会被追加到旧 .part
+                        // 之后，文件错位损坏却仍标记 Completed。
+                        var restartFromScratch = false
+                        when {
+                            resp.code == 206 -> {
+                                // 续传成功：服务器返回剩余部分，维持现有追加逻辑。
+                            }
+                            resp.isSuccessful -> {
+                                // 服务器忽略 Range 请求头，返回 200 完整响应：
+                                // 已下载的部分文件作废，从头写入。
                                 downloadedBytes = 0
-                            } else {
+                                restartFromScratch = true
+                            }
+                            else -> {
                                 stateFlow.value = GgufDownloadState.Failed("下载失败 ${resp.code}")
                                 return@withContext
                             }
@@ -235,6 +247,10 @@ class GgufDownloader private constructor(private val context: Context) {
                         }
 
                         val raf = RandomAccessFile(partFile, "rw")
+                        if (restartFromScratch) {
+                            // 200 全量响应：截断清零旧 .part，避免尾部残留脏数据。
+                            raf.setLength(0)
+                        }
                         raf.seek(downloadedBytes)
 
                         val source = body.source()

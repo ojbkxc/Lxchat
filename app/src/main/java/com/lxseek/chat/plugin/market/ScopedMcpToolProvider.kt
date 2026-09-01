@@ -13,7 +13,7 @@ import com.lxseek.chat.tool.ToolExecutionResult
 import com.lxseek.chat.tool.ToolImageStore
 import com.lxseek.chat.tool.ToolPresentationMetadata
 import com.lxseek.chat.tool.ToolProvider
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

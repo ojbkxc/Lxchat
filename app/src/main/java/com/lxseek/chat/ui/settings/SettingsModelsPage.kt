@@ -56,6 +56,7 @@ import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
 import com.lxseek.chat.util.Constants
 import com.lxseek.chat.util.noOpBringIntoView
 import com.lxseek.chat.viewmodel.ChatViewModel
+import com.lxseek.chat.ui.theme.LxDesign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -332,7 +333,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                 unfocusedBorderColor = Color.Transparent,
                                 disabledBorderColor = Color.Transparent,
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -501,7 +502,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                     expanded = customModelProviderMenuExpanded
                                 )
                             },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier
                                 .menuAnchor(
                                     type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
@@ -517,7 +518,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             matchTextFieldWidth = false,
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                             tonalElevation = 6.dp,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                         ) {
                             providerChoices.forEach { providerName ->
                                 DropdownMenuItem(
@@ -560,7 +561,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             } else {
                                 null
                             },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -573,7 +574,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             onValueChange = { customModelAlias = it },
                             singleLine = true,
                             label = { Text(stringResource(R.string.models_alias_hint)) },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -705,7 +706,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         OutlinedTextField(
                             state = aliasState,
                             label = { Text(stringResource(R.string.models_alias_hint)) },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(LxDesign.cornerS),
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text(parsed.apiModelName) }
                         )
@@ -728,13 +729,13 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Shape constants matching SettingsGroup's per-position rounding (12dp outer edges, 4dp where cards meet).
 // Each encodes top-corners / bottom-corners for its place in the group.
-internal val FullRounded   = RoundedCornerShape(12.dp)
-internal val TopRounded    = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-internal val BottomRounded = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
-internal val MidRounded    = RoundedCornerShape(4.dp)
+internal val FullRounded   = RoundedCornerShape(LxDesign.cornerS)
+internal val TopRounded    = RoundedCornerShape(topStart = LxDesign.cornerS, topEnd = LxDesign.cornerS, bottomStart = LxDesign.cornerXS, bottomEnd = LxDesign.cornerXS)
+internal val BottomRounded = RoundedCornerShape(topStart = LxDesign.cornerXS, topEnd = LxDesign.cornerXS, bottomStart = LxDesign.cornerS, bottomEnd = LxDesign.cornerS)
+internal val MidRounded    = RoundedCornerShape(LxDesign.cornerXS)
 internal val FlatShape     = RoundedCornerShape(0.dp)
-internal val FlatToBottom  = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
-internal val FourBottom    = RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp)
+internal val FlatToBottom  = RoundedCornerShape(bottomStart = LxDesign.cornerS, bottomEnd = LxDesign.cornerS)
+internal val FourBottom    = RoundedCornerShape(bottomStart = LxDesign.cornerXS, bottomEnd = LxDesign.cornerXS)
 
 internal val RemoteModelProviders = listOf(
     Constants.PROVIDER_GOOGLE,

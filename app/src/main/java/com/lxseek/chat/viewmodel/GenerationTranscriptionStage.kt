@@ -1,5 +1,6 @@
 package com.lxseek.chat.viewmodel
 
+import com.lxseek.chat.agent.GenerationContext
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.MessageSegment
 import kotlinx.coroutines.Job

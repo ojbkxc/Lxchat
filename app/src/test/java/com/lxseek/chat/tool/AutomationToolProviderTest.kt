@@ -4,7 +4,7 @@ import com.lxseek.chat.automation.LoopManager
 import com.lxseek.chat.automation.TaskManager
 import com.lxseek.chat.data.local.LoopEntity
 import com.lxseek.chat.data.local.TaskEntity
-import com.lxseek.chat.viewmodel.GenerationContext
+import com.lxseek.chat.agent.GenerationContext
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk

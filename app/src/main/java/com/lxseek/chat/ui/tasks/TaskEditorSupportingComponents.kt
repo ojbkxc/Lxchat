@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lxseek.chat.ui.theme.LxDesign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -95,7 +96,7 @@ internal fun TaskMonthDayPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(LxDesign.cornerM),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         title = {
             Text(
@@ -119,7 +120,7 @@ internal fun TaskMonthDayPickerDialog(
                         expanded = showMonthMenu,
                         onDismissRequest = { showMonthMenu = false },
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                     ) {
                         monthNames.forEachIndexed { index, monthName ->
                             val month = index + 1
@@ -293,7 +294,7 @@ internal fun TaskDatePickerDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(LxDesign.cornerM),
         colors = pickerColors,
     ) {
         DatePicker(
@@ -376,7 +377,7 @@ internal fun TaskTimePickerDialog(
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(LxDesign.cornerM),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         title = {
             Text(stringResource(R.string.task_at), fontWeight = FontWeight.Bold)
@@ -557,7 +558,7 @@ internal fun ExecutionRow(
                     DropdownMenu(
                         expanded = menuOpen,
                         onDismissRequest = { menuOpen = false },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(LxDesign.cornerS),
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         tonalElevation = 6.dp,
                     ) {
