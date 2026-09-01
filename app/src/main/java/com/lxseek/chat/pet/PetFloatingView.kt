@@ -563,10 +563,10 @@ class PetFloatingView @JvmOverloads constructor(
         val params = windowParams ?: return performClickFallback(event)
         if (event.actionMasked == MotionEvent.ACTION_DOWN && isTransparentAt(event.x, event.y)) return false
         // Only the pet BODY starts a drag/tap — never the surrounding window area (which
-        // exists just for tip text headroom). Canvas bubble: inside the drawn circle AND
-        // within the central tap-target. Bitmap pets (spritesheet / custom): inside the
-        // frame rect AND within the central tap target of the pet's bounding circle, so
-        // edges/fringes that survived the alpha test don't grab from far outside the sprite.
+        // exists just for tip text headroom). Canvas bubble: inside the drawn circle.
+        // Bitmap pets (spritesheet / custom): inside the frame rect; the alpha test above
+        // already passed transparent pixels through, so the tappable region matches the
+        // visible pixels exactly (and scales with the pet size setting via petSizePx).
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             val inBody = if (customBitmap == null && spritesheetBitmap == null) {
                 val dx = event.x - petCenterX
@@ -576,7 +576,7 @@ class PetFloatingView @JvmOverloads constructor(
                 val frame = if (customBitmap != null && frameDstRect.isEmpty) bitmapDstRectF else frameDstRect
                 frame.contains(event.x, event.y)
             }
-            if (!inBody || isOutsideTapTarget(event.x, event.y)) return false
+            if (!inBody) return false
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -661,30 +661,6 @@ class PetFloatingView @JvmOverloads constructor(
             petTop > screenHeight - maxOff -> screenHeight - maxOff - tipSlot
             else -> y
         }
-    }
-
-    /**
-     * Returns true if the touch point falls outside the shrunken tap target.
-     *
-     * Only the central [TAP_TARGET_RADIUS_RATIO] of the pet radius responds to touches; the
-     * outer ring passes through to the app below so taps near the pet's edges don't trigger a
-     * drag or app launch by accident. The check is centered on the pet body ([petCenterX],
-     * [bubbleCenterY]) and scaled by [bubbleRadius], so it works for both the Canvas bubble
-     * and the spritesheet frame (which shares the same center and is sized from [petSizePx]).
-     */
-    private fun isOutsideTapTarget(x: Float, y: Float): Boolean {
-        val dx = x - petCenterX
-        val dy = y - bubbleCenterY
-        // Bitmap pets: the tap target is the central circle of the frame rect (the sprite
-        // occupies frameDstRect, which shares the pet center). Canvas bubble: central circle
-        // of the drawn bubble. Either way touches on the outer fringe pass through.
-        val reach = if (customBitmap != null || spritesheetBitmap != null) {
-            val frame = if (customBitmap != null && frameDstRect.isEmpty) bitmapDstRectF else frameDstRect
-            minOf(frame.width(), frame.height()) * 0.5f * TAP_TARGET_RADIUS_RATIO
-        } else {
-            bubbleRadius() * TAP_TARGET_RADIUS_RATIO
-        }
-        return hypot(dx, dy) > reach
     }
 
     /**
@@ -817,11 +793,5 @@ class PetFloatingView @JvmOverloads constructor(
         // How much of the pet body may hang off a screen edge while dragging (fraction of
         // petSizePx). 0.5 keeps half the sprite visible as a grab handle for pulling it back.
         const val DRAG_OFFSCREEN_FRACTION = 0.5f
-
-        // Fraction of the bubble radius that responds to taps; touches outside this central
-        // circle pass through to the app below. 0.6 keeps the pet body tappable while letting
-        // the outer 40% (transparent atlas padding + sprite fringe) pass through, reducing
-        // accidental drags/launches when the user taps near the pet's edges.
-        const val TAP_TARGET_RADIUS_RATIO = 0.6f
     }
 }
