@@ -91,7 +91,9 @@ jobs:
           ./gradlew verifyKotlinFileSize
 
       - name: Build F-Droid Release APK
-        run: ./gradlew assembleFdroidRelease -PappVersionName=${VERSION}
+        # 显式 versionCode=2：派生逻辑下 v1.0.1 与 v1.0.0 同得 code=1，
+        # 不递增会导致用户无法从 v1.0.0 覆盖安装。
+        run: ./gradlew assembleFdroidRelease -PappVersionName=${VERSION} -PappVersionCode=2
 
       - name: Rename and collect APK
         run: |
