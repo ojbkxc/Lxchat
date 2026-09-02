@@ -57,7 +57,7 @@ jobs:
               echo "#CI_SHA=$GITHUB_SHA"
               echo "#CI_REF=$GITHUB_REF"
               echo "====ERR_MARKERS===="; grep -n -E "FAILURE:|What went wrong|Execution failed for task|Caused by:|e: file:|error:|Error:|ERROR:|Could not|Cannot|not found|No such|Unresolved reference|None of the following" /tmp/build.log | head -120
-              echo "====MANIFEST_ERRORS===="; grep -n -B 2 -A 8 -E "Manifest merger|Attribute .* requires|Error: .*manifest|\.xml:[0-9]+: Error" /tmp/build.log | head -120
+              echo "====MANIFEST_ERRORS===="; grep -n -A 14 "AndroidManifest.xml Error:" /tmp/build.log | head -120
               echo "====FAIL_BLOCK===="; grep -n -A 40 "FAILURE: Build failed" /tmp/build.log | tail -45
               echo "====ETASK===="; grep -n -A 10 "Execution failed for task" /tmp/build.log | head -160
               echo "====E_DIR===="; grep -n "e: " /tmp/build.log | head -160
