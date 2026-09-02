@@ -42,6 +42,19 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
 
         /** 模型旁边的类别名清单文件（下载器一并落盘）。 */
         const val LABELS_FILE_NAME = "yamnet_labels.txt"
+
+        /**
+         * TensorFlow Hub `google/yamnet/1` 官方 class map（CSV display_name 列）固定行号。
+         * 顺序须与 [BabyModelManager] 落盘的 YAMNET_CLASS_NAMES 完全一致：
+         * index 0=Speech … 18=Chuckle, chortle / 19=Crying, sobbing /
+         * 20=Baby cry, infant cry / 21=Whimper。
+         */
+        val FALLBACK_INDEXES: Map<String, Int> = mapOf(
+            "Speech" to 0,
+            "Crying, sobbing" to 19,
+            "Baby cry, infant cry" to 20,
+            "Whimper" to 21,
+        )
     }
 
     private val interpreter: Interpreter
@@ -140,20 +153,5 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
         val labelFile = File(modelFile.parentFile, LABELS_FILE_NAME)
         return runCatching { labelFile.readLines().filter { it.isNotBlank() } }
             .getOrDefault(emptyList())
-    }
-
-    private companion object {
-        /**
-         * TensorFlow Hub `google/yamnet/1` 官方 class map（CSV display_name 列）固定行号。
-         * 顺序须与 [BabyModelManager] 落盘的 YAMNET_CLASS_NAMES 完全一致：
-         * index 0=Speech … 18=Chuckle, chortle / 19=Crying, sobbing /
-         * 20=Baby cry, infant cry / 21=Whimper。
-         */
-        val FALLBACK_INDEXES: Map<String, Int> = mapOf(
-            "Speech" to 0,
-            "Crying, sobbing" to 19,
-            "Baby cry, infant cry" to 20,
-            "Whimper" to 21,
-        )
     }
 }

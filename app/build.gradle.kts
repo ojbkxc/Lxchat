@@ -242,11 +242,7 @@ dependencies {
     implementation(libs.zxing.core)
     implementation("com.alphacephei:vosk-android:0.3.47")
     // Baby cry monitor: on-device YAMNet audio classification (AudioSet 521 classes).
-    // tensorflow-lite 会传递依赖 tensorflow-lite-api，二者命名空间同为 org.tensorflow.lite，
-    // AGP 9 的 manifest merger 视作重复命名空间报错，故排除传递的 api 拆分包（完整包已含 Interpreter）。
-    implementation("org.tensorflow:tensorflow-lite:2.14.0") {
-        exclude(group = "org.tensorflow", module = "tensorflow-lite-api")
-    }
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
     debugImplementation(libs.androidx.compose.ui.tooling)
