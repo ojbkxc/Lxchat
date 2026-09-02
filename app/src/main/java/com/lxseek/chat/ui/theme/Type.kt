@@ -178,9 +178,9 @@ object ChatType {
     // Body tier
     val body get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp * chatFontScale, lineHeight = 24.sp * chatFontScale)
     val userBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp * chatFontScale, lineHeight = 20.sp * chatFontScale)
-    val thoughtBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp * chatFontScale, lineHeight = 19.sp * chatFontScale)
-    val thoughtTitle get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp * chatFontScale, lineHeight = 19.sp * chatFontScale)
-    val thoughtFold get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp * chatFontScale, lineHeight = 17.sp * chatFontScale)
+    val thoughtBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp * chatFontScale, lineHeight = 12.sp * chatFontScale)
+    val thoughtTitle get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp * chatFontScale, lineHeight = 12.sp * chatFontScale)
+    val thoughtFold get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp * chatFontScale, lineHeight = 12.sp * chatFontScale)
     val errorBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp * chatFontScale, lineHeight = 18.sp * chatFontScale)
 
     // Meta tier
@@ -190,8 +190,8 @@ object ChatType {
 
     // Code / mono
     val code get() = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp * chatFontScale, lineHeight = 20.sp * chatFontScale)
-    val thoughtCode get() = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp * chatFontScale, lineHeight = 17.sp * chatFontScale)
-    val thoughtCodeLarge get() = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp * chatFontScale, lineHeight = 19.sp * chatFontScale)
+    val thoughtCode get() = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 11.sp * chatFontScale, lineHeight = 11.sp * chatFontScale)
+    val thoughtCodeLarge get() = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp * chatFontScale, lineHeight = 12.sp * chatFontScale)
 
     // Sheet
     val detailTitle get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp * chatFontScale, lineHeight = 28.sp * chatFontScale)
@@ -214,10 +214,10 @@ object ChatType {
     val mdH6 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp * chatFontScale, lineHeight = 20.sp * chatFontScale)
 
     // Thought-block headings — one tier below assistant markdown.
-    val thH1 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp * chatFontScale, lineHeight = 23.sp * chatFontScale)
-    val thH2 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp * chatFontScale, lineHeight = 21.sp * chatFontScale)
-    val thH3 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp * chatFontScale, lineHeight = 20.sp * chatFontScale)
-    val thH4 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp * chatFontScale, lineHeight = 19.sp * chatFontScale)
-    val thH5 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp * chatFontScale, lineHeight = 19.sp * chatFontScale)
-    val thH6 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp * chatFontScale, lineHeight = 19.sp * chatFontScale)
+    val thH1 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp * chatFontScale, lineHeight = 15.sp * chatFontScale)
+    val thH2 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp * chatFontScale, lineHeight = 14.sp * chatFontScale)
+    val thH3 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp * chatFontScale, lineHeight = 13.sp * chatFontScale)
+    val thH4 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp * chatFontScale, lineHeight = 13.sp * chatFontScale)
+    val thH5 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp * chatFontScale, lineHeight = 12.sp * chatFontScale)
+    val thH6 get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp * chatFontScale, lineHeight = 12.sp * chatFontScale)
 }

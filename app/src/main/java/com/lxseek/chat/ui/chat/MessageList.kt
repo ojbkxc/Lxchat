@@ -123,11 +123,6 @@ internal fun MessageList(
     onFork: (String) -> Unit = { _ -> },
     onShare: (String) -> Unit = {},
     onDelete: (String) -> Unit = {},
-    /**
-     * Invoked with a message id when a row is swiped to reveal the reply action.
-     * Defaults to a no-op; callers wire it to the composer's quote-reply flow.
-     */
-    onSwipeToReply: (String) -> Unit = {},
     ttsPlayingMessageId: String? = null,
     onToggleTts: (String) -> Unit = {},
     searchQuery: String = "",
@@ -661,17 +656,6 @@ internal fun MessageList(
             lifecycleAppearanceRegistry.markKnown(message.id)
         }
 
-        // Wrap the row in a swipe-to-reveal layer so horizontal drags expose delete
-        // (left) and reply (right) actions. Disabled during selection and for retained
-        // regeneration-exit placeholders to avoid stealing gestures from the fade.
-        // Swipe-delete routes through the same confirmation dialog as the long-press
-        // menu; a subtree delete must never fire without an explicit confirm step.
-        val swipeEnabled = !selectionMode && !isRetainedRegenerationExit
-        SwipeToRevealMessage(
-            enabled = swipeEnabled,
-            onDelete = { onDelete(message.id) },
-            onReply = { onSwipeToReply(message.id) },
-        ) {
         MessageItem(
             message = message,
             segmentAppearanceRegistry = segmentAppearanceRegistry,
@@ -858,10 +842,7 @@ internal fun MessageList(
                 }
             },
             thoughtExpandedStates = thoughtExpandedStates,
-            onSwipeToDelete = { onDelete(message.id) },
-            onSwipeToReply = { onSwipeToReply(message.id) },
         )
-        }
     }
 
     Box(modifier = modifier) {

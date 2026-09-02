@@ -120,8 +120,9 @@ internal fun rememberChatMarkdownAssets(
     )
 
     // Compact typography for thought blocks — subordinate to main chat body.
-    // One tier below main markdown: body at 13sp (vs 15sp), headings similarly
-    // stepped down. Readable for paragraph-level content but clearly secondary.
+    // One tier below main markdown: body at 12sp (vs 16sp), headings similarly
+    // stepped down, line height at minimum for a dense reasoning surface.
+    // Readable for paragraph-level content but clearly secondary.
     val thoughtTypography = markdownTypography(
         text = ChatType.thoughtBody,
         paragraph = ChatType.thoughtBody,
