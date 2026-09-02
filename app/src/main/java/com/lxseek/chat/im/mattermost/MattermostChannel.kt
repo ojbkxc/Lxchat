@@ -168,11 +168,17 @@ class MattermostChannel(
             return
         }
 
-        // 心跳：Mattermost WebSocket ~30s 一次 keepalive（发空帧）。
+        // 心跳：Mattermost WebSocket ~30s 一次 keepalive（发 action=keepalive 帧）。
         heartbeatJob = scope.launch {
+            var seq = 2L
             while (scope.isActive && !stopped) {
                 delay(HEARTBEAT_INTERVAL_MS)
-                runCatching { webSocket?.send("{}") }
+                runCatching {
+                    webSocket?.send(buildJsonObject {
+                        put("seq", seq++)
+                        put("action", "keepalive")
+                    }.toString())
+                }
             }
         }
 

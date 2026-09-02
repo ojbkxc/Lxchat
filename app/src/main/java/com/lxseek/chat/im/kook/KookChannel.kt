@@ -202,8 +202,7 @@ class KookChannel(
         if (authorId == botId) return
         val msgId = data["msg_id"]?.jsonPrimitive?.contentOrNull ?: return
         val channelType = data["channel_type"]?.jsonPrimitive?.contentOrNull ?: "PERSON"
-        val targetId = (if (channelType == "GROUP") data["target_id"] else data["target_id"])
-            ?.jsonPrimitive?.contentOrNull ?: ""
+        val targetId = data["target_id"]?.jsonPrimitive?.contentOrNull ?: ""
         val conversationId = if (channelType == "GROUP") "channel:$targetId" else "direct:$targetId"
         val timestampMs = data["timestamp"]?.jsonPrimitive?.longOrNull ?: 0L
         onMessage(
