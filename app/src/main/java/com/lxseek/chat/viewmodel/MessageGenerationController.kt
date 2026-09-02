@@ -682,6 +682,7 @@ internal class MessageGenerationController(
             text = text,
             images = emptyList(),
             attachments = emptyList(),
+            replyToJson = null,
             modelId = modelId,
             onAccepted = {},
             scrollPolicy = SendScrollPolicy.ATTACHED_ONLY,
