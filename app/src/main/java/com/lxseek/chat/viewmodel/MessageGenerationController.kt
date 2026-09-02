@@ -401,15 +401,17 @@ internal class MessageGenerationController(
         text: String,
         images: List<String> = emptyList(),
         attachments: List<SelectedAttachment> = emptyList(),
+        replyToJson: String? = null,
         onAccepted: suspend (SendAcceptance) -> Unit = {},
     ): SendAcceptance? = withContext(Dispatchers.Default) {
-        sendMessageOffMain(text, images, attachments, onAccepted)
+        sendMessageOffMain(text, images, attachments, replyToJson, onAccepted)
     }
 
     private suspend fun sendMessageOffMain(
         text: String,
         images: List<String>,
         attachments: List<SelectedAttachment>,
+        replyToJson: String?,
         onAccepted: suspend (SendAcceptance) -> Unit,
     ): SendAcceptance? {
         val selectedModelId = currentActiveModel.value
@@ -445,6 +447,7 @@ internal class MessageGenerationController(
             text = text,
             images = images,
             attachments = attachments,
+            replyToJson = replyToJson,
             modelId = selectedModelId,
             onAccepted = onAccepted,
         )
@@ -473,6 +476,7 @@ internal class MessageGenerationController(
         text: String,
         images: List<String>,
         attachments: List<SelectedAttachment>,
+        replyToJson: String?,
         modelId: String,
         onAccepted: suspend (SendAcceptance) -> Unit,
         scrollPolicy: SendScrollPolicy = SendScrollPolicy.FORCE,
@@ -510,6 +514,7 @@ internal class MessageGenerationController(
                 attachments = attachments,
                 runId = runId,
                 images = images,
+                replyToJson = replyToJson,
                 preparedImages = payload.allImages,
                 preparedAttachmentMetaJson = payload.attachmentMeta?.let(Json::encodeToString),
                 preparedOwnedPaths = payload.preparedOwnedPaths,
@@ -622,6 +627,7 @@ internal class MessageGenerationController(
                 wasNewChat = wasNewChat,
                 newConversation = newConversation,
                 userText = text,
+                replyToJson = replyToJson,
                 payloadLease = payloadLease,
                 modelId = modelId,
                 providerName = providerName,

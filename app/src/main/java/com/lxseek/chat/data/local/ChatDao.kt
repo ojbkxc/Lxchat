@@ -81,6 +81,7 @@ interface ChatDao : ChatAutomationDao, ChatStatisticsDao {
                     OR substr(id, 1, 7) = 'result_' THEN '[]'
                 ELSE images
             END AS images,
+            replyToJson,
             CASE
                 WHEN id = :streamingMessageId
                     OR substr(id, 1, 5) = 'tool_'

@@ -1015,6 +1015,7 @@ class ChatViewModel(
         text: String,
         images: List<String> = emptyList(),
         attachments: List<SelectedAttachment> = emptyList(),
+        replyToJson: String? = null,
         onAccepted: suspend () -> Unit = {},
     ): SendAcceptance? {
         // Pre-check connectivity before entering the generation pipeline. Local (on-device)
@@ -1024,7 +1025,7 @@ class ChatViewModel(
             emitSnackbar(appContext.getString(R.string.network_unavailable))
             return null
         }
-        return composerSendAdapter.sendMessage(text, images, attachments, onAccepted)
+        return composerSendAdapter.sendMessage(text, images, attachments, replyToJson, onAccepted)
     }
 
     suspend fun fetchModelsForProvider(name: String): List<String> = providerModelSyncUi.fetchModelsForProvider(name)

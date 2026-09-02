@@ -55,6 +55,8 @@ internal data class DirectAcceptedInputRequest(
     val wasNewChat: Boolean,
     val newConversation: ChatEntity?,
     val userText: String,
+    /** Serialized [com.lxseek.chat.model.MessageReplyRef]; null for a plain message. */
+    val replyToJson: String? = null,
     val payloadLease: PreparedMessagePayloadLease,
     val modelId: String,
     val providerName: String,
@@ -180,6 +182,7 @@ internal class DirectAcceptedInputEffectExecutor(
                         userMessageId = userMessageId,
                         modelMessageId = modelMessageId,
                         userText = request.userText,
+                        replyToJson = request.replyToJson,
                         images = request.payloadLease.payload.allImages,
                         attachmentMeta = request.payloadLease.payload.attachmentMeta
                             ?.let(Json::encodeToString),

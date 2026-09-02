@@ -53,6 +53,8 @@ internal fun ComposerDraftLifecycleEffect(
         // A send queued (pendingSend) belongs to the previous conversation; a switch
         // mid-processing must drop it, or the queued submit would fire into the new draft (C1).
         composer.pendingSend = false
+        // A reply quote armed in the previous conversation must not leak into the new one.
+        composer.clearReply()
         val draftId = currentConversationId
         if (draftId == null) {
             // New-chat screen: clear the composer so a draft from the previous conversation

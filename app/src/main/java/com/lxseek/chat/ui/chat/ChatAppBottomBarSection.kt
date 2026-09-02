@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.lxseek.chat.api.util.ContextWindowUsage
 import com.lxseek.chat.data.local.LoopEntity
 import com.lxseek.chat.data.ShellDeviceConfig
+import com.lxseek.chat.model.MessageReplyRef
 import com.lxseek.chat.model.OpenAiServiceTiers
 
 import com.lxseek.chat.ui.chat.bottombar.ChatBottomBar
@@ -37,6 +38,8 @@ internal fun ChatAppBottomBarSection(
     scrollCoordinator: ChatScrollCoordinator,
     textFieldState: TextFieldState,
     composer: ChatComposerState,
+    replyTo: MessageReplyRef? = null,
+    onDismissReply: () -> Unit = {},
     inputFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
     isExpanded: Boolean = false,
@@ -163,15 +166,20 @@ internal fun ChatAppBottomBarSection(
                         contentAlignment = Alignment.BottomCenter,
                     ) {
                         ChatBottomBar(
-                            onSendMessage = { text, attachments, onAccepted ->
+                            onSendMessage = { text, attachments, replyToJson, onAccepted ->
                                 if (com.lxseek.chat.command.SlashCommands.execute(text, viewModel)) {
                                     onAccepted()
+                                    if (replyToJson != null) onDismissReply()
                                     null
                                 } else {
                                     viewModel.sendMessage(
                                         text = text,
                                         attachments = attachments,
-                                        onAccepted = onAccepted,
+                                        replyToJson = replyToJson,
+                                        onAccepted = {
+                                            onAccepted()
+                                            if (replyToJson != null) onDismissReply()
+                                        },
                                     )
                                 }
                             },
@@ -223,6 +231,8 @@ internal fun ChatAppBottomBarSection(
                             modifier = Modifier,
                             textFieldState = textFieldState,
                             composerState = composer,
+                            replyTo = replyTo,
+                            onDismissReply = onDismissReply,
                             conversations = conversations.map { ConversationMention(it.id, it.title) },
                             onSwitchConversation = { id -> viewModel.selectConversation(id) },
                             focusRequester = inputFocusRequester,

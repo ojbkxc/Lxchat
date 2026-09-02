@@ -27,6 +27,8 @@ internal class AcceptedInputGraphWriter(
         val modelMessageId: String,
         val userText: String,
         val images: List<String> = emptyList(),
+        /** Serialized [com.lxseek.chat.model.MessageReplyRef]; null for a plain message. */
+        val replyToJson: String? = null,
         val attachmentMeta: String? = null,
         val modelId: String,
         val userTimestamp: Long,
@@ -77,6 +79,7 @@ internal class AcceptedInputGraphWriter(
             parentId = leaf?.id,
             text = request.userText,
             images = request.images,
+            replyToJson = request.replyToJson,
             thoughts = null,
             status = MessageStatus.SUCCESS,
             participant = Participant.USER,

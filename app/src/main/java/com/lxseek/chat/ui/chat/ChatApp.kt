@@ -647,6 +647,10 @@ fun ChatApp(
                                     viewModel.stopTts()
                                     conversationInteraction.activateShareSelection(id)
                                 },
+                                onReply = { reply ->
+                                    composer.armReply(reply)
+                                    inputFocusRequester.requestFocus()
+                                },
                                 onDelete = { id -> viewModel.deleteMessage(id) },
                                 ttsPlayingMessageId = ttsPlayingMessageId,
                                 onToggleTts = { id ->
@@ -789,6 +793,8 @@ fun ChatApp(
                 scrollCoordinator = scrollCoordinator,
                 textFieldState = textFieldState,
                 composer = composer,
+                replyTo = composer.replyTo,
+                onDismissReply = { composer.clearReply() },
                 inputFocusRequester = inputFocusRequester,
                 modifier = Modifier.align(Alignment.BottomCenter),
                 isExpanded = isExpanded,
