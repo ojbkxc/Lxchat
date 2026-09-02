@@ -7,7 +7,7 @@ when_to_use: 用户要创作长篇小说、规划卷纲章节、写章、审查�
 # webnovel-writer 长篇网文创作
 
 通过 `webnovel` 工具驱动 webnovel-writer 引擎完成长篇创作。引擎在设备沙箱内运行，
-使用用户已配置的默认模型服务；未配置模型会返回错误。
+使用用户已配置的默认模型服务。若当前模型缺少 API Key，工具会返回 model_not_configured 错误并提示可操作选项：可用 list_enabled_models 查看已配置的模型，再用 config_set 切换到 configured=true 的模型（内置 lxchat 网关如 lxchat:glm-4.7-flash 无需用户配置 API Key，开箱即用）。
 
 ## 工作流
 
@@ -22,7 +22,7 @@ when_to_use: 用户要创作长篇小说、规划卷纲章节、写章、审查�
 - `action` 参数取 `init | plan | write | review | query` 之一。
 - `params` 传 JSON 字符串，内容随 action 不同（设定对象 / 卷号章号 / 审查范围）。
 - 引擎未安装时工具会自动拉起并自动安装依赖的 runtime-python，首次可能较慢。
-- init/plan/write 需要 LLM 模型 Key；query/review 部分场景可离线。
+- init/plan/write 需要 LLM 模型 Key；query/review 部分场景可离线。内置 lxchat 网关（如 lxchat:glm-4.7-flash）无需用户配置 API Key，开箱即用。
 
 ## 建议
 

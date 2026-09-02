@@ -339,10 +339,15 @@ class RuntimeToolProvider(
         if (modelEnv["INKOS_LLM_API_KEY"].isNullOrBlank() &&
             modelEnv["LCHAT_LLM_API_KEY"].isNullOrBlank()
         ) {
+            val currentModel = manager.settings.selectedModel.value
             return error(
                 engineId,
                 "model_not_configured",
-                "未配置默认模型服务。请先在设置中配置模型（baseUrl/apiKey/model），之后即可用本工具实际创作。",
+                "当前默认模型「$currentModel」缺少 API Key，无法驱动创作引擎。" +
+                    "可操作选项：1) 用 config_set 将 model 切换到已配置好 Key 的模型" +
+                    "（用 list_enabled_models 查看 configured=true 的模型，" +
+                    "内置 lxchat 网关无需配置 Key，如 lxchat:glm-4.7-flash）；" +
+                    "2) 在设置中为当前 provider 配置 baseUrl/apiKey。",
             )
         }
         return try {
@@ -407,10 +412,15 @@ class RuntimeToolProvider(
         val params = args["params"] ?: ""
         val modelEnv = manager.buildModelEnv()
         if (modelEnv["LCHAT_LLM_API_KEY"].isNullOrBlank() && action in LLM_REQUIRED_ACTIONS) {
+            val currentModel = manager.settings.selectedModel.value
             return error(
                 engineId,
                 "model_not_configured",
-                "该 action 需要 LLM 模型 Key。请先在设置中配置默认模型服务（baseUrl/apiKey/model），之后即可实际创作。",
+                "当前默认模型「$currentModel」缺少 API Key，该 action 需要 LLM 驱动。" +
+                    "可操作选项：1) 用 config_set 将 model 切换到已配置好 Key 的模型" +
+                    "（用 list_enabled_models 查看 configured=true 的模型，" +
+                    "内置 lxchat 网关无需配置 Key，如 lxchat:glm-4.7-flash）；" +
+                    "2) 在设置中为当前 provider 配置 baseUrl/apiKey。",
             )
         }
         return try {

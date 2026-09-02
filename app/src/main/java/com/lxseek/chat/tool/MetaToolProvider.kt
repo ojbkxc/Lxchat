@@ -56,7 +56,7 @@ class MetaToolProvider(
     )
 
     /** Meta tools that only read state — they carry [RiskLevel.ReadOnly]. */
-    private val readOnlyTools = setOf("config_get", "get_permission_matrix", "get_audit_log")
+    private val readOnlyTools = setOf("config_get", "list_enabled_models", "get_permission_matrix", "get_audit_log")
 
     override fun toolDescriptors(ctx: GenerationContext): List<ToolDescriptor> =
         definitions(ctx).map { def ->
@@ -75,7 +75,11 @@ class MetaToolProvider(
                 "config_set",
                 "Set a whitelisted app configuration key. Allowed keys: model, temperature, " +
                     "max_tokens, top_p, system_prompt_addon, pet_enabled, pet_character. " +
-                    "value is always a string (e.g. temperature '0.5', pet_enabled 'true').",
+                    "value is always a string (e.g. temperature '0.5', pet_enabled 'true').\n" +
+                    "For the 'model' key: pass the full model id in 'Provider:modelId' format " +
+                    "(e.g. 'lxchat:glm-4.7-flash', 'DeepSeek:deepseek-chat'). " +
+                    "Use list_enabled_models first to see which models are available and configured. " +
+                    "The built-in lxchat provider needs no API key - it works out of the box.",
                 mapOf(
                     "key" to prop("string", "One of the whitelisted config keys."),
                     "value" to prop("string", "New value as a string."),
@@ -87,6 +91,17 @@ class MetaToolProvider(
                 "Read a whitelisted app configuration key and return its current value.",
                 mapOf("key" to prop("string", "One of the whitelisted config keys.")),
                 listOf("key"),
+            ),
+            tool(
+                "list_enabled_models",
+                "List all enabled models with their provider, API key status, and whether " +
+                    "they are ready to use. Returns the current selected model and every " +
+                    "enabled model id, each annotated with 'has_api_key' (true/false) and " +
+                    "'configured' (true when the model can be used for generation). " +
+                    "The built-in lxchat provider is always configured (no user API key needed). " +
+                    "Use this before switching models or when a tool reports model_not_configured.",
+                emptyMap(),
+                emptyList(),
             ),
             tool(
                 "skill_toggle",
@@ -163,6 +178,7 @@ class MetaToolProvider(
             when (name) {
                 "config_set" -> configSet(arguments, ctx)
                 "config_get" -> configGet(arguments)
+                "list_enabled_models" -> listEnabledModels()
                 "skill_toggle" -> skillToggle(arguments)
                 "tool_toggle" -> toolToggle(arguments, ctx)
                 "get_permission_matrix" -> getPermissionMatrix()
@@ -220,6 +236,60 @@ class MetaToolProvider(
         val key = argString("key", arguments) ?: return err("missing_key", "key is required")
         if (key !in configKeys) return err("invalid_key", "key '$key' is not whitelisted")
         return ok(key, readConfigValue(key))
+    }
+
+    /** List all enabled models with their provider and configuration status. */
+    private fun listEnabledModels(): String {
+        val enabled = settings.enabledModels.value
+        val selected = settings.selectedModel.value
+        val providerKeys = settings.apiKeys.value.associateBy { it.id }
+        val activeKeyIds = settings.activeApiKeyIds.value
+        val baseUrls = settings.providerBaseUrls.value
+        val available = settings.availableModels.value
+
+        val allModelIds = (enabled + selected).sorted().distinct()
+        val modelsArray = buildJsonArray {
+            for (modelId in allModelIds) {
+                val provider = if (modelId.contains(":")) {
+                    modelId.substring(0, modelId.indexOf(":"))
+                } else {
+                    com.lxseek.chat.model.ModelId.parse(modelId).providerName
+                }
+                val isLxChat = provider == com.lxseek.chat.util.Constants.PROVIDER_LXCHAT
+                val isLocal = provider == com.lxseek.chat.util.Constants.PROVIDER_LOCAL
+                val isOllama = provider == com.lxseek.chat.util.Constants.PROVIDER_OLLAMA
+
+                val hasApiKey = when {
+                    isLxChat || isLocal -> true
+                    isOllama -> baseUrls[provider]?.isNotBlank() == true
+                    else -> {
+                        val activeKeyId = activeKeyIds[provider]
+                        activeKeyId != null && providerKeys[activeKeyId]?.key?.isNotBlank() == true
+                    }
+                }
+                val configured = hasApiKey || (isOllama && baseUrls[provider]?.isNotBlank() == true)
+
+                add(buildJsonObject {
+                    put("model_id", modelId)
+                    put("provider", provider)
+                    put("has_api_key", hasApiKey)
+                    put("configured", configured)
+                    put("is_selected", modelId == selected)
+                    if (isLxChat) put("built_in", true)
+                    val models = available[provider]
+                    if (models != null && models.isNotEmpty()) {
+                        put("available_count", models.size)
+                    }
+                })
+            }
+        }
+        return buildJsonObject {
+            put("type", "enabled_models")
+            put("selected_model", selected)
+            put("models", modelsArray)
+            put("count", allModelIds.size)
+            put("ok", true)
+        }.toString()
     }
 
     /** Read the current string value of a whitelisted config key. */
@@ -489,7 +559,7 @@ class MetaToolProvider(
 
     companion object {
         private val HANDLED_TOOLS = setOf(
-            "config_set", "config_get", "skill_toggle", "tool_toggle",
+            "config_set", "config_get", "list_enabled_models", "skill_toggle", "tool_toggle",
             "get_permission_matrix", "set_permission", "rollback_config", "get_audit_log",
         )
     }
