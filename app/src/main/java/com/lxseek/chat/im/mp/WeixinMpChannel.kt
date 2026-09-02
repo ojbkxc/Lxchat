@@ -1,5 +1,6 @@
 package com.lxseek.chat.im.mp
 
+import com.lxseek.chat.im.ImApiException
 import com.lxseek.chat.im.ImConversation
 import com.lxseek.chat.im.ImGatewayConfig
 import com.lxseek.chat.im.ImMessage
@@ -77,7 +78,7 @@ class WeixinMpChannel(
                 api.sendCustomText(toUser, segment)
             }
             ImSendResult.Success("sent")
-        } catch (e: WeixinMpApiException) {
+        } catch (e: ImApiException) {
             DebugLog.e("WeixinMpChannel", "sendMessage 失败 (http=${e.httpCode})")
             ImSendResult.Failure(e.message ?: "weixin-mp send failed")
         } catch (e: Exception) {

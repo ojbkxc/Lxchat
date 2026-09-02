@@ -1,5 +1,6 @@
 package com.lxseek.chat.im.dingtalk
 
+import com.lxseek.chat.im.ImJson
 import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
@@ -9,7 +10,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -113,7 +113,6 @@ class DingtalkStreamApi(
         require(clientSecret.isNotBlank()) { "clientSecret is required" }
     }
 
-    private val json = Json { ignoreUnknownKeys = true }
 
     // ── Access token cache ─────────────────────────────────────────────────
     // Single-credential client, so a pair of volatiles is enough; refresh is rare and
@@ -285,7 +284,7 @@ class DingtalkStreamApi(
                 mapOf(HEADER_ACCESS_TOKEN to token),
             )
             if (!resp.isSuccessful) return@withContext false
-            val root = runCatching { json.parseToJsonElement(resp.body).jsonObject }.getOrNull()
+            val root = runCatching { ImJson.parseToJsonElement(resp.body).jsonObject }.getOrNull()
                 ?: return@withContext true // Empty 2xx body — treat as success.
             val errcode = root["errcode"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
             val code = root["code"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
@@ -329,7 +328,7 @@ class DingtalkStreamApi(
      * robot-message push (e.g. a system event, a ping, or malformed JSON). Public for tests.
      */
     internal fun parseInbound(frame: String): DingtalkInbound? {
-        val envelope = runCatching { json.parseToJsonElement(frame).jsonObject }.onFailure { e ->
+        val envelope = runCatching { ImJson.parseToJsonElement(frame).jsonObject }.onFailure { e ->
             DebugLog.w(TAG, "入站帧解析失败，已丢弃: ${frame.take(200)}", e)
         }.getOrNull()
             ?: return null
@@ -348,7 +347,7 @@ class DingtalkStreamApi(
                     DebugLog.w(TAG, "入站帧 data 序列化兜底失败，已丢弃: ${raw.toString().take(200)}", e)
                 }.getOrNull()
         } ?: return null
-        val data = runCatching { json.parseToJsonElement(dataRaw).jsonObject }.onFailure { e ->
+        val data = runCatching { ImJson.parseToJsonElement(dataRaw).jsonObject }.onFailure { e ->
             DebugLog.w(TAG, "入站帧 data 载荷解析失败，已丢弃: ${dataRaw.take(200)}", e)
         }.getOrNull()
             ?: return null
@@ -398,7 +397,7 @@ class DingtalkStreamApi(
     }
 
     private fun parseObject(body: String, action: String): JsonObject =
-        runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()
+        runCatching { ImJson.parseToJsonElement(body).jsonObject }.getOrNull()
             ?: throw DingtalkApiException("$action: response is not a JSON object")
 
     companion object {

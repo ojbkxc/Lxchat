@@ -1,7 +1,10 @@
 package com.lxseek.chat.im.kook
 
+import com.lxseek.chat.im.ImApiException
 import com.lxseek.chat.im.ImConversation
 import com.lxseek.chat.im.ImGatewayConfig
+import com.lxseek.chat.im.ImJson
+import com.lxseek.chat.im.isValidImToken
 import com.lxseek.chat.im.ImMessage
 import com.lxseek.chat.im.ImMessageDirection
 import com.lxseek.chat.im.ImSendResult
@@ -15,7 +18,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -59,11 +61,11 @@ class KookChannel(
         }
 
     override val isConfigured: Boolean
-        get() = config.enabled && KookApi.isValidToken(config.token)
+        get() = config.enabled && isValidImToken(config.token)
 
     /** 懒构建；token 非法时为 null，[isConfigured] 同步返回 false。 */
     private val api: KookApi? =
-        if (KookApi.isValidToken(config.token)) {
+        if (isValidImToken(config.token)) {
             KookApi(
                 token = config.token.trim(),
                 baseUrl = config.baseUrl.takeIf { it.isNotBlank() } ?: KookApi.DEFAULT_BASE_URL,
@@ -90,7 +92,7 @@ class KookChannel(
             }
             val msgId = data["msg_id"]?.jsonPrimitive?.contentOrNull ?: "unknown"
             ImSendResult.Success(msgId)
-        } catch (e: KookApiException) {
+        } catch (e: ImApiException) {
             DebugLog.e("KookChannel", "sendMessage 失败 (apiCode=${e.apiCode})")
             ImSendResult.Failure(e.message ?: "kook send failed")
         } catch (e: Exception) {
@@ -185,8 +187,7 @@ class KookChannel(
 
     /** 解析一帧 KOOK 网关事件，仅处理信令 0（MESSAGE）。 */
     private fun handlePayload(text: String, onMessage: (ImMessage) -> Unit) {
-        val json = Json { ignoreUnknownKeys = true }
-        val root = runCatching { json.parseToJsonElement(text).jsonObject }.onFailure { e ->
+        val root = runCatching { ImJson.parseToJsonElement(text).jsonObject }.onFailure { e ->
             DebugLog.w("KookChannel", "入站帧解析失败，已丢弃: ${text.take(200)}", e)
         }.getOrNull() ?: return
         val signal = root["s"]?.jsonPrimitive?.intOrNull ?: return

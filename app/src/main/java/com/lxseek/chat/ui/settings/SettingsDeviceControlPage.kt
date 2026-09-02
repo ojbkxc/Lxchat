@@ -148,7 +148,7 @@ fun PetSettingsSection(viewModel: ChatViewModel, onOpenAddPet: () -> Unit = {}) 
 
     fun setEmotionEnabled(target: Boolean) {
         viewModel.viewModelScope.launch {
-            viewModel.settings.savePetEmotionEnabled(target)
+            viewModel.settings.pet.savePetEmotionEnabled(target)
             com.lxseek.chat.pet.PetEmotionController.enabled = target
             if (!target) {
                 com.lxseek.chat.pet.PetEmotionController.setEmotion(com.lxseek.chat.pet.PetEmotion.IDLE)
@@ -162,7 +162,7 @@ fun PetSettingsSection(viewModel: ChatViewModel, onOpenAddPet: () -> Unit = {}) 
      */
     fun setCharacter(character: PetCharacter) {
         viewModel.viewModelScope.launch {
-            viewModel.settings.savePetOverlayCharacter(character.prefKey)
+            viewModel.settings.pet.savePetOverlayCharacter(character.prefKey)
             PetOverlayController.refreshCharacter(context)
         }
     }
@@ -185,7 +185,7 @@ fun PetSettingsSection(viewModel: ChatViewModel, onOpenAddPet: () -> Unit = {}) 
                     if (destFile != null) {
                         val finalFile = java.io.File(context.filesDir, PET_IMAGE_FILE_NAME)
                         if (destFile.renameTo(finalFile)) {
-                            viewModel.settings.savePetOverlayImagePath(finalFile.absolutePath)
+                            viewModel.settings.pet.savePetOverlayImagePath(finalFile.absolutePath)
                         } else {
                             destFile.delete()
                         }
@@ -198,7 +198,7 @@ fun PetSettingsSection(viewModel: ChatViewModel, onOpenAddPet: () -> Unit = {}) 
 
     fun clearImage() {
         viewModel.viewModelScope.launch {
-            viewModel.settings.savePetOverlayImagePath("")
+            viewModel.settings.pet.savePetOverlayImagePath("")
             PetOverlayController.refreshImage(context)
         }
     }
@@ -311,7 +311,7 @@ fun PetSettingsSection(viewModel: ChatViewModel, onOpenAddPet: () -> Unit = {}) 
                                     onValueChange = { sliderValue = it },
                                     onValueChangeFinished = {
                                         viewModel.viewModelScope.launch {
-                                            viewModel.settings.savePetOverlaySizeScale(sliderValue)
+                                            viewModel.settings.pet.savePetOverlaySizeScale(sliderValue)
                                             PetOverlayController.refreshSize(context)
                                         }
                                     },

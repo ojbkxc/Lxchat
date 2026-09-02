@@ -31,10 +31,10 @@ class ModelManager(
             if (isLocalModelIdTaken(config.modelId)) return@launch
             val models = settings.localChatModels.value.toMutableList()
             models.add(config)
-            settings.saveLocalChatModels(models)
+            settings.sm.saveLocalChatModels(models)
             val modelPrefixedId = "Local:${config.modelId}"
             settings.setEnabledModels(settings.enabledModels.value + modelPrefixedId)
-            settings.saveModelAliases(settings.modelAliases.value + (modelPrefixedId to config.alias))
+            settings.sm.saveModelAliases(settings.modelAliases.value + (modelPrefixedId to config.alias))
         }
     }
 
@@ -46,13 +46,13 @@ class ModelManager(
                 if (model.mmprojPath.isNotBlank()) java.io.File(model.mmprojPath).delete()
             }
             val models = settings.localChatModels.value.filter { it.id != uuid }
-            settings.saveLocalChatModels(models)
+            settings.sm.saveLocalChatModels(models)
             val modelPrefixedId = "${Constants.PROVIDER_LOCAL}:${model?.modelId ?: uuid}"
             settings.setEnabledModels(settings.enabledModels.value - modelPrefixedId)
             val updatedAvailable = settings.availableModels.first().toMutableMap()
             updatedAvailable[Constants.PROVIDER_LOCAL] = models.map { "${Constants.PROVIDER_LOCAL}:${it.modelId}" }
-            settings.saveAvailableModels(Constants.PROVIDER_LOCAL, updatedAvailable[Constants.PROVIDER_LOCAL] ?: emptyList())
-            settings.saveModelAliases(settings.modelAliases.value - modelPrefixedId)
+            settings.sm.saveAvailableModels(Constants.PROVIDER_LOCAL, updatedAvailable[Constants.PROVIDER_LOCAL] ?: emptyList())
+            settings.sm.saveModelAliases(settings.modelAliases.value - modelPrefixedId)
         }
     }
 
@@ -70,7 +70,7 @@ class ModelManager(
                 if (it.id == uuid) it.copy(modelId = newModelId, alias = newAlias, nCtx = nCtx, temperature = temperature, topP = topP, maxTokens = maxTokens, mmprojPath = mmprojPath)
                 else it
             }
-            settings.saveLocalChatModels(models)
+            settings.sm.saveLocalChatModels(models)
             // Update model references if modelId changed
             if (oldModel.modelId != newModelId) {
                 val oldPrefixed = "${Constants.PROVIDER_LOCAL}:${oldModel.modelId}"
@@ -78,10 +78,10 @@ class ModelManager(
                 settings.setEnabledModels(settings.enabledModels.value - oldPrefixed + newPrefixed)
                 val avail = settings.availableModels.first().toMutableMap()
                 avail[Constants.PROVIDER_LOCAL] = models.map { "${Constants.PROVIDER_LOCAL}:${it.modelId}" }
-                settings.saveAvailableModels(Constants.PROVIDER_LOCAL, avail[Constants.PROVIDER_LOCAL] ?: emptyList())
-                settings.saveModelAliases(settings.modelAliases.value - oldPrefixed + (newPrefixed to newAlias))
+                settings.sm.saveAvailableModels(Constants.PROVIDER_LOCAL, avail[Constants.PROVIDER_LOCAL] ?: emptyList())
+                settings.sm.saveModelAliases(settings.modelAliases.value - oldPrefixed + (newPrefixed to newAlias))
             } else {
-                settings.saveModelAliases(settings.modelAliases.value + ("${Constants.PROVIDER_LOCAL}:$newModelId" to newAlias))
+                settings.sm.saveModelAliases(settings.modelAliases.value + ("${Constants.PROVIDER_LOCAL}:$newModelId" to newAlias))
             }
         }
     }

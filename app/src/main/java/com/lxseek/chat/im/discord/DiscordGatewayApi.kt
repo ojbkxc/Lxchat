@@ -1,5 +1,6 @@
 package com.lxseek.chat.im.discord
 
+import com.lxseek.chat.im.ImJson
 import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CompletableDeferred
@@ -12,7 +13,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
@@ -48,7 +48,6 @@ class DiscordRestApi(
         require(isValidDiscordToken(token)) { "Invalid Discord bot token" }
     }
 
-    private val json = Json { ignoreUnknownKeys = true }
     private val base = baseUrl.trim().trimEnd('/')
     private val authHeaders = mapOf("Authorization" to "Bot ${token.trim()}")
 
@@ -106,7 +105,7 @@ class DiscordRestApi(
         // 429 Too Many Requests: read `retry_after` (seconds) and back off before one retry.
         if (response.code == 429 && retry) {
             val retryAfterSeconds = runCatching {
-                json.parseToJsonElement(response.body).jsonObject["retry_after"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()
+                ImJson.parseToJsonElement(response.body).jsonObject["retry_after"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()
             }.getOrNull()
             val retryAfterMs = (retryAfterSeconds?.let { it * 1000.0 }?.toLong() ?: 1000L)
                 .coerceIn(50L, 10_000L)
@@ -116,14 +115,14 @@ class DiscordRestApi(
         }
         if (!response.isSuccessful) {
             val apiMsg = runCatching {
-                json.parseToJsonElement(response.body).jsonObject["message"]?.jsonPrimitive?.contentOrNull
+                ImJson.parseToJsonElement(response.body).jsonObject["message"]?.jsonPrimitive?.contentOrNull
             }.getOrNull()
             throw DiscordApiException(
                 apiMsg ?: "Discord $method failed (HTTP ${response.code})",
                 response.code,
             )
         }
-        runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
+        runCatching { ImJson.parseToJsonElement(response.body).jsonObject }.getOrNull()
             ?: throw DiscordApiException("Discord $method returned invalid JSON", response.code)
     }
 
@@ -183,7 +182,6 @@ class DiscordGatewayClient(
     private val intents: Int = DEFAULT_INTENTS,
     private val onMessage: (DiscordMessageEvent) -> Unit,
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
 
     @Volatile private var webSocket: WebSocket? = null
     @Volatile private var stopped = false
@@ -303,7 +301,7 @@ class DiscordGatewayClient(
     // ── Payload dispatch ─────────────────────────────────────────────────────
 
     private fun handlePayload(text: String, scope: CoroutineScope) {
-        val root = runCatching { json.parseToJsonElement(text).jsonObject }.onFailure { e ->
+        val root = runCatching { ImJson.parseToJsonElement(text).jsonObject }.onFailure { e ->
             DebugLog.w(TAG, "入站网关帧解析失败，已丢弃: ${text.take(200)}", e)
         }.getOrNull() ?: return
         val op = root["op"]?.jsonPrimitive?.intOrNull ?: return

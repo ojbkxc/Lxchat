@@ -1,5 +1,8 @@
 package com.lxseek.chat.im.misskey
 
+import com.lxseek.chat.im.ImApiException
+import com.lxseek.chat.im.isValidHttpBaseUrl
+import com.lxseek.chat.im.isValidImToken
 import com.lxseek.chat.im.ImConversation
 import com.lxseek.chat.im.ImGatewayConfig
 import com.lxseek.chat.im.ImMessage
@@ -51,12 +54,12 @@ class MisskeyChannel(
 
     override val isConfigured: Boolean
         get() = config.enabled &&
-            MisskeyApi.isValidBaseUrl(config.baseUrl) &&
-            MisskeyApi.isValidToken(config.token)
+            isValidHttpBaseUrl(config.baseUrl) &&
+            isValidImToken(config.token)
 
     /** 懒构建；配置不全时为 null，[isConfigured] 同步返回 false。 */
     private val api: MisskeyApi? =
-        if (MisskeyApi.isValidBaseUrl(config.baseUrl) && MisskeyApi.isValidToken(config.token)) {
+        if (isValidHttpBaseUrl(config.baseUrl) && isValidImToken(config.token)) {
             runCatching {
                 MisskeyApi(
                     baseUrl = config.baseUrl.trim(),
@@ -85,7 +88,7 @@ class MisskeyChannel(
                 ?: result["createdNote"]?.let { runCatching { it.jsonObject["id"]?.jsonPrimitive?.contentOrNull }.getOrNull() }
                 ?: "unknown"
             ImSendResult.Success(noteId)
-        } catch (e: MisskeyApiException) {
+        } catch (e: ImApiException) {
             DebugLog.e("MisskeyChannel", "sendMessage 失败 (http=${e.httpCode})")
             ImSendResult.Failure(e.message ?: "misskey send failed")
         } catch (e: Exception) {

@@ -5,7 +5,7 @@ import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -34,8 +34,6 @@ class GatewayChannel(
     override val channelId: String get() = config.platform
     override val displayName: String get() = config.name
     override val isConfigured: Boolean get() = config.isConfigured
-
-    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun sendMessage(conversationId: String, text: String): ImSendResult {
         if (!isConfigured) return ImSendResult.NotConfigured
@@ -107,14 +105,14 @@ class GatewayChannel(
 
     private fun parseMessageId(body: String): String {
         val id = runCatching {
-            json.parseToJsonElement(body).jsonObject["messageId"]?.jsonPrimitive?.contentOrNull
+            ImJson.parseToJsonElement(body).jsonObject["messageId"]?.jsonPrimitive?.contentOrNull
         }.getOrNull()
         return id?.takeIf { it.isNotBlank() } ?: "unknown"
     }
 
     private fun parseConversations(body: String): List<ImConversation> {
         val arr = runCatching {
-            json.parseToJsonElement(body).jsonObject["conversations"]?.jsonArray
+            ImJson.parseToJsonElement(body).jsonObject["conversations"]?.jsonArray
         }.getOrNull() ?: return emptyList()
         return arr.mapNotNull { el ->
             runCatching {
@@ -135,7 +133,7 @@ class GatewayChannel(
 
     private fun parseMessages(body: String): List<ImMessage> {
         val arr = runCatching {
-            json.parseToJsonElement(body).jsonObject["messages"]?.jsonArray
+            ImJson.parseToJsonElement(body).jsonObject["messages"]?.jsonArray
         }.getOrNull() ?: return emptyList()
         return arr.mapNotNull { el ->
             runCatching {
@@ -157,7 +155,7 @@ class GatewayChannel(
         }
     }
 
-    private fun str(o: kotlinx.serialization.json.JsonObject, key: String): String? =
+    private fun str(o: JsonObject, key: String): String? =
         o[key]?.jsonPrimitive?.contentOrNull
 
     private fun truncate(s: String): String = s.take(200)

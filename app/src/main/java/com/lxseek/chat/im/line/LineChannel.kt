@@ -1,5 +1,7 @@
 package com.lxseek.chat.im.line
 
+import com.lxseek.chat.im.ImApiException
+import com.lxseek.chat.im.isValidImToken
 import com.lxseek.chat.im.ImConversation
 import com.lxseek.chat.im.ImGatewayConfig
 import com.lxseek.chat.im.ImMessage
@@ -35,11 +37,11 @@ class LineChannel(
     override val channelId: String get() = CHANNEL_ID
     override val displayName: String get() = "LINE"
     override val isConfigured: Boolean
-        get() = config.enabled && LineApi.isValidToken(config.token)
+        get() = config.enabled && isValidImToken(config.token)
 
     /** 懒构建；token 缺失时为 null，[isConfigured] 同步返回 false。 */
     private val api: LineApi? =
-        if (LineApi.isValidToken(config.token)) {
+        if (isValidImToken(config.token)) {
             try {
                 LineApi(
                     channelAccessToken = config.token.trim(),
@@ -71,7 +73,7 @@ class LineChannel(
                 api.pushText(to, segment)
             }
             ImSendResult.Success("sent")
-        } catch (e: LineApiException) {
+        } catch (e: ImApiException) {
             DebugLog.e("LineChannel", "sendMessage 失败 (http=${e.httpCode})")
             ImSendResult.Failure(e.message ?: "line send failed")
         } catch (e: Exception) {

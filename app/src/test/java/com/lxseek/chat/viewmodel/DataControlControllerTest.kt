@@ -5,6 +5,7 @@ import com.lxseek.chat.data.BackupResult
 import com.lxseek.chat.data.MemoryManager
 import com.lxseek.chat.data.local.ChatEntity
 import com.lxseek.chat.data.repository.ConversationRepository
+import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.data.repository.SettingsRepository
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -19,6 +20,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -38,7 +40,7 @@ class DataControlControllerTest {
                 MemoryManager.MemoryFileInfo("memory.md"),
             )
             every { memory.getActiveMemory() } returns "active"
-            coEvery { settings.getSystemPrompts() } returns emptyList()
+            coEvery { settings.sm.systemPrompts.first() } returns emptyList()
             val controller = controller(conversations, memory, settings)
 
             controller.refreshCounts()
@@ -61,14 +63,14 @@ class DataControlControllerTest {
             controller.setAutoBackupPeriodHours(168)
             runCurrent()
             coVerifyOrder {
-                settings.saveAutoBackupPeriodHours(168)
-                settings.saveAutoDeletePeriodHours(720)
+                settings.sm.saveAutoBackupPeriodHours(168)
+                settings.sm.saveAutoDeletePeriodHours(720)
             }
 
             controller.setAutoDeletePeriodHours(1)
             runCurrent()
             coVerifyOrder {
-                settings.saveAutoDeletePeriodHours(168)
+                settings.sm.saveAutoDeletePeriodHours(168)
             }
         }
 
@@ -96,8 +98,8 @@ class DataControlControllerTest {
             assertEquals(2, schedule.scheduleCount)
             assertEquals(1, schedule.cancelCount)
             coVerifyOrder {
-                settings.saveAutoBackupEnabled(true)
-                settings.saveAutoBackupEnabled(false)
+                settings.sm.saveAutoBackupEnabled(true)
+                settings.sm.saveAutoBackupEnabled(false)
             }
             verify(exactly = 1) { backupManager.destroy() }
         }
@@ -122,14 +124,16 @@ class DataControlControllerTest {
         backupPeriodHours: Int = 24,
         deletePeriodHours: Int = 168,
     ): SettingsRepository = mockk<SettingsRepository>().also { settings ->
+        val sm = mockk<SettingsManager>(relaxed = true)
+        every { settings.sm } returns sm
         every { settings.autoBackupPeriodHours } returns MutableStateFlow(backupPeriodHours)
         every { settings.autoDeletePeriodHours } returns MutableStateFlow(deletePeriodHours)
-        coEvery { settings.saveAutoBackupEnabled(any()) } returns Unit
-        coEvery { settings.saveAutoBackupPeriodHours(any()) } returns Unit
-        coEvery { settings.saveAutoBackupCategories(any()) } returns Unit
-        coEvery { settings.saveAutoBackupDirectory(any()) } returns Unit
-        coEvery { settings.saveAutoDeleteEnabled(any()) } returns Unit
-        coEvery { settings.saveAutoDeletePeriodHours(any()) } returns Unit
+        coEvery { settings.sm.saveAutoBackupEnabled(any()) } returns Unit
+        coEvery { settings.sm.saveAutoBackupPeriodHours(any()) } returns Unit
+        coEvery { settings.sm.saveAutoBackupCategories(any()) } returns Unit
+        coEvery { settings.sm.saveAutoBackupDirectory(any()) } returns Unit
+        coEvery { settings.sm.saveAutoDeleteEnabled(any()) } returns Unit
+        coEvery { settings.sm.saveAutoDeletePeriodHours(any()) } returns Unit
     }
 
     private class FakeAutoBackupSchedule : AutoBackupSchedulePort {

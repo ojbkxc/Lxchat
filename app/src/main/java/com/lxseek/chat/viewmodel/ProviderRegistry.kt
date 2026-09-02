@@ -30,6 +30,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.ConcurrentHashMap
 
 internal fun createCustomProvider(
@@ -314,10 +315,10 @@ class ProviderRegistry(
                         effectiveBaseUrl = candidate,
                     )
                     runtimeEndpointResolutions[name] = resolution
-                    settings.saveCustomEndpointResolution(name, resolution)
+                    settings.sm.saveCustomEndpointResolution(name, resolution)
                 }
                 val prefixed = raw.map { "$name:${it.removePrefix("models/")}" }
-                settings.saveAvailableModels(name, prefixed)
+                settings.sm.saveAvailableModels(name, prefixed)
                 return prefixed
             } catch (error: TimeoutCancellationException) {
                 lastFailure = ModelFetchTimeoutException()
@@ -352,7 +353,7 @@ class ProviderRegistry(
                 settings.awaitInitialLoad()
                 settings.customProviders.collect { custom ->
                     providers.keys.filter { !isBuiltIn(it) }.forEach { providers.remove(it) }
-                    val baseUrls = settings.getProviderBaseUrls()
+                    val baseUrls = settings.sm.providerBaseUrls.first()
                     custom.forEach { config ->
                         createCustomProvider(
                             config,
@@ -386,9 +387,9 @@ class ProviderRegistry(
                     var changed = false
                     current.forEach { (name, configured) ->
                         if (prevConfigured[name] == true && !configured) {
-                            val existing = settings.getAvailableModels()[name]
+                            val existing = settings.sm.availableModels.first()[name]
                             if (!existing.isNullOrEmpty()) {
-                                settings.saveAvailableModels(name, emptyList())
+                                settings.sm.saveAvailableModels(name, emptyList())
                                 changed = true
                             }
                         }
@@ -397,7 +398,7 @@ class ProviderRegistry(
 
                     if (changed) {
                         val allKnownModels =
-                            settings.getAvailableModels().values.flatten().toSet() +
+                            settings.sm.availableModels.first().values.flatten().toSet() +
                                 settings.customModels.value
                         val newEnabled = settings.enabledModels.value.intersect(allKnownModels)
                         if (newEnabled != settings.enabledModels.value) {

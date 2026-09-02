@@ -1,11 +1,11 @@
 package com.lxseek.chat.im.slack
 
+import com.lxseek.chat.im.ImJson
 import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -50,7 +50,6 @@ class SlackSocketModeApi(
         require(isValidAppToken(appToken)) { "Invalid Slack App Token (must start with xapp-)" }
     }
 
-    private val json = Json { ignoreUnknownKeys = true }
     private val base = baseUrl.trim().trimEnd('/')
 
     // ── Web API REST ───────────────────────────────────────────────────────
@@ -109,7 +108,7 @@ class SlackSocketModeApi(
             if (!response.isSuccessful) {
                 throw SlackApiException("Slack $method failed (HTTP ${response.code})")
             }
-            val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
+            val root = runCatching { ImJson.parseToJsonElement(response.body).jsonObject }.getOrNull()
                 ?: throw SlackApiException("Slack $method returned invalid JSON")
             if (root["ok"]?.jsonPrimitive?.contentOrNull != "true") {
                 val error = root["error"]?.jsonPrimitive?.contentOrNull ?: "unknown_error"
@@ -145,7 +144,7 @@ class SlackSocketModeApi(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                val envelope = runCatching { json.parseToJsonElement(text).jsonObject }.onFailure { e ->
+                val envelope = runCatching { ImJson.parseToJsonElement(text).jsonObject }.onFailure { e ->
                     DebugLog.w(TAG, "入站信封解析失败，已丢弃: ${text.take(200)}", e)
                 }.getOrNull()
                     ?: return

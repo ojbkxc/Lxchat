@@ -1,10 +1,8 @@
 package com.lxseek.chat.im.kook
 
-import com.lxseek.chat.api.HttpClient
-import com.lxseek.chat.util.DebugLog
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
+import com.lxseek.chat.im.ImApiException
+import com.lxseek.chat.im.ImJson
+import com.lxseek.chat.im.ImRestClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -16,7 +14,7 @@ import kotlinx.serialization.json.put
 /**
  * KOOK Bot REST API 客户端（v3）。
  *
- * 仅依赖 [HttpClient] 共享的 OkHttp 实例，无外部 SDK。Bot token 来自 KOOK 开放平台，
+ * 仅依赖 [com.lxseek.chat.api.HttpClient] 共享的 OkHttp 实例，无外部 SDK。Bot token 来自 KOOK 开放平台，
  * 请求头以 `Bot <token>` 形式鉴权，与 Discord 一致。所有响应形如
  * `{ "code": 0, "data": ..., "message": "" }`，code != 0 视为失败。
  *
@@ -27,15 +25,15 @@ class KookApi(
     /** KOOK Bot Token，开放平台 → 应用 → 机器人 → 获取 Token。 */
     val token: String,
     /** REST 基址，默认官方地址；可被测试或代理覆盖。 */
-    private val baseUrl: String = DEFAULT_BASE_URL,
+    baseUrl: String = DEFAULT_BASE_URL,
+) : ImRestClient(
+    baseUrl = baseUrl,
+    authHeaders = mapOf("Authorization" to "Bot ${token.trim()}"),
+    onError = ::parseError,
 ) {
     init {
         require(token.isNotBlank()) { "KOOK token 不能为空" }
     }
-
-    private val json = Json { ignoreUnknownKeys = true }
-    private val base = baseUrl.trim().trimEnd('/')
-    private val authHeaders = mapOf("Authorization" to "Bot ${token.trim()}")
 
     /** GET /api/v3/users/me — 获取机器人自身信息（id / username / nickname）。 */
     suspend fun getMe(): JsonObject = get("users/me")
@@ -67,28 +65,13 @@ class KookApi(
             if (quote != null) put("quote", quote)
         })
 
-    private suspend fun get(path: String): JsonObject = withContext(Dispatchers.IO) {
-        val url = "$base/$path"
-        val response = HttpClient.getTextResponse(url, authHeaders)
-        parseBody(response.body, "GET $path", response.code)
-    }
-
-    private suspend fun post(path: String, payload: JsonObject): JsonObject = withContext(Dispatchers.IO) {
-        val url = "$base/$path"
-        val response = HttpClient.postTextResponse(url, payload.toString(), authHeaders)
-        parseBody(response.body, "POST $path", response.code)
-    }
-
-    /** 解析 KOOK 统一响应包：`{code, data, message}`，code != 0 抛 [KookApiException]。 */
-    private fun parseBody(body: String, op: String, httpCode: Int): JsonObject {
-        val root = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()
-            ?: throw KookApiException("$op 返回非法 JSON (HTTP $httpCode)", httpCode, null)
-        val code = root["code"]?.jsonPrimitive?.intOrNull
-        if (code != 0) {
-            val msg = root["message"]?.jsonPrimitive?.contentOrNull
-            throw KookApiException("$op 失败: code=$code message=${msg ?: ""}", httpCode, code)
-        }
-        return root["data"]?.let { runCatching { it.jsonObject }.getOrNull() } ?: JsonObject(emptyMap())
+    /** 解析 KOOK 统一响应包：`{code, data, message}`，code != 0 抛 [ImApiException]。 */
+    private fun parseError(body: String, op: String, httpCode: Int): ImApiException? {
+        val root = runCatching { ImJson.parseToJsonElement(body).jsonObject }.getOrNull()
+        val code = root?.get("code")?.jsonPrimitive?.intOrNull ?: return ImApiException("$op 失败 (HTTP $httpCode)", httpCode)
+        if (code == 0) return null // HTTP 失败但业务码为 0：按成功处理。
+        val msg = root["message"]?.jsonPrimitive?.contentOrNull
+        return ImApiException("$op 失败: code=$code message=${msg ?: ""}", httpCode, code)
     }
 
     companion object {
@@ -100,11 +83,5 @@ class KookApi(
 
         /** 文本消息类型（KOOK type=1 表示 KMarkdown，type=9 表示纯文本）。 */
         const val KOOK_MSG_TYPE_TEXT = 9
-
-        /** 简单 token 校验：非空且无明显空白。 */
-        fun isValidToken(value: String): Boolean = value.trim().isNotBlank()
     }
 }
-
-/** KOOK REST API 异常。 */
-class KookApiException(message: String, val httpCode: Int?, val apiCode: Int?) : Exception(message)

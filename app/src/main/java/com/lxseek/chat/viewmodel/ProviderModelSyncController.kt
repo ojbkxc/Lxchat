@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 internal data class ProviderModelSyncRequest(
     val failureLabels: ModelSyncFailureLabels,
@@ -68,7 +69,7 @@ internal class ProviderModelSyncController(
                 try {
                     if (!providers.isConfigured(name, settings.resolveActiveKey(name) ?: "")) {
                         skippedProviderCount++
-                        settings.saveAvailableModels(name, emptyList())
+                        settings.sm.saveAvailableModels(name, emptyList())
                         return@forEach
                     }
 
@@ -85,7 +86,7 @@ internal class ProviderModelSyncController(
             }
 
             val allKnownModels =
-                settings.getAvailableModels().values.flatten().toSet() + settings.customModels.value
+                settings.sm.availableModels.first().values.flatten().toSet() + settings.customModels.value
             val currentEnabled = settings.enabledModels.value
             val newEnabled = currentEnabled.intersect(allKnownModels)
             // 首次同步（用户尚未勾选任何模型）且内置默认模型已成功拉取时，
@@ -105,7 +106,7 @@ internal class ProviderModelSyncController(
             settings.setEnabledModels(effectiveEnabled)
 
             if (failures.isEmpty()) {
-                settings.saveLastModelsFetchFingerprint(computeFingerprint())
+                settings.sm.saveLastModelsFetchFingerprint(computeFingerprint())
             }
         } catch (error: CancellationException) {
             throw error

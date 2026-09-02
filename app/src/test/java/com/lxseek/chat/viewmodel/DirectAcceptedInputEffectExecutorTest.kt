@@ -6,6 +6,7 @@ import com.lxseek.chat.data.local.ChatEntity
 import com.lxseek.chat.data.local.MessageEntity
 import com.lxseek.chat.data.local.RunEntity
 import com.lxseek.chat.data.repository.ConversationRepository
+import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.MessageStatus
@@ -204,6 +205,8 @@ class DirectAcceptedInputEffectExecutorTest {
     ) {
         val conversations = mockk<ConversationRepository>()
         val settings = mockk<SettingsRepository>()
+        val sm = mockk<SettingsManager>(relaxed = true)
+        every { settings.sm } returns sm
         val graphWriter = mockk<AcceptedInputGraphWriter>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val compactController = mockk<ConversationCompactController>()
@@ -222,7 +225,7 @@ class DirectAcceptedInputEffectExecutorTest {
         init {
             every { settings.maxContextWindow } returns MutableStateFlow(4096)
             every { settings.titleGenerationEnabled } returns MutableStateFlow(false)
-            coEvery { settings.incrementMessagesSent() } just Runs
+            coEvery { settings.sm.incrementMessagesSent() } just Runs
             every {
                 requestBuilder.buildEffectiveConversationSettings(CONVERSATION_ID)
             } returns ConversationSettings(contextWindow = 4096)

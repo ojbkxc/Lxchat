@@ -22,7 +22,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
@@ -71,7 +70,6 @@ private val OFFICE_CONFIG_JSON = stringPreferencesKey("office_config_json")
 private val OFFICE_TOKEN = stringPreferencesKey("office_device_token") // encrypted
 
 class OfficeConnectorStore(private val context: Context) {
-    private val json = Json { ignoreUnknownKeys = true }
 
     /** 当前持久化配置（解密后）。 */
     val settings: Flow<OfficeConnectorSettings> = context.officeConnectorDataStore.data.map { pref ->

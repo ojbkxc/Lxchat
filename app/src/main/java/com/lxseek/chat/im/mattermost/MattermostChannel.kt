@@ -1,5 +1,9 @@
 package com.lxseek.chat.im.mattermost
 
+import com.lxseek.chat.im.ImJson
+import com.lxseek.chat.im.ImApiException
+import com.lxseek.chat.im.isValidHttpBaseUrl
+import com.lxseek.chat.im.isValidImToken
 import com.lxseek.chat.im.ImConversation
 import com.lxseek.chat.im.ImGatewayConfig
 import com.lxseek.chat.im.ImMessage
@@ -15,7 +19,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -65,12 +68,12 @@ class MattermostChannel(
 
     override val isConfigured: Boolean
         get() = config.enabled &&
-            MattermostApi.isValidBaseUrl(config.baseUrl) &&
-            MattermostApi.isValidToken(config.token)
+            isValidHttpBaseUrl(config.baseUrl) &&
+            isValidImToken(config.token)
 
     /** 懒构建；配置不全时为 null，[isConfigured] 同步返回 false。 */
     private val api: MattermostApi? =
-        if (MattermostApi.isValidBaseUrl(config.baseUrl) && MattermostApi.isValidToken(config.token)) {
+        if (isValidHttpBaseUrl(config.baseUrl) && isValidImToken(config.token)) {
             runCatching {
                 MattermostApi(
                     baseUrl = config.baseUrl.trim(),
@@ -96,7 +99,7 @@ class MattermostChannel(
             val post = api.createPost(channelId = conversationId, message = text)
             val postId = post["id"]?.jsonPrimitive?.contentOrNull ?: "unknown"
             ImSendResult.Success(postId)
-        } catch (e: MattermostApiException) {
+        } catch (e: ImApiException) {
             DebugLog.e("MattermostChannel", "sendMessage 失败 (http=${e.httpCode})")
             ImSendResult.Failure(e.message ?: "mattermost send failed")
         } catch (e: Exception) {
@@ -193,14 +196,13 @@ class MattermostChannel(
 
     /** 解析一帧 Mattermost WebSocket 事件，仅处理 event=="posted"。 */
     private fun handlePayload(text: String, onMessage: (ImMessage) -> Unit) {
-        val json = Json { ignoreUnknownKeys = true }
-        val root = runCatching { json.parseToJsonElement(text).jsonObject }.onFailure { e ->
+            val root = runCatching { ImJson.parseToJsonElement(text).jsonObject }.onFailure { e ->
             DebugLog.w("MattermostChannel", "入站帧解析失败，已丢弃: ${text.take(200)}", e)
         }.getOrNull() ?: return
         val event = root["event"]?.jsonPrimitive?.contentOrNull ?: return
         if (event != "posted") return
         val dataStr = root["data"]?.jsonPrimitive?.contentOrNull ?: return
-        val data = runCatching { json.parseToJsonElement(dataStr).jsonObject }.getOrNull() ?: return
+        val data = runCatching { ImJson.parseToJsonElement(dataStr).jsonObject }.getOrNull() ?: return
         val postId = data["id"]?.jsonPrimitive?.contentOrNull ?: return
         val message = data["message"]?.jsonPrimitive?.contentOrNull ?: return
         val userId = data["user_id"]?.jsonPrimitive?.contentOrNull ?: ""

@@ -6,6 +6,7 @@ import com.lxseek.chat.data.local.MessageEntity
 import com.lxseek.chat.data.local.RunEntity
 import com.lxseek.chat.data.local.RunGraphCommit
 import com.lxseek.chat.data.repository.ConversationRepository
+import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.MessageStatus
@@ -78,7 +79,7 @@ class QueuedGuidanceDrainExecutorTest {
             val selections = thirdArg<Map<String?, String>>()
             RunGraphCommit(messages, selections, emptyMap())
         }
-        coEvery { fixture.settings.incrementMessagesSent() } just Runs
+        coEvery { fixture.settings.sm.incrementMessagesSent() } just Runs
         coEvery {
             fixture.compactController.automaticBeforeBoundary(any(), any(), any(), state)
         } just Runs
@@ -122,6 +123,8 @@ class QueuedGuidanceDrainExecutorTest {
     private class Fixture {
         val conversations = mockk<ConversationRepository>()
         val settings = mockk<SettingsRepository>()
+        val sm = mockk<SettingsManager>(relaxed = true)
+        every { settings.sm } returns sm
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val compactController = mockk<ConversationCompactController>()
         val terminalSettlement = mockk<GenerationTerminalSettlementController>()

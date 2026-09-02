@@ -2,6 +2,7 @@ package com.lxseek.chat.viewmodel
 
 import com.lxseek.chat.api.LlmProvider
 import com.lxseek.chat.api.ModelFetchTimeoutException
+import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.util.Constants
 import io.mockk.Runs
@@ -21,6 +22,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -59,12 +61,12 @@ class ProviderModelSyncControllerTest {
             assertEquals(1, outcome.skippedProviderCount)
             assertEquals(emptyList<ProviderModelSyncFailure>(), outcome.failures)
             assertFalse(controller.isSyncing.value)
-            coVerify(exactly = 1) { settings.saveAvailableModels("Missing", emptyList()) }
+            coVerify(exactly = 1) { settings.sm.saveAvailableModels("Missing", emptyList()) }
             verify(exactly = 1) {
                 settings.setEnabledModels(setOf("Cloud:model", "Custom:model"))
             }
             coVerify(exactly = 1) {
-                settings.saveLastModelsFetchFingerprint("fingerprint")
+                settings.sm.saveLastModelsFetchFingerprint("fingerprint")
             }
         }
 
@@ -90,7 +92,7 @@ class ProviderModelSyncControllerTest {
             outcome.failures,
         )
         assertFalse(controller.isSyncing.value)
-        coVerify(exactly = 0) { settings.saveLastModelsFetchFingerprint(any()) }
+        coVerify(exactly = 0) { settings.sm.saveLastModelsFetchFingerprint(any()) }
     }
 
     @Test
@@ -194,12 +196,14 @@ class ProviderModelSyncControllerTest {
         enabled: Set<String> = emptySet(),
         lxChatDefaultAutoEnabled: Boolean = false,
     ): SettingsRepository = mockk<SettingsRepository>().also { settings ->
+        val sm = mockk<SettingsManager>(relaxed = true)
+        every { settings.sm } returns sm
         every { settings.customModels } returns MutableStateFlow(custom)
         every { settings.enabledModels } returns MutableStateFlow(enabled)
         every { settings.lxChatDefaultAutoEnabled } returns MutableStateFlow(lxChatDefaultAutoEnabled)
-        coEvery { settings.getAvailableModels() } returns available
-        coEvery { settings.saveAvailableModels(any(), any()) } returns Unit
-        coEvery { settings.saveLastModelsFetchFingerprint(any()) } returns Unit
+        coEvery { settings.sm.availableModels.first() } returns available
+        coEvery { settings.sm.saveAvailableModels(any(), any()) } returns Unit
+        coEvery { settings.sm.saveLastModelsFetchFingerprint(any()) } returns Unit
         every { settings.setEnabledModels(any()) } just Runs
         coEvery { settings.markLxChatDefaultAutoEnabled() } returns Unit
     }

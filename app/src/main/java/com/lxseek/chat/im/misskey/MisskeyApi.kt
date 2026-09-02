@@ -1,22 +1,19 @@
 package com.lxseek.chat.im.misskey
 
-import com.lxseek.chat.api.HttpClient
-import com.lxseek.chat.util.DebugLog
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
+import com.lxseek.chat.im.ImApiException
+import com.lxseek.chat.im.ImJson
+import com.lxseek.chat.im.ImRestClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
 
 /**
  * Misskey API 客户端。
  *
- * 仅依赖 [HttpClient] 共享 OkHttp 实例。鉴权用 `Bearer <access_token>` 请求头，
+ * 仅依赖 [com.lxseek.chat.api.HttpClient] 共享的 OkHttp 实例。鉴权用 `Bearer <access_token>` 请求头，
  * 也可在 body 里带 `i` 字段（Misskey 双鉴权风格）。本客户端统一用请求头。
  *
  * Misskey 同时提供 WebSocket Streaming（`/streaming?i=<token>`）用于实时推送，
@@ -31,15 +28,16 @@ class MisskeyApi(
     val baseUrl: String,
     /** 用户访问令牌（Access Token），从设置 → API → 生成 Token。 */
     val token: String,
+) : ImRestClient(
+    baseUrl = baseUrl,
+    authHeaders = mapOf("Authorization" to "Bearer ${token.trim()}"),
+    pathPrefix = "api",
+    onError = ::parseError,
 ) {
     init {
         require(baseUrl.isNotBlank()) { "Misskey baseUrl 不能为空" }
         require(token.isNotBlank()) { "Misskey token 不能为空" }
     }
-
-    private val json = Json { ignoreUnknownKeys = true }
-    private val base = baseUrl.trim().trimEnd('/')
-    private val authHeaders = mapOf("Authorization" to "Bearer ${token.trim()}")
 
     /** POST /api/i — 获取自身账号信息。 */
     suspend fun getI(): JsonObject = post("i", buildJsonObject {})
@@ -80,25 +78,13 @@ class MisskeyApi(
         if (replyId != null) put("replyId", replyId)
     })
 
-    private suspend fun post(path: String, payload: JsonObject): JsonObject = withContext(Dispatchers.IO) {
-        val url = "$base/api/$path"
-        val response = HttpClient.postTextResponse(url, payload.toString(), authHeaders)
-        if (response.code >= 400) {
-            val apiMsg = runCatching {
-                json.parseToJsonElement(response.body).jsonObject.let {
-                    it["message"]?.jsonPrimitive?.contentOrNull ?: it["error"]?.jsonPrimitive?.contentOrNull
-                }
-            }.getOrNull()
-            throw MisskeyApiException(apiMsg ?: "Misskey $path 失败 (HTTP ${response.code})", response.code)
-        }
-        runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull() ?: JsonObject(emptyMap())
-    }
-
-    companion object {
-        fun isValidToken(value: String): Boolean = value.trim().isNotBlank()
-        fun isValidBaseUrl(value: String): Boolean = value.trim().let { it.startsWith("http://") || it.startsWith("https://") }
+    /** Misskey 错误体：`{message|error}` 字段优先于通用消息。 */
+    private fun parseError(body: String, op: String, httpCode: Int): ImApiException? {
+        val apiMsg = runCatching {
+            ImJson.parseToJsonElement(body).jsonObject.let {
+                it["message"]?.jsonPrimitive?.contentOrNull ?: it["error"]?.jsonPrimitive?.contentOrNull
+            }
+        }.getOrNull()
+        return ImApiException(apiMsg ?: "Misskey $op 失败 (HTTP $httpCode)", httpCode)
     }
 }
-
-/** Misskey API 异常。 */
-class MisskeyApiException(message: String, val httpCode: Int?) : Exception(message)

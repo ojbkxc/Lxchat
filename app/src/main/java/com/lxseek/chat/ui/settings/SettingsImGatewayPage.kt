@@ -421,6 +421,53 @@ internal fun maskSecret(value: String): String {
 // ── Build / summarize an ImGatewayConfig from form values ───────────────────
 
 /**
+ * Credential field keys mapped onto the flat [ImGatewayConfig] columns each Channel
+ * implementation expects (NOT JSON-encoded): `Triple(baseUrl, token, botId)`. A null key
+ * leaves the column blank. Adding a platform means touching [credentialFields] plus this
+ * table (and [summaryColumns] below).
+ */
+private val credColumnKeys: Map<ImPlatform, Triple<String?, String?, String?>> = mapOf(
+    ImPlatform.WECHAT to Triple("base_url", "token", null),
+    ImPlatform.SMS to Triple("base_url", "token", null),
+    ImPlatform.TELEGRAM to Triple(null, "bot_token", null),
+    ImPlatform.DISCORD to Triple(null, "bot_token", null),
+    ImPlatform.SLACK to Triple("app_token", "bot_token", null),
+    ImPlatform.DINGTALK to Triple("client_secret", "client_id", null),
+    ImPlatform.LARK to Triple("app_secret", "app_id", null),
+    ImPlatform.WECOM to Triple("corp_secret", "corp_id", "agent_id"),
+    ImPlatform.QQ to Triple("app_secret", "app_id", null),
+    ImPlatform.WHATSAPP to Triple("verify_token", "access_token", "phone_number_id"),
+    ImPlatform.AIOcqhttp to Triple("base_url", "token", null),
+    ImPlatform.KOOK to Triple(null, "bot_token", null),
+    ImPlatform.LINE to Triple("base_url", "channel_access_token", "channel_secret"),
+    ImPlatform.MATTERMOST to Triple("base_url", "bot_token", "team_id"),
+    ImPlatform.MISSKEY to Triple("base_url", "access_token", null),
+    ImPlatform.WEIXIN_MP to Triple("base_url", "app_id", "app_secret"),
+)
+
+/** Subtitle columns shown for a bound bot in list display (MASKED hides the middle of a secret). */
+private enum class SummaryCol { BASE_URL, TOKEN, TOKEN_MASKED, BOT_ID }
+
+private val summaryColumns: Map<ImPlatform, List<SummaryCol>> = mapOf(
+    ImPlatform.WECHAT to listOf(SummaryCol.BASE_URL, SummaryCol.TOKEN_MASKED),
+    ImPlatform.SMS to listOf(SummaryCol.BASE_URL, SummaryCol.TOKEN_MASKED),
+    ImPlatform.TELEGRAM to listOf(SummaryCol.TOKEN_MASKED),
+    ImPlatform.DISCORD to listOf(SummaryCol.TOKEN_MASKED),
+    ImPlatform.SLACK to listOf(SummaryCol.TOKEN_MASKED),
+    ImPlatform.DINGTALK to listOf(SummaryCol.TOKEN),
+    ImPlatform.LARK to listOf(SummaryCol.TOKEN),
+    ImPlatform.WECOM to listOf(SummaryCol.TOKEN, SummaryCol.BOT_ID),
+    ImPlatform.QQ to listOf(SummaryCol.TOKEN),
+    ImPlatform.WHATSAPP to listOf(SummaryCol.BOT_ID),
+    ImPlatform.AIOcqhttp to listOf(SummaryCol.BASE_URL),
+    ImPlatform.KOOK to listOf(SummaryCol.TOKEN_MASKED),
+    ImPlatform.LINE to listOf(SummaryCol.TOKEN_MASKED),
+    ImPlatform.MATTERMOST to listOf(SummaryCol.BASE_URL, SummaryCol.BOT_ID),
+    ImPlatform.MISSKEY to listOf(SummaryCol.BASE_URL),
+    ImPlatform.WEIXIN_MP to listOf(SummaryCol.TOKEN),
+)
+
+/**
  * Build an [ImGatewayConfig] from the [values] entered for [platform], or null when required
  * fields are missing. A fresh [channelId] is generated so each bind creates a distinct bot.
  *
@@ -431,166 +478,35 @@ internal fun buildBotConfig(
     values: Map<String, String>,
     agentPreset: String = "",
 ): ImGatewayConfig? {
-    val fields = platform.credentialFields()
-    // Validate required fields.
-    if (fields.any { it.required && values[it.key].isNullOrBlank() }) return null
+    if (platform.credentialFields().any { it.required && values[it.key].isNullOrBlank() }) return null
 
-    val channelId = "${platform.id}:${UUID.randomUUID()}"
-    val preset = agentPreset.trim()
+    val (baseUrlKey, tokenKey, botIdKey) = credColumnKeys.getValue(platform)
+    fun col(key: String?): String = key?.let { values[it].orEmpty().trim() } ?: ""
 
-    return when (platform) {
-        ImPlatform.WECHAT -> ImGatewayConfig(
-            enabled = true,
-            platform = platform.id,
-            baseUrl = values["base_url"].orEmpty().trim(),
-            token = values["token"].orEmpty(), // wechat auth token stays as a bare string (legacy compat)
-            channelId = channelId,
-            pollIntervalMs = 5_000L,
-            agentPreset = preset,
-        )
-        ImPlatform.SMS -> ImGatewayConfig(
-            enabled = true,
-            platform = platform.id,
-            baseUrl = values["base_url"].orEmpty().trim(),
-            token = values["token"].orEmpty(),
-            channelId = channelId,
-            pollIntervalMs = values["poll_interval"]?.trim()?.toLongOrNull()?.takeIf { it > 0 } ?: 5_000L,
-            agentPreset = preset,
-        )
-        // Each platform maps its credential fields to the flat config.token / config.baseUrl /
-        // config.botId columns that its Channel implementation expects (NOT JSON-encoded).
-        ImPlatform.TELEGRAM -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = "",
-            token = values["bot_token"].orEmpty(),
-            agentPreset = preset,
-        )
-        ImPlatform.DISCORD -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = "",
-            token = values["bot_token"].orEmpty(),
-            agentPreset = preset,
-        )
-        ImPlatform.SLACK -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["app_token"].orEmpty(),   // app token (xapp-)
-            token = values["bot_token"].orEmpty(),      // bot token (xoxb-)
-            agentPreset = preset,
-        )
-        ImPlatform.DINGTALK -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["client_secret"].orEmpty(),
-            token = values["client_id"].orEmpty(),
-            agentPreset = preset,
-        )
-        ImPlatform.LARK -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["app_secret"].orEmpty(),
-            token = values["app_id"].orEmpty(),
-            agentPreset = preset,
-        )
-        ImPlatform.WECOM -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["corp_secret"].orEmpty(),
-            token = values["corp_id"].orEmpty(),
-            botId = values["agent_id"].orEmpty(),
-            agentPreset = preset,
-        )
-        ImPlatform.QQ -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["app_secret"].orEmpty(),
-            token = values["app_id"].orEmpty(),
-            agentPreset = preset,
-        )
-        ImPlatform.WHATSAPP -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["verify_token"].orEmpty(),   // verify token (webhook)
-            token = values["access_token"].orEmpty(),       // access token
-            botId = values["phone_number_id"].orEmpty(),    // phone number id
-            agentPreset = preset,
-        )
-        // aiocqhttp: baseUrl = OneBot HTTP 端点, token = accessToken。
-        ImPlatform.AIOcqhttp -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["base_url"].orEmpty().trim(),
-            token = values["token"].orEmpty(),
-            agentPreset = preset,
-        )
-        // kook: token = Bot Token（单凭据）。
-        ImPlatform.KOOK -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = "",
-            token = values["bot_token"].orEmpty(),
-            agentPreset = preset,
-        )
-        // line: token = channel_access_token, botId = channel_secret, baseUrl = 可选 API 基址。
-        ImPlatform.LINE -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["base_url"].orEmpty().trim(),
-            token = values["channel_access_token"].orEmpty(),
-            botId = values["channel_secret"].orEmpty(),
-            agentPreset = preset,
-        )
-        // mattermost: baseUrl = 实例基址, token = Bot Token, botId = Team ID。
-        ImPlatform.MATTERMOST -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["base_url"].orEmpty().trim(),
-            token = values["bot_token"].orEmpty(),
-            botId = values["team_id"].orEmpty(),
-            agentPreset = preset,
-        )
-        // misskey: baseUrl = 实例基址, token = Access Token。
-        ImPlatform.MISSKEY -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["base_url"].orEmpty().trim(),
-            token = values["access_token"].orEmpty(),
-            agentPreset = preset,
-        )
-        // mp: token = AppID, botId = AppSecret, baseUrl = 可选 API 基址。
-        ImPlatform.WEIXIN_MP -> ImGatewayConfig(
-            enabled = true, platform = platform.id, channelId = channelId, pollIntervalMs = 5_000L,
-            baseUrl = values["base_url"].orEmpty().trim(),
-            token = values["app_id"].orEmpty(),
-            botId = values["app_secret"].orEmpty(),
-            agentPreset = preset,
-        )
-    }
+    return ImGatewayConfig(
+        enabled = true,
+        platform = platform.id,
+        baseUrl = col(baseUrlKey),
+        token = col(tokenKey),
+        botId = col(botIdKey),
+        channelId = "${platform.id}:${UUID.randomUUID()}",
+        // SMS exposes a tunable poll interval; every other platform polls at 5 s.
+        pollIntervalMs = values["poll_interval"]?.trim()?.toLongOrNull()?.takeIf { it > 0 } ?: 5_000L,
+        agentPreset = agentPreset.trim(),
+    )
 }
 
 /** A short, human-readable summary (title + subtitle) of a bound bot for list display. */
 internal fun botSummary(bot: ImGatewayConfig, platform: ImPlatform): Pair<String, String> {
-    val title = bot.botId.ifBlank { bot.effectiveChannelId }
-    val subtitle = when (platform) {
-        ImPlatform.WECHAT, ImPlatform.SMS -> {
-            listOfNotNull(
-                bot.baseUrl.takeIf { it.isNotBlank() },
-                bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) },
-            ).joinToString(" · ")
+    val subtitle = summaryColumns.getValue(platform).mapNotNull { col ->
+        when (col) {
+            SummaryCol.BASE_URL -> bot.baseUrl.takeIf { it.isNotBlank() }
+            SummaryCol.TOKEN -> bot.token.takeIf { it.isNotBlank() }
+            SummaryCol.TOKEN_MASKED -> bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }
+            SummaryCol.BOT_ID -> bot.botId.takeIf { it.isNotBlank() }
         }
-        ImPlatform.WECOM -> listOfNotNull(
-            bot.token.takeIf { it.isNotBlank() },       // corp_id
-            bot.botId.takeIf { it.isNotBlank() },        // agent_id
-        ).joinToString(" · ")
-        ImPlatform.QQ -> bot.token.takeIf { it.isNotBlank() }.orEmpty()  // app_id
-        ImPlatform.TELEGRAM, ImPlatform.DISCORD ->
-            bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
-        ImPlatform.SLACK ->
-            bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
-        ImPlatform.DINGTALK -> bot.token.takeIf { it.isNotBlank() }.orEmpty()  // client_id
-        ImPlatform.LARK -> bot.token.takeIf { it.isNotBlank() }.orEmpty()      // app_id
-        ImPlatform.WHATSAPP -> bot.botId.takeIf { it.isNotBlank() }.orEmpty()  // phone_number_id
-        // 新增 6 个平台摘要。
-        ImPlatform.AIOcqhttp -> bot.baseUrl.takeIf { it.isNotBlank() }.orEmpty()  // OneBot 端点
-        ImPlatform.KOOK -> bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
-        ImPlatform.LINE -> bot.token.takeIf { it.isNotBlank() }?.let { maskSecret(it) }.orEmpty()
-        ImPlatform.MATTERMOST -> listOfNotNull(
-            bot.baseUrl.takeIf { it.isNotBlank() },
-            bot.botId.takeIf { it.isNotBlank() },        // team_id
-        ).joinToString(" · ")
-        ImPlatform.MISSKEY -> bot.baseUrl.takeIf { it.isNotBlank() }.orEmpty()  // 实例基址
-        ImPlatform.WEIXIN_MP -> bot.token.takeIf { it.isNotBlank() }.orEmpty()  // app_id
-    }
-    return title to subtitle
+    }.joinToString(" · ")
+    return bot.botId.ifBlank { bot.effectiveChannelId } to subtitle
 }
 
 // ────────────────────────────────────────────────

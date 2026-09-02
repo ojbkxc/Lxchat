@@ -1,10 +1,10 @@
 package com.lxseek.chat.im.office
 
+import com.lxseek.chat.im.ImJson
 import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
@@ -58,7 +58,6 @@ object OfficeProtocol {
     val RETRY_DELAYS_MS = longArrayOf(1_000, 3_000, 10_000, 30_000)
 
     /** 共享 JSON 实例（忽略未知键，向前兼容）。 */
-    val json = Json { ignoreUnknownKeys = true }
 }
 
 /**
@@ -154,7 +153,7 @@ class OfficeSseStream(
         if (data.isEmpty()) return null
         val jsonStr = data.toString().trimEnd('\n')
         val value = try {
-            OfficeProtocol.json.parseToJsonElement(jsonStr)
+            OfficeProtocol.ImJson.parseToJsonElement(jsonStr)
         } catch (e: Exception) {
             throw OfficeTransportException(
                 "AI Office SSE returned invalid JSON",
@@ -283,7 +282,7 @@ class OfficeConnectorApi(
     /** 解析响应体为 JsonObject。 */
     private fun parseJsonObject(body: String): JsonObject =
         try {
-            OfficeProtocol.json.parseToJsonElement(body).jsonObject
+            OfficeProtocol.ImJson.parseToJsonElement(body).jsonObject
         } catch (e: Exception) {
             throw OfficeTransportException(
                 "AI Office returned invalid JSON: ${e.message}",

@@ -277,8 +277,8 @@ class MetaToolProvider(
                 userPrependItems = emptyList(),
                 userPostpendItems = emptyList(),
             )
-            "pet_enabled" -> settings.savePetOverlayEnabled(value.toBooleanStrict())
-            "pet_character" -> settings.savePetOverlayCharacter(value)
+            "pet_enabled" -> settings.pet.savePetOverlayEnabled(value.toBooleanStrict())
+            "pet_character" -> settings.pet.savePetOverlayCharacter(value)
         }
     }
 

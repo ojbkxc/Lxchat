@@ -236,7 +236,7 @@ internal class QueuedGuidanceDrainExecutor(
                                 }
                         }
                         try {
-                            settings.incrementMessagesSent()
+                            settings.sm.incrementMessagesSent()
                         } catch (error: Exception) {
                             DebugLog.w(
                                 "MessageGenerationController",

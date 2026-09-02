@@ -13,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -82,7 +81,6 @@ class SlackChannel(
             SlackSocketModeApi(botToken = config.token, appToken = config.baseUrl)
         } else null
 
-    private val json = Json { ignoreUnknownKeys = true }
 
     // ── Listening state ────────────────────────────────────────────────────
     // `running` is set by startListening/stopListening on the receiver's coroutine; the

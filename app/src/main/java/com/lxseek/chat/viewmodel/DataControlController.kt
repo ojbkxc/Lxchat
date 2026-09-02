@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 internal interface AutoBackupSchedulePort {
@@ -74,14 +75,14 @@ class DataControlController internal constructor(
             _conversationCount.value = conversations.getAllConversationsList().size
             _memoryCount.value = memory.listFiles().size +
                 (if (memory.getActiveMemory().isNotEmpty()) 1 else 0)
-            _systemPromptCount.value = settings.getSystemPrompts().size
+            _systemPromptCount.value = settings.sm.systemPrompts.first().size
             _skillCount.value = userSkillStore?.listSkillFiles()?.size ?: 0
         }
     }
 
     fun setAutoBackupEnabled(enabled: Boolean) {
         scope.launch(ioDispatcher) {
-            settings.saveAutoBackupEnabled(enabled)
+            settings.sm.saveAutoBackupEnabled(enabled)
             if (enabled) {
                 try {
                     backupSchedule.schedule()
@@ -98,26 +99,26 @@ class DataControlController internal constructor(
 
     fun setAutoBackupPeriodHours(hours: Int) {
         scope.launch(ioDispatcher) {
-            settings.saveAutoBackupPeriodHours(hours)
+            settings.sm.saveAutoBackupPeriodHours(hours)
             val deleteHours = settings.autoDeletePeriodHours.value
             if (deleteHours <= hours) {
                 val nextDelete = AUTO_DELETE_TIERS_HOURS.firstOrNull { it > hours }
                     ?: AUTO_DELETE_TIERS_HOURS.last()
-                settings.saveAutoDeletePeriodHours(nextDelete)
+                settings.sm.saveAutoDeletePeriodHours(nextDelete)
             }
         }
     }
 
     fun setAutoBackupCategories(categories: String) {
-        scope.launch(ioDispatcher) { settings.saveAutoBackupCategories(categories) }
+        scope.launch(ioDispatcher) { settings.sm.saveAutoBackupCategories(categories) }
     }
 
     fun setAutoBackupDirectory(path: String) {
-        scope.launch(ioDispatcher) { settings.saveAutoBackupDirectory(path) }
+        scope.launch(ioDispatcher) { settings.sm.saveAutoBackupDirectory(path) }
     }
 
     fun setAutoDeleteEnabled(enabled: Boolean) {
-        scope.launch(ioDispatcher) { settings.saveAutoDeleteEnabled(enabled) }
+        scope.launch(ioDispatcher) { settings.sm.saveAutoDeleteEnabled(enabled) }
     }
 
     fun setAutoDeletePeriodHours(hours: Int) {
@@ -125,7 +126,7 @@ class DataControlController internal constructor(
             val backupHours = settings.autoBackupPeriodHours.value
             val minimumValid = AUTO_DELETE_TIERS_HOURS.firstOrNull { it > backupHours }
                 ?: AUTO_DELETE_TIERS_HOURS.last()
-            settings.saveAutoDeletePeriodHours(maxOf(hours, minimumValid))
+            settings.sm.saveAutoDeletePeriodHours(maxOf(hours, minimumValid))
         }
     }
 

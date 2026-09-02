@@ -1,10 +1,11 @@
 package com.lxseek.chat.im.mp
 
 import com.lxseek.chat.api.HttpClient
-import com.lxseek.chat.util.DebugLog
+import com.lxseek.chat.im.ImApiException
+import com.lxseek.chat.im.ImJson
+import com.lxseek.chat.im.ImRestClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -30,15 +31,15 @@ class WeixinMpApi(
     /** 公众号 AppSecret。 */
     val appSecret: String,
     /** API 基址，默认官方；可被代理或自托管覆盖。 */
-    private val baseUrl: String = DEFAULT_BASE_URL,
+    baseUrl: String = DEFAULT_BASE_URL,
+) : ImRestClient(
+    baseUrl = baseUrl,
+    onError = ::parseError,
 ) {
     init {
         require(appId.isNotBlank()) { "公众号 app_id 不能为空" }
         require(appSecret.isNotBlank()) { "公众号 app_secret 不能为空" }
     }
-
-    private val json = Json { ignoreUnknownKeys = true }
-    private val base = baseUrl.trim().trimEnd('/')
 
     @Volatile private var cachedAccessToken: String? = null
     @Volatile private var tokenExpiresAtMs: Long = 0L
@@ -55,10 +56,10 @@ class WeixinMpApi(
         return withContext(Dispatchers.IO) {
             val url = "$base/token?grant_type=client_credential&appid=${appId.trim()}&secret=${appSecret.trim()}"
             val response = HttpClient.getTextResponse(url)
-            val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
-                ?: throw WeixinMpApiException("token 接口返回非法 JSON", response.code)
+            val root = runCatching { ImJson.parseToJsonElement(response.body).jsonObject }.getOrNull()
+                ?: throw ImApiException("token 接口返回非法 JSON", response.code)
             val token = root["access_token"]?.jsonPrimitive?.contentOrNull
-                ?: throw WeixinMpApiException(
+                ?: throw ImApiException(
                     root["errmsg"]?.jsonPrimitive?.contentOrNull ?: "token 接口未返回 access_token",
                     response.code,
                 )
@@ -88,32 +89,21 @@ class WeixinMpApi(
         return get("user/info?access_token=$token&openid=$openId&lang=zh_CN")
     }
 
-    private suspend fun post(path: String, payload: JsonObject): JsonObject = withContext(Dispatchers.IO) {
-        val url = "$base/$path"
-        val response = HttpClient.postTextResponse(url, payload.toString(), emptyMap())
-        parseBody(response.body, "POST $path", response.code)
-    }
-
-    private suspend fun get(path: String): JsonObject = withContext(Dispatchers.IO) {
-        val url = "$base/$path"
-        val response = HttpClient.getTextResponse(url)
-        parseBody(response.body, "GET $path", response.code)
-    }
-
-    private fun parseBody(body: String, op: String, httpCode: Int): JsonObject {
-        val root = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()
-            ?: throw WeixinMpApiException("$op 返回非法 JSON (HTTP $httpCode)", httpCode)
+    /** 解析公众号响应包：HTTP 层先于业务 errcode 检查，errcode != 0 抛 [ImApiException]。 */
+    private fun parseError(body: String, op: String, httpCode: Int): ImApiException? {
+        val root = runCatching { ImJson.parseToJsonElement(body).jsonObject }.getOrNull()
+            ?: return ImApiException("$op 返回非法 JSON (HTTP $httpCode)", httpCode)
         val errcode = root["errcode"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+        // access_token 过期或失效：清缓存，下次调用会重新获取。
+        if (errcode == 40001 || errcode == 42001 || errcode == 40014) {
+            cachedAccessToken = null
+            tokenExpiresAtMs = 0L
+        }
         if (errcode != null && errcode != 0) {
             val errmsg = root["errmsg"]?.jsonPrimitive?.contentOrNull
-            // access_token 过期或失效：清缓存，下次调用会重新获取。
-            if (errcode == 40001 || errcode == 42001 || errcode == 40014) {
-                cachedAccessToken = null
-                tokenExpiresAtMs = 0L
-            }
-            throw WeixinMpApiException("$op 失败: errcode=$errcode errmsg=${errmsg ?: ""}", httpCode)
+            return ImApiException("$op 失败: errcode=$errcode errmsg=${errmsg ?: ""}", httpCode, errcode)
         }
-        return root
+        return null
     }
 
     companion object {
@@ -130,6 +120,3 @@ class WeixinMpApi(
         fun isValidAppSecret(value: String): Boolean = value.trim().isNotBlank()
     }
 }
-
-/** 微信公众号 API 异常。 */
-class WeixinMpApiException(message: String, val httpCode: Int?) : Exception(message)

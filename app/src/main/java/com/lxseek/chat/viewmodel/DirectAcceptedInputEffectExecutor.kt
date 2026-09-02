@@ -364,7 +364,7 @@ internal class DirectAcceptedInputEffectExecutor(
                 }
         }
         try {
-            settings.incrementMessagesSent()
+            settings.sm.incrementMessagesSent()
         } catch (error: Exception) {
             DebugLog.w(
                 "AcceptedInputExecutor",

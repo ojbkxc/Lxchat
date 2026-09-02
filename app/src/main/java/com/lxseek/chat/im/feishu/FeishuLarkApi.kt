@@ -1,5 +1,6 @@
 package com.lxseek.chat.im.feishu
 
+import com.lxseek.chat.im.ImJson
 import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
@@ -9,7 +10,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -132,7 +132,6 @@ class FeishuLarkApi(
         require(appSecret.isNotBlank()) { "appSecret is required" }
     }
 
-    private val json = Json { ignoreUnknownKeys = true }
     private val base: String = domain.origin
 
     // ── Access token cache ─────────────────────────────────────────────────
@@ -339,7 +338,7 @@ class FeishuLarkApi(
      * text, and surface the fields Lxchat needs.
      */
     internal fun parseInbound(frame: String): FeishuInboundMessage? {
-        val envelope = runCatching { json.parseToJsonElement(frame).jsonObject }.onFailure { e ->
+        val envelope = runCatching { ImJson.parseToJsonElement(frame).jsonObject }.onFailure { e ->
             DebugLog.w(TAG, "入站事件帧解析失败，已丢弃: ${frame.take(200)}", e)
         }.getOrNull()
             ?: return null
@@ -423,7 +422,7 @@ class FeishuLarkApi(
      */
     private fun extractText(message: JsonObject, mentions: List<JsonObject>): String {
         val raw = message["content"]?.jsonPrimitive?.contentOrNull ?: return ""
-        val parsed = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return ""
+        val parsed = runCatching { ImJson.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return ""
         var text = parsed["text"]?.jsonPrimitive?.contentOrNull ?: return ""
         for (mention in mentions) {
             val key = mention["key"]?.jsonPrimitive?.contentOrNull
@@ -477,7 +476,7 @@ class FeishuLarkApi(
     }
 
     private fun parseObject(body: String, action: String): JsonObject =
-        runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()
+        runCatching { ImJson.parseToJsonElement(body).jsonObject }.getOrNull()
             ?: throw FeishuApiException("$action: response is not a JSON object")
 
     /** Assert Feishu's business `code` is 0; throw with the `msg` otherwise. */

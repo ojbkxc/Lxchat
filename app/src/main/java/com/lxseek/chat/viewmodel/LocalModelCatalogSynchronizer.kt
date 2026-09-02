@@ -4,6 +4,7 @@ import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.util.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 /** Projects configured local chat models into provider model ids and aliases. */
 internal class LocalModelCatalogSynchronizer(
@@ -16,15 +17,15 @@ internal class LocalModelCatalogSynchronizer(
             var lastAliases: Map<String, String>? = null
             settings.localChatModels.collect { models ->
                 val localIds = models.map { "Local:${it.modelId}" }
-                val aliases = settings.getModelAliases().toMutableMap().apply {
+                val aliases = settings.sm.modelAliases.first().toMutableMap().apply {
                     models.forEach { put("Local:${it.modelId}", it.alias) }
                 }
                 if (localIds != lastLocalIds) {
-                    settings.saveAvailableModels(Constants.PROVIDER_LOCAL, localIds)
+                    settings.sm.saveAvailableModels(Constants.PROVIDER_LOCAL, localIds)
                     lastLocalIds = localIds
                 }
                 if (aliases != lastAliases) {
-                    settings.saveModelAliases(aliases)
+                    settings.sm.saveModelAliases(aliases)
                     lastAliases = aliases
                 }
             }

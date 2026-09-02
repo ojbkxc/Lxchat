@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 /** Launches independent, one-shot maintenance work when the chat facade starts. */
 internal class StartupMaintenanceCoordinator(
@@ -42,16 +43,16 @@ internal class StartupMaintenanceCoordinator(
     }
 
     private suspend fun checkForUpdateIfDue() {
-        if (!settings.getAutoUpdateCheck()) return
+        if (!settings.sm.autoUpdateCheck.first()) return
         val checkedAt = now()
-        if (checkedAt - settings.getLastUpdateCheckTime() <= UPDATE_INTERVAL_MS) return
+        if (checkedAt - settings.sm.lastUpdateCheckTime.first() <= UPDATE_INTERVAL_MS) return
         settings.saveLastUpdateCheckTime(checkedAt)
         checkUpdate(currentVersion())?.let(onUpdateFound)
     }
 
     private suspend fun remindAboutUncachedMessages() {
-        val activeId = settings.getActiveEmbeddingModelId()
-        val active = settings.getEmbeddingModels().find { it.id == activeId } ?: return
+        val activeId = settings.sm.activeEmbeddingModelId.first()
+        val active = settings.sm.embeddingModels.first().find { it.id == activeId } ?: return
         val total = conversations.getIndexableMessageCount()
         val notCached = (total - conversations.getEmbeddingCountByModel(active.id)).coerceAtLeast(0)
         if (notCached == 0 || isCaching(active.id)) return

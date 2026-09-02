@@ -403,7 +403,7 @@ fun SettingsProviderDetailPage(
                             val presetModels = GrokXProvider.PRESET_MODELS.map { "${Constants.PROVIDER_GROK}:$it" }
                             scope.launch {
                                 try {
-                                    viewModel.settings.saveAvailableModels(Constants.PROVIDER_GROK, presetModels)
+                                    viewModel.settings.sm.saveAvailableModels(Constants.PROVIDER_GROK, presetModels)
                                 } catch (e: Exception) {
                                     DebugLog.e("GrokOAuth", "save preset models failed", e)
                                 }
@@ -445,7 +445,7 @@ fun SettingsProviderDetailPage(
                             val presetModels = OpenAIXProvider.PRESET_MODELS.map { "${Constants.PROVIDER_CHATGPT}:$it" }
                             scope.launch {
                                 try {
-                                    viewModel.settings.saveAvailableModels(Constants.PROVIDER_CHATGPT, presetModels)
+                                    viewModel.settings.sm.saveAvailableModels(Constants.PROVIDER_CHATGPT, presetModels)
                                 } catch (e: Exception) {
                                     DebugLog.e("ChatGPTOAuth", "save preset models failed", e)
                                 }

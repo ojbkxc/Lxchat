@@ -1,23 +1,16 @@
 package com.lxseek.chat.im.line
 
-import com.lxseek.chat.api.HttpClient
-import com.lxseek.chat.util.DebugLog
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
+import com.lxseek.chat.im.ImApiException
+import com.lxseek.chat.im.ImRestClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
-import kotlinx.serialization.json.putJsonObject
 
 /**
  * LINE Messaging API 客户端。
  *
- * 仅依赖 [HttpClient] 共享 OkHttp 实例。鉴权用 `Bearer <channel_access_token>`，
+ * 仅依赖 [com.lxseek.chat.api.HttpClient] 共享的 OkHttp 实例。鉴权用 `Bearer <channel_access_token>`，
  * 签名校验用 <channel_secret> 做 HMAC-SHA256（webhook 入站时校验 X-Line-Signature）。
  *
  * 参照 AstrBot `astrbot/core/platform/sources/line/line_api.py` 的接口路径与鉴权方式，
@@ -30,15 +23,15 @@ class LineApi(
     /** Channel Secret，用于 webhook 签名校验。 */
     val channelSecret: String,
     /** API 基址，默认官方；可被代理或自托管覆盖。 */
-    private val baseUrl: String = DEFAULT_BASE_URL,
+    baseUrl: String = DEFAULT_BASE_URL,
+) : ImRestClient(
+    baseUrl = baseUrl,
+    authHeaders = mapOf("Authorization" to "Bearer ${channelAccessToken.trim()}"),
+    onError = { _, op, httpCode -> ImApiException("LINE $op 失败 (HTTP $httpCode)", httpCode) },
 ) {
     init {
         require(channelAccessToken.isNotBlank()) { "LINE channel_access_token 不能为空" }
     }
-
-    private val json = Json { ignoreUnknownKeys = true }
-    private val base = baseUrl.trim().trimEnd('/')
-    private val authHeaders = mapOf("Authorization" to "Bearer ${channelAccessToken.trim()}")
 
     /**
      * POST /v2/bot/message/push — 主动推送消息给指定用户/群组/房间。
@@ -85,37 +78,11 @@ class LineApi(
         return java.security.MessageDigest.isEqual(expected.toByteArray(), signature.trim().toByteArray())
     }
 
-    private suspend fun post(path: String, payload: JsonObject): JsonObject = withContext(Dispatchers.IO) {
-        val url = "$base/$path"
-        val response = HttpClient.postTextResponse(url, payload.toString(), authHeaders)
-        if (!response.isSuccessful) {
-            val apiMsg = runCatching {
-                json.parseToJsonElement(response.body).jsonObject["message"]?.jsonPrimitive?.contentOrNull
-            }.getOrNull()
-            throw LineApiException(apiMsg ?: "LINE POST $path 失败 (HTTP ${response.code})", response.code)
-        }
-        runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull() ?: JsonObject(emptyMap())
-    }
-
-    private suspend fun get(path: String): JsonObject = withContext(Dispatchers.IO) {
-        val url = "$base/$path"
-        val response = HttpClient.getTextResponse(url, authHeaders)
-        if (!response.isSuccessful) {
-            throw LineApiException("LINE GET $path 失败 (HTTP ${response.code})", response.code)
-        }
-        runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull() ?: JsonObject(emptyMap())
-    }
-
     companion object {
         /** LINE 官方 API 基址。 */
         const val DEFAULT_BASE_URL = "https://api.line.me"
 
         /** 单条文本消息最大长度（LINE 限制）。 */
         const val TEXT_MAX_CHARS = 5000
-
-        fun isValidToken(value: String): Boolean = value.trim().isNotBlank()
     }
 }
-
-/** LINE API 异常。 */
-class LineApiException(message: String, val httpCode: Int?) : Exception(message)

@@ -1,10 +1,10 @@
 package com.lxseek.chat.im.aiocqhttp
 
 import com.lxseek.chat.api.HttpClient
+import com.lxseek.chat.im.ImApiException
+import com.lxseek.chat.im.ImJson
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -16,8 +16,6 @@ import kotlinx.serialization.json.putJsonArray
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
-
-class AiocqhttpApiException(message: String) : Exception(message)
 
 data class OneBotMessageEvent(
     val messageId: String,
@@ -34,8 +32,6 @@ class AiocqhttpApi(
     private val baseUrl: String,
     private val accessToken: String,
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
-
     private companion object {
         val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
     }
@@ -49,7 +45,7 @@ class AiocqhttpApi(
             val status = result["status"]?.jsonPrimitive?.contentOrNull
             val retcode = result["retcode"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
             if (status != "ok" || retcode != 0) {
-                throw AiocqhttpApiException("OneBot action $action failed: status=$status retcode=$retcode")
+                throw ImApiException("OneBot action $action failed: status=$status retcode=$retcode")
             }
         }
     }
@@ -115,10 +111,10 @@ class AiocqhttpApi(
             .build()
         HttpClient.client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw AiocqhttpApiException("OneBot HTTP ${response.code}: ${response.message}")
+                throw ImApiException("OneBot HTTP ${response.code}: ${response.message}")
             }
             val text = response.body?.string().orEmpty()
-            json.parseToJsonElement(text).jsonObject
+            ImJson.parseToJsonElement(text).jsonObject
         }
     }
 }

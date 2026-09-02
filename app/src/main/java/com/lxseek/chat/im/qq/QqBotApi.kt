@@ -1,5 +1,6 @@
 package com.lxseek.chat.im.qq
 
+import com.lxseek.chat.im.ImJson
 import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CompletableDeferred
@@ -12,7 +13,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -66,7 +66,6 @@ class QqRestApi(
         require(appSecret.isNotBlank()) { "QQ appSecret must not be blank" }
     }
 
-    private val json = Json { ignoreUnknownKeys = true }
     private val base = baseUrl.trim().trimEnd('/')
 
     // ── Access token cache ───────────────────────────────────────────────────
@@ -98,7 +97,7 @@ class QqRestApi(
         if (!response.isSuccessful) {
             throw QqApiException("QQ token request failed (HTTP ${response.code})", response.code)
         }
-        val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
+        val root = runCatching { ImJson.parseToJsonElement(response.body).jsonObject }.getOrNull()
             ?: throw QqApiException("QQ token response was not valid JSON", response.code)
         val token = root["access_token"]?.jsonPrimitive?.contentOrNull
             ?: throw QqApiException("QQ token response missing access_token", response.code)
@@ -156,7 +155,7 @@ class QqRestApi(
         val response = HttpClient.postTextResponse(url, body, headers)
         if (!response.isSuccessful) {
             val apiMsg = runCatching {
-                json.parseToJsonElement(response.body).jsonObject.let {
+                ImJson.parseToJsonElement(response.body).jsonObject.let {
                     it["message"]?.jsonPrimitive?.contentOrNull
                         ?: it["errcode"]?.jsonPrimitive?.contentOrNull
                 }
@@ -166,7 +165,7 @@ class QqRestApi(
                 response.code,
             )
         }
-        runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
+        runCatching { ImJson.parseToJsonElement(response.body).jsonObject }.getOrNull()
             ?: throw QqApiException("QQ send response was not valid JSON", response.code)
     }
 
@@ -249,7 +248,6 @@ class QqBotWebSocketClient(
     private val intents: Int = DEFAULT_INTENTS,
     private val onMessage: (QqMessageEvent) -> Unit,
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
 
     @Volatile private var webSocket: WebSocket? = null
     @Volatile private var stopped = false
@@ -358,7 +356,7 @@ class QqBotWebSocketClient(
 
     /** [connectToken] is the access token captured for this connection cycle, used for IDENTIFY/RESUME. */
     private fun handlePayload(text: String, connectToken: String, scope: CoroutineScope) {
-        val root = runCatching { json.parseToJsonElement(text).jsonObject }.onFailure { e ->
+        val root = runCatching { ImJson.parseToJsonElement(text).jsonObject }.onFailure { e ->
             DebugLog.w(TAG, "入站网关帧解析失败，已丢弃: ${text.take(200)}", e)
         }.getOrNull() ?: return
         val op = root["op"]?.jsonPrimitive?.intOrNull ?: return

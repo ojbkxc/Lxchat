@@ -1,10 +1,10 @@
 package com.lxseek.chat.im.telegram
 
+import com.lxseek.chat.im.ImJson
 import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -38,7 +38,6 @@ class TelegramBotApi(
         require(isValidTelegramToken(token)) { "Invalid Telegram bot token" }
     }
 
-    private val json = Json { ignoreUnknownKeys = true }
     private val base = baseUrl.trim().trimEnd('/')
 
     /** Resolve the bot's own id/username. Used to detect @mentions in group chats. */
@@ -129,7 +128,7 @@ class TelegramBotApi(
                     response.code,
                 )
             }
-            val root = runCatching { json.parseToJsonElement(response.body).jsonObject }.getOrNull()
+            val root = runCatching { ImJson.parseToJsonElement(response.body).jsonObject }.getOrNull()
                 ?: throw TelegramApiException(
                     "Telegram $method returned invalid JSON",
                     response.code,
@@ -148,7 +147,7 @@ class TelegramBotApi(
 
     private fun parseDescription(body: String): String? =
         runCatching {
-            json.parseToJsonElement(body).jsonObject["description"]?.jsonPrimitive?.contentOrNull
+            ImJson.parseToJsonElement(body).jsonObject["description"]?.jsonPrimitive?.contentOrNull
         }.getOrNull()
 
     companion object {

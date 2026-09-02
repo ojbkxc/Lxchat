@@ -661,54 +661,13 @@ class SettingsRepository(
     // ── Suspending DataStore access ───────────────────────────
     //
     // The StateFlows above are eagerly-shared with a default initial value, so at app
-    // startup `.value` may briefly be the default before DataStore loads. These suspend
-    // accessors read/write DataStore directly (awaiting the on-disk value, preserving
-    // write ordering) for callers that need the persisted value immediately or ordered,
-    // read-after-write semantics. They keep [SettingsManager] encapsulated as an internal
-    // detail of this repository — the single owner of the settings surface.
+    // startup `.value` may briefly be the default before DataStore loads. This block
+    // exposes the underlying [SettingsManager] / [PetSettingsStore] suspend accessors
+    // for callers that need the persisted value immediately or ordered, read-after-write
+    // semantics (awaiting the on-disk DataStore value). Every member is a pure pass-
+    // through, so no forwarding wrappers are kept — call sites use these objects
+    // directly and the repository stays the single owner of the settings surface.
 
-    suspend fun getAutoUpdateCheck(): Boolean = settingsManager.autoUpdateCheck.first()
-    suspend fun getLastUpdateCheckTime(): Long = settingsManager.lastUpdateCheckTime.first()
-    suspend fun getEmbeddingModels(): List<EmbeddingModelConfig> = settingsManager.embeddingModels.first()
-    suspend fun getActiveEmbeddingModelId(): String = settingsManager.activeEmbeddingModelId.first()
-    suspend fun getModelAliases(): Map<String, String> = settingsManager.modelAliases.first()
-    suspend fun getProviderBaseUrls(): Map<String, String> = settingsManager.providerBaseUrls.first()
-    suspend fun saveCustomEndpointResolution(
-        provider: String,
-        resolution: CustomEndpointResolution,
-    ) = settingsManager.saveCustomEndpointResolution(provider, resolution)
-    suspend fun getAvailableModels(): Map<String, List<String>> = settingsManager.availableModels.first()
-    suspend fun getSystemPrompts(): List<SystemPromptEntry> = settingsManager.systemPrompts.first()
-
-    suspend fun saveAvailableModels(provider: String, models: List<String>) = settingsManager.saveAvailableModels(provider, models)
-    suspend fun saveCustomModels(models: Set<String>) = settingsManager.saveCustomModels(models)
-    suspend fun saveModelAliases(aliases: Map<String, String>) = settingsManager.saveModelAliases(aliases)
-    suspend fun saveLastUpdateCheckTime(time: Long) = settingsManager.saveLastUpdateCheckTime(time)
-    suspend fun saveLastModelsFetchFingerprint(fingerprint: String) = settingsManager.saveLastModelsFetchFingerprint(fingerprint)
-    suspend fun incrementMessagesSent() = settingsManager.incrementMessagesSent()
-    suspend fun saveLocalChatModels(models: List<LocalChatModelConfig>) = settingsManager.saveLocalChatModels(models)
-    suspend fun saveEmbeddingModels(models: List<EmbeddingModelConfig>) = settingsManager.saveEmbeddingModels(models)
-    suspend fun setActiveEmbeddingModelId(id: String) = settingsManager.setActiveEmbeddingModelId(id)
-    suspend fun saveAutoBackupEnabled(enabled: Boolean) = settingsManager.saveAutoBackupEnabled(enabled)
-    suspend fun savePetOverlayEnabled(enabled: Boolean) =
-        petSettingsStore.savePetOverlayEnabled(enabled)
-    suspend fun savePetOverlayImagePath(path: String) =
-        petSettingsStore.savePetOverlayImagePath(path)
-    suspend fun savePetOverlaySizeScale(scale: Float) =
-        petSettingsStore.savePetOverlaySizeScale(scale)
-    suspend fun savePetOverlayAlpha(alpha: Float) = petSettingsStore.savePetOverlayAlpha(alpha)
-    suspend fun savePetOverlayCharacter(character: String) =
-        petSettingsStore.savePetOverlayCharacter(character)
-    suspend fun savePetEmotionEnabled(enabled: Boolean) =
-        petSettingsStore.savePetEmotionEnabled(enabled)
-    suspend fun savePetsLibrary(pets: List<com.lxseek.chat.pet.CustomPet>) =
-        petSettingsStore.savePetsLibrary(pets)
-    suspend fun saveActivePetId(id: String) = petSettingsStore.saveActivePetId(id)
-    suspend fun savePetPromptInjectionEnabled(enabled: Boolean) =
-        petSettingsStore.savePetPromptInjectionEnabled(enabled)
-    suspend fun saveAutoBackupPeriodHours(hours: Int) = settingsManager.saveAutoBackupPeriodHours(hours)
-    suspend fun saveAutoBackupCategories(categories: String) = settingsManager.saveAutoBackupCategories(categories)
-    suspend fun saveAutoBackupDirectory(path: String) = settingsManager.saveAutoBackupDirectory(path)
-    suspend fun saveAutoDeleteEnabled(enabled: Boolean) = settingsManager.saveAutoDeleteEnabled(enabled)
-    suspend fun saveAutoDeletePeriodHours(hours: Int) = settingsManager.saveAutoDeletePeriodHours(hours)
+    val sm: SettingsManager get() = settingsManager
+    val pet: PetSettingsStore get() = petSettingsStore
 }

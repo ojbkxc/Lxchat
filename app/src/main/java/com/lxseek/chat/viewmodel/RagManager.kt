@@ -88,9 +88,9 @@ class RagManager(
             val wasEmpty = settings.embeddingModels.value.isEmpty()
             val models = settings.embeddingModels.value.toMutableList()
             models.add(config)
-            settings.saveEmbeddingModels(models)
+            settings.sm.saveEmbeddingModels(models)
             if (wasEmpty) {
-                settings.setActiveEmbeddingModelId(config.id)
+                settings.sm.setActiveEmbeddingModelId(config.id)
             }
             refreshCacheCounts()
         }
@@ -126,9 +126,9 @@ class RagManager(
                 }
                 conversations.deleteEmbeddingsByModel(id)
                 val models = settings.embeddingModels.value.filter { it.id != id }
-                settings.saveEmbeddingModels(models)
+                settings.sm.saveEmbeddingModels(models)
                 if (settings.activeEmbeddingModelId.value == id && models.isNotEmpty()) {
-                    settings.setActiveEmbeddingModelId(models.first().id)
+                    settings.sm.setActiveEmbeddingModelId(models.first().id)
                 }
                 _cachingProgress.update { it - id }
                 refreshCacheCounts()
@@ -142,14 +142,14 @@ class RagManager(
             val models = settings.embeddingModels.value.map {
                 if (it.id == id) it.copy(name = newName, batchSize = batchSize ?: it.batchSize) else it
             }
-            settings.saveEmbeddingModels(models)
+            settings.sm.saveEmbeddingModels(models)
         }
     }
 
     fun setActiveEmbeddingModel(id: String) {
         if (id == settings.activeEmbeddingModelId.value) return
         scope.launch(Dispatchers.IO) {
-            settings.setActiveEmbeddingModelId(id)
+            settings.sm.setActiveEmbeddingModelId(id)
             val model = settings.embeddingModels.value.find { it.id == id } ?: return@launch
             val total = conversations.getIndexableMessageCount()
             val cached = conversations.getEmbeddingCountByModel(id)

@@ -3,15 +3,18 @@ package com.lxseek.chat.viewmodel
 import com.lxseek.chat.data.EmbeddingModelConfig
 import com.lxseek.chat.data.EmbeddingModelType
 import com.lxseek.chat.data.repository.ConversationRepository
+import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.data.repository.SettingsRepository
 import com.lxseek.chat.util.SnackbarEvent
 import com.lxseek.chat.util.UpdateInfo
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.every
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -22,8 +25,8 @@ class StartupMaintenanceCoordinatorTest {
     @Test
     fun updateCheckAtExactDailyBoundaryIsNotDue() = runTest {
         val fixture = Fixture(this, now = DAY_MS + 1L)
-        coEvery { fixture.settings.getAutoUpdateCheck() } returns true
-        coEvery { fixture.settings.getLastUpdateCheckTime() } returns 1L
+        coEvery { fixture.settings.sm.autoUpdateCheck.first() } returns true
+        coEvery { fixture.settings.sm.lastUpdateCheckTime.first() } returns 1L
 
         fixture.coordinator.start()
         runCurrent()
@@ -36,8 +39,8 @@ class StartupMaintenanceCoordinatorTest {
     fun dueUpdatePersistsTimestampBeforeNetworkAndPublishesResult() = runTest {
         val fixture = Fixture(this, now = DAY_MS + 2L)
         val update = UpdateInfo("3.0", "https://example.invalid", "notes")
-        coEvery { fixture.settings.getAutoUpdateCheck() } returns true
-        coEvery { fixture.settings.getLastUpdateCheckTime() } returns 1L
+        coEvery { fixture.settings.sm.autoUpdateCheck.first() } returns true
+        coEvery { fixture.settings.sm.lastUpdateCheckTime.first() } returns 1L
         coEvery { fixture.settings.saveLastUpdateCheckTime(DAY_MS + 2L) } answers {
             fixture.events += "timestamp"
         }
@@ -59,8 +62,8 @@ class StartupMaintenanceCoordinatorTest {
             name = "Embedding",
             type = EmbeddingModelType.REMOTE,
         )
-        coEvery { fixture.settings.getEmbeddingModels() } returns listOf(active)
-        coEvery { fixture.settings.getActiveEmbeddingModelId() } returns active.id
+        coEvery { fixture.settings.sm.embeddingModels.first() } returns listOf(active)
+        coEvery { fixture.settings.sm.activeEmbeddingModelId.first() } returns active.id
         coEvery { fixture.conversations.getIndexableMessageCount() } returns 10
         coEvery { fixture.conversations.getEmbeddingCountByModel(active.id) } returns 3
 
@@ -80,8 +83,8 @@ class StartupMaintenanceCoordinatorTest {
             name = "Embedding",
             type = EmbeddingModelType.LOCAL,
         )
-        coEvery { fixture.settings.getEmbeddingModels() } returns listOf(active)
-        coEvery { fixture.settings.getActiveEmbeddingModelId() } returns active.id
+        coEvery { fixture.settings.sm.embeddingModels.first() } returns listOf(active)
+        coEvery { fixture.settings.sm.activeEmbeddingModelId.first() } returns active.id
         coEvery { fixture.conversations.getIndexableMessageCount() } returns 10
         coEvery { fixture.conversations.getEmbeddingCountByModel(active.id) } returns 0
 
@@ -111,6 +114,8 @@ class StartupMaintenanceCoordinatorTest {
         private val sweepFailure: Exception? = null,
     ) {
         val settings = mockk<SettingsRepository>()
+        val sm = mockk<SettingsManager>(relaxed = true)
+        every { settings.sm } returns sm
         val conversations = mockk<ConversationRepository>()
         val events = mutableListOf<String>()
         val checkedVersions = mutableListOf<String>()
@@ -145,9 +150,9 @@ class StartupMaintenanceCoordinatorTest {
         )
 
         init {
-            coEvery { settings.getAutoUpdateCheck() } returns false
-            coEvery { settings.getEmbeddingModels() } returns emptyList()
-            coEvery { settings.getActiveEmbeddingModelId() } returns ""
+            coEvery { settings.sm.autoUpdateCheck.first() } returns false
+            coEvery { settings.sm.embeddingModels.first() } returns emptyList()
+            coEvery { settings.sm.activeEmbeddingModelId.first() } returns ""
             coEvery { conversations.deleteOrphanedEmbeddings() } returns Unit
         }
     }

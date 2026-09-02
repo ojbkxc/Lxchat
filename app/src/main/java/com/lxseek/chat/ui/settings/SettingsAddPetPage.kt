@@ -96,22 +96,22 @@ fun SettingsAddPetPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         val newPet = draft.copy(name = finalName, personality = finalPersonality)
         scope.launch {
             val next = pets + newPet
-            viewModel.settings.savePetsLibrary(next)
-            viewModel.settings.saveActivePetId(newPet.id)
+            viewModel.settings.pet.savePetsLibrary(next)
+            viewModel.settings.pet.saveActivePetId(newPet.id)
         }
         onBack()
     }
 
     fun activate(petId: String) {
-        scope.launch { viewModel.settings.saveActivePetId(petId) }
+        scope.launch { viewModel.settings.pet.saveActivePetId(petId) }
     }
 
     fun release(pet: CustomPet) {
         scope.launch {
             val next = pets.filterNot { it.id == pet.id }
-            viewModel.settings.savePetsLibrary(next)
+            viewModel.settings.pet.savePetsLibrary(next)
             if (activePetId == pet.id) {
-                viewModel.settings.saveActivePetId(next.firstOrNull()?.id ?: "")
+                viewModel.settings.pet.saveActivePetId(next.firstOrNull()?.id ?: "")
             }
         }
     }
@@ -221,12 +221,12 @@ fun SettingsAddPetPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     Switch(
                         checked = injectionEnabled,
                         onCheckedChange = { v ->
-                            scope.launch { viewModel.settings.savePetPromptInjectionEnabled(v) }
+                            scope.launch { viewModel.settings.pet.savePetPromptInjectionEnabled(v) }
                         },
                     )
                 },
                 modifier = Modifier.clickable {
-                    scope.launch { viewModel.settings.savePetPromptInjectionEnabled(!injectionEnabled) }
+                    scope.launch { viewModel.settings.pet.savePetPromptInjectionEnabled(!injectionEnabled) }
                 },
             )
         }))
