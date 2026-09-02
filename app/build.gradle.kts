@@ -96,6 +96,13 @@ android {
     val hasKeystore = (localValue("storeFile") ?: ".").let { it != "." }
     val releaseSigning = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
 
+    // 单元测试可用 classpath 资源（InfantCryNet 黄金样本 JSON）与 Android 内置 org.json。
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = false
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = releaseSigning
@@ -243,6 +250,8 @@ dependencies {
     implementation("com.alphacephei:vosk-android:0.3.47")
     // Baby cry monitor: on-device YAMNet audio classification (AudioSet 521 classes).
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    // Baby cry monitor: InfantCryNet Stage-0 gate (sklearn→ONNX sub-models).
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.29.0")
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
     debugImplementation(libs.androidx.compose.ui.tooling)
@@ -252,6 +261,8 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
+    // InfantCryNet 黄金样本对齐测试需要解析 JSON（主代码用 Android 内置 org.json）。
+    testImplementation("org.json:json:20240303")
 }
 
 // Baseline Profile (ArtProfile) 任务保持启用：AGP 会为 release 构建内置默认启动

@@ -110,6 +110,12 @@ class BabyMonitorService : Service() {
             return
         }
 
+        // InfantCryNet 双引擎：加载失败不阻断（降级为 YAMNet 单引擎）。
+        val infantGate = InfantCryGateClassifier.load(appContext).getOrNull()
+        if (infantGate == null) {
+            DebugLog.w(TAG, "InfantCryNet gate unavailable; YAMNet-only mode")
+        }
+
         acquireWakeLock()
 
         val store = BabyMonitorStore(appContext)
@@ -174,7 +180,13 @@ class BabyMonitorService : Service() {
                             } else {
                                 val (cry, speech) = classifier.classify(samples)
                                     ?: (0f to 0f)
-                                detector.observe(CryObservation(cry, speech, rms))
+                                // 双引擎融合：InfantCryNet 门控概率可用时与 YAMNet 取几何平均
+                                //（任一引擎接近 0 即压低总分，双高才高——保守防误报）。
+                                val fused = if (infantGate != null) {
+                                    val gate = classifyWithGate(infantGate, samples)
+                                    if (gate != null) sqrt(cry * gate) else cry
+                                } else cry
+                                detector.observe(CryObservation(fused, speech, rms))
                             }
                             if (verdict is CryVerdict.Alert) {
                                 DebugLog.i(TAG, "cry alert: score=${verdict.cryScore} streak=${verdict.streak}")
@@ -199,7 +211,45 @@ class BabyMonitorService : Service() {
             runCatching { audioRecord?.stop() }
             runCatching { audioRecord?.release() }
             classifier.close()
+            infantGate?.close()
         }
+    }
+
+    /**
+     * InfantCryNet 门控推理：16kHz 采样重采样到模型要求的 22050Hz（线性插值），
+     * 归一化对齐 Python `librosa.util.normalize`（峰值归一到 ±1）。
+     */
+    private fun classifyWithGate(
+        gate: InfantCryGateClassifier,
+        samples16k: FloatArray,
+    ): Double? {
+        val resampled = resampleTo22050(samples16k)
+        val normalized = peakNormalize(resampled)
+        val features = InfantCryFeatures.extract(normalized)
+        return gate.classify(features)
+    }
+
+    private fun resampleTo22050(src: FloatArray): FloatArray {
+        val ratio = 22050.0 / SAMPLE_RATE
+        val outLen = (src.size * ratio).toInt()
+        val out = FloatArray(outLen)
+        for (i in 0 until outLen) {
+            val pos = i / ratio
+            val i0 = pos.toInt()
+            val i1 = minOf(i0 + 1, src.size - 1)
+            val t = (pos - i0).toFloat()
+            out[i] = src[i0] * (1 - t) + src[i1] * t
+        }
+        return out
+    }
+
+    private fun peakNormalize(x: FloatArray): FloatArray {
+        var peak = 0f
+        for (v in x) peak = maxOf(peak, kotlin.math.abs(v))
+        if (peak <= 1e-8f) return x
+        val out = FloatArray(x.size)
+        for (i in x.indices) out[i] = x[i] / peak
+        return out
     }
 
     private suspend fun buildDetector(store: BabyMonitorStore): BabyCryDetectorState {
