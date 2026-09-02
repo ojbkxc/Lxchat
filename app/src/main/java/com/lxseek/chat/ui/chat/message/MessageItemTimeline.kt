@@ -306,6 +306,7 @@ internal fun CompactSegmentBlock(
     val isLastTool = lastSeg.type == "tool"
     val isToolInProgress = isLastTool &&
         ToolPresentationResolver.resolve(lastSeg).isActive
+    val toolCount = segs.count { it.type == "tool" && it.toolResult != null }
     val isThinking = useLiveStatus && message.status == MessageStatus.THINKING
     val isToolCalling = useLiveStatus && message.status == MessageStatus.TOOL_CALLING
     val isTranscribing = useLiveStatus && message.status == MessageStatus.TRANSCRIBING
@@ -389,14 +390,7 @@ internal fun CompactSegmentBlock(
                     .padding(10.dp)
             ) {
                 if (thinkingStyleFold) {
-                    // cc-haha-main 折叠头：仅 ▶/▼ + 斜体小标签（思考中/已思考），
-                    // 不带图标与尾部箭头，次级灰、悬停主色的轻量样式。
-                    Text(
-                        text = if (isExpanded) "\u25BE" else "\u25B8",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.width(7.dp))
+                    // cc-haha-main 折叠头：斜体小标签（思考中/已思考）+ 推理预览 + 尾部箭头。
                     Text(
                         text = if (isThinking) {
                             stringResource(R.string.thinking_label)
@@ -411,14 +405,25 @@ internal fun CompactSegmentBlock(
                     if (isThinking) {
                         ThinkingEllipsisDots()
                     }
-                    if (opensDetailSheet) {
-                        Spacer(modifier = Modifier.weight(1f))
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    val thoughtPreview = remember(segs, useLiveStatus) {
+                        thoughtFoldPreview(
+                            segs.filter { it.type == "thought" && it.content.isNotBlank() }
+                                .joinToString("\n") { it.content },
+                            streaming = useLiveStatus,
                         )
+                    }
+                    if (thoughtPreview.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = thoughtPreview,
+                            style = ChatType.thoughtFold.copy(fontStyle = FontStyle.Italic),
+                            color = MaterialTheme.colorScheme.tertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 } else {
                     Crossfade(
@@ -932,6 +937,40 @@ private fun thoughtPreviewTail(
     }.toAnnotatedString()
 }
 
+private const val THOUGHT_FOLD_PREVIEW_MAX_CHARS = 160
+private const val THOUGHT_OPENER_MAX_CHARS = 24
+
+/**
+ * cc-haha-main thinkingPreview 等价物：折叠头显示一行推理摘要。
+ * 流式时取最后一行（关注"正在想什么"）；结束后取第一行，除非首行是
+ * 以冒号结尾的裸标题（如 `Diagnosis complete:`），此时改取第二行。
+ * 行首 markdown（# - > 数字列表）被剥掉，避免把语法当正文显示。
+ */
+internal fun thoughtFoldPreview(content: String, streaming: Boolean): String {
+    val lines = content.split('\n').map { line ->
+        line.trim()
+            .replace(Regex("^#{1,6}\\s+"), "")
+            .replace(Regex("^[-*+]\\s+"), "")
+            .replace(Regex("^>\\s*"), "")
+            .replace(Regex("^\\d+\\.\\s+"), "")
+            .trim()
+    }.filter { it.isNotBlank() && it != "---" }
+    if (lines.isEmpty()) return ""
+    val picked = if (streaming) {
+        lines.last()
+    } else {
+        val first = lines.first()
+        val isBareHeading = first.length <= THOUGHT_OPENER_MAX_CHARS &&
+            (first.endsWith(":") || first.endsWith("："))
+        if (isBareHeading) lines.getOrElse(1) { first } else first
+    }
+    return if (picked.length > THOUGHT_FOLD_PREVIEW_MAX_CHARS) {
+        picked.take(THOUGHT_FOLD_PREVIEW_MAX_CHARS) + "…"
+    } else {
+        picked
+    }
+}
+
 @Composable
 internal fun StreamingThoughtPreviewText(
     content: String,
@@ -939,8 +978,8 @@ internal fun StreamingThoughtPreviewText(
 ) {
     // 时间戳样式：alpha=0.5f 更柔和
     val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-    val flat = remember(content) { content.replace('\n', ' ') }
-    val annotated = remember(flat) { AnnotatedString(flat) }
+    val linePreview = remember(content, streaming) { thoughtFoldPreview(content, streaming) }
+    val annotated = remember(linePreview) { AnnotatedString(linePreview) }
     val faded = rememberStreamingGlyphFade(
         content = annotated,
         color = color,
@@ -949,6 +988,7 @@ internal fun StreamingThoughtPreviewText(
     val preview = remember(faded, streaming) {
         if (streaming) thoughtPreviewTail(faded) else faded
     }
+    if (preview.isBlank()) return
     Text(
         text = preview,
         style = MaterialTheme.typography.labelSmall,
@@ -974,7 +1014,7 @@ private fun ThoughtExpandedContent(
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
-    // 流式时跟随尾巴：每段内容到达都滚到底部，保证尾部可见。
+    // 流式时跟随尾巴：滚动到内容底部（300dp 上限外多滚一点，让最后一段可见）。
     LaunchedEffect(content, isStreaming) {
         if (isStreaming) {
             scrollState.scrollTo(scrollState.maxValue)
@@ -1007,8 +1047,10 @@ private fun ThoughtExpandedContent(
 /** 流式思考末尾的闪烁光标（对齐 cc-haha-main .thinking-cursor）。 */
 @Composable
 private fun ThinkingCursor() {
-    val cursorColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val cursorAlpha by remember { mutableFloatStateOf(1f) }
+    val cursorColor = MaterialTheme.colorScheme.tertiary
+    var cursorAlpha by remember {
+        mutableFloatStateOf(1f)
+    }
     LaunchedEffect(Unit) {
         while (isActive) {
             cursorAlpha = 1f
