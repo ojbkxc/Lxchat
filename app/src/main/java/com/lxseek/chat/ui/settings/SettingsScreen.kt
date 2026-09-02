@@ -299,6 +299,7 @@ private val settingsGroups = listOf(
     // Group 7 — 接入与自动化（连接/插件/代理/任务归位，proxy 归入网络接入）
     SettingsGroupData(titleRes = R.string.settings_group_access_automation, items = listOf(
         SettingsCategory("im_gateway", R.string.settings_im_gateway, R.string.settings_im_gateway_desc, Icons.Default.Message),
+        SettingsCategory("baby_monitor", R.string.settings_baby_monitor, R.string.settings_baby_monitor_desc, Icons.Default.ChildCare),
         SettingsCategory(
             "mcp",
             R.string.mcp_title,
@@ -446,6 +447,10 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                     }
                 }
                 "im_gateway" -> SettingsImGatewayPage(viewModel, onBack = { selectedCategory = null })
+                "baby_monitor" -> SettingsBabyMonitorPage(
+                    onBack = { selectedCategory = null },
+                    onNavigateImGateway = { selectedCategory = "im_gateway" },
+                )
                 "notification_reply" -> NotificationReplySettingsPage(
                     viewModel,
                     onBack = { selectedCategory = null },

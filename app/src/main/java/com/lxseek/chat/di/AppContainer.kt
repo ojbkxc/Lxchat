@@ -157,6 +157,15 @@ class AppContainer(private val appContext: Context) {
                 }
             }
         }
+        // Baby cry monitor: restore the listening service at launch when the user enabled it.
+        // Inert when disabled / model missing — the service itself also re-checks both.
+        appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            launchService("Baby monitor startup restore") {
+                if (babyMonitorStore.config.first().enabled) {
+                    com.lxseek.chat.baby.BabyMonitorService.start(appContext)
+                }
+            }
+        }
         // Condition trigger: dynamically register battery/network receivers. Android O+ no longer
         // delivers implicit broadcasts (ACTION_BATTERY_CHANGED / CONNECTIVITY_CHANGE) to manifest
         // receivers, so we register them here to keep the trigger system actually working. The
@@ -576,6 +585,14 @@ class AppContainer(private val appContext: Context) {
      */
     val cronTaskStore: com.lxseek.chat.cron.CronTaskStore by lazy {
         com.lxseek.chat.cron.CronTaskStore(appContext)
+    }
+
+    /**
+     * 婴儿哭声监护：开关/渠道选择持久化（独立 DataStore）。
+     * 与 [imBridgeService] 一起构成「检测 → IM 报警」链路。
+     */
+    val babyMonitorStore: com.lxseek.chat.baby.BabyMonitorStore by lazy {
+        com.lxseek.chat.baby.BabyMonitorStore(appContext)
     }
 
     /**

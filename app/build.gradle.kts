@@ -241,6 +241,8 @@ dependencies {
     implementation(libs.commons.compress)
     implementation(libs.zxing.core)
     implementation("com.alphacephei:vosk-android:0.3.47")
+    // Baby cry monitor: on-device YAMNet audio classification (AudioSet 521 classes).
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
     debugImplementation(libs.androidx.compose.ui.tooling)

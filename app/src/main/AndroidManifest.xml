@@ -33,6 +33,8 @@
     <uses-permission android:name="android.permission.READ_SMS" />
     <!-- Condition trigger system: query network state for NETWORK_CHANGE rules. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Baby cry monitor: keeps the mic + YAMNet inference alive while the screen is off. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- system_* tools (P2/P3): phone call / SMS / media read & save / SAF files / radio / brightness /
          recording. All sensitive ones are runtime-granted with an in-app guidance page. -->
@@ -310,6 +312,14 @@
              trigger receivers. -->
         <service
             android:name=".trigger.TriggerExecutorService"
+            android:exported="false" />
+
+        <!-- Baby cry monitor: continuous 16 kHz mic capture + on-device YAMNet inference; alerts
+             through the configured IM channels. Inert until the user enables it in Settings →
+             Baby Cry Monitor (requires RECORD_AUDIO + the downloaded model). -->
+        <service
+            android:name=".baby.BabyMonitorService"
+            android:foregroundServiceType="dataSync"
             android:exported="false" />
     </application>
 

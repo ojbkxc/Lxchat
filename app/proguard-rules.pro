@@ -101,6 +101,9 @@
 -keep class org.vosk.** { *; }
 -dontwarn org.vosk.**
 
+# ── TensorFlow Lite (baby cry monitor YAMNet inference) ───
+-dontwarn org.tensorflow.lite.**
+
 # ── commons-compress (tar/zip streaming used by sandbox extraction) ──
 -dontwarn org.apache.commons.compress.**
 -keep class org.apache.commons.compress.** { *; }
