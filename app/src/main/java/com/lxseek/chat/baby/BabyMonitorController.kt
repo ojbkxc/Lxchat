@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.first
  */
 object BabyMonitorController {
 
+    private const val TAG = "BabyMonitorController"
+
     private fun application(context: Context): LxChatApplication =
         context.applicationContext as LxChatApplication
 
