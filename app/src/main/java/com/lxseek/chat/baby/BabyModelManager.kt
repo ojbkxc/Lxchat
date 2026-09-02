@@ -27,8 +27,7 @@ import kotlin.coroutines.resumeWithException
  *  2. hf-mirror.com 镜像（大陆可达，与 GGUF 目录同源策略）
  *
  * 复用全局共享 OkHttp（继承代理 / 加密 DNS），支持断点续传（Range），完成后校验
- * TFLite flatbuffer 魔数（`0x1C 0x00 0x00 0x00` 对应标识 28 = root table type）——
- * 实际采用最小完整性校验：文件非空 + 长度与 Content-Length 一致。
+ * 模型为全精度 float32 版（~16MB，非量化）且文件非空、长度与 Content-Length 一致。
  *
  * 状态经 [state] 暴露给设置页；同一进程内只有一个下载协程（[job] 持有）。
  */
@@ -37,7 +36,7 @@ class BabyModelManager(private val context: Context) {
     companion object {
         private const val TAG = "BabyModelManager"
 
-        /** 用户指定的模型下载地址。 */
+        /** 用户指定的模型下载地址（全精度 float32 版，~16MB）。 */
         const val DOWNLOAD_URL =
             "https://huggingface.co/thelou1s/yamnet/resolve/main/lite-model_yamnet_tflite_1.tflite"
 
@@ -45,8 +44,8 @@ class BabyModelManager(private val context: Context) {
         const val MIRROR_URL =
             "https://hf-mirror.com/thelou1s/yamnet/resolve/main/lite-model_yamnet_tflite_1.tflite"
 
-        /** 期望大小（约 3.7MB）；仅用于进度显示，服务器 Content-Length 优先。 */
-        const val APPROX_SIZE_BYTES = 4_000_000L
+        /** 期望大小（全精度版约 16MB）；仅用于进度显示，服务器 Content-Length 优先。 */
+        const val APPROX_SIZE_BYTES = 16_100_000L
 
         private const val MODEL_DIR = "baby_monitor"
         private const val MODEL_FILE = "yamnet.tflite"
@@ -131,6 +130,9 @@ class BabyModelManager(private val context: Context) {
     /** 从单个 URL 下载（断点续传 + 进度回调）。失败抛异常，由调用方回退到镜像。 */
     private suspend fun downloadFrom(url: String) {
         val part = tempFile()
+        // .part 文件所在的 baby_monitor 目录可能不存在（首次下载），先建目录再打开文件，
+        // 否则 RandomAccessFile 会抛 ENOENT。
+        if (!modelDir.isDirectory) modelDir.mkdirs()
         val client = HttpClient.client
         suspendCancellableCoroutine { cont ->
             val call = client.newCall(

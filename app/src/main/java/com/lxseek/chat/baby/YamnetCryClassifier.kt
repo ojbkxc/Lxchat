@@ -12,9 +12,9 @@ import java.nio.channels.FileChannel
 /**
  * YAMNet TFLite 推理封装（AudioSet 521 类音频事件分类）。
  *
- * 模型：`lite-model_yamnet_tflite_1.tflite`（TensorFlow Hub 官方移动端量化版），
- * 下载地址见 [BabyModelManager.DOWNLOAD_URL]。输入 16kHz 单声道 float PCM，
- * 每次推理至少 ~0.975s（15600 样本）。
+ * 模型：`lite-model_yamnet_tflite_1.tflite`（TensorFlow Hub 官方全精度 float32 版，
+ * ~16MB，非量化），下载地址见 [BabyModelManager.DOWNLOAD_URL]。输入 16kHz 单声道
+ * float PCM，每次推理至少 ~0.975s（15600 样本）。
  *
  * 两种输出形态都被支持（不同来源的 YAMNet 转换版布局不同）：
  *  - `[1, frames, 521]`（3D）——逐帧分数，取哭声类逐帧最大值（对齐 crywatch 的

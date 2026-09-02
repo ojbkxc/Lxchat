@@ -126,7 +126,7 @@
     <string name="baby_monitor_permission_desc">监护需要持续使用麦克风（16kHz 录音，仅本地分析，不上传音频）</string>
     <string name="baby_monitor_permission_grant">授予权限</string>
     <string name="baby_monitor_model_title">哭声识别模型（YAMNet）</string>
-    <string name="baby_monitor_model_desc">约 4MB，本地运行，用于从环境声中区分婴儿哭声与电视、说话等噪声</string>
+    <string name="baby_monitor_model_desc">约 16MB（全精度版），本地运行，用于从环境声中区分婴儿哭声与电视、说话等噪声</string>
     <string name="baby_monitor_model_download">下载模型</string>
     <string name="baby_monitor_model_retry">重试下载</string>
     <string name="baby_monitor_model_ready">模型已就绪</string>
