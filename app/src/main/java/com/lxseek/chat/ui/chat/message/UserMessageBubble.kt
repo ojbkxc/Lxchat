@@ -141,6 +141,12 @@ internal fun UserMessageBubble(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).noOpBringIntoView(),
                     horizontalAlignment = Alignment.Start
                 ) {
+                    message.replyTo?.let { reply ->
+                        MessageReplyQuote(
+                            reply = reply,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
                     val hasMetaItems = message.attachmentMeta?.items?.isNotEmpty() == true
                 if (message.images.isNotEmpty() || hasMetaItems) {
                         val meta = remember(message.attachmentMeta) {

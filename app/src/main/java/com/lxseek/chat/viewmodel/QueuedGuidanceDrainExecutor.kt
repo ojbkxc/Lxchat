@@ -163,6 +163,7 @@ internal class QueuedGuidanceDrainExecutor(
                             parentId = parentId,
                             text = queued.text,
                             images = queued.preparedImages,
+                            replyToJson = queued.replyToJson,
                             thoughts = null,
                             status = MessageStatus.SUCCESS,
                             participant = Participant.USER,

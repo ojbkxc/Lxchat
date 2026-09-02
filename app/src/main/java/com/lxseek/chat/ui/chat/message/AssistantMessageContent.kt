@@ -323,6 +323,12 @@ internal fun AssistantMessageContent(
             Column {
                 val isError = message.status == MessageStatus.ERROR || message.participant == Participant.ERROR
 
+                message.replyTo?.let { reply ->
+                    MessageReplyQuote(
+                        reply = reply,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                }
                 // Only zero out thought height when legacy thought block is not shown
                 if (message.segments != null || message.thoughts.isNullOrBlank()) {
                     setThoughtBlockHeight(0)

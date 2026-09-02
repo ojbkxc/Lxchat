@@ -188,6 +188,10 @@ object ChatType {
     val metaNormal get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp * chatFontScale, lineHeight = 17.sp * chatFontScale)
     val micro get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp * chatFontScale, lineHeight = 15.sp * chatFontScale)
 
+    // Quote tier (reply reference chips in bubbles and the composer)
+    val quoteLabel get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp * chatFontScale, lineHeight = 14.sp * chatFontScale)
+    val quoteBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp * chatFontScale, lineHeight = 16.sp * chatFontScale)
+
     // Code / mono
     val code get() = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp * chatFontScale, lineHeight = 20.sp * chatFontScale)
     val thoughtCode get() = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 11.sp * chatFontScale, lineHeight = 11.sp * chatFontScale)

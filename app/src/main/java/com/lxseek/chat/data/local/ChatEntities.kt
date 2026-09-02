@@ -240,6 +240,8 @@ data class MessageEntity(
     val parentId: String? = null,
     val text: String,
     val images: List<String> = emptyList(),
+    /** Message quoted by this reply, serialized as [com.lxseek.chat.model.MessageReplyRef]. */
+    val replyToJson: String? = null,
     val thoughts: String? = null,
     val thoughtTitle: String? = null,
     val tokenCount: Int = 0,

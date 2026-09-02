@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -36,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.R
 import com.lxseek.chat.model.ChatMessage
+import com.lxseek.chat.model.MessageReplyRef
 import com.lxseek.chat.model.MessageSegment
 import com.lxseek.chat.model.MessageStatus
 import com.lxseek.chat.model.isContextCompact
@@ -90,6 +92,7 @@ internal fun MessageItem(
     onResume: (String) -> Boolean = { false },
     onFork: (String) -> Unit = {},
     onShare: (String) -> Unit = {},
+    onReply: (MessageReplyRef) -> Unit = {},
     deleteTargetMessageId: String = message.id,
     onDelete: (String) -> Unit = {},
     onMediaClick: (List<String>, Int) -> Unit = { _, _ -> },
@@ -133,6 +136,21 @@ internal fun MessageItem(
         ) {
             val canCopy = !message.text.isNullOrBlank() &&
                 !message.isContextCompact()
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_menu_reply)) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, null) },
+                enabled = !isLoading && !message.isContextCompact(),
+                onClick = {
+                    showLongPressMenu = false
+                    onReply(
+                        MessageReplyRef(
+                            messageId = message.id,
+                            senderName = message.participant.name.lowercase(),
+                            textSnippet = message.text.orEmpty(),
+                        )
+                    )
+                },
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.message_menu_copy)) },
                 leadingIcon = { Icon(Icons.Default.ContentCopy, null) },

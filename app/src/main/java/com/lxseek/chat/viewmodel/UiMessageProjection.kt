@@ -4,6 +4,7 @@ import android.content.Context
 import com.lxseek.chat.data.local.MessageEntity
 import com.lxseek.chat.model.AttachmentMeta
 import com.lxseek.chat.model.ChatMessage
+import com.lxseek.chat.model.MessageReplyRef
 import com.lxseek.chat.model.MessageSegment
 import com.lxseek.chat.model.TokenUsage
 import com.lxseek.chat.model.ToolCallData
@@ -44,6 +45,13 @@ internal fun MessageEntity.toUiChatMessage(
         parentId = parentId,
         text = if (isSynthetic) "" else formatText(text),
         images = if (isSynthetic) emptyList() else images,
+        replyTo = if (isSynthetic) {
+            null
+        } else {
+            replyToJson?.let { raw ->
+                runCatching { Json.decodeFromString<MessageReplyRef>(raw) }.getOrNull()
+            }
+        },
         thoughts = if (isSynthetic) null else thoughts,
         thoughtTitle = if (isSynthetic) null else thoughtTitle,
         tokenCount = if (isSynthetic) 0 else tokenCount,

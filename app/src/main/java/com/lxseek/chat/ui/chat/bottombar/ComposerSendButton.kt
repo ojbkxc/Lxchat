@@ -36,6 +36,8 @@ import com.lxseek.chat.ui.chat.message.COMPOSER_ICON_CROSSFADE_DURATION_MS
 import com.lxseek.chat.viewmodel.SendAcceptance
 import com.lxseek.chat.viewmodel.VoiceConversationController
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private enum class ComposerActionIcon {
     STOPPING,
@@ -68,6 +70,7 @@ internal fun ComposerSendButton(
     onSendMessage: suspend (
         String,
         List<SelectedAttachment>,
+        String?,
         suspend () -> Unit,
     ) -> SendAcceptance?,
     onStopGeneration: () -> Unit,
@@ -94,12 +97,18 @@ internal fun ComposerSendButton(
         submittedText: String,
         submittedAttachments: List<SelectedAttachment>,
     ) {
+        // Capture the reply snapshot at submit time; the shared composer may hold different
+        // state by the time a deferred (pendingSend) submit actually fires.
+        val submittedReplyToJson = composer.replyTo?.let { reply ->
+            runCatching { Json.encodeToString(reply) }.getOrNull()
+        }
         val submittedAttachmentIds = submittedAttachments.map { it.localId }
         isSubmitting = true
         try {
             onSendMessage(
                 submittedText,
                 submittedAttachments,
+                submittedReplyToJson,
             ) {
                 if (composer.selectedAttachments.map { it.localId } == submittedAttachmentIds) {
                     composer.clearAttachments()
@@ -107,6 +116,7 @@ internal fun ComposerSendButton(
                 if (textFieldState.text.toString() == submittedText) {
                     textFieldState.edit { replace(0, length, "") }
                 }
+                composer.clearReply()
                 composer.pendingSend = false
                 isSubmitting = false
                 onCollapse()

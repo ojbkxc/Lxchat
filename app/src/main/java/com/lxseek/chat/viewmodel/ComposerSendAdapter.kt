@@ -12,6 +12,7 @@ internal typealias ComposerSend = suspend (
     text: String,
     images: List<String>,
     attachments: List<SelectedAttachment>,
+    replyToJson: String?,
     onAccepted: suspend (SendAcceptance) -> Unit,
 ) -> SendAcceptance?
 
@@ -27,8 +28,9 @@ internal class ComposerSendAdapter(
         text: String,
         images: List<String> = emptyList(),
         attachments: List<SelectedAttachment> = emptyList(),
+        replyToJson: String? = null,
         onAccepted: suspend () -> Unit = {},
-    ): SendAcceptance? = send(text, images, attachments) { acceptance ->
+    ): SendAcceptance? = send(text, images, attachments, replyToJson) { acceptance ->
         // Acceptance transfers ownership before the composer clears. Direct inputs are Room-owned;
         // queued guidance remains memory-owned until its later drain boundary.
         val attachmentsToReclaim = withContext(NonCancellable) {

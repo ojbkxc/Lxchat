@@ -30,6 +30,8 @@ data class QueuedSend(
     val runId: String,
     /** Legacy bare-image paths retained for queue display and cleanup. */
     val images: List<String> = emptyList(),
+    /** Serialized [com.lxseek.chat.model.MessageReplyRef]; null for a plain message. */
+    val replyToJson: String? = null,
     /** Prepared payload owned by this in-memory guidance until its boundary commit. */
     val preparedImages: List<String> = emptyList(),
     val preparedAttachmentMetaJson: String? = null,
@@ -61,6 +63,7 @@ internal fun mergeQueuedGuidance(batch: List<QueuedSend>): QueuedSend {
         modelId = batch.last().modelId,
         attachments = batch.flatMap(QueuedSend::attachments),
         images = batch.flatMap(QueuedSend::images),
+        replyToJson = first.replyToJson,
         preparedImages = batch.flatMap(QueuedSend::preparedImages),
         preparedAttachmentMetaJson = attachmentItems
             .takeIf(List<*>::isNotEmpty)

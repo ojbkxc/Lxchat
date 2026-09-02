@@ -25,9 +25,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.lxseek.chat.R
+import com.lxseek.chat.model.MessageReplyRef
 import com.lxseek.chat.viewmodel.QueuedSend
 import com.lxseek.chat.ui.chat.PdfPageSelectDialog
 import com.lxseek.chat.ui.chat.VideoSliceDialog
+import com.lxseek.chat.ui.chat.message.ComposerReplyQuote
 import com.lxseek.chat.ui.common.OpenAiServiceTierControlPanel
 import com.lxseek.chat.ui.common.ThinkingControlPanel
 import com.lxseek.chat.ui.motion.LocalLxChatMotionPolicy
@@ -68,6 +70,7 @@ fun ChatBottomBar(
     onSendMessage: suspend (
         String,
         List<com.lxseek.chat.model.SelectedAttachment>,
+        String?,
         suspend () -> Unit,
     ) -> SendAcceptance?,
     onStopGeneration: () -> Unit = {},
@@ -112,6 +115,8 @@ fun ChatBottomBar(
     modifier: Modifier = Modifier,
     textFieldState: TextFieldState = rememberSaveable(saver = TextFieldState.Saver) { TextFieldState() },
     composerState: ChatComposerState = rememberChatComposerState(),
+    replyTo: MessageReplyRef? = null,
+    onDismissReply: () -> Unit = {},
     conversations: List<ConversationMention> = emptyList(),
     onSwitchConversation: (String) -> Unit = {},
     focusRequester: FocusRequester = FocusRequester(),
@@ -244,6 +249,14 @@ fun ChatBottomBar(
                     .background(composerOcclusionColor)
                     .zIndex(1f),
             ) {
+                replyTo?.let { reply ->
+                    ComposerReplyQuote(
+                        reply = reply,
+                        onDismiss = onDismissReply,
+                        modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 10.dp),
+                    )
+                }
+
                 if (composer.selectedAttachments.isNotEmpty()) {
                     AttachmentPreviewRow(
                         composer = composer,

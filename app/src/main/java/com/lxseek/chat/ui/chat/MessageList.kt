@@ -54,6 +54,7 @@ import androidx.compose.material3.MaterialTheme
 import com.lxseek.chat.R
 import com.lxseek.chat.model.ChatMessage
 import com.lxseek.chat.model.ContextBudget
+import com.lxseek.chat.model.MessageReplyRef
 import com.lxseek.chat.api.util.contextWindowRetainedMessageIds
 import com.lxseek.chat.api.util.expandSelectedToolProtocolRows
 import com.lxseek.chat.model.MessageStatus
@@ -122,6 +123,7 @@ internal fun MessageList(
     onResume: (String) -> Boolean = { false },
     onFork: (String) -> Unit = { _ -> },
     onShare: (String) -> Unit = {},
+    onReply: (MessageReplyRef) -> Unit = {},
     onDelete: (String) -> Unit = {},
     ttsPlayingMessageId: String? = null,
     onToggleTts: (String) -> Unit = {},
@@ -746,6 +748,7 @@ internal fun MessageList(
             onResume = onResume,
             onFork = onFork,
             onShare = onShare,
+            onReply = onReply,
             onDelete = onDelete,
             isTtsPlaying = ttsPlayingMessageId == message.id,
             onToggleTts = { onToggleTts(message.id) },

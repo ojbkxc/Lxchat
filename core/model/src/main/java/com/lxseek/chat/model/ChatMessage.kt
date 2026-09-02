@@ -107,12 +107,27 @@ enum class MessageStatus {
     TRANSCRIBING, SENDING, THINKING, TOOL_CALLING, SUCCESS, STOPPED, ERROR
 }
 
+/**
+ * Snapshot of a message quoted by a reply. Only the reference data needed to render the quote
+ * chip is persisted; the original row can be deleted without breaking the reply.
+ */
+@Serializable
+data class MessageReplyRef(
+    val messageId: String,
+    /** "user" | "model" — display label source for the quote chip. */
+    val senderName: String,
+    /** Shortened body preview shown inside the quote chip. */
+    val textSnippet: String,
+)
+
 @Immutable
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val parentId: String? = null,
     val text: String,
     val images: List<String> = emptyList(),
+    /** Message quoted by this reply; null for a plain message. */
+    val replyTo: MessageReplyRef? = null,
     val thoughts: String? = null,
     val thoughtTitle: String? = null,
     val tokenCount: Int = 0,

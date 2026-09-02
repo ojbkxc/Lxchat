@@ -12,6 +12,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import com.lxseek.chat.model.MessageReplyRef
 import com.lxseek.chat.model.SelectedAttachment
 import com.lxseek.chat.ui.chat.VideoSliceDialog
 import com.lxseek.chat.util.DebugLog
@@ -60,6 +61,9 @@ class ChatComposerState(
     var selectedAttachments by mutableStateOf<List<SelectedAttachment>>(emptyList())
     var processingStates by mutableStateOf<Map<String, Float>>(emptyMap())
     var pendingSend by mutableStateOf(false)
+    /** Message quoted by a pending reply; null when no reply is armed. */
+    var replyTo by mutableStateOf<MessageReplyRef?>(null)
+        private set
     private var draftOwnerConversationId: String? = null
     private var attachmentRemovalIds = 0L
     var pendingAttachmentRemovals by mutableStateOf<List<PendingAttachmentRemoval>>(emptyList())
@@ -118,6 +122,17 @@ class ChatComposerState(
      *  must NOT be deleted here; message deletion handles that. */
     fun clearAttachments() {
         selectedAttachments = emptyList()
+    }
+
+    /** Arm a quote-reply for the message at the top of the composer. */
+    fun armReply(reply: MessageReplyRef) {
+        haptics.selection()
+        replyTo = reply
+    }
+
+    /** Clear the armed reply (dismiss or after a successful send). */
+    fun clearReply() {
+        replyTo = null
     }
 
     fun bindDraftOwner(conversationId: String?) {
