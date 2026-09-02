@@ -476,6 +476,7 @@ internal fun AssistantMessageContent(
                                     renderContext = renderContext,
                                     modifier = Modifier.fillMaxWidth(),
                                     selectionEnabled = !isStreaming,
+                                    showTailCursor = isStreaming,
                                 )
                             }
                         } else {
@@ -485,34 +486,61 @@ internal fun AssistantMessageContent(
                                 renderContext = renderContext,
                                 modifier = Modifier.fillMaxWidth(),
                                 selectionEnabled = !isStreaming,
+                                showTailCursor = isStreaming,
                             )
                         }
                     }
                 }
                 if (message.participant == Participant.MODEL && message.images.isNotEmpty()) {
                     val genImages = message.images
-                    // Generated images are primary output, not input references:
-                    // render as a full-width square card, image cropped to fill
-                    // with rounded corners, tap to view fullscreen.
-                    Column(
-                        modifier = Modifier.padding(top = if (renderedText.isNotEmpty()) 8.dp else 0.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        genImages.forEachIndexed { idx, path ->
-                            coil.compose.AsyncImage(
-                                model = path,
-                                contentDescription = "Generated image",
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1f)
-                                    .clip(LxDesign.shapeS)
-                                    .combinedClickable(
-                                        onClick = { onMediaClick(genImages, idx) },
-                                        onLongClick = { haptics.longPress() },
-                                        hapticFeedbackEnabled = false,
-                                    )
-                            )
+                    // Generated images are primary output, not input references.
+                    // Single image renders full-width square; multiple images become
+                    // a responsive two-column grid, tap to view fullscreen.
+                    if (genImages.size == 1) {
+                        coil.compose.AsyncImage(
+                            model = genImages[0],
+                            contentDescription = "Generated image",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .padding(top = if (renderedText.isNotEmpty()) 8.dp else 0.dp)
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .clip(LxDesign.shapeS)
+                                .combinedClickable(
+                                    onClick = { onMediaClick(genImages, 0) },
+                                    onLongClick = { haptics.longPress() },
+                                    hapticFeedbackEnabled = false,
+                                )
+                        )
+                    } else if (genImages.size > 1) {
+                        Column(
+                            modifier = Modifier.padding(top = if (renderedText.isNotEmpty()) 8.dp else 0.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            genImages.chunked(2).forEachIndexed { rowIdx, row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    row.forEachIndexed { colIdx, path ->
+                                        val globalIdx = rowIdx * 2 + colIdx
+                                        coil.compose.AsyncImage(
+                                            model = path,
+                                            contentDescription = "Generated image",
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .aspectRatio(1f)
+                                                .clip(LxDesign.shapeS)
+                                                .combinedClickable(
+                                                    onClick = { onMediaClick(genImages, globalIdx) },
+                                                    onLongClick = { haptics.longPress() },
+                                                    hapticFeedbackEnabled = false,
+                                                )
+                                        )
+                                    }
+                                    if (row.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -775,6 +803,12 @@ internal fun AssistantMessageContent(
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.weight(1f))
+                        MessageTimestampText(
+                            timestamp = message.timestamp,
+                            modifier = Modifier.padding(end = 4.dp),
+                        )
                     }
                 }
 

@@ -1,8 +1,13 @@
 package com.lxseek.chat.ui.chat.message
 
 import android.os.SystemClock
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
@@ -13,14 +18,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.unit.dp
 import com.lxseek.chat.util.NoAutoScrollSelectionContainer
 import com.mikepenz.markdown.compose.MarkdownElement
 import com.mikepenz.markdown.model.ReferenceLinkHandlerImpl
@@ -413,6 +421,7 @@ internal fun StreamingMarkdownDocument(
     renderContext: ChatMarkdownRenderContext,
     modifier: Modifier = Modifier,
     selectionEnabled: Boolean = !isStreaming,
+    showTailCursor: Boolean = false,
 ) {
     var hasStreamed by remember { mutableStateOf(isStreaming) }
     SideEffect {
@@ -478,8 +487,36 @@ internal fun StreamingMarkdownDocument(
                     }
                 }
             }
+            if (isStreaming && showTailCursor) {
+                StreamingAnswerCursor(
+                    color = renderContext.cursorColor ?: MaterialTheme.colorScheme.tertiary,
+                )
+            }
         }
     }
+}
+
+/** Blinking caret drawn after the live markdown tail while the answer is still streaming. */
+@Composable
+private fun StreamingAnswerCursor(
+    color: Color,
+) {
+    var cursorAlpha by remember { mutableFloatStateOf(1f) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            cursorAlpha = 1f
+            delay(520)
+            cursorAlpha = 0f
+            delay(520)
+        }
+    }
+    Box(
+        modifier = Modifier
+            .padding(start = 2.dp, top = 2.dp)
+            .size(width = 2.dp, height = 15.dp)
+            .graphicsLayer { alpha = cursorAlpha }
+            .background(color),
+    )
 }
 
 @Composable

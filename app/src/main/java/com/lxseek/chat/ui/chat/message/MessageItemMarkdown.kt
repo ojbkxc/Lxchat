@@ -163,6 +163,7 @@ internal class ChatMarkdownRenderContext(
     val imageTransformer: ImageTransformer = NoopImageTransformer,
     val flavour: MarkdownFlavourDescriptor,
     val plainTextStyle: TextStyle,
+    val cursorColor: Color? = null,
 )
 
 @Composable

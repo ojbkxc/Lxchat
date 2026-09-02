@@ -206,6 +206,30 @@ internal fun thoughtDurationTitle(thoughtMs: Long, toolCount: Int): String {
     }
 }
 
+/**
+ * Aggregates finished tool calls into a short action summary for the collapsed group header,
+ * e.g. "搜索网页 ×2、读取文件 ×1". Falls back to the plain count string when nothing can be
+ * derived (no completed tools).
+ */
+@Composable
+internal fun toolActionGroupSummary(
+    segs: List<MessageSegment>,
+    fallbackCount: Int,
+): String {
+    val completed = segs.filter { it.type == "tool" && it.toolResult != null }
+    if (completed.isEmpty()) return stringResource(R.string.called_n_tools, fallbackCount)
+    val counts = linkedMapOf<String, Int>()
+    for (seg in completed) {
+        val name = toolDisplayName(seg)
+        counts[name] = (counts[name] ?: 0) + 1
+    }
+    val parts = counts.entries.take(3).map { (name, count) ->
+        if (count > 1) "$name ×$count" else name
+    }
+    val joined = parts.joinToString("、")
+    return if (counts.size > 3) "$joined…" else joined
+}
+
 @Composable
 internal fun compactSegmentTitle(
     segs: List<MessageSegment>,
@@ -226,7 +250,7 @@ internal fun compactSegmentTitle(
         isTranscribing -> message.thoughtTitle ?: stringResource(R.string.transcription_ellipsis)
         isToolCalling || isToolInProgress -> toolDisplayName(lastSeg)
         thoughtMs != null && thoughtMs > 0 -> thoughtDurationTitle(thoughtMs, toolCount)
-        toolCount > 0 -> stringResource(R.string.called_n_tools, toolCount)
+        toolCount > 0 -> toolActionGroupSummary(segs, toolCount)
         // ChatMessage 来自 :core:model，跨模块属性无法 smart cast；null 分支已被条件排除。
         message.thoughtTitle != null -> message.thoughtTitle.orEmpty()
         segs.any { it.type == "transcription" } -> "Image Transcription"
@@ -721,6 +745,7 @@ internal fun TimelineSegmentsContent(
                                         .fillMaxWidth()
                                         .noOpBringIntoView(),
                                     selectionEnabled = !answerIsStreaming,
+                                    showTailCursor = answerIsStreaming,
                                 )
                             }
                         }

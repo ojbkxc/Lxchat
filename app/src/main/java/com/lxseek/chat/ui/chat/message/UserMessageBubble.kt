@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -195,53 +196,82 @@ internal fun UserMessageBubble(
                             }
                         }
 
-                        LazyRow(
-                            modifier = Modifier.padding(bottom = if (message.text.isNotEmpty()) 8.dp else 0.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            itemsIndexed(displayItems) { itemIdx, (index, imagePath, metaItem) ->
-                                val type = remember(imagePath, metaItem?.type) {
-                                    resolveAttachmentType(imagePath, metaItem)
+                        if (displayItems.isNotEmpty()) {
+                            val galleryListState = rememberLazyListState()
+                            val visibleIndex by remember {
+                                derivedStateOf {
+                                    val first = galleryListState.firstVisibleItemIndex
+                                    first.coerceIn(0, (displayItems.size - 1).coerceAtLeast(0))
                                 }
-                                val isVideo = type == "video"
-                                val isPdf = type == "pdf"
-                                val isFileType = type == "file"
+                            }
+                            Box {
+                                LazyRow(
+                                    state = galleryListState,
+                                    modifier = Modifier.padding(bottom = if (message.text.isNotEmpty()) 8.dp else 0.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    itemsIndexed(displayItems) { itemIdx, (index, imagePath, metaItem) ->
+                                        val type = remember(imagePath, metaItem?.type) {
+                                            resolveAttachmentType(imagePath, metaItem)
+                                        }
+                                        val isVideo = type == "video"
+                                        val isPdf = type == "pdf"
+                                        val isFileType = type == "file"
 
-                                val fileName = metaItem?.fileName ?: imagePath.substringAfterLast("/")
-                                val pdfPages = if (type == "pdf") {
-                                    metaItem?.imageIndex?.let { start ->
-                                        val count = metaItem.pageCount ?: 1
-                                        val end = (start + count).coerceAtMost(message.images.size)
-                                        if (start in 0 until message.images.size) message.images.subList(start, end) else emptyList()
-                                    } ?: emptyList()
-                                } else emptyList()
+                                        val fileName = metaItem?.fileName ?: imagePath.substringAfterLast("/")
+                                        val pdfPages = if (type == "pdf") {
+                                            metaItem?.imageIndex?.let { start ->
+                                                val count = metaItem.pageCount ?: 1
+                                                val end = (start + count).coerceAtMost(message.images.size)
+                                                if (start in 0 until message.images.size) message.images.subList(start, end) else emptyList()
+                                            } ?: emptyList()
+                                        } else emptyList()
 
-                                val mediaIndex = allMediaUrls.indexOf(
-                                    when (type) {
-                                        "video" -> metaItem?.originalUri
-                                        else -> imagePath
+                                        val mediaIndex = allMediaUrls.indexOf(
+                                            when (type) {
+                                                "video" -> metaItem?.originalUri
+                                                else -> imagePath
+                                            }
+                                        ).coerceAtLeast(0)
+
+                                        AttachmentThumbnailItem(
+                                            type = type,
+                                            imagePath = imagePath,
+                                            fileName = fileName,
+                                            originalUri = metaItem?.originalUri,
+                                            textContent = metaItem?.textContent,
+                                            pdfPages = pdfPages,
+                                            allMediaUrls = allMediaUrls,
+                                            mediaIndex = mediaIndex,
+                                            handlers = ThumbnailClickHandlers(
+                                                onMediaClick = onMediaClick,
+                                                onFileClick = onFileContentClick,
+                                                onPdfClick = onPdfPagesClick
+                                            )
+                                        )
+                                        // AttachmentItem 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
+                                        val warning = metaItem?.warning
+                                        if (type == "pdf" && warning != null) {
+                                            Text(warning, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
                                     }
-                                ).coerceAtLeast(0)
-
-                                AttachmentThumbnailItem(
-                                    type = type,
-                                    imagePath = imagePath,
-                                    fileName = fileName,
-                                    originalUri = metaItem?.originalUri,
-                                    textContent = metaItem?.textContent,
-                                    pdfPages = pdfPages,
-                                    allMediaUrls = allMediaUrls,
-                                    mediaIndex = mediaIndex,
-                                    handlers = ThumbnailClickHandlers(
-                                        onMediaClick = onMediaClick,
-                                        onFileClick = onFileContentClick,
-                                        onPdfClick = onPdfPagesClick
-                                    )
-                                )
-                                // AttachmentItem 来自 :core:model，跨模块属性无法 smart cast，先绑定局部变量。
-                                val warning = metaItem?.warning
-                                if (type == "pdf" && warning != null) {
-                                    Text(warning, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                if (displayItems.size > 1) {
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(end = 6.dp, bottom = if (message.text.isNotEmpty()) 6.dp else 4.dp)
+                                            .clip(RoundedCornerShape(100.dp))
+                                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f))
+                                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = "${visibleIndex + 1} / ${displayItems.size}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -317,6 +347,11 @@ internal fun UserMessageBubble(
                         )
                     }
                 }
+                Spacer(modifier = Modifier.width(8.dp))
+                MessageTimestampText(
+                    timestamp = message.timestamp,
+                    modifier = Modifier.padding(end = 4.dp),
+                )
             }
         }
     }
