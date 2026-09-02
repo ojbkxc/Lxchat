@@ -184,7 +184,7 @@ class BabyMonitorService : Service() {
                                 //（任一引擎接近 0 即压低总分，双高才高——保守防误报）。
                                 val fused = if (infantGate != null) {
                                     val gate = classifyWithGate(infantGate, samples)
-                                    if (gate != null) sqrt(cry * gate) else cry
+                                    if (gate != null) sqrt(cry * gate).toFloat() else cry
                                 } else cry
                                 detector.observe(CryObservation(fused, speech, rms))
                             }

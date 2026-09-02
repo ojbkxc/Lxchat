@@ -361,7 +361,7 @@ object InfantCryFeatures {
         val tauMin = max(1, (SR / fmax).toInt())
         val tauMax = min(N_FFT / 2, (SR / fmin).toInt())
         val nFrames = 1 + (x.size - N_FFT) / HOP
-        if (nFrames <= 0) return emptyArray()
+        if (nFrames <= 0) return DoubleArray(0)
         val out = DoubleArray(nFrames) { Double.NaN }
         val eps = 1e-12
 
