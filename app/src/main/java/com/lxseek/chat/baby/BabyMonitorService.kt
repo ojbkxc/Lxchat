@@ -104,8 +104,10 @@ class BabyMonitorService : Service() {
 
         val classifier = try {
             YamnetCryClassifier(appContext, manager.modelFile)
-        } catch (e: Exception) {
-            DebugLog.e(TAG, "YAMNet init failed", e)
+        } catch (t: Throwable) {
+            // Throwable 而非 Exception：模型损坏 / 原生层初始化失败（含部分 TFLite 版本的
+            // abort）一律优雅停服，绝不让整个 App 闪退。
+            DebugLog.e(TAG, "YAMNet init failed", t)
             stopSelf()
             return
         }
@@ -206,6 +208,11 @@ class BabyMonitorService : Service() {
             throw e
         } catch (e: Exception) {
             DebugLog.e(TAG, "monitor loop crashed", e)
+            stopSelf()
+        } catch (t: Throwable) {
+            // 致命错误（如 OOM / 原生层 abort）也优雅降级：停掉监护服务并释放资源，
+            // 避免整个 App 闪退。
+            DebugLog.e(TAG, "monitor loop fatal", t)
             stopSelf()
         } finally {
             runCatching { audioRecord?.stop() }

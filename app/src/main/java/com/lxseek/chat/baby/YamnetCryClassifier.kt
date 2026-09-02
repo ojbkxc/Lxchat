@@ -61,12 +61,46 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
     private val cryIndices: IntArray
     private val speechIndex: Int
 
-    /** 输出是否为逐帧 3D 布局（true=3D, false=2D），由第一次推理探测。 */
-    private var frameLayout = true
+    /** 输出是否为逐帧 3D 布局（true=3D, false=2D），按输出张量秩判定。 */
+    private val frameLayout: Boolean
+
+    /**
+     * 输入张量秩：
+     *  - 1 = 扁平波形 `[N]`（TF Hub 全精度版为动态 `[-1]`，报告 shape `[1]`）
+     *  - 2 = `[1, N]`
+     */
+    private val inputRank: Int
 
     init {
         val options = Interpreter.Options().apply { numThreads = 2 }
         interpreter = Interpreter(loadModel(context, modelFile), options)
+        // TFLite Java 在 allocateTensors() 之前不允许读取张量形态，先分配一次。
+        interpreter.allocateTensors()
+
+        // YAMNet TFLite 各版本输入形态不一致，必须显式统一：
+        //  - TF Hub 全精度版（App 默认下载源，~16MB）：rank-1 **动态** [-1]（shape 报 [1]）。
+        //    若不在推理前把输入张量 resize 到窗长，Interpreter.run 会因缓冲大小与张量
+        //    大小（默认 1 个元素）不匹配而失败——该异常在部分 TFLite 版本走原生层 abort，
+        //    无法被 Kotlin try/catch 捕获，表现为「启用哭声监护后直接闪退」。
+        //  - 参考实现 baby-monitor 的复刻版：rank-1 固定 [15600]。
+        //  - 其余转换版：rank-2 [1, 15600]。
+        // 这里按秩把输入张量显式 resize 到推理窗长，固定 shape 的模型 resize 到同形是
+        // no-op（安全）；动态模型则由此拿到正确形态。
+        val inputShape = interpreter.getInputTensor(0).shape()
+        inputRank = inputShape.size
+        val targetShape = when (inputRank) {
+            1 -> intArrayOf(INPUT_SAMPLES)
+            2 -> intArrayOf(1, INPUT_SAMPLES)
+            else -> {
+                interpreter.close()
+                throw IllegalArgumentException("不支持的 YAMNet 输入秩: $inputRank")
+            }
+        }
+        if (!inputShape.contentEquals(targetShape)) {
+            interpreter.resizeInput(0, targetShape)
+            interpreter.allocateTensors()
+        }
+
         val outputShape = interpreter.getOutputTensor(0).shape()
         frameLayout = outputShape.size == 3
         // 类别名在部分 TFLite 转换里无法从张量元数据读取；这里靠伴随的 labels 文件
@@ -76,7 +110,11 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
         cryIndices = CRY_CLASS_NAMES.mapNotNull { resolver.indexOf(it) }.toIntArray()
         speechIndex = resolver.indexOf(SPEECH_CLASS_NAME) ?: -1
         require(cryIndices.isNotEmpty()) { "YAMNet 模型缺少哭声类别（labels 不匹配）" }
-        DebugLog.i(TAG, "YAMNet ready: frameLayout=$frameLayout cry=${cryIndices.contentToString()} speech=$speechIndex")
+        DebugLog.i(
+            TAG,
+            "YAMNet ready: input=${targetShape.contentToString()} output=${outputShape.contentToString()} " +
+                "frameLayout=$frameLayout cry=${cryIndices.contentToString()} speech=$speechIndex",
+        )
     }
 
     /**
@@ -95,12 +133,13 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
 
         return try {
             if (frameLayout) {
-                val out = Array(1) { Array(1) { FloatArray(NUM_CLASSES) } }
+                // 逐帧布局 [1, frames, 521]：按实际帧数分配输出，避免与张量形状不符。
+                val frames = (interpreter.getOutputTensor(0).shape().getOrNull(1) ?: 1).coerceAtLeast(1)
+                val out = Array(1) { Array(frames) { FloatArray(NUM_CLASSES) } }
                 interpreter.run(inputBuffer, out)
-                val frames = out[0]
                 var peakCry = 0f
                 var peakSpeech = 0f
-                for (frame in frames) {
+                for (frame in out[0]) {
                     val cry = cryIndices.sumOf { frame[it].toDouble() }.toFloat()
                     if (cry > peakCry) peakCry = cry
                     if (speechIndex >= 0 && frame[speechIndex] > peakSpeech) {

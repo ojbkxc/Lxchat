@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.lxseek.chat.LxChatApplication
+import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.flow.first
 
 /**
@@ -34,20 +35,20 @@ object BabyMonitorController {
     /**
      * 持久化 [enabled] 并启动/停止服务。
      *
-     * @return true 表示已应用；false 表示前置条件缺失（权限/模型），开关保持关闭，
-     *         调用方应引导授权 / 去下载模型。
+     * @return true 表示已应用；false 表示前置条件缺失（权限/模型）或发生异常，
+     *         开关保持关闭，调用方应引导授权 / 去下载模型。
      */
-    suspend fun setEnabled(context: Context, enabled: Boolean): Boolean {
+    suspend fun setEnabled(context: Context, enabled: Boolean): Boolean = runCatching {
         val app = context.applicationContext
         if (enabled) {
             if (!hasRecordPermission(app)) {
                 store(app).setEnabled(false)
-                return false
+                return@runCatching false
             }
             val manager = BabyModelManager.getInstance(app)
             if (!manager.isDownloaded()) {
                 store(app).setEnabled(false)
-                return false
+                return@runCatching false
             }
             store(app).setEnabled(true)
             BabyMonitorService.createChannel(app)
@@ -56,6 +57,10 @@ object BabyMonitorController {
             store(app).setEnabled(false)
             BabyMonitorService.stop(app)
         }
-        return true
+        true
+    }.getOrElse {
+        // 开关路径绝不向外抛异常（UI 协程内未捕获异常会导致整个 App 闪退）。
+        DebugLog.w(TAG, "setEnabled($enabled) failed", it)
+        false
     }
 }
