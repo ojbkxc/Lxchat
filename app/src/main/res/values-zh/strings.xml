@@ -44,7 +44,6 @@
     <string name="tool_shell_list_done">终端列表完成</string>
     <string name="tool_shell_list_count">列出了 %1$d 个终端</string>
     <string name="tool_execute_shell">终端</string>
-    <string name="tool_thinking">思考</string>
 
     <!-- System Prompt -->
     <string name="system_prompt">系统提示词</string>

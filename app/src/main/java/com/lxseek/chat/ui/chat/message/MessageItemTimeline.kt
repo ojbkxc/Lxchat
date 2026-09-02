@@ -81,7 +81,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -185,7 +184,7 @@ internal fun segmentDetailTitle(
     return when (seg.type) {
         "tool" -> toolDisplayName(seg)
         "transcription" -> transcriptionLabel(detailSegments, detailIndex)
-        else -> stringResource(R.string.tool_thinking)
+        else -> stringResource(R.string.thinking_label_done)
     }
 }
 
@@ -389,45 +388,13 @@ internal fun CompactSegmentBlock(
                     }
                     .padding(10.dp)
             ) {
-                Crossfade(
-                    targetState = collapsedIcon,
-                    animationSpec = tween(
-                        durationMillis = STATUS_CROSSFADE_DURATION_MS,
-                        easing = LinearEasing,
-                    ),
-                    label = "compactSegmentIcon:$expansionKey",
-                    modifier = Modifier.size(16.dp),
-                ) { icon ->
-                    when (icon) {
-                        CompactSegmentIcon.TOOL -> Icon(
-                            Icons.Default.Build,
-                            null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                        )
-                        CompactSegmentIcon.IMAGE -> Icon(
-                            Icons.Filled.Image,
-                            null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                        )
-                        CompactSegmentIcon.THINKING -> Icon(
-                            androidx.compose.ui.res.painterResource(
-                                id = com.lxseek.chat.R.drawable.neurology_24,
-                            ),
-                            null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(8.dp))
                 if (thinkingStyleFold) {
-                    // cc-haha-main 折叠头：▶/▼ + 斜体小标签（思考中/已思考），次级色。
+                    // cc-haha-main 折叠头：仅 ▶/▼ + 斜体小标签（思考中/已思考），
+                    // 不带图标与尾部箭头，次级灰、悬停主色的轻量样式。
                     Text(
                         text = if (isExpanded) "\u25BE" else "\u25B8",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.tertiary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.width(7.dp))
                     Text(
@@ -437,14 +404,56 @@ internal fun CompactSegmentBlock(
                             stringResource(R.string.thinking_label_done)
                         },
                         style = ChatType.thoughtFold.copy(fontStyle = FontStyle.Italic),
-                        color = MaterialTheme.colorScheme.tertiary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     if (isThinking) {
                         ThinkingEllipsisDots()
                     }
+                    if (opensDetailSheet) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        )
+                    }
                 } else {
+                    Crossfade(
+                        targetState = collapsedIcon,
+                        animationSpec = tween(
+                            durationMillis = STATUS_CROSSFADE_DURATION_MS,
+                            easing = LinearEasing,
+                        ),
+                        label = "compactSegmentIcon:$expansionKey",
+                        modifier = Modifier.size(16.dp),
+                    ) { icon ->
+                        when (icon) {
+                            CompactSegmentIcon.TOOL -> Icon(
+                                Icons.Default.Build,
+                                null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            )
+                            CompactSegmentIcon.IMAGE -> Icon(
+                                Icons.Filled.Image,
+                                null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            )
+                            CompactSegmentIcon.THINKING -> Icon(
+                                androidx.compose.ui.res.painterResource(
+                                    id = com.lxseek.chat.R.drawable.neurology_24,
+                                ),
+                                null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Crossfade(
                         targetState = foldedLabel,
                         animationSpec = tween(
@@ -463,20 +472,19 @@ internal fun CompactSegmentBlock(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                    Icon(
+                        if (opensDetailSheet) {
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight
+                        } else if (isExpanded) {
+                            Icons.Default.KeyboardArrowUp
+                        } else {
+                            Icons.Default.KeyboardArrowDown
+                        },
+                        null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    if (opensDetailSheet) {
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight
-                    } else if (isExpanded) {
-                        Icons.Default.KeyboardArrowUp
-                    } else {
-                        Icons.Default.KeyboardArrowDown
-                    },
-                    null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
             }
             expansionTransition.AnimatedVisibility(
                 visible = { it },
@@ -667,6 +675,7 @@ internal fun TimelineSegmentsContent(
     autoExpansionController: GroupedSegmentAutoExpansionController,
     expandedStates: SnapshotStateMap<String, Boolean>,
     renderContext: ChatMarkdownRenderContext,
+    answerRenderContext: ChatMarkdownRenderContext = renderContext,
     segmentAppearanceRegistry: SegmentAppearanceRegistry,
     onLayoutMutationStarted: (String) -> Unit,
     onLayoutMutationSettled: (String) -> Unit,
@@ -702,7 +711,7 @@ internal fun TimelineSegmentsContent(
                                 StreamingMarkdownDocument(
                                     content = seg.content,
                                     isStreaming = answerIsStreaming,
-                                    renderContext = renderContext,
+                                    renderContext = answerRenderContext,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .noOpBringIntoView(),
@@ -864,7 +873,7 @@ private fun TimelineInfoSegmentCard(
                     text = when (seg.type) {
                         "tool" -> toolNameHeaderText(seg)
                         "transcription" -> transcriptionLabel(detailSegments, detailIndex)
-                        else -> stringResource(R.string.tool_thinking)
+                        else -> stringResource(R.string.thinking_label_done)
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -965,13 +974,11 @@ private fun ThoughtExpandedContent(
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
-    // 流式时跟随尾巴：滚动到内容底部（300dp 上限外多滚一点，让最后一段可见）。
-    val onScrollToBottom = {
-        val px = with(LocalDensity.current) { 320.dp.roundToPx() }
-        scrollState.scrollTo(scrollState.value.coerceAtLeast(px))
-    }
+    // 流式时跟随尾巴：每段内容到达都滚到底部，保证尾部可见。
     LaunchedEffect(content, isStreaming) {
-        if (isStreaming) onScrollToBottom()
+        if (isStreaming) {
+            scrollState.scrollTo(scrollState.maxValue)
+        }
     }
     Column(
         modifier = modifier
@@ -1000,23 +1007,21 @@ private fun ThoughtExpandedContent(
 /** 流式思考末尾的闪烁光标（对齐 cc-haha-main .thinking-cursor）。 */
 @Composable
 private fun ThinkingCursor() {
-    val cursorColor = MaterialTheme.colorScheme.tertiary
-    val alpha by remember {
-        mutableFloatStateOf(1f)
-    }
+    val cursorColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val cursorAlpha by remember { mutableFloatStateOf(1f) }
     LaunchedEffect(Unit) {
         while (isActive) {
-            for (i in 0 until 4) {
-                alpha = if (i % 2 == 0) 1f else 0.1f
-                delay(250)
-            }
+            cursorAlpha = 1f
+            delay(500)
+            cursorAlpha = 0f
+            delay(500)
         }
     }
     Box(
         modifier = Modifier
             .padding(start = 2.dp, top = 1.dp)
             .size(width = 2.dp, height = 13.dp)
-            .graphicsLayer { this.alpha = alpha }
+            .graphicsLayer { alpha = cursorAlpha }
             .background(cursorColor),
     )
 }
@@ -1034,6 +1039,6 @@ private fun ThinkingEllipsisDots() {
     Text(
         text = ".".repeat(dots),
         style = ChatType.thoughtFold.copy(fontStyle = FontStyle.Italic),
-        color = MaterialTheme.colorScheme.tertiary,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }

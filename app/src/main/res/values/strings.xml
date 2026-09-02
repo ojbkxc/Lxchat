@@ -44,7 +44,6 @@
     <string name="tool_shell_list_done">Shell list done</string>
     <string name="tool_shell_list_count">Listed %1$d shells</string>
     <string name="tool_execute_shell">Shell</string>
-    <string name="tool_thinking">Thinking</string>
     <string name="tool_read_memory_success">Read memory</string>
     <string name="scroll_to_bottom">Scroll to bottom</string>
     <string name="tool_read_memory_name">Read %1$s</string>

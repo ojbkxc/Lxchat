@@ -373,7 +373,7 @@ internal fun SegmentDetailSheet(
                                 text = titleOverride ?: if (selectedSegs.size > 1) compactSegmentTitle(selectedSegs, message, useLiveStatus = false)
                                     else if (seg.type == "tool") toolDisplayName(seg)
                                     else if (seg.type == "transcription") transcriptionLabel(liveSegs, selectedSegmentIndex)
-                                    else stringResource(R.string.tool_thinking),
+                                    else stringResource(R.string.thinking_label_done),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
