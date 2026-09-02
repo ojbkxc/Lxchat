@@ -72,7 +72,13 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
     private val inputRank: Int
 
     init {
-        val options = Interpreter.Options().apply { numThreads = 2 }
+        // 关闭 XNNPACK delegate：该 TF Hub 转换版输入为动态形态，XNNPACK 对动态 shape 的
+        // 兼容性历史上有原生层 abort 风险（表现为闪退）。这里改用内置稳定 kernel
+        // （numThreads=2 仍并行），安全性优先于这点性能。
+        val options = Interpreter.Options().apply {
+            numThreads = 2
+            setUseXNNPACK(false)
+        }
         interpreter = Interpreter(loadModel(context, modelFile), options)
         // TFLite Java 在 allocateTensors() 之前不允许读取张量形态，先分配一次。
         interpreter.allocateTensors()
@@ -155,8 +161,10 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
                 val speech = if (speechIndex >= 0) row[speechIndex] else 0f
                 cry.coerceIn(0f, 1f) to speech.coerceIn(0f, 1f)
             }
-        } catch (e: Exception) {
-            DebugLog.e(TAG, "classify failed", e)
+        } catch (t: Throwable) {
+            // Throwable 而非 Exception：原生层异常（UnsatisfiedLinkError 等）也绝不外逃，
+            // 一律返回 null 让上层优雅降级，杜绝整个 App 闪退。
+            DebugLog.e(TAG, "classify failed", t)
             null
         }
     }
