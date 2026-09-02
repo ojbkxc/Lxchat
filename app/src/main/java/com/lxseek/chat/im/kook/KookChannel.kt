@@ -6,6 +6,7 @@ import com.lxseek.chat.im.ImMessage
 import com.lxseek.chat.im.ImMessageDirection
 import com.lxseek.chat.im.ImSendResult
 import com.lxseek.chat.im.PushMessageChannel
+import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
