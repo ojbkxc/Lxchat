@@ -65,16 +65,16 @@ class KookApi(
             if (quote != null) put("quote", quote)
         })
 
-    /** 解析 KOOK 统一响应包：`{code, data, message}`，code != 0 抛 [ImApiException]。 */
-    private fun parseError(body: String, op: String, httpCode: Int): ImApiException? {
-        val root = runCatching { ImJson.parseToJsonElement(body).jsonObject }.getOrNull()
-        val code = root?.get("code")?.jsonPrimitive?.intOrNull ?: return ImApiException("$op 失败 (HTTP $httpCode)", httpCode)
-        if (code == 0) return null // HTTP 失败但业务码为 0：按成功处理。
-        val msg = root["message"]?.jsonPrimitive?.contentOrNull
-        return ImApiException("$op 失败: code=$code message=${msg ?: ""}", httpCode, code)
-    }
-
     companion object {
+        /** 解析 KOOK 统一响应包：`{code, data, message}`，code != 0 抛 [ImApiException]。 */
+        fun parseError(body: String, op: String, httpCode: Int): ImApiException? {
+            val root = runCatching { ImJson.parseToJsonElement(body).jsonObject }.getOrNull()
+            val code = root?.get("code")?.jsonPrimitive?.intOrNull ?: return ImApiException("$op 失败 (HTTP $httpCode)", httpCode)
+            if (code == 0) return null // HTTP 失败但业务码为 0：按成功处理。
+            val msg = root["message"]?.jsonPrimitive?.contentOrNull
+            return ImApiException("$op 失败: code=$code message=${msg ?: ""}", httpCode, code)
+        }
+
         /** KOOK 官方 REST 基址。 */
         const val DEFAULT_BASE_URL = "https://www.kookapp.cn/api/v3"
 

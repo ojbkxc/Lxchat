@@ -78,13 +78,15 @@ class MisskeyApi(
         if (replyId != null) put("replyId", replyId)
     })
 
-    /** Misskey 错误体：`{message|error}` 字段优先于通用消息。 */
-    private fun parseError(body: String, op: String, httpCode: Int): ImApiException? {
-        val apiMsg = runCatching {
-            ImJson.parseToJsonElement(body).jsonObject.let {
-                it["message"]?.jsonPrimitive?.contentOrNull ?: it["error"]?.jsonPrimitive?.contentOrNull
-            }
-        }.getOrNull()
-        return ImApiException(apiMsg ?: "Misskey $op 失败 (HTTP $httpCode)", httpCode)
+    companion object {
+        /** Misskey 错误体：`{message|error}` 字段优先于通用消息。 */
+        fun parseError(body: String, op: String, httpCode: Int): ImApiException? {
+            val apiMsg = runCatching {
+                ImJson.parseToJsonElement(body).jsonObject.let {
+                    it["message"]?.jsonPrimitive?.contentOrNull ?: it["error"]?.jsonPrimitive?.contentOrNull
+                }
+            }.getOrNull()
+            return ImApiException(apiMsg ?: "Misskey $op 失败 (HTTP $httpCode)", httpCode)
+        }
     }
 }

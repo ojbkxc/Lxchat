@@ -34,15 +34,13 @@ class WeixinMpApi(
     baseUrl: String = DEFAULT_BASE_URL,
 ) : ImRestClient(
     baseUrl = baseUrl,
-    onError = { body, op, httpCode -> parseError(body, op, httpCode) },
+    onError = { body, op, httpCode -> parseError(appId, body, op, httpCode) },
 ) {
     init {
         require(appId.isNotBlank()) { "公众号 app_id 不能为空" }
         require(appSecret.isNotBlank()) { "公众号 app_secret 不能为空" }
     }
 
-    @Volatile private var cachedAccessToken: String? = null
-    @Volatile private var tokenExpiresAtMs: Long = 0L
 
     /**
      * GET /cgi-bin/token — 用 app_id + app_secret 换 access_token。
@@ -50,8 +48,9 @@ class WeixinMpApi(
      */
     suspend fun getAccessToken(forceRefresh: Boolean = false): String {
         val now = System.currentTimeMillis()
-        if (!forceRefresh && cachedAccessToken != null && now < tokenExpiresAtMs) {
-            return cachedAccessToken!!
+        val cached = tokenCache[appId.trim()]
+        if (!forceRefresh && cached != null && now < cached.second) {
+            return cached.first
         }
         return withContext(Dispatchers.IO) {
             val url = "$base/token?grant_type=client_credential&appid=${appId.trim()}&secret=${appSecret.trim()}"
@@ -64,8 +63,7 @@ class WeixinMpApi(
                     response.code,
                 )
             val expiresIn = root["expires_in"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 7200L
-            cachedAccessToken = token
-            tokenExpiresAtMs = now + (expiresIn * 1000L) - TOKEN_REFRESH_LEAD_MS
+            tokenCache[appId.trim()] = token to (now + (expiresIn * 1000L) - TOKEN_REFRESH_LEAD_MS)
             token
         }
     }
@@ -89,26 +87,30 @@ class WeixinMpApi(
         return get("user/info?access_token=$token&openid=$openId&lang=zh_CN")
     }
 
-    /** 解析公众号响应包：HTTP 层先于业务 errcode 检查，errcode != 0 抛 [ImApiException]。 */
-    private fun parseError(body: String, op: String, httpCode: Int): ImApiException? {
-        val root = runCatching { ImJson.parseToJsonElement(body).jsonObject }.getOrNull()
-            ?: return ImApiException("$op 返回非法 JSON (HTTP $httpCode)", httpCode)
-        val errcode = root["errcode"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
-        // access_token 过期或失效：清缓存，下次调用会重新获取。
-        if (errcode == 40001 || errcode == 42001 || errcode == 40014) {
-            cachedAccessToken = null
-            tokenExpiresAtMs = 0L
-        }
-        if (errcode != null && errcode != 0) {
-            val errmsg = root["errmsg"]?.jsonPrimitive?.contentOrNull
-            return ImApiException("$op 失败: errcode=$errcode errmsg=${errmsg ?: ""}", httpCode, errcode)
-        }
-        return null
-    }
 
     companion object {
         /** 微信公众号官方 API 基址。 */
         const val DEFAULT_BASE_URL = "https://api.weixin.qq.com/cgi-bin"
+
+        /** Shared token cache keyed by appId — instances are rebuilt lazily per send, so
+         *  the cache must outlive any single instance. */
+        private val tokenCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()
+
+        /** 解析公众号响应包：HTTP 层先于业务 errcode 检查，errcode != 0 抛 [ImApiException]。 */
+        fun parseError(appId: String, body: String, op: String, httpCode: Int): ImApiException? {
+            val root = runCatching { ImJson.parseToJsonElement(body).jsonObject }.getOrNull()
+                ?: return ImApiException("$op 返回非法 JSON (HTTP $httpCode)", httpCode)
+            val errcode = root["errcode"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+            // access_token 过期或失效：清缓存，下次调用会重新获取。
+            if (errcode == 40001 || errcode == 42001 || errcode == 40014) {
+                tokenCache.remove(appId.trim())
+            }
+            if (errcode != null && errcode != 0) {
+                val errmsg = root["errmsg"]?.jsonPrimitive?.contentOrNull
+                return ImApiException("$op 失败: errcode=$errcode errmsg=${errmsg ?: ""}", httpCode, errcode)
+            }
+            return null
+        }
 
         /** access_token 提前刷新量（5 分钟），避免边界过期。 */
         private const val TOKEN_REFRESH_LEAD_MS = 5 * 60 * 1000L
