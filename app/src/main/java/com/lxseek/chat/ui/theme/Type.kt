@@ -180,6 +180,7 @@ object ChatType {
     val userBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp * chatFontScale, lineHeight = 20.sp * chatFontScale)
     val thoughtBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp * chatFontScale, lineHeight = 19.sp * chatFontScale)
     val thoughtTitle get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp * chatFontScale, lineHeight = 19.sp * chatFontScale)
+    val thoughtFold get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp * chatFontScale, lineHeight = 17.sp * chatFontScale)
     val errorBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp * chatFontScale, lineHeight = 18.sp * chatFontScale)
 
     // Meta tier

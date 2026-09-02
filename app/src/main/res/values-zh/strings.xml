@@ -232,7 +232,8 @@
     <string name="answering_ellipsis">回复中...</string>
     <string name="sending_ellipsis">发送中...</string>
     <string name="tool_calling_ellipsis">调用工具中...</string>
-    <string name="thinking_complete">思考完成</string>
+    <string name="thinking_label">思考中</string>
+    <string name="thinking_label_done">已思考</string>
     <string name="thought_for_seconds">思考了 %1$d 秒</string>
     <string name="thought_for_minutes">思考了 %1$d 分 %2$d 秒</string>
     <string name="thought_for_seconds_called_tools">思考了 %1$d 秒，调用 %2$d 个工具</string>

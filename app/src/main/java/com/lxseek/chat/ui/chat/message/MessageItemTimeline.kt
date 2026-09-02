@@ -2,6 +2,7 @@ package com.lxseek.chat.ui.chat.message
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -31,6 +32,8 @@ import androidx.compose.foundation.MutatePriority
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.text.input.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
@@ -78,6 +81,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -107,6 +111,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
@@ -226,7 +231,7 @@ internal fun compactSegmentTitle(
         // ChatMessage 来自 :core:model，跨模块属性无法 smart cast；null 分支已被条件排除。
         message.thoughtTitle != null -> message.thoughtTitle.orEmpty()
         segs.any { it.type == "transcription" } -> "Image Transcription"
-        else -> stringResource(R.string.thinking_complete)
+        else -> stringResource(R.string.thinking_label_done)
     }
 }
 
@@ -241,6 +246,7 @@ internal fun CompactSegmentBlock(
     expansionKey: String,
     cardAppearanceKey: String = "$expansionKey:card",
     segmentAppearanceRegistry: SegmentAppearanceRegistry,
+    renderContext: ChatMarkdownRenderContext,
     autoExpansionController: GroupedSegmentAutoExpansionController? = null,
     autoExpansionEnabled: Boolean = false,
     autoExpansionActive: Boolean = false,
@@ -304,14 +310,14 @@ internal fun CompactSegmentBlock(
     val isThinking = useLiveStatus && message.status == MessageStatus.THINKING
     val isToolCalling = useLiveStatus && message.status == MessageStatus.TOOL_CALLING
     val isTranscribing = useLiveStatus && message.status == MessageStatus.TRANSCRIBING
-    val toolCount = segs.count { it.type == "tool" && it.toolResult != null }
-    val thoughtMs = thoughtDurationMs(segs)
-    val hasThought = thoughtMs != null && thoughtMs > 0
-    val collapsedTitle = compactSegmentTitle(segs, message, useLiveStatus)
+    val hasThoughtSegments = segs.any { it.type == "thought" && it.content.isNotBlank() }
+    // cc-haha-main 式折叠头：思考类卡片折叠态不显示时长等文案，只显示 ▶ 思考中/已思考 小标签。
+    val thinkingStyleFold = hasThoughtSegments || isThinking
+    val foldedLabel = compactSegmentTitle(segs, message, useLiveStatus)
     val collapsedIcon = when {
         isToolCalling || isToolInProgress -> CompactSegmentIcon.TOOL
-        !isThinking && !hasThought && toolCount > 0 -> CompactSegmentIcon.TOOL
-        isTranscribing || collapsedTitle == "Image Transcription" -> CompactSegmentIcon.IMAGE
+        !isThinking && !hasThoughtSegments && toolCount > 0 -> CompactSegmentIcon.TOOL
+        isTranscribing || foldedLabel == "Image Transcription" -> CompactSegmentIcon.IMAGE
         else -> CompactSegmentIcon.THINKING
     }
     val expansionTransition = updateTransition(
@@ -416,24 +422,49 @@ internal fun CompactSegmentBlock(
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Crossfade(
-                    targetState = collapsedTitle,
-                    animationSpec = tween(
-                        durationMillis = STATUS_CROSSFADE_DURATION_MS,
-                        easing = LinearEasing,
-                    ),
-                    label = "compactSegmentTitle:$expansionKey",
-                    modifier = Modifier.weight(1f),
-                ) { title ->
+                if (thinkingStyleFold) {
+                    // cc-haha-main 折叠头：▶/▼ + 斜体小标签（思考中/已思考），次级色。
                     Text(
-                        text = title,
-                        style = ChatType.thoughtTitle,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                        fontWeight = FontWeight.Bold,
+                        text = if (isExpanded) "\u25BE" else "\u25B8",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                    Spacer(modifier = Modifier.width(7.dp))
+                    Text(
+                        text = if (isThinking) {
+                            stringResource(R.string.thinking_label)
+                        } else {
+                            stringResource(R.string.thinking_label_done)
+                        },
+                        style = ChatType.thoughtFold.copy(fontStyle = FontStyle.Italic),
+                        color = MaterialTheme.colorScheme.tertiary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (isThinking) {
+                        ThinkingEllipsisDots()
+                    }
+                } else {
+                    Crossfade(
+                        targetState = foldedLabel,
+                        animationSpec = tween(
+                            durationMillis = STATUS_CROSSFADE_DURATION_MS,
+                            easing = LinearEasing,
+                        ),
+                        label = "compactSegmentTitle:$expansionKey",
+                        modifier = Modifier.weight(1f),
+                    ) { title ->
+                        Text(
+                            text = title,
+                            style = ChatType.thoughtTitle,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.width(8.dp))
                 Icon(
                     if (opensDetailSheet) {
                         Icons.AutoMirrored.Filled.KeyboardArrowRight
@@ -462,6 +493,9 @@ internal fun CompactSegmentBlock(
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(2.dp))
+                    val lastThoughtIdx = segs.indexOfLast {
+                        it.type == "thought" && it.content.isNotBlank()
+                    }
                     segs.forEachIndexed { idx, seg ->
                       val detailIndex = segmentIndices.getOrElse(idx) { idx }
                       AnimatedTimelineBlockAppearance(
@@ -474,7 +508,22 @@ internal fun CompactSegmentBlock(
                         isStreaming = isStreaming,
                       ) {
                        Column {
-                        if ((seg.type == "thought" && seg.content.isNotBlank()) || seg.type == "transcription") {
+                        if (seg.type == "thought" && seg.content.isNotBlank()) {
+                            // cc-haha-main 展开区：带边框 + 限高滚动的紧凑 Markdown。
+                            ThoughtExpandedContent(
+                                content = seg.content,
+                                isStreaming =
+                                    isStreaming && useLiveStatus && idx == lastThoughtIdx,
+                                renderContext = renderContext,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                                    .clip(LxDesign.shapeS)
+                                    .clickable {
+                                        onSegmentClick(segmentIndices.getOrElse(idx) { idx })
+                                    },
+                            )
+                        } else if (seg.type == "transcription") {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -485,30 +534,20 @@ internal fun CompactSegmentBlock(
                                     .padding(horizontal = 10.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    if (seg.type == "transcription") transcriptionLabel(segs, idx) else stringResource(R.string.tool_thinking),
+                                    transcriptionLabel(segs, idx),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 if (seg.content.isNotBlank()) {
-                                    if (seg.type == "thought") {
-                                        StreamingThoughtPreviewText(
-                                            content = seg.content,
-                                            streaming =
-                                                isStreaming &&
-                                                    useLiveStatus &&
-                                                    idx == segs.lastIndex,
-                                        )
-                                    } else {
-                                        Text(
-                                            text = seg.content.replace('\n', ' '),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            // 时间戳样式：alpha=0.5f 更柔和
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
+                                    Text(
+                                        text = seg.content.replace('\n', ' '),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        // 时间戳样式：alpha=0.5f 更柔和
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
                                 } else {
                                     Text(
                                         text = "Image transcription is empty.",
@@ -705,6 +744,7 @@ internal fun TimelineSegmentsContent(
                                 expansionKey = expansionKey,
                                 cardAppearanceKey = "$expansionKey:card",
                                 segmentAppearanceRegistry = segmentAppearanceRegistry,
+                                renderContext = renderContext,
                                 autoExpansionController = autoExpansionController,
                                 autoExpansionEnabled = autoExpandActiveGroup,
                                 autoExpansionActive =
@@ -906,5 +946,94 @@ internal fun StreamingThoughtPreviewText(
         color = color,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
+    )
+}
+
+/**
+ * cc-haha-main 展开区等价物：带边框 + 限高滚动（300dp）的紧凑 Markdown 内容。
+ *
+ * 行内 markdown 使用 thought 渲染上下文（thoughtRenderContext），内容型差异：
+ *  - 边框 / 圆角 / 背景 / 内边距对齐 cc-haha-main ThinkingBlock 的 expanded 容器；
+ *  - 流式时自动滚动到底（跟随尾巴），并在末尾显示闪烁光标；
+ *  - 非流式时保留文本选择（selectionEnabled），与回答正文行为一致。
+ */
+@Composable
+private fun ThoughtExpandedContent(
+    content: String,
+    isStreaming: Boolean,
+    renderContext: ChatMarkdownRenderContext,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    // 流式时跟随尾巴：滚动到内容底部（300dp 上限外多滚一点，让最后一段可见）。
+    val onScrollToBottom = {
+        val px = with(LocalDensity.current) { 320.dp.roundToPx() }
+        scrollState.scrollTo(scrollState.value.coerceAtLeast(px))
+    }
+    LaunchedEffect(content, isStreaming) {
+        if (isStreaming) onScrollToBottom()
+    }
+    Column(
+        modifier = modifier
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                shape = LxDesign.shapeS,
+            )
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .heightIn(max = 300.dp)
+            .verticalScroll(scrollState)
+            .padding(10.dp),
+    ) {
+        StreamingMarkdownDocument(
+            content = content,
+            isStreaming = isStreaming,
+            renderContext = renderContext,
+            selectionEnabled = !isStreaming,
+        )
+        if (isStreaming) {
+            ThinkingCursor()
+        }
+    }
+}
+
+/** 流式思考末尾的闪烁光标（对齐 cc-haha-main .thinking-cursor）。 */
+@Composable
+private fun ThinkingCursor() {
+    val cursorColor = MaterialTheme.colorScheme.tertiary
+    val alpha by remember {
+        mutableFloatStateOf(1f)
+    }
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            for (i in 0 until 4) {
+                alpha = if (i % 2 == 0) 1f else 0.1f
+                delay(250)
+            }
+        }
+    }
+    Box(
+        modifier = Modifier
+            .padding(start = 2.dp, top = 1.dp)
+            .size(width = 2.dp, height = 13.dp)
+            .graphicsLayer { this.alpha = alpha }
+            .background(cursorColor),
+    )
+}
+
+/** 折叠态思考中标签后的流动省略号（对齐 cc-haha-main .thinking-dots）。 */
+@Composable
+private fun ThinkingEllipsisDots() {
+    var dots by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            dots = (dots + 1) % 4
+            delay(450)
+        }
+    }
+    Text(
+        text = ".".repeat(dots),
+        style = ChatType.thoughtFold.copy(fontStyle = FontStyle.Italic),
+        color = MaterialTheme.colorScheme.tertiary,
     )
 }

@@ -381,6 +381,7 @@ internal fun MessageItem(
                         },
                         onLayoutMutationStarted = onLayoutMutationStarted,
                         onLayoutMutationSettled = onLayoutMutationSettled,
+                        thoughtRenderContext = thoughtMarkdownRenderContext,
                         setThoughtBlockHeight = {},
                         isTtsPlaying = isTtsPlaying,
                         onToggleTts = onToggleTts,

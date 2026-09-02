@@ -193,6 +193,7 @@ internal fun AssistantMessageContent(
     onSegmentSelected: (List<Int>) -> Unit,
     onLayoutMutationStarted: (String) -> Unit,
     onLayoutMutationSettled: (String) -> Unit,
+    thoughtRenderContext: ChatMarkdownRenderContext,
     setThoughtBlockHeight: (Int) -> Unit,
     isTtsPlaying: Boolean = false,
     onToggleTts: () -> Unit = {},
@@ -406,6 +407,7 @@ internal fun AssistantMessageContent(
                             expansionKey = message.id,
                             cardAppearanceKey = compactCardAppearanceKey,
                             segmentAppearanceRegistry = segmentAppearanceRegistry,
+                            renderContext = thoughtRenderContext,
                             onExpansionStarted = onLayoutMutationStarted,
                             onExpansionSettled = onLayoutMutationSettled,
                             onSegmentClick = { index ->
