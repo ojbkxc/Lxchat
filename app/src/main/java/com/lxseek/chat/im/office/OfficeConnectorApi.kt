@@ -153,7 +153,7 @@ class OfficeSseStream(
         if (data.isEmpty()) return null
         val jsonStr = data.toString().trimEnd('\n')
         val value = try {
-            OfficeProtocol.ImJson.parseToJsonElement(jsonStr)
+            ImJson.parseToJsonElement(jsonStr)
         } catch (e: Exception) {
             throw OfficeTransportException(
                 "AI Office SSE returned invalid JSON",
@@ -282,7 +282,7 @@ class OfficeConnectorApi(
     /** 解析响应体为 JsonObject。 */
     private fun parseJsonObject(body: String): JsonObject =
         try {
-            OfficeProtocol.ImJson.parseToJsonElement(body).jsonObject
+            ImJson.parseToJsonElement(body).jsonObject
         } catch (e: Exception) {
             throw OfficeTransportException(
                 "AI Office returned invalid JSON: ${e.message}",

@@ -34,7 +34,7 @@ class ImGatewayStore(private val context: Context) {
     val config: Flow<ImGatewayConfig> = context.imGatewayDataStore.data.map { pref ->
         val jsonStr = com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_GATEWAY_CONFIG_JSON] ?: "{}")
         try {
-            json.decodeFromString<ImGatewayConfig>(jsonStr)
+            ImJson.decodeFromString<ImGatewayConfig>(jsonStr)
         } catch (e: Exception) {
             DebugLog.e("ImGatewayStore", "Failed to decode IM gateway config", e)
             ImGatewayConfig()
@@ -45,7 +45,7 @@ class ImGatewayStore(private val context: Context) {
     val runtimeState: Flow<ImRuntimeState> = context.imGatewayDataStore.data.map { pref ->
         val jsonStr = com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_GATEWAY_STATE_JSON] ?: "{}")
         try {
-            json.decodeFromString<ImRuntimeState>(jsonStr)
+            ImJson.decodeFromString<ImRuntimeState>(jsonStr)
         } catch (e: Exception) {
             DebugLog.e("ImGatewayStore", "Failed to decode IM runtime state", e)
             ImRuntimeState()
@@ -56,7 +56,7 @@ class ImGatewayStore(private val context: Context) {
     suspend fun save(config: ImGatewayConfig) {
         context.imGatewayDataStore.edit {
             it[IM_GATEWAY_CONFIG_JSON] =
-                com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(config))
+                com.lxseek.chat.util.SecretCrypto.encrypt(ImJson.encodeToString(config))
         }
     }
 
@@ -64,13 +64,13 @@ class ImGatewayStore(private val context: Context) {
     suspend fun updateState(transform: (ImRuntimeState) -> ImRuntimeState) {
         context.imGatewayDataStore.edit { pref ->
             val current = runCatching {
-                json.decodeFromString<ImRuntimeState>(
+                ImJson.decodeFromString<ImRuntimeState>(
                     com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_GATEWAY_STATE_JSON] ?: "{}"),
                 )
             }.getOrDefault(ImRuntimeState())
             val next = transform(current)
             pref[IM_GATEWAY_STATE_JSON] =
-                com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(next))
+                com.lxseek.chat.util.SecretCrypto.encrypt(ImJson.encodeToString(next))
         }
     }
 
@@ -83,7 +83,7 @@ class ImGatewayStore(private val context: Context) {
     val multiConfig: Flow<ImMultiGatewayConfig> = context.imGatewayDataStore.data.map { pref ->
         val jsonStr = com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_MULTI_CONFIG_JSON] ?: "{}")
         try {
-            json.decodeFromString<ImMultiGatewayConfig>(jsonStr)
+            ImJson.decodeFromString<ImMultiGatewayConfig>(jsonStr)
         } catch (e: Exception) {
             DebugLog.e("ImGatewayStore", "Failed to decode IM multi config", e)
             ImMultiGatewayConfig()
@@ -94,7 +94,7 @@ class ImGatewayStore(private val context: Context) {
     val multiRuntimeState: Flow<Map<String, ImRuntimeState>> = context.imGatewayDataStore.data.map { pref ->
         val jsonStr = com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_MULTI_STATE_JSON] ?: "{}")
         try {
-            json.decodeFromString<Map<String, ImRuntimeState>>(jsonStr)
+            ImJson.decodeFromString<Map<String, ImRuntimeState>>(jsonStr)
         } catch (e: Exception) {
             DebugLog.e("ImGatewayStore", "Failed to decode IM multi runtime state", e)
             emptyMap()
@@ -105,7 +105,7 @@ class ImGatewayStore(private val context: Context) {
     suspend fun saveMultiConfig(config: ImMultiGatewayConfig) {
         context.imGatewayDataStore.edit {
             it[IM_MULTI_CONFIG_JSON] =
-                com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(config))
+                com.lxseek.chat.util.SecretCrypto.encrypt(ImJson.encodeToString(config))
         }
     }
 
@@ -115,7 +115,7 @@ class ImGatewayStore(private val context: Context) {
             val current = decodeMultiConfig(pref)
             val next = current.upsert(config)
             pref[IM_MULTI_CONFIG_JSON] =
-                com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(next))
+                com.lxseek.chat.util.SecretCrypto.encrypt(ImJson.encodeToString(next))
         }
     }
 
@@ -125,7 +125,7 @@ class ImGatewayStore(private val context: Context) {
             val current = decodeMultiConfig(pref)
             val next = current.remove(platform, channelId)
             pref[IM_MULTI_CONFIG_JSON] =
-                com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(next))
+                com.lxseek.chat.util.SecretCrypto.encrypt(ImJson.encodeToString(next))
         }
     }
 
@@ -140,7 +140,7 @@ class ImGatewayStore(private val context: Context) {
             val next = transform(current)
             pref[IM_MULTI_STATE_JSON] =
                 com.lxseek.chat.util.SecretCrypto.encrypt(
-                    json.encodeToString(currentMap + (channelId to next)),
+                    ImJson.encodeToString(currentMap + (channelId to next)),
                 )
         }
     }
@@ -151,7 +151,7 @@ class ImGatewayStore(private val context: Context) {
             val currentMap = decodeMultiRuntimeState(pref)
             pref[IM_MULTI_STATE_JSON] =
                 com.lxseek.chat.util.SecretCrypto.encrypt(
-                    json.encodeToString(currentMap - channelId),
+                    ImJson.encodeToString(currentMap - channelId),
                 )
         }
     }
@@ -160,7 +160,7 @@ class ImGatewayStore(private val context: Context) {
     suspend fun clearAllChannelRuntimeState() {
         context.imGatewayDataStore.edit { pref ->
             pref[IM_MULTI_STATE_JSON] =
-                com.lxseek.chat.util.SecretCrypto.encrypt(json.encodeToString(emptyMap<String, ImRuntimeState>()))
+                com.lxseek.chat.util.SecretCrypto.encrypt(ImJson.encodeToString(emptyMap<String, ImRuntimeState>()))
         }
     }
 
@@ -168,14 +168,14 @@ class ImGatewayStore(private val context: Context) {
 
     private fun decodeMultiConfig(pref: androidx.datastore.preferences.core.Preferences): ImMultiGatewayConfig =
         runCatching {
-            json.decodeFromString<ImMultiGatewayConfig>(
+            ImJson.decodeFromString<ImMultiGatewayConfig>(
                 com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_MULTI_CONFIG_JSON] ?: "{}"),
             )
         }.getOrDefault(ImMultiGatewayConfig())
 
     private fun decodeMultiRuntimeState(pref: androidx.datastore.preferences.core.Preferences): Map<String, ImRuntimeState> =
         runCatching {
-            json.decodeFromString<Map<String, ImRuntimeState>>(
+            ImJson.decodeFromString<Map<String, ImRuntimeState>>(
                 com.lxseek.chat.util.SecretCrypto.decrypt(pref[IM_MULTI_STATE_JSON] ?: "{}"),
             )
         }.getOrDefault(emptyMap())

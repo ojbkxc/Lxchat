@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.lxseek.chat.im.ImJson
 import com.lxseek.chat.util.DebugLog
 import com.lxseek.chat.util.SecretCrypto
 import kotlinx.coroutines.CancellationException
@@ -74,7 +75,7 @@ class OfficeConnectorStore(private val context: Context) {
     /** 当前持久化配置（解密后）。 */
     val settings: Flow<OfficeConnectorSettings> = context.officeConnectorDataStore.data.map { pref ->
         val jsonStr = SecretCrypto.decrypt(pref[OFFICE_CONFIG_JSON] ?: "{}")
-        runCatching { json.decodeFromString<OfficeConnectorSettings>(jsonStr) }
+        runCatching { ImJson.decodeFromString<OfficeConnectorSettings>(jsonStr) }
             .getOrDefault(OfficeConnectorSettings())
     }
 
@@ -87,7 +88,7 @@ class OfficeConnectorStore(private val context: Context) {
     /** 保存配置和 Device Token（Token 加密后存储）。 */
     suspend fun save(settings: OfficeConnectorSettings, deviceToken: String) {
         context.officeConnectorDataStore.edit {
-            it[OFFICE_CONFIG_JSON] = SecretCrypto.encrypt(json.encodeToString(settings))
+            it[OFFICE_CONFIG_JSON] = SecretCrypto.encrypt(ImJson.encodeToString(settings))
             it[OFFICE_TOKEN] = if (deviceToken.isBlank()) "" else SecretCrypto.encrypt(deviceToken)
         }
     }

@@ -20,7 +20,7 @@ class MattermostApi(
     /** Mattermost 实例基址，如 `https://mattermost.example.com`。 */
     val baseUrl: String,
     /** Bot 个人访问令牌（Personal Access Token）或 Bot Account Token。 */
-    val token: String,
+    token: String,
 ) : ImRestClient(
     baseUrl = baseUrl,
     authHeaders = mapOf("Authorization" to "Bearer ${token.trim()}"),

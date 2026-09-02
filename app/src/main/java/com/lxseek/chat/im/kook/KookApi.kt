@@ -23,13 +23,13 @@ import kotlinx.serialization.json.put
  */
 class KookApi(
     /** KOOK Bot Token，开放平台 → 应用 → 机器人 → 获取 Token。 */
-    val token: String,
+    token: String,
     /** REST 基址，默认官方地址；可被测试或代理覆盖。 */
     baseUrl: String = DEFAULT_BASE_URL,
 ) : ImRestClient(
     baseUrl = baseUrl,
     authHeaders = mapOf("Authorization" to "Bot ${token.trim()}"),
-    onError = ::parseError,
+    onError = { body, op, httpCode -> parseError(body, op, httpCode) },
 ) {
     init {
         require(token.isNotBlank()) { "KOOK token 不能为空" }

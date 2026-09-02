@@ -27,12 +27,12 @@ class MisskeyApi(
     /** Misskey 实例基址，如 `https://misskey.io`。 */
     val baseUrl: String,
     /** 用户访问令牌（Access Token），从设置 → API → 生成 Token。 */
-    val token: String,
+    token: String,
 ) : ImRestClient(
     baseUrl = baseUrl,
     authHeaders = mapOf("Authorization" to "Bearer ${token.trim()}"),
     pathPrefix = "api",
-    onError = ::parseError,
+    onError = { body, op, httpCode -> parseError(body, op, httpCode) },
 ) {
     init {
         require(baseUrl.isNotBlank()) { "Misskey baseUrl 不能为空" }

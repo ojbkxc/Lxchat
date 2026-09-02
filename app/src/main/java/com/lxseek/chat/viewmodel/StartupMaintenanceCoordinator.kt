@@ -46,7 +46,7 @@ internal class StartupMaintenanceCoordinator(
         if (!settings.sm.autoUpdateCheck.first()) return
         val checkedAt = now()
         if (checkedAt - settings.sm.lastUpdateCheckTime.first() <= UPDATE_INTERVAL_MS) return
-        settings.saveLastUpdateCheckTime(checkedAt)
+        settings.sm.saveLastUpdateCheckTime(checkedAt)
         checkUpdate(currentVersion())?.let(onUpdateFound)
     }
 

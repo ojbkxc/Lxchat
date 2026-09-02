@@ -19,7 +19,7 @@ import kotlinx.serialization.json.putJsonArray
  */
 class LineApi(
     /** Channel Access Token（LONG-TERM），从 LINE Developers Console 颁发。 */
-    val channelAccessToken: String,
+    channelAccessToken: String,
     /** Channel Secret，用于 webhook 签名校验。 */
     val channelSecret: String,
     /** API 基址，默认官方；可被代理或自托管覆盖。 */

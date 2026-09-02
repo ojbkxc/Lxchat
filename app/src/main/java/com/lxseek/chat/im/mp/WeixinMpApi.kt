@@ -34,7 +34,7 @@ class WeixinMpApi(
     baseUrl: String = DEFAULT_BASE_URL,
 ) : ImRestClient(
     baseUrl = baseUrl,
-    onError = ::parseError,
+    onError = { body, op, httpCode -> parseError(body, op, httpCode) },
 ) {
     init {
         require(appId.isNotBlank()) { "公众号 app_id 不能为空" }
