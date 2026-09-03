@@ -213,7 +213,9 @@ fun ChatApp(
     val reduceMotion = motionPolicy.reduceMotion
     val hapticsEnabled by viewModel.settings.hapticsEnabled.collectAsState()
     val appName by viewModel.settings.appName.collectAsState()
-    val haptics = rememberLxChatHaptics(hapticsEnabled)
+    // 对话页不启用震动反馈：haptics 统一置为 no-op，令本页所有交互（含思考块
+    // 展开/收起、发送、工具卡片点击）触点反馈一律静默。appName 仍用于识别对话身份。
+    val haptics = rememberLxChatHaptics(false)
     // The three send paths (manual Send, queue drain, loop cycle) converge in the Controller at
     // notifySendAccepted, the single choke point for Direct + Queued send acceptances. Wiring the
     // haptics there gives every accepted send exactly one confirm(), independent of which path

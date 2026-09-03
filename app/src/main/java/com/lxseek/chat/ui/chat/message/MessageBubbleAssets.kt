@@ -148,7 +148,16 @@ internal fun rememberChatMarkdownAssets(
         inlineCodeBackground = Color.Transparent,
     )
     val customMarkdownPadding = markdownPadding(block = 8.dp)
-    val thoughtMarkdownPadding = markdownPadding(block = 5.dp)
+    // 思考块正文段距：远小于主正文（5dp→2dp），配合 thoughtBody 的 1:1 行距，让推理
+    // 内容尽量紧凑，弱化其作为临时过程的视觉存在感。
+    val thoughtMarkdownPadding = markdownPadding(block = 2.dp)
+    // 思考块正文颜色与「已思考」标签一致（onSurfaceVariant 次级灰），从视觉上把推理
+    // 内容整体压低调——仅思考块使用，主正文不受影响。
+    val thoughtMarkdownColors = markdownColor(
+        text = MaterialTheme.colorScheme.onSurfaceVariant,
+        codeBackground = codeBg,
+        inlineCodeBackground = Color.Transparent,
+    )
     val searchHighlightColor = SearchHighlightBackground
     val activeSearchHighlightColor = ActiveSearchHighlightBackground
 
@@ -333,14 +342,14 @@ internal fun rememberChatMarkdownAssets(
         )
     }
     val thoughtMarkdownRenderContext = remember(
-        customMarkdownColors,
+        thoughtMarkdownColors,
         thoughtTypography,
         thoughtMarkdownPadding,
         thoughtMarkdownComponents,
         markdownFlavour,
     ) {
         ChatMarkdownRenderContext(
-            colors = customMarkdownColors,
+            colors = thoughtMarkdownColors,
             typography = thoughtTypography,
             padding = thoughtMarkdownPadding,
             components = thoughtMarkdownComponents,
@@ -354,6 +363,7 @@ internal fun rememberChatMarkdownAssets(
         markdownRenderContext,
         thoughtMarkdownRenderContext,
         customMarkdownColors,
+        thoughtMarkdownColors,
         thoughtTypography,
         thoughtMarkdownPadding,
         customMarkdownComponents,
