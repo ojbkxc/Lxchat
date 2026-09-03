@@ -117,7 +117,9 @@ android {
         }
     }
 
-    flavorDimensions += listOf("dist", "store")
+    // 维度顺序：store 在前 → 变体名为 fdroidOnline / fdroidFull / playOnline / playFull，
+    // 即 assembleFdroidOnlineRelease 等，保持与原 fdroid 前缀一致的命名习惯。
+    flavorDimensions += listOf("store", "dist")
     productFlavors {
         // 模型分发维度：online = 运行时下载 YAMNet 模型（默认，APK 小）；
         // full = 把 YAMNet 模型内置进 assets（免下载，APK 增大 ~16MB）。
