@@ -187,9 +187,18 @@ class BabyMonitorService : Service() {
                                 // 原生 abort 已停用，直接用 YAMNet 概率作为最终哭声分数。
                                 detector.observe(CryObservation(cry, speech, rms))
                             }
-                            if (verdict is CryVerdict.Alert) {
-                                DebugLog.i(TAG, "cry alert: score=${verdict.cryScore} streak=${verdict.streak}")
-                                sendAlerts(verdict)
+                            when (verdict) {
+                                is CryVerdict.Alert -> {
+                                    DebugLog.i(TAG, "cry alert: score=${verdict.cryScore} streak=${verdict.streak}")
+                                    sendAlerts(verdict)
+                                }
+                                is CryVerdict.Ended -> {
+                                    DebugLog.i(
+                                        TAG,
+                                        "cry episode ended: durMs=${verdict.durationMs} peak=${verdict.peakScore}",
+                                    )
+                                }
+                                else -> Unit
                             }
                             // 半窗滑动。
                             val half = YamnetCryClassifier.INPUT_SAMPLES / 2

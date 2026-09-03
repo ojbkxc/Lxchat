@@ -70,8 +70,9 @@ class BabyCryDetectorStateTest {
         assertEquals(CryVerdict.None, state.observe(cry()))
         assertTrue(state.observe(cry()) is CryVerdict.Alert)
 
-        // 连续未命中达到 silenceReset 后 streak 清零。
-        repeat(3) { assertEquals(CryVerdict.None, state.observe(cry(0.05f))) }
+        // 连续未命中达到 silenceReset：第一次达阈值时补发 Ended 结束哭声周期，此后返回 None。
+        assertTrue(state.observe(cry(0.05f)) is CryVerdict.Ended)
+        repeat(2) { assertEquals(CryVerdict.None, state.observe(cry(0.05f))) }
 
         // 冷却为 0，重新累计两次命中应再次报警。
         assertEquals(CryVerdict.None, state.observe(cry()))
@@ -106,6 +107,39 @@ class BabyCryDetectorStateTest {
     // ── 4. 冷却去重 ───────────────────────────────────────────
 
     @Test
+    fun cryEndedEmittedOnceWhenSilenceResets() {
+        val clock = FakeClock()
+        val params = BabyCryParams(sustainHits = 2, silenceReset = 3, cooldownMs = 0)
+        val state = BabyCryDetectorState(params) { clock.now }
+
+        assertEquals(CryVerdict.None, state.observe(cry()))
+        assertTrue(state.observe(cry()) is CryVerdict.Alert)
+
+        // 未命中未达阈值不结束；只有连续未命中达到 silenceReset 才补发一次 Ended。
+        clock.tick(1_000L)
+        assertTrue(state.observe(cry(0.05f)) is CryVerdict.Ended)
+        val ended = state.observe(cry(0.05f))
+        assertEquals(CryVerdict.None, ended) // 周期已结束，不再补发
+
+        // 周期的 startedAt 为首次 Alert 时刻，durationMs 为从 Alert 到结束的毫秒差。
+    }
+
+    @Test
+    fun speechSuppressionAfterAlertEmitsEnded() {
+        val clock = FakeClock()
+        val params = BabyCryParams(sustainHits = 2, cooldownMs = 0)
+        val state = BabyCryDetectorState(params) { clock.now }
+
+        clock.tick(0L)
+        assertEquals(CryVerdict.None, state.observe(cry()))
+        assertTrue(state.observe(cry()) is CryVerdict.Alert)
+        // 有人声介入终止周期：先补发 Ended，而非 Suppressed。
+        val verdict = state.observe(speech())
+        assertTrue(verdict is CryVerdict.Ended)
+        assertTrue((verdict as CryVerdict.Ended).durationMs >= 0)
+    }
+
+    @Test
     fun cooldownPreventsDuplicateAlertsAndReArmsAfterExpiry() {
         val clock = FakeClock()
         val params = BabyCryParams(sustainHits = 2, silenceReset = 2, cooldownMs = 60_000L)
@@ -115,9 +149,10 @@ class BabyCryDetectorStateTest {
         assertEquals(CryVerdict.None, state.observe(cry()))
         assertTrue(state.observe(cry()) is CryVerdict.Alert)
 
-        // 冷却期内：静默重置后再次持续哭，streak 达标但不重复报警。
+        // 冷却期内：静默重置（第二帧达 silenceReset 时补发 Ended），随后再累计不重复报警。
         clock.tick(10_000L)
-        repeat(2) { assertEquals(CryVerdict.None, state.observe(cry(0.05f))) }
+        assertEquals(CryVerdict.None, state.observe(cry(0.05f)))
+        assertTrue(state.observe(cry(0.05f)) is CryVerdict.Ended)
         assertEquals(CryVerdict.None, state.observe(cry()))
         assertEquals(CryVerdict.None, state.observe(cry())) // streak 达标但冷却未过
 
