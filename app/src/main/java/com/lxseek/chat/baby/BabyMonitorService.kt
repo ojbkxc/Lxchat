@@ -31,6 +31,9 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.sqrt
 
 /**
@@ -253,8 +256,7 @@ class BabyMonitorService : Service() {
             return
         }
 
-        val pct = (verdict.cryScore * 100).toInt()
-        val message = appContext.getString(R.string.baby_monitor_alert_message, pct)
+        val message = buildAlertText(verdict)
         var anySent = false
         for ((channelId, channel) in targets) {
             try {
@@ -274,15 +276,24 @@ class BabyMonitorService : Service() {
     /** 本地兜底通知（无可用 IM 渠道或全部发送失败时）。 */
     private fun showLocalAlert(verdict: CryVerdict.Alert) {
         val manager = getSystemService(NotificationManager::class.java) ?: return
-        val pct = (verdict.cryScore * 100).toInt()
         val notification = NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.baby_monitor_alert_title))
-            .setContentText(getString(R.string.baby_monitor_alert_message, pct))
+            .setContentText(buildAlertText(verdict))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()
         runCatching { manager.notify(ALERT_NOTIFICATION_ID, notification) }
+    }
+
+    /**
+     * 组装报警文案：带触发时间、哭声置信度与连续命中次数，方便家长实时掌控报警依据。
+     * IM 渠道与本地兜底通知共用同一份文案。
+     */
+    private fun buildAlertText(verdict: CryVerdict.Alert): String {
+        val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        val pct = (verdict.cryScore * 100).toInt()
+        return getString(R.string.baby_monitor_alert_message, time, pct, verdict.streak)
     }
 
     // ── 前台通知与权限 ───────────────────────────────────────

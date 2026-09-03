@@ -1480,7 +1480,7 @@
     <string name="baby_monitor_alert_channel_name">Cry alerts</string>
     <string name="baby_monitor_alert_channel_desc">High-priority notification when crying is detected</string>
     <string name="baby_monitor_alert_title">Baby is crying</string>
-    <string name="baby_monitor_alert_message">Crying detected (%1$d%% confidence) — please check on the baby</string>
+    <string name="baby_monitor_alert_message">[Baby Crying Alert] %1$s crying detected (confidence %2$d%%, %3$d consecutive hits) — please check on the baby</string>
     <string name="settings_notification_reply">Auto-reply to Notifications</string>
     <string name="settings_notification_reply_desc">Watch system notifications and let the AI auto-reply</string>
     <string name="notification_reply_enabled">Enable auto-reply</string>
