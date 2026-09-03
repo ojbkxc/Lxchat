@@ -94,6 +94,34 @@ class BabyModelManager(private val context: Context) {
         if (isDownloaded()) State.Downloaded else State.NotDownloaded
 
     /**
+     * 若当前包内置了 YAMNet 模型（full 变体打包进 assets），把模型与类别清单复制到
+     * [modelFile] 直接使用（免下载）。online 变体无内置模型 → 复制成功返回 true，
+     * 否则返回 false（调用方应回退到在线下载）。
+     */
+    fun seedBundledModelIfPresent(): Boolean {
+        if (isDownloaded()) return true
+        val input = try {
+            context.assets.open("baby_monitor/$MODEL_FILE")
+        } catch (e: IOException) {
+            return false // 没有内置模型（online 变体），交给在线下载。
+        }
+        return try {
+            if (!modelDir.isDirectory) modelDir.mkdirs()
+            input.use { it.copyTo(modelFile.outputStream()) }
+            writeLabelsIfNeeded()
+            val ok = isDownloaded()
+            if (ok) {
+                _state.value = State.Downloaded
+                DebugLog.i(TAG, "seeded bundled YAMNet model -> ${modelFile.absolutePath}")
+            }
+            ok
+        } catch (e: Exception) {
+            DebugLog.w(TAG, "seed bundled model failed: ${e.message}")
+            false
+        }
+    }
+
+    /**
      * 开始（或继续）下载模型。已在下载中时为 no-op。完成后把 labels 一并写入。
      */
     fun startDownload(scope: kotlinx.coroutines.CoroutineScope) {

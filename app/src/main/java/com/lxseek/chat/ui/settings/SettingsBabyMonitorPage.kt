@@ -82,6 +82,15 @@ fun SettingsBabyMonitorPage(
 
     val config by store.config.collectAsState(initial = BabyMonitorStore.Config())
     val modelState by modelManager.state.collectAsState()
+    // full（内置模型）包进页面即从 assets 落盘，避免仍显示"下载"按钮；
+    // online 包无内置资产，seed 直接返回 false，走正常下载按钮。
+    LaunchedEffect(Unit) {
+        if (modelState is BabyModelManager.State.NotDownloaded) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                modelManager.seedBundledModelIfPresent()
+            }
+        }
+    }
     // 多类事件流（服务运行时实时追加，这里订阅渲染时间轴）。
     val eventLog by BabyEventHistory.events.collectAsState()
 

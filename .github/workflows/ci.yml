@@ -45,7 +45,7 @@ jobs:
       - name: Build F-Droid Debug APK
         run: |
           set +e
-          ./gradlew assembleFdroidDebug --console=plain > /tmp/build.log 2>&1
+          ./gradlew assembleFdroidOnlineDebug --console=plain > /tmp/build.log 2>&1
           CODE=$?
           git config user.email "ci@lxseek.chat"
           git config user.name "LxChat CI"
@@ -76,11 +76,13 @@ jobs:
       # Release 构建验证：ArtProfile / Baseline Profile 任务只在 release 构建中
       # 执行，debug 构建覆盖不到。此步骤确保 profile 任务在 AGP 升级或配置
       # 变更后依然可用（签名缺失时自动回退 debug keystore）。
+      # 用 online（下载模型）变体验证；full（内置模型）仅在 release 流水线构建，
+      # 其唯一差异是 assets 里的模型，不引入额外代码路径，故日常 CI 无需下载模型。
       - name: Build F-Droid Release APK (validates ArtProfile tasks)
-        run: ./gradlew assembleFdroidRelease --console=plain
+        run: ./gradlew assembleFdroidOnlineRelease --console=plain
 
       - uses: actions/upload-artifact@v4
         with:
           name: lxchat-fdroid-debug
-          path: app/build/outputs/apk/fdroid/debug/*.apk
+          path: app/build/outputs/apk/fdroid/online/debug/*.apk
           if-no-files-found: error

@@ -115,13 +115,32 @@ android {
         }
     }
 
-    flavorDimensions += "store"
+    flavorDimensions += listOf("dist", "store")
     productFlavors {
+        // 模型分发维度：online = 运行时下载 YAMNet 模型（默认，APK 小）；
+        // full = 把 YAMNet 模型内置进 assets（免下载，APK 增大 ~16MB）。
+        create("online") {
+            dimension = "dist"
+        }
+        create("full") {
+            dimension = "dist"
+        }
         create("play") {
             dimension = "store"
         }
         create("fdroid") {
             dimension = "store"
+        }
+    }
+
+    sourceSets {
+        // full 变体内置模型产出到 build 目录（不入 git、不污染源码树）。
+        // assets 根即 srcDir，内部路径为 baby_monitor/yamnet.tflite；
+        // 运行时 BabyModelManager.seedBundledModelIfPresent() 从 assets 复制落盘。
+        getByName("full") {
+            assets.srcDir(
+                layout.buildDirectory.dir("generated/bundledYamnet/assets"),
+            )
         }
     }
 
@@ -170,16 +189,56 @@ android {
 // No CMake target is needed — the binaries are manually managed prebuilts.
 // talloc is built with SONAME=libtalloc.so (no version) so AGP packaging works.
 
+// ── Bundled YAMNet 模型（full 变体）────────────────────────────────────
+// online 变体运行时下载模型；full 变体把模型内置进 assets 以免下载。模型
+// 不入 git、不进源码树（产出到 build/generated/…），按需从主源/镜像拉取。
+val bundYamnetDir = layout.buildDirectory.dir("generated/bundledYamnet/assets")
+val bundYamnetFile = bundYamnetDir.map { it.file("baby_monitor/yamnet.tflite") }
+
+val downloadBundledYamnet = tasks.register("downloadBundledYamnet") {
+    description = "Download YAMNet tflite into build/generated (bundled-model flavor)."
+    outputs.file(bundYamnetFile)
+    doLast {
+        val out = bundYamnetFile.get().asFile
+        if (out.isFile && out.length() > 0L) {
+            logger.lifecycle("Bundled YAMNet already present ({} bytes)", out.length())
+            return@doLast
+        }
+        out.parentFile.mkdirs()
+        val urls = listOf(
+            "https://huggingface.co/thelou1s/yamnet/resolve/main/lite-model_yamnet_tflite_1.tflite",
+            "https://hf-mirror.com/thelou1s/yamnet/resolve/main/lite-model_yamnet_tflite_1.tflite",
+        )
+        var lastError: Exception? = null
+        for (url in urls) {
+            try {
+                val conn = java.net.URI(url).toURL().openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 30_000
+                conn.readTimeout = 120_000
+                conn.instanceFollowRedirects = true
+                conn.inputStream.use { input -> out.outputStream().use { output -> input.copyTo(output) } }
+                if (!(out.isFile && out.length() > 0L)) throw RuntimeException("empty download from $url")
+                logger.lifecycle("Bundled YAMNet downloaded from $url ({} bytes)", out.length())
+                return@doLast
+            } catch (e: Exception) {
+                lastError = e
+                logger.warn("bundled YAMNet download failed from $url: {}", e.message)
+            }
+        }
+        throw GradleException("Failed to download bundled YAMNet model", lastError)
+    }
+}
+
 tasks.register<Copy>("copyPlayApk") {
-    from("build/outputs/apk/play/release")
+    from("build/outputs/apk/play")
+    include("*/release/*.apk")
     into("release")
-    include("*.apk")
 }
 
 tasks.register<Copy>("copyFdroidApk") {
-    from("build/outputs/apk/fdroid/release")
+    from("build/outputs/apk/fdroid")
+    include("*/release/*.apk")
     into("release")
-    include("*.apk")
 }
 
 tasks.register<Copy>("copyPlayBundle") {
@@ -189,20 +248,22 @@ tasks.register<Copy>("copyPlayBundle") {
 }
 
 afterEvaluate {
-    if (tasks.findByName("assemblePlayRelease") != null) {
-        tasks.named("assemblePlayRelease") {
-            finalizedBy("copyPlayApk")
+    tasks.configureEach {
+        // 让 full 变体的 assets 合并/打包依赖模型下载任务，保证内置模型就位。
+        if (name.startsWith("merge") && name.contains("Full") && name.endsWith("Assets")) {
+            dependsOn(downloadBundledYamnet)
         }
     }
-    if (tasks.findByName("assembleFdroidRelease") != null) {
-        tasks.named("assembleFdroidRelease") {
-            finalizedBy("copyFdroidApk")
-        }
+    if (tasks.findByName("assemblePlayOnlineRelease") != null) {
+        tasks.named("assemblePlayOnlineRelease") { finalizedBy("copyPlayApk") }
+        tasks.named("assemblePlayFullRelease") { finalizedBy("copyPlayApk") }
+    }
+    if (tasks.findByName("assembleFdroidOnlineRelease") != null) {
+        tasks.named("assembleFdroidOnlineRelease") { finalizedBy("copyFdroidApk") }
+        tasks.named("assembleFdroidFullRelease") { finalizedBy("copyFdroidApk") }
     }
     if (tasks.findByName("bundlePlayRelease") != null) {
-        tasks.named("bundlePlayRelease") {
-            finalizedBy("copyPlayBundle")
-        }
+        tasks.named("bundlePlayRelease") { finalizedBy("copyPlayBundle") }
     }
 }
 

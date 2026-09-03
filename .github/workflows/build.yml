@@ -90,17 +90,24 @@ jobs:
           ./gradlew -p build-logic test
           ./gradlew verifyKotlinFileSize
 
-      - name: Build F-Droid Release APK
-        # 版本号来自 tag（v1.0.0 -> versionName=1.0.0），versionCode 由
-        # app/build.gradle.kts 从版本号末段派生（1.0.0 -> 1）。
-        run: ./gradlew assembleFdroidRelease -PappVersionName=${VERSION}
+      - name: Build F-Droid Online Release APK (download model)
+        run: ./gradlew assembleFdroidOnlineRelease -PappVersionName=${VERSION}
 
-      - name: Rename and collect APK
+      - name: Build F-Droid Full Release APK (bundled YAMNet model, ~16MB larger)
+        run: ./gradlew assembleFdroidFullRelease -PappVersionName=${VERSION}
+
+      - name: Rename and collect APKs
         run: |
           mkdir -p dist
-          APK=$(find app/build/outputs/apk/fdroid/release -name '*.apk' -print -quit)
-          cp "$APK" "dist/LxChat-v${VERSION}-android-arm64-v8a.apk"
-          echo "Produced: dist/LxChat-v${VERSION}-android-arm64-v8a.apk"
+          # online variant
+          ON=$(find app/build/outputs/apk/fdroid/online/release -name '*.apk' -print -quit)
+          cp "$ON" "dist/LxChat-v${VERSION}-android-arm64-v8a-online.apk"
+          ls -lh "$ON"
+          # full variant (bundled model)
+          FU=$(find app/build/outputs/apk/fdroid/full/release -name '*.apk' -print -quit)
+          cp "$FU" "dist/LxChat-v${VERSION}-android-arm64-v8a-full.apk"
+          ls -lh "$FU"
+          echo "Produced:"
           ls -lh dist/
 
       - uses: actions/upload-artifact@v4
@@ -200,7 +207,8 @@ jobs:
             echo ""
             echo "### Downloads"
             echo ""
-            echo "- \`LxChat-v${VERSION}-android-arm64-v8a.apk\` — Android APK (arm64-v8a)"
+            echo "- \`LxChat-v${VERSION}-android-arm64-v8a-online.apk\` — 标准包：婴儿哭声监护首次启用时联网下载 YAMNet 模型（安装包更小）"
+            echo "- \`LxChat-v${VERSION}-android-arm64-v8a-full.apk\` — 完整包：已内置 YAMNet 模型，免下载即用（安装包约 +16MB）"
             echo ""
             echo "### Runtime Components"
             echo ""
@@ -229,7 +237,8 @@ jobs:
           cat > dist/latest.json <<JSONEOF
           {
             "version": "${VERSION}",
-            "apk": "LxChat-v${VERSION}-android-arm64-v8a.apk",
+            "apk": "LxChat-v${VERSION}-android-arm64-v8a-online.apk",
+            "apkFull": "LxChat-v${VERSION}-android-arm64-v8a-full.apk",
             "body": "LxChat v${VERSION}"
           }
           JSONEOF
@@ -240,13 +249,15 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          # Upload APK to R2
-          APK_KEY=$(echo "Lxchat/LxChat-v${VERSION}-android-arm64-v8a.apk" | sed 's/\//%2F/g')
-          curl -s -X PUT \
-            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/downloads/objects/${APK_KEY}" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            --data-binary @dist/LxChat-v${VERSION}-android-arm64-v8a.apk
+          # Upload both APKs to R2
+          for SUFFIX in online full; do
+            APK_KEY=$(echo "Lxchat/LxChat-v${VERSION}-android-arm64-v8a-${SUFFIX}.apk" | sed 's/\//%2F/g')
+            curl -s -X PUT \
+              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/downloads/objects/${APK_KEY}" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/vnd.android.package-archive" \
+              --data-binary @dist/LxChat-v${VERSION}-android-arm64-v8a-${SUFFIX}.apk
+          done
           
           # Upload latest.json to R2
           curl -s -X PUT \
@@ -255,4 +266,4 @@ jobs:
             -H "Content-Type: application/json" \
             --data-binary @dist/latest.json
           
-          echo "Uploaded APK and latest.json to Cloudflare R2"
+          echo "Uploaded both APKs and latest.json to Cloudflare R2"

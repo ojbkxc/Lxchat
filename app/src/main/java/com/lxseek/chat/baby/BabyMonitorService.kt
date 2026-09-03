@@ -102,7 +102,8 @@ class BabyMonitorService : Service() {
 
         // 模型缺失则直接停（开关 UI 应在下载完成后才允许开启）。
         val manager = BabyModelManager.getInstance(appContext)
-        if (!manager.isDownloaded()) {
+        // full（内置模型）包首启时从 assets 复制落盘；online 包则需先下载模型。
+        if (!manager.isDownloaded() && !manager.seedBundledModelIfPresent()) {
             DebugLog.w(TAG, "YAMNet model missing; baby monitor stopping")
             stopSelf()
             return
