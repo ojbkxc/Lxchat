@@ -176,8 +176,12 @@ fun ChatBottomBar(
         if (!openAiServiceTierAvailable) showOpenAiServiceTierSheet = false
     }
 
+    // 相册选择：用 GET_CONTENT(image/*) 而不是系统 Photo Picker。Photo Picker 依赖
+    // 设备的 Photo Picker 服务，在国产 ROM（无 GMS/未内置该服务）上常无法唤起或退回
+    // 文件浏览器，表现为"不能从相册选"。GET_CONTENT 经 SAF 唤起本机相册/图库，
+    // 免存储权限、任意 API≥24 机型都可稳定多选图片返回。
     val photoLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(),
+        androidx.activity.result.contract.ActivityResultContracts.GetMultipleContents(),
     ) { uris -> composer.onPickImages(uris) }
     val videoLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(),
@@ -305,11 +309,7 @@ fun ChatBottomBar(
                             }
                         },
                         onLaunchPhotos = {
-                            photoLauncher.launch(
-                                androidx.activity.result.PickVisualMediaRequest(
-                                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly,
-                                ),
-                            )
+                            photoLauncher.launch("image/*")
                         },
                         onLaunchVideos = {
                             videoLauncher.launch(
