@@ -176,7 +176,7 @@ object ChatType {
     val input get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp * chatFontScale, lineHeight = 23.sp * chatFontScale, letterSpacing = 0.5.sp)
 
     // Body tier
-    val body get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp * chatFontScale, lineHeight = 24.sp * chatFontScale)
+    val body get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp * chatFontScale, lineHeight = 20.sp * chatFontScale)
     val userBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp * chatFontScale, lineHeight = 20.sp * chatFontScale)
     val thoughtBody get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp * chatFontScale, lineHeight = 12.sp * chatFontScale)
     val thoughtTitle get() = TextStyle(fontFamily = chatFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp * chatFontScale, lineHeight = 12.sp * chatFontScale)
