@@ -189,7 +189,10 @@ val bundledYamnetFile = file("src/full/assets/baby_monitor/yamnet.tflite")
 
 val downloadBundledYamnet = tasks.register("downloadBundledYamnet") {
     description = "Download YAMNet tflite into src/full/assets (bundled-model flavor)."
-    outputs.file(bundledYamnetFile)
+    // 有意不声明 outputs.file：模型文件位于 full 变体的 assets 输入目录，若声明为输出，
+    // 会触发 Gradle "其它任务（如 Lint）读取了本任务输出却未声明依赖" 的校验报错。
+    // 本任务幂等（已存在即早退），无需 up-to-date 推断；打包顺序由
+    // afterEvaluate 中 merge*Full*Assets -> downloadBundledYamnet 的 dependsOn 保证。
     doLast {
         val out = bundledYamnetFile
         if (out.isFile && out.length() > 0L) {
