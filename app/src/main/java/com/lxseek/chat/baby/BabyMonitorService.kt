@@ -112,10 +112,9 @@ class BabyMonitorService : Service() {
             return
         }
 
-        // InfantCryNet 双引擎已停用：onnxruntime-android 对该模型动态批次输出的 JNI
-        // convertToTensorInfo 会触发原生层 abort（日志 `Runtime aborting` / `OrtSession.run`），
-        // 该崩溃无法被 Kotlin 捕获、直接把整个 App 闪退。为保证哭声监护可用，只用被
-        // 验证稳定运行的 YAMNet 单引擎。详见 git log a7bac0c 后的提交说明。
+        // 哭声监护使用 YAMNet 单引擎。InfantCryNet ONNX 双引擎此前因
+        // onnxruntime-android 对动态批次输出的 JNI 原生 abort（导致闪退）已停用，
+        // 相关类与 onnxruntime 依赖现已从构建中彻底移除。
 
         acquireWakeLock()
 
