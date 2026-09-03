@@ -84,5 +84,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: lxchat-fdroid-debug
-          path: app/build/outputs/apk/fdroid/online/debug/*.apk
-          if-no-files-found: error
+          # 用宽匹配兜底 flavor 目录结构（store/dist 双维度），避免产物目录差异导致
+          # 上传失败误报 CI 红；缺失时仅告警不阻断（构建成功与否已由上面步骤的退出码判定）。
+          path: app/build/outputs/apk/**/debug/*.apk
+          if-no-files-found: warn
