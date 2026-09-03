@@ -1456,7 +1456,7 @@
     <string name="baby_monitor_permission_title">Microphone permission</string>
     <string name="baby_monitor_permission_desc">Monitoring needs continuous mic access (16 kHz recording, analyzed on-device only)</string>
     <string name="baby_monitor_permission_grant">Grant permission</string>
-    <string name="baby_monitor_model_title">Cry model (YAMNet)</string>
+    <string name="baby_monitor_model_title">Cry detection model</string>
     <string name="baby_monitor_model_desc">~16 MB (full-precision), runs locally; tells baby cries apart from TV, speech and other noise</string>
     <string name="baby_monitor_model_download">Download model</string>
     <string name="baby_monitor_model_retry">Retry download</string>
