@@ -140,6 +140,15 @@
     <string name="baby_monitor_channels_all">当前：通知所有已启用渠道</string>
     <string name="baby_monitor_channels_selected">当前：已选 %1$d 个渠道</string>
     <string name="baby_monitor_sensitivity_title">灵敏度</string>
+    <string name="baby_monitor_sensitivity_preset_title">灵敏度预设</string>
+    <string name="baby_monitor_sensitivity_preset_desc">一键调整检测判定，适配宝宝的日常表现</string>
+    <string name="baby_monitor_sensitivity_sensitive">灵敏</string>
+    <string name="baby_monitor_sensitivity_normal">标准</string>
+    <string name="baby_monitor_sensitivity_stable">稳定</string>
+    <string name="baby_monitor_quiet_title">免打扰时段</string>
+    <string name="baby_monitor_quiet_desc">该时段内仅保留剧烈大哭等重要报警，常规事件静默</string>
+    <string name="baby_monitor_quiet_start">自 %1$s 起</string>
+    <string name="baby_monitor_quiet_end">至 %1$s 止</string>
     <string name="baby_monitor_sustain_desc">连续 %1$d 次判定为哭声才触发报警（越大越迟钝、越少误报）</string>
     <string name="baby_monitor_cooldown_desc">两次报警最小间隔 %1$d 分钟（防连续轰炸）</string>
     <string name="baby_monitor_channel_name">婴儿监护</string>
@@ -150,6 +159,8 @@
     <string name="baby_monitor_alert_channel_desc">检测到婴儿哭声时的高优先级通知</string>
     <string name="baby_monitor_alert_title">宝宝在哭</string>
     <string name="baby_monitor_alert_message">【宝宝哭闹预警】%1$s 检测到婴儿哭声（置信度 %2$d%%，连续命中 %3$d 次），请查看宝宝</string>
+    <string name="baby_monitor_intense_cry_title">检测到剧烈大哭</string>
+    <string name="baby_monitor_intense_cry_message">【剧烈大哭】%1$s 检测到宝宝剧烈大哭（置信度 %2$d%%，持续 %3$d 秒），请尽快查看</string>
     <string name="device_control_howto">AI基于屏幕上的元素树进行规划，可以打开应用、读取界面并点击或输入文字。打开应用无需桥接；点击、轻触和输入需要下面启用的无障碍桥接。</string>
     <string name="device_control_accessibility">无障碍桥接</string>
     <string name="device_control_enabled">已启用</string>

@@ -10,6 +10,36 @@ import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
 /**
+ * 一次 YAMNet 推理的可解释多类分数。只反序列化监护关心的有限语义类，
+ * 字段含义（AudioSet display name，索引见 [YamnetCryClassifier.FALLBACK_INDEXES]）：
+ *  - [cry]          低声哼唧 = Baby cry + Whimper（组内各类求和）
+ *  - [intenseCry]   剧烈大哭 = Crying, sobbing（独立分级）
+ *  - [speech]       成人说话 = Speech（用于"有人在哄"抑制）
+ *  - [cough]        咳嗽 / 清嗓 = Cough, Throat clearing
+ *  - [sneeze]       打喷嚏 = Sneeze
+ *  - [scream]       尖叫 / 高声喊叫 = Screaming, Shout, Yell, Children shouting
+ *  - [laughter]     欢笑 = Laughter, Baby laughter, Chuckle, Giggle
+ *  - [childSpeech]  牙牙学语 = Child speech, Babbling
+ *  - [whiteNoise]   白噪音来源 = White noise, Vacuum cleaner, Hair dryer, Fan（取组内最大）
+ *  - [door]         门/柜开关 = Door, Sliding door, Knock, Cupboard, Drawer（取组内最大）
+ *
+ * 除 [cry] 为求和外，其余事件类在逐帧布局下取组内各类的最大值，保证单帧只贡献一次
+ * 峰值信号、不因组内多类同时触发而虚高。
+ */
+data class YamnetScores(
+    val cry: Float = 0f,
+    val intenseCry: Float = 0f,
+    val speech: Float = 0f,
+    val cough: Float = 0f,
+    val sneeze: Float = 0f,
+    val scream: Float = 0f,
+    val laughter: Float = 0f,
+    val childSpeech: Float = 0f,
+    val whiteNoise: Float = 0f,
+    val door: Float = 0f,
+)
+
+/**
  * YAMNet TFLite 推理封装（AudioSet 521 类音频事件分类）。
  *
  * 模型：`lite-model_yamnet_tflite_1.tflite`（TensorFlow Hub 官方全精度 float32 版，
@@ -17,13 +47,12 @@ import java.nio.channels.FileChannel
  * float PCM，每次推理至少 ~0.975s（15600 样本）。
  *
  * 两种输出形态都被支持（不同来源的 YAMNet 转换版布局不同）：
- *  - `[1, frames, 521]`（3D）——逐帧分数，取哭声类逐帧最大值（对齐 crywatch 的
+ *  - `[1, frames, 521]`（3D）——逐帧分数，事件类逐帧取最大值（对齐 crywatch 的
  *    "peak per-frame probability"）；
- *  - `[1, 521]`（2D）——整段平均分数，直接读哭声类。
+ *  - `[1, 521]`（2D）——整段平均分数，直接读各类。
  *
- * 类别索引按名字在运行期解析（不硬编码下标，抗模型版本差异）：
- *  - 哭声三连：`Baby cry, infant cry` / `Crying, sobbing` / `Whimper`
- *  - 语音：`Speech`
+ * 类别索引按名字在运行期解析（不硬编码下标，抗模型版本差异）；labels 文件缺失时
+ * 回退到官方固定索引。
  */
 class YamnetCryClassifier(context: Context, modelFile: File) {
 
@@ -34,32 +63,92 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
         const val INPUT_SAMPLES = 15600
         const val NUM_CLASSES = 521
 
-        /** 哭声类（AudioSet display name）。 */
-        val CRY_CLASS_NAMES = listOf("Baby cry, infant cry", "Crying, sobbing", "Whimper")
+        /** 低声哼唧（配 [YamnetScores.cry]）：Baby cry + Whimper。 */
+        val CRY_CLASS_NAMES = listOf("Baby cry, infant cry", "Whimper")
+
+        /** 剧烈大哭（独立分级，配 [YamnetScores.intenseCry]）：Crying, sobbing。 */
+        val INTENSE_CRY_CLASS_NAMES = listOf("Crying, sobbing")
 
         /** 语音类（用于"有人在哄"抑制）。 */
         const val SPEECH_CLASS_NAME = "Speech"
+
+        /** 咳嗽相关类（Cough + 清嗓）。 */
+        val COUGH_CLASS_NAMES = listOf("Cough", "Throat clearing")
+
+        /** 打喷嚏类。 */
+        val SNEEZE_CLASS_NAMES = listOf("Sneeze")
+
+        /** 尖叫 / 高声喊叫（剧烈哭的伴随信号 + 独立异常事件）。 */
+        val SCREAM_CLASS_NAMES = listOf("Screaming", "Shout", "Yell", "Children shouting")
+
+        /** 笑声（含婴儿笑），用于判断"开心互动"。 */
+        val LAUGHTER_CLASS_NAMES = listOf("Laughter", "Baby laughter", "Chuckle, chortle", "Giggle")
+
+        /** 宝宝牙牙学语 / 咿呀，用于判断"醒着在互动"。 */
+        val CHILD_SPEECH_CLASS_NAMES = listOf("Child speech, kid speaking", "Babbling")
+
+        /** 白噪音来源类（取组内最大）：白噪声 / 真空吸尘 / 吹风机 / 风扇。 */
+        val WHITE_NOISE_CLASS_NAMES = listOf(
+            "White noise", "Vacuum cleaner", "Hair dryer", "Mechanical fan",
+        )
+
+        /** 门 / 柜开关声，用于判断"可能有人进出"。 */
+        val DOOR_CLASS_NAMES = listOf(
+            "Door", "Sliding door", "Knock", "Cupboard open or close", "Drawer open or close",
+        )
 
         /** 模型旁边的类别名清单文件（下载器一并落盘）。 */
         const val LABELS_FILE_NAME = "yamnet_labels.txt"
 
         /**
          * TensorFlow Hub `google/yamnet/1` 官方 class map（CSV display_name 列）固定行号。
+         * 查询自官方 yamnet_class_map.csv（519 行 display_name）。
          * 顺序须与 [BabyModelManager] 落盘的 YAMNET_CLASS_NAMES 完全一致：
-         * index 0=Speech … 18=Chuckle, chortle / 19=Crying, sobbing /
-         * 20=Baby cry, infant cry / 21=Whimper。
+         * index 0=Speech / 1=Child speech / … / 11=Screaming / 13=Laughter /
+         * 19=Crying, sobbing / 20=Baby cry / 21=Whimper / 42=Cough / 44=Sneeze /
+         * 348=Door / 353=Knock / 367=Hair dryer / 371=Vacuum / 406=Fan / 514=White noise。
          */
         val FALLBACK_INDEXES: Map<String, Int> = mapOf(
             "Speech" to 0,
+            "Child speech, kid speaking" to 1,
+            "Babbling" to 4,
+            "Shout" to 6,
+            "Yell" to 9,
+            "Children shouting" to 10,
+            "Screaming" to 11,
+            "Laughter" to 13,
+            "Baby laughter" to 14,
+            "Giggle" to 15,
+            "Chuckle, chortle" to 18,
             "Crying, sobbing" to 19,
             "Baby cry, infant cry" to 20,
             "Whimper" to 21,
+            "Cough" to 42,
+            "Throat clearing" to 43,
+            "Sneeze" to 44,
+            "Door" to 348,
+            "Sliding door" to 351,
+            "Knock" to 353,
+            "Cupboard open or close" to 356,
+            "Drawer open or close" to 357,
+            "Hair dryer" to 367,
+            "Vacuum cleaner" to 371,
+            "Mechanical fan" to 406,
+            "White noise" to 514,
         )
     }
 
     private val interpreter: Interpreter
     private val cryIndices: IntArray
+    private val intenseCryIndices: IntArray
     private val speechIndex: Int
+    private val coughIndices: IntArray
+    private val sneezeIndices: IntArray
+    private val screamIndices: IntArray
+    private val laughterIndices: IntArray
+    private val childSpeechIndices: IntArray
+    private val whiteNoiseIndices: IntArray
+    private val doorIndices: IntArray
 
     /** 输出是否为逐帧 3D 布局（true=3D, false=2D），按输出张量秩判定。 */
     private val frameLayout: Boolean
@@ -113,24 +202,43 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
         // （BabyModelManager 下载时一并落盘）。读不到时退回官方固定索引。
         val labels = loadLabels(modelFile)
         val resolver = LabelResolver(labels)
-        cryIndices = CRY_CLASS_NAMES.mapNotNull { resolver.indexOf(it) }.toIntArray()
+        cryIndices = resolve(resolver, CRY_CLASS_NAMES)
+        intenseCryIndices = resolve(resolver, INTENSE_CRY_CLASS_NAMES)
         speechIndex = resolver.indexOf(SPEECH_CLASS_NAME) ?: -1
-        require(cryIndices.isNotEmpty()) { "YAMNet 模型缺少哭声类别（labels 不匹配）" }
+        coughIndices = resolve(resolver, COUGH_CLASS_NAMES)
+        sneezeIndices = resolve(resolver, SNEEZE_CLASS_NAMES)
+        screamIndices = resolve(resolver, SCREAM_CLASS_NAMES)
+        laughterIndices = resolve(resolver, LAUGHTER_CLASS_NAMES)
+        childSpeechIndices = resolve(resolver, CHILD_SPEECH_CLASS_NAMES)
+        whiteNoiseIndices = resolve(resolver, WHITE_NOISE_CLASS_NAMES)
+        doorIndices = resolve(resolver, DOOR_CLASS_NAMES)
+        require(cryIndices.isNotEmpty() && intenseCryIndices.isNotEmpty()) {
+            "YAMNet 模型缺少哭声类别（labels 不匹配）"
+        }
         DebugLog.i(
             TAG,
             "YAMNet ready: input=${targetShape.contentToString()} output=${outputShape.contentToString()} " +
-                "frameLayout=$frameLayout cry=${cryIndices.contentToString()} speech=$speechIndex",
+                "frameLayout=$frameLayout cry=${cryIndices.contentToString()} " +
+                "intenseCry=${intenseCryIndices.contentToString()} speech=$speechIndex " +
+                "cough=${coughIndices.contentToString()} sneeze=${sneezeIndices.contentToString()} " +
+                "scream=${screamIndices.contentToString()} laughter=${laughterIndices.contentToString()} " +
+                "childSpeech=${childSpeechIndices.contentToString()} " +
+                "whiteNoise=${whiteNoiseIndices.contentToString()} door=${doorIndices.contentToString()}",
         )
     }
+
+    /** 把一组类名解析成索引；解析不到（labels 缺名且无 fallback）的类自动剔除。 */
+    private fun resolve(resolver: LabelResolver, names: List<String>): IntArray =
+        names.mapNotNull { resolver.indexOf(it) }.toIntArray()
 
     /**
      * 对一窗 16kHz 单声道 float PCM 做推理。
      *
      * @param samples 长度 >= [INPUT_SAMPLES]；不足时右侧补零。
-     * @return 哭声合计概率与语音概率（同一帧上各哭声类分数之和、Speech 分数；
-     *         多帧布局取逐帧最大）。解码失败返回 null。
+     * @return 多类事件分数（各字段含义见 [YamnetScores]；同一帧上组内各类分数取逐帧
+     *         最大，哭声与语音除外——哭声为组内求和、语音取单类值）。解码失败返回 null。
      */
-    fun classify(samples: FloatArray): Pair<Float, Float>? {
+    fun classify(samples: FloatArray): YamnetScores? {
         val input = padToWindow(samples)
         val inputBuffer = ByteBuffer.allocateDirect(INPUT_SAMPLES * 4)
             .order(ByteOrder.nativeOrder())
@@ -144,22 +252,58 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
                 val out = Array(1) { Array(frames) { FloatArray(NUM_CLASSES) } }
                 interpreter.run(inputBuffer, out)
                 var peakCry = 0f
+                var peakIntense = 0f
                 var peakSpeech = 0f
+                var peakCough = 0f
+                var peakSneeze = 0f
+                var peakScream = 0f
+                var peakLaughter = 0f
+                var peakChildSpeech = 0f
+                var peakWhiteNoise = 0f
+                var peakDoor = 0f
                 for (frame in out[0]) {
                     val cry = cryIndices.sumOf { frame[it].toDouble() }.toFloat()
                     if (cry > peakCry) peakCry = cry
+                    peakIntense = maxOf(peakIntense, groupMax(frame, intenseCryIndices))
                     if (speechIndex >= 0 && frame[speechIndex] > peakSpeech) {
                         peakSpeech = frame[speechIndex]
                     }
+                    peakCough = maxOf(peakCough, groupMax(frame, coughIndices))
+                    peakSneeze = maxOf(peakSneeze, groupMax(frame, sneezeIndices))
+                    peakScream = maxOf(peakScream, groupMax(frame, screamIndices))
+                    peakLaughter = maxOf(peakLaughter, groupMax(frame, laughterIndices))
+                    peakChildSpeech = maxOf(peakChildSpeech, groupMax(frame, childSpeechIndices))
+                    peakWhiteNoise = maxOf(peakWhiteNoise, groupMax(frame, whiteNoiseIndices))
+                    peakDoor = maxOf(peakDoor, groupMax(frame, doorIndices))
                 }
-                peakCry.coerceIn(0f, 1f) to peakSpeech.coerceIn(0f, 1f)
+                YamnetScores(
+                    cry = peakCry.coerceIn(0f, 1f),
+                    intenseCry = peakIntense.coerceIn(0f, 1f),
+                    speech = peakSpeech.coerceIn(0f, 1f),
+                    cough = peakCough.coerceIn(0f, 1f),
+                    sneeze = peakSneeze.coerceIn(0f, 1f),
+                    scream = peakScream.coerceIn(0f, 1f),
+                    laughter = peakLaughter.coerceIn(0f, 1f),
+                    childSpeech = peakChildSpeech.coerceIn(0f, 1f),
+                    whiteNoise = peakWhiteNoise.coerceIn(0f, 1f),
+                    door = peakDoor.coerceIn(0f, 1f),
+                )
             } else {
                 val out = Array(1) { FloatArray(NUM_CLASSES) }
                 interpreter.run(inputBuffer, out)
                 val row = out[0]
-                val cry = cryIndices.sumOf { row[it].toDouble() }.toFloat()
-                val speech = if (speechIndex >= 0) row[speechIndex] else 0f
-                cry.coerceIn(0f, 1f) to speech.coerceIn(0f, 1f)
+                YamnetScores(
+                    cry = cryIndices.sumOf { row[it].toDouble() }.toFloat().coerceIn(0f, 1f),
+                    intenseCry = groupMax(row, intenseCryIndices).coerceIn(0f, 1f),
+                    speech = (if (speechIndex >= 0) row[speechIndex] else 0f).coerceIn(0f, 1f),
+                    cough = groupMax(row, coughIndices).coerceIn(0f, 1f),
+                    sneeze = groupMax(row, sneezeIndices).coerceIn(0f, 1f),
+                    scream = groupMax(row, screamIndices).coerceIn(0f, 1f),
+                    laughter = groupMax(row, laughterIndices).coerceIn(0f, 1f),
+                    childSpeech = groupMax(row, childSpeechIndices).coerceIn(0f, 1f),
+                    whiteNoise = groupMax(row, whiteNoiseIndices).coerceIn(0f, 1f),
+                    door = groupMax(row, doorIndices).coerceIn(0f, 1f),
+                )
             }
         } catch (t: Throwable) {
             // Throwable 而非 Exception：原生层异常（UnsatisfiedLinkError 等）也绝不外逃，
@@ -167,6 +311,14 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
             DebugLog.e(TAG, "classify failed", t)
             null
         }
+    }
+
+    /** 组内各类的最大分数（该组可能为空集，此时返回 0f）。 */
+    private fun groupMax(frame: FloatArray, indices: IntArray): Float {
+        if (indices.isEmpty()) return 0f
+        var best = 0f
+        for (i in indices) if (frame[i] > best) best = frame[i]
+        return best
     }
 
     fun close() {

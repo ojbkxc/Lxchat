@@ -1471,6 +1471,15 @@
     <string name="baby_monitor_channels_all">Current: all enabled channels</string>
     <string name="baby_monitor_channels_selected">Current: %1$d channels selected</string>
     <string name="baby_monitor_sensitivity_title">Sensitivity</string>
+    <string name="baby_monitor_sensitivity_preset_title">Sensitivity preset</string>
+    <string name="baby_monitor_sensitivity_preset_desc">One-tap detection tuning for your baby\'s baseline</string>
+    <string name="baby_monitor_sensitivity_sensitive">Sensitive</string>
+    <string name="baby_monitor_sensitivity_normal">Normal</string>
+    <string name="baby_monitor_sensitivity_stable">Stable</string>
+    <string name="baby_monitor_quiet_title">Quiet hours</string>
+    <string name="baby_monitor_quiet_desc">Non-critical events muted during this window; intense crying always alerts</string>
+    <string name="baby_monitor_quiet_start">From %1$s</string>
+    <string name="baby_monitor_quiet_end">Until %1$s</string>
     <string name="baby_monitor_sustain_desc">Trigger after %1$d consecutive cry verdicts (higher = fewer false alarms)</string>
     <string name="baby_monitor_cooldown_desc">Minimum %1$d minutes between alerts</string>
     <string name="baby_monitor_channel_name">Baby monitor</string>
@@ -1481,6 +1490,8 @@
     <string name="baby_monitor_alert_channel_desc">High-priority notification when crying is detected</string>
     <string name="baby_monitor_alert_title">Baby is crying</string>
     <string name="baby_monitor_alert_message">[Baby Crying Alert] %1$s crying detected (confidence %2$d%%, %3$d consecutive hits) — please check on the baby</string>
+    <string name="baby_monitor_intense_cry_title">Intense crying detected</string>
+    <string name="baby_monitor_intense_cry_message">[Intense Cry] %1$s intense crying detected (confidence %2$d%%, lasting %3$ds) — please check urgently</string>
     <string name="settings_notification_reply">Auto-reply to Notifications</string>
     <string name="settings_notification_reply_desc">Watch system notifications and let the AI auto-reply</string>
     <string name="notification_reply_enabled">Enable auto-reply</string>

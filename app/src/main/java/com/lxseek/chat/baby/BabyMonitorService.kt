@@ -59,6 +59,9 @@ class BabyMonitorService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var wakeLock: PowerManager.WakeLock? = null
 
+    /** 当前生效配置（由 [monitorLoop] 收集器维护），供免打扰时段判定共享。 */
+    @Volatile private var activeConfig = BabyMonitorStore.Config()
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -154,14 +157,10 @@ class BabyMonitorService : Service() {
             // 配置热更新：单独协程读最新配置。
             val configJob = scope.launch {
                 store.config.collect { cfg ->
-                    // 重建检测器以应用 sustain / cooldown 变化（enabled=false 时服务会被停掉，
-                    // 这里不处理开关本身）。
-                    detector = BabyCryDetectorState(
-                        BabyCryParams(
-                            sustainHits = cfg.sustainHits,
-                            cooldownMs = cfg.cooldownMinutes * 60_000L,
-                        ),
-                    )
+                    activeConfig = cfg
+                    // 重建检测器以应用灵敏度档位 / sustain / cooldown 变化（enabled=false
+                    // 时服务会被停掉，这里不处理开关本身）。
+                    detector = BabyCryDetectorState(buildParams(cfg))
                 }
             }
 
@@ -179,13 +178,27 @@ class BabyMonitorService : Service() {
                             val samples = FloatArray(filled) { window[it] / 32768f }
                             val rms = rmsOf(samples)
                             val verdict = if (BabyCryDetectorState.rmsToDb(rms) < RMS_GATE_DB) {
-                                detector.observe(CryObservation(0f, 0f, rms))
+                                detector.observe(CryObservation(rms = rms))
                             } else {
-                                val (cry, speech) = classifier.classify(samples)
-                                    ?: (0f to 0f)
+                                val s = classifier.classify(samples)
+                                    ?: YamnetScores()
                                 // 单引擎（YAMNet）：InfantCryNet 双引擎因 onnxruntime-android
-                                // 原生 abort 已停用，直接用 YAMNet 概率作为最终哭声分数。
-                                detector.observe(CryObservation(cry, speech, rms))
+                                // 原生 abort 已停用，直接用 YAMNet 概率作为最终的哭声/事件分数。
+                                detector.observe(
+                                    CryObservation(
+                                        cryScore = s.cry,
+                                        speechScore = s.speech,
+                                        rms = rms,
+                                        intenseCryScore = s.intenseCry,
+                                        coughScore = s.cough,
+                                        sneezeScore = s.sneeze,
+                                        screamScore = s.scream,
+                                        laughterScore = s.laughter,
+                                        childSpeechScore = s.childSpeech,
+                                        whiteNoiseScore = s.whiteNoise,
+                                        doorScore = s.door,
+                                    ),
+                                )
                             }
                             when (verdict) {
                                 is CryVerdict.Alert -> {
@@ -197,6 +210,33 @@ class BabyMonitorService : Service() {
                                         TAG,
                                         "cry episode ended: durMs=${verdict.durationMs} peak=${verdict.peakScore}",
                                     )
+                                }
+                                is CryVerdict.Event -> {
+                                    // 剧烈大哭始终报警（安全优先）；其余事件仅记录不打扰，
+                                    // 免打扰时段内静默（仅 DebugLog，不触发任何外部动作）。
+                                    val nowMin = System.currentTimeMillis() /
+                                        (1000L * 60) % 1440
+                                    val quiet = activeConfig.inQuietHours(nowMin.toInt())
+                                    if (verdict.type == EventType.INTENSE_CRY) {
+                                        DebugLog.i(
+                                            TAG,
+                                            "intense cry: score=${verdict.score} durMs=${verdict.durationMs}",
+                                        )
+                                        sendIntenseCryAlert(verdict)
+                                    } else if (!quiet) {
+                                        DebugLog.i(
+                                            TAG,
+                                            "baby event: ${verdict.type} score=${verdict.score} " +
+                                                "durMs=${verdict.durationMs}",
+                                        )
+                                        // 其它事件当前仅记录（不打扰），留作触发时间轴扩展点。
+                                    } else {
+                                        DebugLog.i(
+                                            TAG,
+                                            "baby event (quiet hours): ${verdict.type} " +
+                                                "score=${verdict.score}",
+                                        )
+                                    }
                                 }
                                 else -> Unit
                             }
@@ -229,11 +269,29 @@ class BabyMonitorService : Service() {
 
     private suspend fun buildDetector(store: BabyMonitorStore): BabyCryDetectorState {
         val cfg = store.config.first()
-        return BabyCryDetectorState(
-            BabyCryParams(
-                sustainHits = cfg.sustainHits,
-                cooldownMs = cfg.cooldownMinutes * 60_000L,
-            ),
+        return BabyCryDetectorState(buildParams(cfg))
+    }
+
+    /**
+     * 把配置映射为一整套状态机参数。灵敏度档位一键替换核心门槛（吸收 android-vad
+     * NORMAL/AGGRESSIVE/VERY_AGGRESSIVE 分级思路）；用户手动调过的 sustain/cooldown 优先。
+     */
+    private fun buildParams(cfg: BabyMonitorStore.Config): BabyCryParams {
+        // 灵敏度三档：门槛越低越灵敏（召回↑、误报↑）；STABLE 反之。
+        val base = when (cfg.sensitivity) {
+            BabySensitivity.SENSITIVE -> BabyCryParams(
+                cryProb = 0.32f, intenseCryProb = 0.5f, sustainHits = 2,
+                silenceReset = 6, speechReset = 0.55f,
+            )
+            BabySensitivity.STABLE -> BabyCryParams(
+                cryProb = 0.48f, intenseCryProb = 0.7f, sustainHits = 4,
+                silenceReset = 12, speechReset = 0.45f,
+            )
+            BabySensitivity.NORMAL -> BabyCryParams()
+        }
+        return base.copy(
+            sustainHits = cfg.sustainHits,
+            cooldownMs = cfg.cooldownMinutes * 60_000L,
         )
     }
 
@@ -279,20 +337,67 @@ class BabyMonitorService : Service() {
                 DebugLog.e(TAG, "alert via $channelId failed", e)
             }
         }
-        if (!anySent) showLocalAlert(verdict)
+        if (!anySent) showLocalNotification(getString(R.string.baby_monitor_alert_title), buildAlertText(verdict))
     }
 
-    /** 本地兜底通知（无可用 IM 渠道或全部发送失败时）。 */
-    private fun showLocalAlert(verdict: CryVerdict.Alert) {
+    /**
+     * 剧烈大哭（INTENSE_CRY）分级报警：复用选中 IM 渠道发送，文案带「剧烈」标识，
+     * 本地兜底通知也使用同渠道的高优先级通知。事件分数过低时不打扰——仅当分数
+     * 达到 [thresholdOf]（默认 0.6）才会产生 [EventType.INTENSE_CRY] 事件。
+     */
+    private suspend fun sendIntenseCryAlert(verdict: CryVerdict.Event) {
+        val appContext = applicationContext
+        val container = (appContext as? com.lxseek.chat.LxChatApplication)?.container
+        if (container == null) {
+            showLocalNotification(getString(R.string.baby_monitor_intense_cry_title), buildIntenseCryText(verdict))
+            return
+        }
+        val bridge = container.imBridgeService
+        val cfg = BabyMonitorStore(appContext).config.first()
+        val channels = bridge.channels()
+        val targets = if (cfg.selectedChannels.isEmpty()) {
+            channels
+        } else {
+            channels.filterKeys { it in cfg.selectedChannels }
+        }
+        if (targets.isEmpty()) {
+            showLocalNotification(getString(R.string.baby_monitor_intense_cry_title), buildIntenseCryText(verdict))
+            return
+        }
+        val message = buildIntenseCryText(verdict)
+        var anySent = false
+        for ((channelId, channel) in targets) {
+            try {
+                val conversation = channel.listConversations().firstOrNull() ?: continue
+                val result = channel.sendMessage(conversation.id, message)
+                if (result is com.lxseek.chat.im.ImSendResult.Success) {
+                    anySent = true
+                    DebugLog.i(TAG, "intense-cry alert sent via $channelId -> ${conversation.title}")
+                }
+            } catch (e: Exception) {
+                DebugLog.e(TAG, "intense-cry alert via $channelId failed", e)
+            }
+        }
+        if (!anySent) showLocalNotification(getString(R.string.baby_monitor_intense_cry_title), message)
+    }
+
+    /** 本地兜底通知（无可用 IM 渠道或全部发送失败时），文案可定制。 */
+    private fun showLocalNotification(title: String, text: String) {
         val manager = getSystemService(NotificationManager::class.java) ?: return
         val notification = NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.baby_monitor_alert_title))
-            .setContentText(buildAlertText(verdict))
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()
         runCatching { manager.notify(ALERT_NOTIFICATION_ID, notification) }
+    }
+
+    /** 旧签名兼容：普通哭声报警走默认标题的本地兜底。 */
+    private fun showLocalAlert(verdict: CryVerdict.Alert) {
+        showLocalNotification(getString(R.string.baby_monitor_alert_title), buildAlertText(verdict))
     }
 
     /**
@@ -303,6 +408,14 @@ class BabyMonitorService : Service() {
         val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
         val pct = (verdict.cryScore * 100).toInt()
         return getString(R.string.baby_monitor_alert_message, time, pct, verdict.streak)
+    }
+
+    /** 剧烈大哭分级报警文案（带剧烈标识 + 分数 + 持续时长）。 */
+    private fun buildIntenseCryText(verdict: CryVerdict.Event): String {
+        val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        val pct = (verdict.score * 100).toInt()
+        val secs = verdict.durationMs / 1000
+        return getString(R.string.baby_monitor_intense_cry_message, time, pct, secs)
     }
 
     // ── 前台通知与权限 ───────────────────────────────────────

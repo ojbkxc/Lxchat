@@ -47,6 +47,7 @@ import com.lxseek.chat.R
 import com.lxseek.chat.baby.BabyModelManager
 import com.lxseek.chat.baby.BabyMonitorController
 import com.lxseek.chat.baby.BabyMonitorStore
+import com.lxseek.chat.baby.BabySensitivity
 import com.lxseek.chat.im.ImPlatform
 import kotlinx.coroutines.launch
 
@@ -327,6 +328,105 @@ fun SettingsBabyMonitorPage(
 
         Spacer(Modifier.height(12.dp))
 
+        // ── 5a. 灵敏度档位 + 免打扰时段 ──
+        Card(colors = CardDefaults.cardColors()) {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    text = stringResource(R.string.baby_monitor_sensitivity_preset_title),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = stringResource(R.string.baby_monitor_sensitivity_preset_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    BabySensitivity.entries.forEach { level ->
+                        val selected = config.sensitivity == level
+                        OutlinedButton(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 4.dp),
+                            onClick = { scope.launch { store.setSensitivity(level) } },
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    when (level) {
+                                        BabySensitivity.SENSITIVE -> R.string.baby_monitor_sensitivity_sensitive
+                                        BabySensitivity.NORMAL -> R.string.baby_monitor_sensitivity_normal
+                                        BabySensitivity.STABLE -> R.string.baby_monitor_sensitivity_stable
+                                    },
+                                ),
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider()
+
+                // 免打扰时段开关 + 起止时间（分钟粒度，跨午夜由 Store 语义处理）。
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.baby_monitor_quiet_title),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.baby_monitor_quiet_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = config.quietHoursEnabled,
+                        onCheckedChange = { scope.launch { store.setQuietHoursEnabled(it) } },
+                    )
+                }
+                if (config.quietHoursEnabled) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(
+                            R.string.baby_monitor_quiet_start,
+                            formatTime(config.quietStartMin),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Slider(
+                        value = config.quietStartMin.toFloat(),
+                        onValueChange = { scope.launch { store.setQuietStartMin(it.toInt()) } },
+                        valueRange = 0f..1439f,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.baby_monitor_quiet_end,
+                            formatTime(config.quietEndMin),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Slider(
+                        value = config.quietEndMin.toFloat(),
+                        onValueChange = { scope.launch { store.setQuietEndMin(it.toInt()) } },
+                        valueRange = 0f..1439f,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
         // ── 5. 灵敏度参数 ──
         Card(colors = CardDefaults.cardColors()) {
             Column(Modifier.padding(16.dp)) {
@@ -371,4 +471,10 @@ private fun formatBytes(bytes: Long): String = when {
     bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
     bytes >= 1_000 -> "%.1f KB".format(bytes / 1_000.0)
     else -> "$bytes B"
+}
+
+/** 把当天分钟数格式化为 HH:mm。 */
+private fun formatTime(minuteOfDay: Int): String {
+    val m = ((minuteOfDay % 1440) + 1440) % 1440
+    return String.format("%02d:%02d", m / 60, m % 60)
 }
