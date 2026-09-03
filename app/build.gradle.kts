@@ -8,6 +8,8 @@ plugins {
 }
 
 import java.util.Properties
+import java.net.HttpURLConnection
+import java.net.URI
 
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
@@ -133,17 +135,6 @@ android {
         }
     }
 
-    sourceSets {
-        // full 变体内置模型产出到 build 目录（不入 git、不污染源码树）。
-        // assets 根即 srcDir，内部路径为 baby_monitor/yamnet.tflite；
-        // 运行时 BabyModelManager.seedBundledModelIfPresent() 从 assets 复制落盘。
-        getByName("full") {
-            assets.srcDir(
-                layout.buildDirectory.dir("generated/bundledYamnet/assets"),
-            )
-        }
-    }
-
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -190,16 +181,15 @@ android {
 // talloc is built with SONAME=libtalloc.so (no version) so AGP packaging works.
 
 // ── Bundled YAMNet 模型（full 变体）────────────────────────────────────
-// online 变体运行时下载模型；full 变体把模型内置进 assets 以免下载。模型
-// 不入 git、不进源码树（产出到 build/generated/…），按需从主源/镜像拉取。
-val bundYamnetDir = layout.buildDirectory.dir("generated/bundledYamnet/assets")
-val bundYamnetFile = bundYamnetDir.map { it.file("baby_monitor/yamnet.tflite") }
+// online 变体运行时下载模型；full 变体把模型内置进 src/full/assets 以免下载。
+// 该目录在 .gitignore 中排除（不入 git），仅在 CI/full 构建时由本任务拉取。
+val bundledYamnetFile = file("src/full/assets/baby_monitor/yamnet.tflite")
 
 val downloadBundledYamnet = tasks.register("downloadBundledYamnet") {
-    description = "Download YAMNet tflite into build/generated (bundled-model flavor)."
-    outputs.file(bundYamnetFile)
+    description = "Download YAMNet tflite into src/full/assets (bundled-model flavor)."
+    outputs.file(bundledYamnetFile)
     doLast {
-        val out = bundYamnetFile.get().asFile
+        val out = bundledYamnetFile
         if (out.isFile && out.length() > 0L) {
             logger.lifecycle("Bundled YAMNet already present ({} bytes)", out.length())
             return@doLast
@@ -212,7 +202,7 @@ val downloadBundledYamnet = tasks.register("downloadBundledYamnet") {
         var lastError: Exception? = null
         for (url in urls) {
             try {
-                val conn = java.net.URI(url).toURL().openConnection() as java.net.HttpURLConnection
+                val conn = URI(url).toURL().openConnection() as HttpURLConnection
                 conn.connectTimeout = 30_000
                 conn.readTimeout = 120_000
                 conn.instanceFollowRedirects = true
