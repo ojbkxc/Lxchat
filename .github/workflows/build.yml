@@ -99,12 +99,12 @@ jobs:
       - name: Rename and collect APKs
         run: |
           mkdir -p dist
-          # online variant
-          ON=$(find app/build/outputs/apk/fdroid/online/release -name '*.apk' -print -quit)
+          # online variant —— 递归查找，避免双维度 flavor 的 APK 输出目录差异
+          ON=$(find app/build/outputs/apk -type f -name '*.apk' | grep 'online' | grep 'release' | head -1)
           cp "$ON" "dist/LxChat-v${VERSION}-android-arm64-v8a-online.apk"
           ls -lh "$ON"
           # full variant (bundled model)
-          FU=$(find app/build/outputs/apk/fdroid/full/release -name '*.apk' -print -quit)
+          FU=$(find app/build/outputs/apk -type f -name '*.apk' | grep 'full' | grep 'release' | head -1)
           cp "$FU" "dist/LxChat-v${VERSION}-android-arm64-v8a-full.apk"
           ls -lh "$FU"
           echo "Produced:"
