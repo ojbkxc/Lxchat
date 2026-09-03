@@ -261,6 +261,82 @@ class BabyCryDetectorStateTest {
         assertEquals(CryVerdict.Suppressed, v)
     }
 
+    // ── 7.1 农场动物事件（PIG/COW/CHICKEN/HORSE/SHEEP） ─────────
+
+    @Test
+    fun pigScoresTriggerEvent() {
+        val (state, _) = detector()
+        // PIG 门槛 0.35、minHits=2。
+        assertEquals(CryVerdict.None, state.observe(CryObservation(pigScore = 0.5f, rms = loud)))
+        val v = state.observe(CryObservation(pigScore = 0.5f, rms = loud))
+        assertTrue(v is CryVerdict.Event)
+        assertEquals(EventType.PIG, (v as CryVerdict.Event).type)
+    }
+
+    @Test
+    fun cowBelowThresholdDoesNotTrigger() {
+        val (state, _) = detector()
+        // COW 门槛 0.35。
+        assertEquals(CryVerdict.None, state.observe(CryObservation(cowScore = 0.1f, rms = loud)))
+    }
+
+    @Test
+    fun sheepScoreTriggersEvent() {
+        val (state, _) = detector()
+        // SHEEP 门槛 0.35、minHits=2。
+        assertEquals(CryVerdict.None, state.observe(CryObservation(sheepScore = 0.6f, rms = loud)))
+        val v = state.observe(CryObservation(sheepScore = 0.6f, rms = loud))
+        assertTrue(v is CryVerdict.Event)
+        assertEquals(EventType.SHEEP, (v as CryVerdict.Event).type)
+    }
+
+    // ── 7.2 20ms 防抖下限 ─────────────────────────────────────
+
+    @Test
+    fun debounceFloorSuppressesInstantRefire() {
+        val clock = FakeClock()
+        // 手动把 COUGH dedup 覆盖为 0ms（minHits=1）：若无防抖下限，紧邻两帧会连续触发。
+        val params = BabyCryParams(
+            eventOverrides = mapOf(
+                EventType.COUGH to EventParams(threshold = 0.3f, dedupMs = 0L, minHits = 1),
+            ),
+        )
+        val state = BabyCryDetectorState(params) { clock.now }
+        // 第一帧触发。
+        assertTrue(state.observe(CryObservation(coughScore = 0.5f, rms = loud)) is CryVerdict.Event)
+        // 同一时刻再给一帧：20ms 防抖下限阻止立即重放。
+        assertEquals(CryVerdict.None, state.observe(CryObservation(coughScore = 0.5f, rms = loud)))
+        // 越过 20ms 后恢复可重放。
+        clock.tick(30L)
+        assertTrue(state.observe(CryObservation(coughScore = 0.5f, rms = loud)) is CryVerdict.Event)
+    }
+
+    // ── 7.3 per-class 自动调参 ────────────────────────────────
+
+    @Test
+    fun autoTuneRaisesThresholdOnHighHitRate() {
+        val clock = FakeClock()
+        val params = BabyCryParams(autoTuneEnabled = true, autoTuneWindow = 4)
+        val state = BabyCryDetectorState(params) { clock.now }
+
+        // COUGH 门槛 0.30、minHits=1。连给 3 帧强信号（间隔>dedup 700ms）→ 每帧都触发，
+        // 结算窗口（4）内命中率 > 上限 → 门槛被抬高 0.02 至 0.32。
+        val strong: () -> CryVerdict = {
+            state.observe(CryObservation(coughScore = 0.9f, rms = loud))
+        }
+        repeat(3) {
+            assertTrue(strong() is CryVerdict.Event)
+            clock.tick(1_000L)
+        }
+        // 第 4 帧触发一次结算，命中率=3/4 > 0.10 → 抬高门槛，这次仍能触发（0.9≥0.32）。
+        assertTrue(strong() is CryVerdict.Event)
+        clock.tick(1_000L)
+
+        // 现在回到门槛附近分（0.31）：原 0.30 会触发，但被自适应抬高后的 0.32 拦下 → 不触发。
+        val mid = state.observe(CryObservation(coughScore = 0.31f, rms = loud))
+        assertTrue(mid is CryVerdict.None)
+    }
+
     // ── 8. 哭声周期：grace 合并碎段 ───────────────────────────
 
     @Test

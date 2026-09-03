@@ -44,10 +44,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lxseek.chat.LxChatApplication
 import com.lxseek.chat.R
+import com.lxseek.chat.baby.BabyEventEntry
+import com.lxseek.chat.baby.BabyEventHistory
 import com.lxseek.chat.baby.BabyModelManager
 import com.lxseek.chat.baby.BabyMonitorController
 import com.lxseek.chat.baby.BabyMonitorStore
 import com.lxseek.chat.baby.BabySensitivity
+import com.lxseek.chat.baby.EventParams
+import com.lxseek.chat.baby.EventType
 import com.lxseek.chat.im.ImPlatform
 import kotlinx.coroutines.launch
 
@@ -78,6 +82,8 @@ fun SettingsBabyMonitorPage(
 
     val config by store.config.collectAsState(initial = BabyMonitorStore.Config())
     val modelState by modelManager.state.collectAsState()
+    // 多类事件流（服务运行时实时追加，这里订阅渲染时间轴）。
+    val eventLog by BabyEventHistory.events.collectAsState()
 
     // 已启用渠道快照（选中渠道的显示名与平台标签从这取）。
     var activeChannels by remember { mutableStateOf<Map<String, Pair<String, String>>>(emptyMap()) }
@@ -464,7 +470,217 @@ fun SettingsBabyMonitorPage(
                 )
             }
         }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── 6. per-class 事件参数（自动调参 + 重置） ──
+        Card(colors = CardDefaults.cardColors()) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.baby_monitor_event_params_title),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            text = stringResource(R.string.baby_monitor_event_params_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { scope.launch { store.resetAllEventParams() } }) {
+                        Text(stringResource(R.string.baby_monitor_event_reset_all))
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                // per-class 自动调参开关：运行时按命中/误报率微调门槛（压误报/提召回）。
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.baby_monitor_auto_tune_title),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.baby_monitor_auto_tune_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = config.autoTuneEnabled,
+                        onCheckedChange = { scope.launch { store.setAutoTuneEnabled(it) } },
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                EventType.entries.forEach { type ->
+                    // 生效参数：用户覆盖优先，否则枚举内置推荐值。
+                    val effParams = config.eventOverrides[type.name] ?: type.params
+                    HorizontalDivider(Modifier.padding(vertical = 6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(eventLabelRes(type)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (type.name in config.eventOverrides) {
+                            TextButton(onClick = { scope.launch { store.resetEventParam(type) } }) {
+                                Text(
+                                    stringResource(R.string.baby_monitor_event_reset),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = stringResource(R.string.baby_monitor_event_threshold) +
+                            ": ${(effParams.threshold * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Slider(
+                        value = effParams.threshold,
+                        onValueChange = { v ->
+                            scope.launch { store.setEventParam(type, effParams.copy(threshold = v)) }
+                        },
+                        valueRange = 0f..1f,
+                    )
+                    Text(
+                        text = stringResource(R.string.baby_monitor_event_dedup) +
+                            ": ${effParams.dedupMs / 1000}s",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Slider(
+                        value = (effParams.dedupMs / 1000L).toFloat(),
+                        onValueChange = { v ->
+                            scope.launch {
+                                store.setEventParam(type, effParams.copy(dedupMs = (v * 1000L).toLong()))
+                            }
+                        },
+                        valueRange = 1f..30f,
+                        steps = 28,
+                    )
+                    Text(
+                        text = stringResource(R.string.baby_monitor_event_min_hits) +
+                            ": ${effParams.minHits}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Slider(
+                        value = effParams.minHits.toFloat(),
+                        onValueChange = { v ->
+                            scope.launch { store.setEventParam(type, effParams.copy(minHits = v.toInt())) }
+                        },
+                        valueRange = 1f..6f,
+                        steps = 4,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── 7. 多类事件流（可视化：实时时间轴） ──
+        Card(colors = CardDefaults.cardColors()) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.baby_monitor_event_stream_title),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            text = stringResource(R.string.baby_monitor_event_stream_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { scope.launch { BabyEventHistory.clear() } }) {
+                        Text(stringResource(R.string.baby_monitor_event_stream_clear))
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                if (eventLog.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.baby_monitor_event_stream_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    eventLog.take(50).forEach { e ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(eventHistoryLabelRes(e)),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            val hh = e.timeMs / 3600_000 % 24
+                            val mm = e.timeMs / 60_000 % 60
+                            Text(
+                                text = String.format("%02d:%02d", hh, mm),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "${(e.score * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
+}
+
+/** [BabyEventEntry] → 设置页类名文案。 */
+private fun eventHistoryLabelRes(e: BabyEventEntry): Int = when (e.typeName) {
+    BabyEventEntry.TYPE_CRY_ALERT -> R.string.baby_event_cry_alert
+    BabyEventEntry.TYPE_CRY_ENDED -> R.string.baby_event_cry_ended
+    else -> runCatching { EventType.valueOf(e.typeName) }
+        .getOrNull()
+        ?.let { eventLabelRes(it) }
+        ?: R.string.baby_event_unknown
+}
+
+/** [EventType] → 设置页类名文案。 */
+private fun eventLabelRes(type: EventType): Int = when (type) {
+    EventType.INTENSE_CRY -> R.string.baby_event_intense_cry
+    EventType.COUGH -> R.string.baby_event_cough
+    EventType.SNEEZE -> R.string.baby_event_sneeze
+    EventType.SCREAM -> R.string.baby_event_scream
+    EventType.LAUGHTER -> R.string.baby_event_laughter
+    EventType.CHILD_SPEECH -> R.string.baby_event_child_speech
+    EventType.WHITE_NOISE -> R.string.baby_event_white_noise
+    EventType.DOOR -> R.string.baby_event_door
+    EventType.DOG_BARK -> R.string.baby_event_dog_bark
+    EventType.CAT -> R.string.baby_event_cat
+    EventType.BIRD -> R.string.baby_event_bird
+    EventType.GLASS_BREAK -> R.string.baby_event_glass_break
+    EventType.SIREN -> R.string.baby_event_siren
+    EventType.PHONE_RING -> R.string.baby_event_phone_ring
+    EventType.CLAP -> R.string.baby_event_clap
+    EventType.WHISTLE -> R.string.baby_event_whistle
+    EventType.FOOTSTEPS -> R.string.baby_event_footsteps
+    EventType.WATER -> R.string.baby_event_water
+    EventType.MUSIC -> R.string.baby_event_music
+    EventType.PIG -> R.string.baby_event_pig
+    EventType.COW -> R.string.baby_event_cow
+    EventType.CHICKEN -> R.string.baby_event_chicken
+    EventType.HORSE -> R.string.baby_event_horse
+    EventType.SHEEP -> R.string.baby_event_sheep
 }
 
 private fun formatBytes(bytes: Long): String = when {

@@ -30,6 +30,18 @@ data class BabyCryParams(
     val cooldownMs: Long = 60_000L,
     val rmsGateDb: Float = -60f,
     val graceMs: Long = 30_000L,
+    /**
+     * per-class 事件参数覆盖表（key = [EventType]）。命中则用覆盖值，否则用枚举内置推荐值。
+     * 用于「per-class 自动调参」：由 Store 持久化的用户调整，服务端注入；重置即移除此键。
+     */
+    val eventOverrides: Map<EventType, EventParams> = emptyMap(),
+    /**
+     * per-class 自动调参开关：运行时按各类命中/误报率微调生效门槛（仅内存，
+     * 不写持久化；手动覆盖仍优先）。默认关闭以免影响既有行为。
+     */
+    val autoTuneEnabled: Boolean = false,
+    /** 自动调参结算窗口（非安静真实事件帧数），约一个窗口调一次。 */
+    val autoTuneWindow: Int = 40,
 )
 
 /** 单次推理的原始结果：供 [BabyCryDetectorState.observe] 消费的输入。 */
@@ -56,6 +68,38 @@ data class CryObservation(
     val whiteNoiseScore: Float = 0f,
     /** 门/柜开关概率，0..1。 */
     val doorScore: Float = 0f,
+    /** 狗叫概率，0..1。 */
+    val dogBarkScore: Float = 0f,
+    /** 猫叫/呼噜概率，0..1。 */
+    val catScore: Float = 0f,
+    /** 鸟鸣概率，0..1。 */
+    val birdScore: Float = 0f,
+    /** 玻璃碎裂概率，0..1。 */
+    val glassBreakScore: Float = 0f,
+    /** 警笛/警报概率，0..1。 */
+    val sirenScore: Float = 0f,
+    /** 电话/手机铃声概率，0..1。 */
+    val phoneRingScore: Float = 0f,
+    /** 拍手概率，0..1。 */
+    val clapScore: Float = 0f,
+    /** 口哨概率，0..1。 */
+    val whistleScore: Float = 0f,
+    /** 脚步声概率，0..1。 */
+    val footstepsScore: Float = 0f,
+    /** 水流/雨概率，0..1。 */
+    val waterScore: Float = 0f,
+    /** 音乐播放概率，0..1。 */
+    val musicScore: Float = 0f,
+    /** 猪叫概率，0..1。 */
+    val pigScore: Float = 0f,
+    /** 牛/奶牛叫概率，0..1。 */
+    val cowScore: Float = 0f,
+    /** 鸡/公鸡叫概率，0..1。 */
+    val chickenScore: Float = 0f,
+    /** 马叫概率，0..1。 */
+    val horseScore: Float = 0f,
+    /** 羊叫概率，0..1。 */
+    val sheepScore: Float = 0f,
 )
 
 /** 单个事件类的判定参数（per-class，吸收 sound2species / CoughLogger）。 */
@@ -86,6 +130,38 @@ enum class EventType(val params: EventParams) {
     WHITE_NOISE(EventParams(threshold = 0.2f, dedupMs = 30_000L, minHits = 2)),
     /** 门/柜开关 —— 可能有人进出。 */
     DOOR(EventParams(threshold = 0.25f, dedupMs = 5_000L, minHits = 1)),
+    /** 狗叫 —— 异常闯入信号。 */
+    DOG_BARK(EventParams(threshold = 0.3f, dedupMs = 5_000L, minHits = 2)),
+    /** 猫叫 / 呼噜 —— 宠物活动。 */
+    CAT(EventParams(threshold = 0.35f, dedupMs = 5_000L, minHits = 2)),
+    /** 鸟鸣 —— 户外环境音。 */
+    BIRD(EventParams(threshold = 0.3f, dedupMs = 5_000L, minHits = 2)),
+    /** 玻璃碎裂 —— 高风险信号：高门槛 + 单帧即报。 */
+    GLASS_BREAK(EventParams(threshold = 0.6f, dedupMs = 10_000L, minHits = 1)),
+    /** 警笛 / 警报 —— 持续高置信，较长去重。 */
+    SIREN(EventParams(threshold = 0.5f, dedupMs = 10_000L, minHits = 2)),
+    /** 电话 / 手机铃声 —— 需接起提示。 */
+    PHONE_RING(EventParams(threshold = 0.4f, dedupMs = 10_000L, minHits = 2)),
+    /** 拍手 —— 短音，低门槛 + 短去重。 */
+    CLAP(EventParams(threshold = 0.4f, dedupMs = 3_000L, minHits = 1)),
+    /** 口哨 —— 短音，低门槛 + 短去重。 */
+    WHISTLE(EventParams(threshold = 0.4f, dedupMs = 3_000L, minHits = 1)),
+    /** 脚步声 —— 有人走动。 */
+    FOOTSTEPS(EventParams(threshold = 0.3f, dedupMs = 5_000L, minHits = 2)),
+    /** 水流 / 雨 —— 环境水流。 */
+    WATER(EventParams(threshold = 0.25f, dedupMs = 10_000L, minHits = 2)),
+    /** 音乐播放 —— 持续声源，最长去重降干扰。 */
+    MUSIC(EventParams(threshold = 0.4f, dedupMs = 15_000L, minHits = 3)),
+    /** 猪叫（农场动物）—— 长音，需持续确认。 */
+    PIG(EventParams(threshold = 0.35f, dedupMs = 5_000L, minHits = 2)),
+    /** 牛 / 奶牛叫 —— 低音、低频，长去重。 */
+    COW(EventParams(threshold = 0.35f, dedupMs = 8_000L, minHits = 2)),
+    /** 鸡 / 公鸡叫 —— 短促、间歇，短去重。 */
+    CHICKEN(EventParams(threshold = 0.3f, dedupMs = 3_000L, minHits = 2)),
+    /** 马叫 —— 中频嘶鸣，需持续确认。 */
+    HORSE(EventParams(threshold = 0.35f, dedupMs = 5_000L, minHits = 2)),
+    /** 羊叫 —— 咩咩，短去重。 */
+    SHEEP(EventParams(threshold = 0.35f, dedupMs = 4_000L, minHits = 2)),
 }
 
 /** 观测后的状态转移结果。 */
@@ -178,6 +254,12 @@ class BabyCryDetectorState(
         var hits = 0
         var lastFiredAt = 0L
         var firstHitAt = 0L
+        /** 自动调参后的生效门槛；0=未初始化（取默认）。 */
+        var adaptiveThreshold = 0f
+        /** 自动调参窗口统计（结算后重置）。 */
+        var windowFrames = 0
+        var windowHits = 0
+        var highSignalFrames = 0
     }
 
     private val trackers: Map<EventType, EventTracker> =
@@ -193,11 +275,75 @@ class BabyCryDetectorState(
         EventType.CHILD_SPEECH -> o.childSpeechScore
         EventType.WHITE_NOISE -> o.whiteNoiseScore
         EventType.DOOR -> o.doorScore
+        EventType.DOG_BARK -> o.dogBarkScore
+        EventType.CAT -> o.catScore
+        EventType.BIRD -> o.birdScore
+        EventType.GLASS_BREAK -> o.glassBreakScore
+        EventType.SIREN -> o.sirenScore
+        EventType.PHONE_RING -> o.phoneRingScore
+        EventType.CLAP -> o.clapScore
+        EventType.WHISTLE -> o.whistleScore
+        EventType.FOOTSTEPS -> o.footstepsScore
+        EventType.WATER -> o.waterScore
+        EventType.MUSIC -> o.musicScore
+        EventType.PIG -> o.pigScore
+        EventType.COW -> o.cowScore
+        EventType.CHICKEN -> o.chickenScore
+        EventType.HORSE -> o.horseScore
+        EventType.SHEEP -> o.sheepScore
     }
 
-    /** INTENSE_CRY 的门槛跟随 [params.intenseCryProb]（灵敏度可调），其余用枚举内置阈值。 */
-    private fun thresholdOf(type: EventType): Float =
-        if (type == EventType.INTENSE_CRY) params.intenseCryProb else type.params.threshold
+    /** 读取某事件类的生效参数：优先用户覆盖（per-class 调参），否则枚举内置推荐值。 */
+    private fun paramsOf(type: EventType): EventParams = params.eventOverrides[type] ?: type.params
+
+    /**
+     * 读取某事件类的触发门槛，优先级：用户覆盖 > 自动调参值 > 内置推荐（INTENSE_CRY 跟随
+     * [params.intenseCryProb] 以支持灵敏度三档）。
+     */
+    private fun thresholdOf(type: EventType, tracker: EventTracker): Float {
+        params.eventOverrides[type]?.let { return it.threshold }
+        if (tracker.adaptiveThreshold > 0f) return tracker.adaptiveThreshold
+        if (type == EventType.INTENSE_CRY) return params.intenseCryProb
+        return type.params.threshold
+    }
+
+    /**
+     * 单帧自动调参采样：按 [params.autoTuneWindow] 帧结算一次，依据各类命中率
+     * （误报）与「持续强信号却从未触发」（漏报）微调门槛：
+     *  - 命中率偏高 → 抬高门槛压误报；
+     *  - 命中率为 0 但持续强信号 → 降低门槛提召回。
+     * 门槛严格钳制在 [MIN_THRESHOLD, MAX_THRESHOLD]。仅内存，不写持久化。
+     */
+    private fun sampleAutoTune(
+        type: EventType,
+        tracker: EventTracker,
+        score: Float,
+        threshold: Float,
+    ) {
+        if (!params.autoTuneEnabled || params.autoTuneWindow <= 0) return
+        tracker.windowFrames += 1
+        if (score >= threshold * AUTO_TUNE_SIGNAL_RATIO) tracker.highSignalFrames += 1
+        if (tracker.windowFrames < params.autoTuneWindow) return
+
+        if (tracker.adaptiveThreshold <= 0f) {
+            tracker.adaptiveThreshold =
+                if (type == EventType.INTENSE_CRY) params.intenseCryProb else type.params.threshold
+        }
+        val hitRate = tracker.windowHits.toFloat() / tracker.windowFrames
+        val signalRatio = tracker.highSignalFrames.toFloat() / tracker.windowFrames
+        val cur = tracker.adaptiveThreshold
+        when {
+            // 命中率过高 → 疑似误报过多，抬高门槛。
+            hitRate > AUTO_TUNE_MAX_HIT_RATE && cur < MAX_THRESHOLD ->
+                tracker.adaptiveThreshold = (cur + AUTO_TUNE_STEP).coerceAtMost(MAX_THRESHOLD)
+            // 持续强信号却零触发 → 疑似门槛过高漏报，降低门槛（仅在有强信号时）。
+            hitRate <= 0f && signalRatio > AUTO_TUNE_MIN_SIGNAL && cur > MIN_THRESHOLD ->
+                tracker.adaptiveThreshold = (cur - AUTO_TUNE_STEP).coerceAtLeast(MIN_THRESHOLD)
+        }
+        tracker.windowFrames = 0
+        tracker.windowHits = 0
+        tracker.highSignalFrames = 0
+    }
 
     /** 结束当前哭声周期（若在周期内），返回 Ended 事件，否则 null。 */
     private fun endActiveIfAny(): CryVerdict.Ended? {
@@ -282,14 +428,20 @@ class BabyCryDetectorState(
         for (type in EventType.entries) {
             val tracker = trackers.getValue(type)
             val score = scoreOf(type, o)
-            val threshold = thresholdOf(type)
+            val effParams = paramsOf(type)
+            val threshold = thresholdOf(type, tracker)
+            sampleAutoTune(type, tracker, score, threshold)
+
+            // 2) 触发判定。20ms 防抖作为同类事件最小重放间隔的下限（叠加在 per-class
+            //    dedup 上）：即使某类传了极短的 dedup 也至少隔 [DEBOUNCE_MS] 才再放一次，
+            //    防止同一持续声源在相邻窗口被重复上报。
             if (score >= threshold) {
                 if (tracker.hits == 0) tracker.firstHitAt = t
                 tracker.hits += 1
-                if (tracker.hits >= type.params.minHits &&
-                    t - tracker.lastFiredAt >= type.params.dedupMs
-                ) {
+                val minGap = maxOf(effParams.dedupMs, DEBOUNCE_MS)
+                if (tracker.hits >= effParams.minHits && t - tracker.lastFiredAt >= minGap) {
                     tracker.lastFiredAt = t
+                    tracker.windowHits += 1
                     tracker.hits = 0
                     return CryVerdict.Event(
                         type = type,
@@ -309,5 +461,19 @@ class BabyCryDetectorState(
         /** 线性 RMS → dBFS。 */
         fun rmsToDb(rms: Float): Float =
             (20.0 * kotlin.math.log10(rms.toDouble() + 1e-9)).toFloat()
+
+        /** 20ms 事件防抖：同一事件类在此间隔内只计一次命中。 */
+        const val DEBOUNCE_MS = 20L
+
+        /** 自动调参参数（仅 [params.autoTuneEnabled] 时生效）。 */
+        private const val AUTO_TUNE_STEP = 0.02f
+        private const val MIN_THRESHOLD = 0.05f
+        private const val MAX_THRESHOLD = 0.95f
+        /** 命中率达此值视为误报过多 → 抬高门槛。 */
+        private const val AUTO_TUNE_MAX_HIT_RATE = 0.10f
+        /** 窗口内强信号帧占比达此值且零触发 → 视为漏报 → 降低门槛。 */
+        private const val AUTO_TUNE_MIN_SIGNAL = 0.85f
+        /** 判定「强信号」的分数下限 = 门槛 × 此比例。 */
+        private const val AUTO_TUNE_SIGNAL_RATIO = 0.5f
     }
 }

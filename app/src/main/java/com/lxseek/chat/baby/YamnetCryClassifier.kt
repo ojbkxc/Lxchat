@@ -37,6 +37,24 @@ data class YamnetScores(
     val childSpeech: Float = 0f,
     val whiteNoise: Float = 0f,
     val door: Float = 0f,
+    // 新增 11 类：Dog bark / Cat / Bird / Glass break / Siren / Phone ring / Clap / Whale / Water / Music
+    val dogBark: Float = 0f,
+    val cat: Float = 0f,
+    val bird: Float = 0f,
+    val glassBreak: Float = 0f,
+    val siren: Float = 0f,
+    val phoneRing: Float = 0f,
+    val clap: Float = 0f,
+    val whistle: Float = 0f,
+    val footsteps: Float = 0f,
+    val water: Float = 0f,
+    val music: Float = 0f,
+    // 农场动物类（复用 YAMNet 已有 AudioSet 类，无需重新训练）：
+    val pig: Float = 0f,
+    val cow: Float = 0f,
+    val chicken: Float = 0f,
+    val horse: Float = 0f,
+    val sheep: Float = 0f,
 )
 
 /**
@@ -97,6 +115,61 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
             "Door", "Sliding door", "Knock", "Cupboard open or close", "Drawer open or close",
         )
 
+        /** 狗叫（配 [YamnetScores.dogBark]）。 */
+        val DOG_BARK_CLASS_NAMES = listOf("Dog", "Bark")
+
+        /** 猫叫 / 呼噜。 */
+        val CAT_CLASS_NAMES = listOf("Meow", "Purr", "Cat")
+
+        /** 鸟鸣 / 啁啾。 */
+        val BIRD_CLASS_NAMES = listOf(
+            "Bird", "Bird vocalization, bird call, bird song", "Chirp, tweet",
+        )
+
+        /** 玻璃碎裂。 */
+        val GLASS_BREAK_CLASS_NAMES = listOf("Glass", "Shatter")
+
+        /** 警笛 / 警报（消防车 / 救护车 / 警车）。 */
+        val SIREN_CLASS_NAMES = listOf(
+            "Siren", "Civil defense siren", "Fire engine, fire truck (siren)",
+            "Ambulance (siren)", "Police car (siren)",
+        )
+
+        /** 电话铃声 / 手机铃声。 */
+        val PHONE_RING_CLASS_NAMES = listOf("Telephone", "Telephone bell ringing", "Ringtone")
+
+        /** 拍手。 */
+        val CLAP_CLASS_NAMES = listOf("Clapping")
+
+        /** 口哨。 */
+        val WHISTLE_CLASS_NAMES = listOf("Whistle", "Whistling")
+
+        /** 脚步声。 */
+        val FOOTSTEPS_CLASS_NAMES = listOf("Footsteps")
+
+        /** 水流 / 雨 / 水花。 */
+        val WATER_CLASS_NAMES = listOf("Water", "Rain", "Splash, splatter")
+
+        /** 音乐播放。 */
+        val MUSIC_CLASS_NAMES = listOf("Music")
+
+        /** 农场动物：猪（Pig / Oink）。 */
+        val PIG_CLASS_NAMES = listOf("Pig", "Oink")
+
+        /** 农场动物：牛 / 奶牛（Cattle, bovinae / Moo）。 */
+        val COW_CLASS_NAMES = listOf("Cattle, bovinae", "Moo")
+
+        /** 农场动物：鸡 / 公鸡（Chicken, rooster / Cluck / Crowing）。 */
+        val CHICKEN_CLASS_NAMES = listOf(
+            "Chicken, rooster", "Cluck", "Crowing, cock-a-doodle-doo",
+        )
+
+        /** 农场动物：马（Horse / Neigh, whinny / Clip-clop）。 */
+        val HORSE_CLASS_NAMES = listOf("Horse", "Neigh, whinny", "Clip-clop")
+
+        /** 农场动物：羊（Sheep / Bleat）。 */
+        val SHEEP_CLASS_NAMES = listOf("Sheep", "Bleat")
+
         /** 模型旁边的类别名清单文件（下载器一并落盘）。 */
         const val LABELS_FILE_NAME = "yamnet_labels.txt"
 
@@ -135,6 +208,34 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
             "Vacuum cleaner" to 371,
             "Mechanical fan" to 406,
             "White noise" to 514,
+            // 额外事件类（index 逐一核对官方 yamnet_class_map.csv）：
+            "Clapping" to 58,
+            "Walk, footsteps" to 48,
+            "Whistling" to 35,
+            "Dog" to 69,
+            "Bark" to 70,
+            "Cat" to 76,
+            "Purr" to 77,
+            "Meow" to 78,
+            "Bird" to 106,
+            "Bird vocalization, bird call, bird song" to 107,
+            "Chirp, tweet" to 108,
+            "Music" to 132,
+            // 农场动物（官方 yamnet_class_map.csv 索引逐一核对）：
+            "Pig" to 88,
+            "Oink" to 89,
+            "Cattle, bovinae" to 85,
+            "Moo" to 86,
+            "Chicken, rooster" to 94,
+            "Cluck" to 95,
+            "Crowing, cock-a-doodle-doo" to 96,
+            "Horse" to 82,
+            "Neigh, whinny" to 84,
+            "Clip-clop" to 83,
+            "Sheep" to 92,
+            "Bleat" to 91,
+            // 注：Glass / Siren / Phone / Water 等类未提供兜底索引（依赖 labels 文件按名
+            // 解析）；labels 缺失时这些类不触发（安全降级），避免错误索引误判。
         )
     }
 
@@ -149,6 +250,22 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
     private val childSpeechIndices: IntArray
     private val whiteNoiseIndices: IntArray
     private val doorIndices: IntArray
+    private val dogBarkIndices: IntArray
+    private val catIndices: IntArray
+    private val birdIndices: IntArray
+    private val glassBreakIndices: IntArray
+    private val sirenIndices: IntArray
+    private val phoneRingIndices: IntArray
+    private val clapIndices: IntArray
+    private val whistleIndices: IntArray
+    private val footstepsIndices: IntArray
+    private val waterIndices: IntArray
+    private val musicIndices: IntArray
+    private val pigIndices: IntArray
+    private val cowIndices: IntArray
+    private val chickenIndices: IntArray
+    private val horseIndices: IntArray
+    private val sheepIndices: IntArray
 
     /** 输出是否为逐帧 3D 布局（true=3D, false=2D），按输出张量秩判定。 */
     private val frameLayout: Boolean
@@ -212,6 +329,22 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
         childSpeechIndices = resolve(resolver, CHILD_SPEECH_CLASS_NAMES)
         whiteNoiseIndices = resolve(resolver, WHITE_NOISE_CLASS_NAMES)
         doorIndices = resolve(resolver, DOOR_CLASS_NAMES)
+        dogBarkIndices = resolve(resolver, DOG_BARK_CLASS_NAMES)
+        catIndices = resolve(resolver, CAT_CLASS_NAMES)
+        birdIndices = resolve(resolver, BIRD_CLASS_NAMES)
+        glassBreakIndices = resolve(resolver, GLASS_BREAK_CLASS_NAMES)
+        sirenIndices = resolve(resolver, SIREN_CLASS_NAMES)
+        phoneRingIndices = resolve(resolver, PHONE_RING_CLASS_NAMES)
+        clapIndices = resolve(resolver, CLAP_CLASS_NAMES)
+        whistleIndices = resolve(resolver, WHISTLE_CLASS_NAMES)
+        footstepsIndices = resolve(resolver, FOOTSTEPS_CLASS_NAMES)
+        waterIndices = resolve(resolver, WATER_CLASS_NAMES)
+        musicIndices = resolve(resolver, MUSIC_CLASS_NAMES)
+        pigIndices = resolve(resolver, PIG_CLASS_NAMES)
+        cowIndices = resolve(resolver, COW_CLASS_NAMES)
+        chickenIndices = resolve(resolver, CHICKEN_CLASS_NAMES)
+        horseIndices = resolve(resolver, HORSE_CLASS_NAMES)
+        sheepIndices = resolve(resolver, SHEEP_CLASS_NAMES)
         require(cryIndices.isNotEmpty() && intenseCryIndices.isNotEmpty()) {
             "YAMNet 模型缺少哭声类别（labels 不匹配）"
         }
@@ -223,7 +356,15 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
                 "cough=${coughIndices.contentToString()} sneeze=${sneezeIndices.contentToString()} " +
                 "scream=${screamIndices.contentToString()} laughter=${laughterIndices.contentToString()} " +
                 "childSpeech=${childSpeechIndices.contentToString()} " +
-                "whiteNoise=${whiteNoiseIndices.contentToString()} door=${doorIndices.contentToString()}",
+                "whiteNoise=${whiteNoiseIndices.contentToString()} door=${doorIndices.contentToString()} " +
+                "dog=${dogBarkIndices.contentToString()} cat=${catIndices.contentToString()} " +
+                "bird=${birdIndices.contentToString()} glass=${glassBreakIndices.contentToString()} " +
+                "siren=${sirenIndices.contentToString()} phone=${phoneRingIndices.contentToString()} " +
+                "clap=${clapIndices.contentToString()} whistle=${whistleIndices.contentToString()} " +
+                "footsteps=${footstepsIndices.contentToString()} water=${waterIndices.contentToString()} " +
+                "music=${musicIndices.contentToString()} pig=${pigIndices.contentToString()} " +
+                "cow=${cowIndices.contentToString()} chicken=${chickenIndices.contentToString()} " +
+                "horse=${horseIndices.contentToString()} sheep=${sheepIndices.contentToString()}",
         )
     }
 
@@ -261,6 +402,22 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
                 var peakChildSpeech = 0f
                 var peakWhiteNoise = 0f
                 var peakDoor = 0f
+                var peakDogBark = 0f
+                var peakCat = 0f
+                var peakBird = 0f
+                var peakGlassBreak = 0f
+                var peakSiren = 0f
+                var peakPhoneRing = 0f
+                var peakClap = 0f
+                var peakWhistle = 0f
+                var peakFootsteps = 0f
+                var peakWater = 0f
+                var peakMusic = 0f
+                var peakPig = 0f
+                var peakCow = 0f
+                var peakChicken = 0f
+                var peakHorse = 0f
+                var peakSheep = 0f
                 for (frame in out[0]) {
                     val cry = cryIndices.sumOf { frame[it].toDouble() }.toFloat()
                     if (cry > peakCry) peakCry = cry
@@ -275,6 +432,22 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
                     peakChildSpeech = maxOf(peakChildSpeech, groupMax(frame, childSpeechIndices))
                     peakWhiteNoise = maxOf(peakWhiteNoise, groupMax(frame, whiteNoiseIndices))
                     peakDoor = maxOf(peakDoor, groupMax(frame, doorIndices))
+                    peakDogBark = maxOf(peakDogBark, groupMax(frame, dogBarkIndices))
+                    peakCat = maxOf(peakCat, groupMax(frame, catIndices))
+                    peakBird = maxOf(peakBird, groupMax(frame, birdIndices))
+                    peakGlassBreak = maxOf(peakGlassBreak, groupMax(frame, glassBreakIndices))
+                    peakSiren = maxOf(peakSiren, groupMax(frame, sirenIndices))
+                    peakPhoneRing = maxOf(peakPhoneRing, groupMax(frame, phoneRingIndices))
+                    peakClap = maxOf(peakClap, groupMax(frame, clapIndices))
+                    peakWhistle = maxOf(peakWhistle, groupMax(frame, whistleIndices))
+                    peakFootsteps = maxOf(peakFootsteps, groupMax(frame, footstepsIndices))
+                    peakWater = maxOf(peakWater, groupMax(frame, waterIndices))
+                    peakMusic = maxOf(peakMusic, groupMax(frame, musicIndices))
+                    peakPig = maxOf(peakPig, groupMax(frame, pigIndices))
+                    peakCow = maxOf(peakCow, groupMax(frame, cowIndices))
+                    peakChicken = maxOf(peakChicken, groupMax(frame, chickenIndices))
+                    peakHorse = maxOf(peakHorse, groupMax(frame, horseIndices))
+                    peakSheep = maxOf(peakSheep, groupMax(frame, sheepIndices))
                 }
                 YamnetScores(
                     cry = peakCry.coerceIn(0f, 1f),
@@ -287,6 +460,22 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
                     childSpeech = peakChildSpeech.coerceIn(0f, 1f),
                     whiteNoise = peakWhiteNoise.coerceIn(0f, 1f),
                     door = peakDoor.coerceIn(0f, 1f),
+                    dogBark = peakDogBark.coerceIn(0f, 1f),
+                    cat = peakCat.coerceIn(0f, 1f),
+                    bird = peakBird.coerceIn(0f, 1f),
+                    glassBreak = peakGlassBreak.coerceIn(0f, 1f),
+                    siren = peakSiren.coerceIn(0f, 1f),
+                    phoneRing = peakPhoneRing.coerceIn(0f, 1f),
+                    clap = peakClap.coerceIn(0f, 1f),
+                    whistle = peakWhistle.coerceIn(0f, 1f),
+                    footsteps = peakFootsteps.coerceIn(0f, 1f),
+                    water = peakWater.coerceIn(0f, 1f),
+                    music = peakMusic.coerceIn(0f, 1f),
+                    pig = peakPig.coerceIn(0f, 1f),
+                    cow = peakCow.coerceIn(0f, 1f),
+                    chicken = peakChicken.coerceIn(0f, 1f),
+                    horse = peakHorse.coerceIn(0f, 1f),
+                    sheep = peakSheep.coerceIn(0f, 1f),
                 )
             } else {
                 val out = Array(1) { FloatArray(NUM_CLASSES) }
@@ -303,6 +492,22 @@ class YamnetCryClassifier(context: Context, modelFile: File) {
                     childSpeech = groupMax(row, childSpeechIndices).coerceIn(0f, 1f),
                     whiteNoise = groupMax(row, whiteNoiseIndices).coerceIn(0f, 1f),
                     door = groupMax(row, doorIndices).coerceIn(0f, 1f),
+                    dogBark = groupMax(row, dogBarkIndices).coerceIn(0f, 1f),
+                    cat = groupMax(row, catIndices).coerceIn(0f, 1f),
+                    bird = groupMax(row, birdIndices).coerceIn(0f, 1f),
+                    glassBreak = groupMax(row, glassBreakIndices).coerceIn(0f, 1f),
+                    siren = groupMax(row, sirenIndices).coerceIn(0f, 1f),
+                    phoneRing = groupMax(row, phoneRingIndices).coerceIn(0f, 1f),
+                    clap = groupMax(row, clapIndices).coerceIn(0f, 1f),
+                    whistle = groupMax(row, whistleIndices).coerceIn(0f, 1f),
+                    footsteps = groupMax(row, footstepsIndices).coerceIn(0f, 1f),
+                    water = groupMax(row, waterIndices).coerceIn(0f, 1f),
+                    music = groupMax(row, musicIndices).coerceIn(0f, 1f),
+                    pig = groupMax(row, pigIndices).coerceIn(0f, 1f),
+                    cow = groupMax(row, cowIndices).coerceIn(0f, 1f),
+                    chicken = groupMax(row, chickenIndices).coerceIn(0f, 1f),
+                    horse = groupMax(row, horseIndices).coerceIn(0f, 1f),
+                    sheep = groupMax(row, sheepIndices).coerceIn(0f, 1f),
                 )
             }
         } catch (t: Throwable) {

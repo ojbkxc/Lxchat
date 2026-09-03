@@ -197,21 +197,64 @@ class BabyMonitorService : Service() {
                                         childSpeechScore = s.childSpeech,
                                         whiteNoiseScore = s.whiteNoise,
                                         doorScore = s.door,
+                                        dogBarkScore = s.dogBark,
+                                        catScore = s.cat,
+                                        birdScore = s.bird,
+                                        glassBreakScore = s.glassBreak,
+                                        sirenScore = s.siren,
+                                        phoneRingScore = s.phoneRing,
+                                        clapScore = s.clap,
+                                        whistleScore = s.whistle,
+                                        footstepsScore = s.footsteps,
+                                        waterScore = s.water,
+                                        musicScore = s.music,
+                                        pigScore = s.pig,
+                                        cowScore = s.cow,
+                                        chickenScore = s.chicken,
+                                        horseScore = s.horse,
+                                        sheepScore = s.sheep,
                                     ),
                                 )
                             }
                             when (verdict) {
                                 is CryVerdict.Alert -> {
+                                    BabyEventHistory.append(
+                                        BabyEventEntry(
+                                            id = System.currentTimeMillis(),
+                                            typeName = BabyEventEntry.TYPE_CRY_ALERT,
+                                            score = verdict.cryScore,
+                                            timeMs = System.currentTimeMillis(),
+                                            kind = BabyEventEntry.Kind.CRY_ALERT,
+                                        ),
+                                    )
                                     DebugLog.i(TAG, "cry alert: score=${verdict.cryScore} streak=${verdict.streak}")
                                     sendAlerts(verdict)
                                 }
                                 is CryVerdict.Ended -> {
+                                    BabyEventHistory.append(
+                                        BabyEventEntry(
+                                            id = System.currentTimeMillis(),
+                                            typeName = BabyEventEntry.TYPE_CRY_ENDED,
+                                            score = verdict.peakScore,
+                                            timeMs = System.currentTimeMillis(),
+                                            kind = BabyEventEntry.Kind.CRY_ENDED,
+                                        ),
+                                    )
                                     DebugLog.i(
                                         TAG,
                                         "cry episode ended: durMs=${verdict.durationMs} peak=${verdict.peakScore}",
                                     )
                                 }
                                 is CryVerdict.Event -> {
+                                    BabyEventHistory.append(
+                                        BabyEventEntry(
+                                            id = System.currentTimeMillis(),
+                                            typeName = verdict.type.name,
+                                            score = verdict.score,
+                                            timeMs = System.currentTimeMillis(),
+                                            kind = BabyEventEntry.Kind.EVENT,
+                                        ),
+                                    )
                                     // 剧烈大哭始终报警（安全优先）；其余事件仅记录不打扰，
                                     // 免打扰时段内静默（仅 DebugLog，不触发任何外部动作）。
                                     val nowMin = System.currentTimeMillis() /
@@ -292,6 +335,13 @@ class BabyMonitorService : Service() {
         return base.copy(
             sustainHits = cfg.sustainHits,
             cooldownMs = cfg.cooldownMinutes * 60_000L,
+            autoTuneEnabled = cfg.autoTuneEnabled,
+            eventOverrides = cfg.eventOverrides
+                .entries
+                .mapNotNull { (name, p) ->
+                    runCatching { EventType.valueOf(name) }.getOrNull()?.let { it to p }
+                }
+                .toMap(),
         )
     }
 
