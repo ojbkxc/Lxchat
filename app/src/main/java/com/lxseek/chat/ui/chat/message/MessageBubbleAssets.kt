@@ -147,8 +147,8 @@ internal fun rememberChatMarkdownAssets(
         codeBackground = codeBg,
         inlineCodeBackground = Color.Transparent,
     )
-    // 主正文 Markdown 段距：8dp→4dp，尽量紧凑但保留视觉呼吸，确保块之间不贴边。
-    val customMarkdownPadding = markdownPadding(block = 4.dp)
+    // 主消息正文段距：压缩到 0.5dp（4dp→0.5dp），配合 body 的 ≈1:1 行距，整页紧凑。
+    val customMarkdownPadding = markdownPadding(block = 0.5.dp)
     // 思考块正文段距：缩到最小（5dp→2dp→1dp→0dp），配合 thoughtBody 的 1:1 行距，让推理
     // 内容段落间几乎无间距、非常紧凑，弱化其作为临时过程的视觉存在感。
     val thoughtMarkdownPadding = markdownPadding(block = 0.dp)
