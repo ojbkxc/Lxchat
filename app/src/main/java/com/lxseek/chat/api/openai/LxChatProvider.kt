@@ -22,7 +22,7 @@ class LxChatProvider : BaseOpenAiProvider() {
     override val name: String = Constants.PROVIDER_LXCHAT
 
     /** 内置网关端点。供应商无持久化 Base URL 时由基类回退到该默认值。 */
-    override val defaultBaseUrl: String = "https://chat.lxvpn.com/v1"
+    override val defaultBaseUrl: String = "https://lxchatapi.1232333.xyz/v1"
 
     override val retryableStatusCodes: Set<Int> = setOf(401, 429, 502, 503, 504)
 
