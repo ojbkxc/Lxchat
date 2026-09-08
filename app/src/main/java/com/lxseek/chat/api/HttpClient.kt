@@ -81,12 +81,18 @@ object HttpClient {
     }
 
     /** Fail-closed guard: never transmit API credentials over cleartext HTTP to a
-     *  non-local host. LAN / loopback / Tailscale endpoints (Ollama, self-hosted) stay allowed. */
-    internal fun guardCleartextCredentials(url: String, headers: Map<String, String>) {
+     *  non-local host. LAN / loopback / Tailscale endpoints (Ollama, self-hosted) stay allowed.
+     *  [sensitiveBody] 为 true 时视为请求体携带凭据（OAuth token 表单、刷新令牌等），
+     *  即使没有任何凭据头也一并拦截 —— body 级凭据是 header 检测的盲区。 */
+    internal fun guardCleartextCredentials(
+        url: String,
+        headers: Map<String, String>,
+        sensitiveBody: Boolean = false,
+    ) {
         if (!url.startsWith("http://", ignoreCase = true)) return
         val host = try { java.net.URI(url).host ?: "" } catch (_: Exception) { "" }
         if (isLocalHost(host)) return
-        if (headers.keys.any { it.lowercase() in CREDENTIAL_HEADERS }) {
+        if (sensitiveBody || headers.keys.any { it.lowercase() in CREDENTIAL_HEADERS }) {
             throw IOException(
                 "Refusing to send API credentials over cleartext HTTP to a non-local host. " +
                     "Use an https:// endpoint, or reach it over LAN/Tailscale."

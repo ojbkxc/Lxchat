@@ -115,7 +115,8 @@ class GitToolProvider(
 
     /**
      * 解析公共参数（path/limit），取到沙箱后端，构建 [GitRepository]，执行块后返回其 JSON。
-     * 沙箱不可用时返回错误 JSON，不崩。
+     * 沙箱不可用时返回错误 JSON，不崩。沙箱 rootfs 默认不带 git：检测到命令缺失时
+     * 自动 `apk add git`（一次性，失败则如实报错），避免首次调用必败。
      */
     private suspend fun withRepo(
         arguments: String,
@@ -127,6 +128,7 @@ class GitToolProvider(
 
         val backend = getSandboxBackend()
             ?: return jsonError("git", "Local Sandbox is not available. Install the sandbox to use Git tools.")
+        ensureGitInstalled(backend)
         return try {
             val repo = GitRepository(SandboxGitRunner(backend), path)
             block(repo, path, limit)
@@ -137,6 +139,17 @@ class GitToolProvider(
         } finally {
             backend.close()
         }
+    }
+
+    /** 沙箱内缺 `git` 二进制时自动安装一次；失败不阻断 —— 后续命令会带出真实错误。 */
+    private suspend fun ensureGitInstalled(backend: Backend) {
+        val probe = runCatching { backend.executeCommand("command -v git", "", 10_000) }
+        val parsed = probe.getOrNull()?.let { raw ->
+            runCatching { Json.parseToJsonElement(raw).jsonObject }.getOrNull()
+        }
+        val exitCode = (parsed?.get("exit_code") as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
+        if (exitCode == 0) return
+        sandbox?.apkInstall("git")
     }
 
     private fun getSandboxBackend(): Backend? {

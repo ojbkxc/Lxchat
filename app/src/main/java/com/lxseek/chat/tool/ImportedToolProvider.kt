@@ -3,6 +3,7 @@ package com.lxseek.chat.tool
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
+import com.lxseek.chat.api.HttpClient
 import com.lxseek.chat.api.ToolDefinition
 import com.lxseek.chat.api.ToolFunction
 import com.lxseek.chat.api.ToolParameters
@@ -26,8 +27,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 
 /**
  * 零代码工具导入：把一份 `imported_tools.json` 里的工具定义（kind=http 或 intent）注册给模型调用。
@@ -189,28 +188,28 @@ class ImportedToolProvider(private val app: Application) : ToolProvider {
         if (!urlStr.startsWith("http://") && !urlStr.startsWith("https://")) {
             return errorJson("bad_url", "Only http/https URLs are allowed for imported HTTP tools.")
         }
-        val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
-            requestMethod = tool.method.uppercase()
-            connectTimeout = 30000
-            readTimeout = 30000
-            tool.headers.forEach { (k, v) -> setRequestProperty(k, v) }
-        }
-        try {
-            tool.buildRequestBody(args)?.let { body ->
-                conn.doOutput = true
-                conn.setRequestProperty("Content-Type", "application/json")
-                conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+        // 与全 App 网络出口保持一致：复用 HttpClient（代理 / 加密 DNS / SSRF 屏障 /
+        // 明文凭据守卫全部生效）。此前直连 HttpURLConnection 会绕过这些防线，
+        // 让导入工具成为凭据泄漏与内网探测的旁路。
+        return try {
+            val method = tool.method.uppercase()
+            val body = tool.buildRequestBody(args)
+            val response = when {
+                method == "GET" && body == null ->
+                    HttpClient.getTextResponse(urlStr, tool.headers)
+                method == "POST" || body != null ->
+                    HttpClient.postTextResponse(urlStr, body ?: "{}", tool.headers)
+                else -> return errorJson("bad_method", "Method '$method' is not supported; use GET or POST.")
             }
-            val code = conn.responseCode
-            val body = (if (code in 200..299) conn.inputStream else conn.errorStream)
-                ?.bufferedReader()?.use { it.readText() } ?: ""
-            return buildJsonObject {
+            buildJsonObject {
                 put("status", "ok")
-                put("http_status", code)
-                put("body", body.take(MAX_RESPONSE))
+                put("http_status", response.code)
+                put("body", response.body.take(MAX_RESPONSE))
             }.toString()
-        } finally {
-            conn.disconnect()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            errorJson("tool_error", e.message ?: "HTTP request failed")
         }
     }
 

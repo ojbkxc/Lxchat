@@ -2018,6 +2018,7 @@
     <string name="err_action_check_network">检查网络</string>
     <string name="err_action_retry_later">稍后重试</string>
     <string name="err_action_increase_max_tokens">增加 Max Tokens</string>
+    <string name="err_action_fix_endpoint">修复端点（改用 https://）</string>
     <string name="markdown_mermaid_engine_error">图表引擎未就绪（需联网下载一次，下载失败）</string>
     <string name="markdown_rendering_mermaid">渲染 Mermaid 图表…</string>
     <string name="chat_font_scale">聊天字体缩放</string>

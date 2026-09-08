@@ -69,6 +69,9 @@ internal fun postFormToken(
     client: OkHttpClient = HttpClient.client,
 ): String {
     require(timeoutMs > 0) { "timeoutMs must be positive" }
+    // 表单体携带 code_verifier / refresh_token / client_secret 等敏感凭据，
+    // 明文 HTTP 公网端点必须拦截（与 header 级守卫同一防线）。
+    HttpClient.guardCleartextCredentials(endpoint, emptyMap(), sensitiveBody = true)
     val form = formBody.toRequestBody("application/x-www-form-urlencoded".toMediaType())
     val request = Request.Builder()
         .url(endpoint)

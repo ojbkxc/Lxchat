@@ -6,6 +6,7 @@ import com.lxseek.chat.util.DebugLog
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.isActive
+import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -142,6 +143,11 @@ internal suspend fun FlowCollector<StreamEvent>.emitTransportError(
         is RequestFormatException -> {
             DebugLog.e(logTag, "[$provider] blocked invalid request: ${e.violations.joinToString()}")
             emit(StreamEvent.Error(GenerationError.RequestFormat(provider, e.violations.joinToString())))
+        }
+        // 凭据明文守卫（HttpClient.guardCleartextCredentials）：端点配置问题而非网络
+        // 抖动，归入 Configuration 让 UI 给出"改配置"而非"重试"的恢复动作。
+        is IOException if e.message?.startsWith("Refusing to send API credentials") == true -> {
+            emit(StreamEvent.Error(GenerationError.Configuration(e.message ?: "Cleartext endpoint refused")))
         }
         is SocketTimeoutException -> emit(StreamEvent.Error(GenerationError.Timeout))
         is ConnectException -> emit(StreamEvent.Error(GenerationError.Network(statusCode = 0, message = e.localizedMessage ?: "Connection refused")))

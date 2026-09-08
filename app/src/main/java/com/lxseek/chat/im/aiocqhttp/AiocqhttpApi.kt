@@ -103,6 +103,11 @@ class AiocqhttpApi(
     }
 
     private suspend fun postJson(url: String, body: String): JsonObject = withContext(Dispatchers.IO) {
+        // Bearer 凭据经明文 http 发往公网端点时必须拦截（与全 App 凭据守卫一致）。
+        HttpClient.guardCleartextCredentials(
+            url,
+            if (accessToken.isNotBlank()) mapOf("Authorization" to "Bearer") else emptyMap(),
+        )
         val request = Request.Builder()
             .url(url)
             .header("Content-Type", "application/json")

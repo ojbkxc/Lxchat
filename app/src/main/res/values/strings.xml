@@ -2016,6 +2016,7 @@
     <string name="err_action_check_network">Check network</string>
     <string name="err_action_retry_later">Retry later</string>
     <string name="err_action_increase_max_tokens">Increase Max Tokens</string>
+    <string name="err_action_fix_endpoint">Fix endpoint (use https://)</string>
     <string name="markdown_mermaid_engine_error">Chart engine not ready (needs a one-time download; the download failed)</string>
     <string name="markdown_rendering_mermaid">Rendering Mermaid chart…</string>
 

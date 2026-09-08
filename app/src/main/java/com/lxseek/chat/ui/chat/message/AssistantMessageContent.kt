@@ -864,12 +864,18 @@ private enum class ErrorAction(@StringRes val labelRes: Int) {
     CHECK_NETWORK(R.string.err_action_check_network),
     RETRY_LATER(R.string.err_action_retry_later),
     INCREASE_MAX_TOKENS(R.string.err_action_increase_max_tokens),
+    FIX_ENDPOINT(R.string.err_action_fix_endpoint),
     RETRY(R.string.retry),
 }
 
 private fun inferErrorAction(text: String): ErrorAction {
     val lower = text.lowercase()
     return when {
+        // HttpClient.guardCleartextCredentials — 明文 http 端点 + 凭据被本地拦截，
+        // 重试无用，用户需要改端点为 https / LAN / Tailscale。
+        lower.contains("refusing to send api credentials") ||
+            lower.contains("cleartext http") -> ErrorAction.FIX_ENDPOINT
+
         // GenerationError.Network — "Network error (...)", "Connection refused", "Unknown host"
         lower.contains("network error") ||
             lower.contains("connection refused") ||

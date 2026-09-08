@@ -226,6 +226,8 @@ internal class McpOAuthClient {
     }
 
     private fun tokenRequest(tokenEndpoint: String, form: Map<String, String>): TokenResult {
+        // 表单体携带 code_verifier / refresh_token，公网明文 HTTP 端点必须拦截。
+        HttpClient.guardCleartextCredentials(tokenEndpoint, emptyMap(), sensitiveBody = true)
         val body = FormBody.Builder().apply {
             form.forEach { (key, value) -> add(key, value) }
         }.build()
