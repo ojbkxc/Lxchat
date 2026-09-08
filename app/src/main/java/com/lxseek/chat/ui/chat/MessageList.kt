@@ -856,14 +856,16 @@ internal fun MessageList(
         )
     }
 
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.CenterHorizontally,
+    ) {
         LazyColumn(
             modifier = Modifier
                 .then(mouseDetector.modifier)
                 .fillMaxSize()
                 // ChatGPT 风格：对话列在大屏上居中限宽（768dp ≈ 48rem），手机端不受影响。
                 .widthIn(max = 768.dp)
-                .align(Alignment.CenterHorizontally)
                 .onGloballyPositioned { coordinates ->
                     listRootY = coordinates.positionInRoot().y
                 },

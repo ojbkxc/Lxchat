@@ -49,6 +49,7 @@ import com.lxseek.chat.model.Participant
 import com.lxseek.chat.model.TokenUsage
 import com.lxseek.chat.model.ToolCallDisplayModes
 import com.lxseek.chat.model.ThinkingSegmentDisplayModes
+import com.lxseek.chat.model.apiModelName
 import com.lxseek.chat.ui.common.LocalLxChatHaptics
 import com.lxseek.chat.ui.theme.ChatType
 import com.lxseek.chat.ui.theme.LxDesign
@@ -241,9 +242,9 @@ internal fun AssistantMessageContent(
             // ChatGPT 风格：助手消息顶部模型名小字头部（Open WebUI 每轮助手消息上方显示模型名）。
             if (message.participant == Participant.MODEL) {
                 val modelHeaderName = message.modelName?.let { raw ->
-                    com.lxseek.chat.model.ModelId.parse(raw)?.let { parsed ->
+                    com.lxseek.chat.model.ModelId.parse(raw).let { parsed ->
                         modelAliases[raw] ?: parsed.apiModelName
-                    } ?: raw
+                    }
                 }
                 if (!modelHeaderName.isNullOrBlank()) {
                     Text(
