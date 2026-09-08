@@ -118,6 +118,21 @@ class SmsCommandExecutorService : Service() {
             imageStore = null,
             appContext = applicationContext,
         )
+        // 先探测本地提权通道是否可用：Android 手机上"ADB Shell"依赖 root（su）
+        // 或 Shizuku（安装 + 服务运行 + 已授权）。两者都不在时执行必然失败，
+        // 返回可操作的指引而非一条裸错误。
+        if (!com.lxseek.chat.adb.RootDetector.isRootAvailable()) {
+            val shizuku = com.lxseek.chat.adb.ShizukuManager(applicationContext)
+            when {
+                !shizuku.isShizukuInstalled() ->
+                    return "shell 不可用：设备未 root 且未安装 Shizuku。\n" +
+                        "请安装 Shizuku 并启动服务后授权本应用（${com.lxseek.chat.adb.ShizukuManager.SHIZUKU_PLAY_URL}）。"
+                !shizuku.isShizukuRunning() ->
+                    return "shell 不可用：Shizuku 已安装但服务未运行，请打开 Shizuku 启动服务。"
+                !shizuku.isPermissionGranted() ->
+                    return "shell 不可用：本应用尚未获得 Shizuku 授权，请在 Shizuku 中授权后重试。"
+            }
+        }
         // 最小 GenerationContext：只开 shellEnabled，server 由参数指定为 "ADB Shell"。
         val ctx = GenerationContext(shellEnabled = true)
         val args = buildJsonObject {

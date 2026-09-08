@@ -47,6 +47,11 @@ class HttpClientLocalHostTest {
             "100.128.0.1",           // just above it
             "172.15.0.1", "172.32.0.1", // just outside 172.16/12
             "evil-ts.net.example.com",  // must not match the .ts.net suffix rule
+            // Public IPv6 literals contain no dot and must NOT fall into the
+            // bare-hostname (no dot = LAN name) branch.
+            "2606:4700::1111",
+            "2001:db8::1",
+            "[2606:4700::1111]",
         ).forEach { assertFalse(it, HttpClient.isLocalHost(it)) }
     }
 }

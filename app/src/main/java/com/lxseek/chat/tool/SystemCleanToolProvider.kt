@@ -21,6 +21,12 @@ import kotlinx.serialization.json.putJsonArray
  * （getuid()==0），因此 Shizuku（shell uid 2000）无法执行，本工具集仅在
  * root 可用且二进制存在时披露给模型。工具命名统一使用 system_clean_* 语义，
  * 不暴露底层模块品牌名。
+ *
+ * Android 环境适配说明：这些路径属于 Magisk 模块布局（/data/adb/... 仅在
+ * 安装了对应 root 模块的 ROM 上存在），并非 AOSP 标准路径。[isAvailable]
+ * 的探测式设计（root + test -x）保证了在普通 ROM 上工具集整体隐藏、
+ * 不产生报错 —— 这是刻意的降级行为而非缺陷；路径常量收拢于此，便于
+ * 换用其它清理模块时只改一处。
  */
 class SystemCleanToolProvider : ToolProvider {
 

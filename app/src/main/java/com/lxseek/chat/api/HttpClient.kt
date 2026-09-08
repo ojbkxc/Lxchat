@@ -67,7 +67,10 @@ object HttpClient {
         if (h == "ts.net" || h.endsWith(".ts.net")) return true
         // Tailscale IPv6 ULA range fd7a:115c:a1e0::/48
         if (h.startsWith("fd7a:115c:a1e0")) return true
-        // Bare hostname with no dot 鈫?LAN name, not a public domain.
+        // 公网 IPv6 字面量（含冒号、无点）不能落入下方"无点=LAN 主机名"分支：
+        // 像 2606:4700::1111 这样的地址曾被误判为本地主机而明文放行。
+        if (h.contains(':')) return false
+        // Bare hostname with no dot → LAN name, not a public domain.
         if (!h.contains('.')) return true
         val o = h.split('.')
         if (o.size == 4 && o.all { it.toIntOrNull() in 0..255 }) {

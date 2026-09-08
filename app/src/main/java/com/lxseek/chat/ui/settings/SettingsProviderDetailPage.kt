@@ -218,6 +218,17 @@ fun SettingsProviderDetailPage(
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(stringResource(R.string.provider_base_url), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
+                                        if (currentName == Constants.PROVIDER_OLLAMA) {
+                                            // Android 上 localhost 指设备自身，本机没有 Ollama 进程时
+                                            // 该默认值连不上 —— 引导用户填 Ollama 主机的 LAN/Tailscale 地址。
+                                            Text(
+                                                stringResource(R.string.ollama_base_url_hint),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(top = 4.dp),
+                                            )
+                                        }
+
                                         Box(modifier = Modifier.noOpBringIntoView().padding(top = 8.dp)) {
                                             OutlinedTextField(
                                                 state = baseUrlState,

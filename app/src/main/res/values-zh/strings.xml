@@ -1356,7 +1356,8 @@
     <string name="onboarding_start_now">立即开始</string>
     <string name="onboarding_connect_ai">接入我的 AI</string>
     <string name="onboarding_api_key_hint">输入 API 密钥…</string>
-    <string name="onboarding_ollama_hint">http://localhost:11434</string>
+    <string name="onboarding_ollama_hint">http://192.168.1.100:11434</string>
+    <string name="ollama_base_url_hint">Android 上 localhost 指手机自身 —— 请填运行 Ollama 的电脑的局域网 IP 或 Tailscale 地址（如 http://192.168.1.100:11434）。</string>
     <string name="onboarding_import_gguf">导入 GGUF 模型</string>
     <string name="onboarding_importing">导入中…</string>
     <string name="onboarding_no_provider">未选择提供商。</string>

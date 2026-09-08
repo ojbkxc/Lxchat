@@ -107,6 +107,13 @@ internal data class OllamaModelInfo(
 
 class OllamaProvider : LlmProvider {
     override val name: String = Constants.PROVIDER_OLLAMA
+
+    /**
+     * 默认端点指向设备自身回环。Android 上 App 无法访问另一个进程的 localhost
+     *（没有 Ollama 桌面进程），此默认值只在"用户手动 adb forward tcp:11434"或
+     * 设备内跑 Termux+Ollama 时才有意义。常见正确填法是 Ollama 主机的 LAN IP
+     *（http://192.168.x.x:11434）或 Tailscale 地址；明文守卫对这类本地端点放行。
+     */
     override val defaultBaseUrl: String = "http://localhost:11434"
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = false }
 
@@ -461,7 +468,7 @@ class OllamaProvider : LlmProvider {
     }.flowOn(Dispatchers.IO)
 
     override suspend fun fetchModels(apiKey: String, baseUrl: String?): List<String> = kotlinx.coroutines.withContext(Dispatchers.IO) {
-        val effectiveBaseUrl = baseUrl?.trimEnd('/')?.ifBlank { null } ?: "http://localhost:11434"
+        val effectiveBaseUrl = baseUrl?.trimEnd('/')?.ifBlank { null } ?: defaultBaseUrl
         val responseText = HttpClient.fetchModelsResponse("$effectiveBaseUrl/api/tags")
             .requireModelFetchBody()
         val models = decodeModelFetchResponse {

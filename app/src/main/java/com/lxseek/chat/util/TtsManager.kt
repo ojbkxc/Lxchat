@@ -612,6 +612,12 @@ object TtsManager {
         var connection: HttpURLConnection? = null
         try {
             val url = URL(normalizeSpeechUrl(config.baseUrl))
+            // 网络语音合成带 Bearer apiKey，同样受凭据明文守卫约束 —— 此前直连
+            // HttpURLConnection 完全绕过了 HttpClient 的防线。
+            com.lxseek.chat.api.HttpClient.guardCleartextCredentials(
+                url.toString(),
+                mapOf("Authorization" to "Bearer"),
+            )
             connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = 60000
