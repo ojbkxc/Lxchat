@@ -61,6 +61,7 @@ internal fun UserMessageBubble(
     isLoading: Boolean,
     isEditingAllowed: Boolean,
     showActions: Boolean,
+    actionRevealed: Boolean = true,
     actionCopyText: String?,
     showBranchSelector: Boolean,
     branchIndex: Int,
@@ -89,9 +90,8 @@ internal fun UserMessageBubble(
         Surface(
             shape = shape,
             color = backgroundColor,
-            // Subtle elevation lifts the user bubble off the canvas, strengthening the
-            // visual separation from the borderless assistant messages alongside it.
-            shadowElevation = 2.dp,
+            // ChatGPT 风格：气泡无投影，靠色块与圆角与底色区分；去掉原 2dp 浮起。
+            shadowElevation = 0.dp,
             modifier = Modifier
                 .widthIn(max = maxBubbleWidth)
                 .then(contextAlpha)
@@ -290,7 +290,7 @@ internal fun UserMessageBubble(
             }
         }
 
-        if (showBranchSelector && totalBranches > 1 && !isEditing) {
+        if (showBranchSelector && totalBranches > 1 && !isEditing && actionRevealed) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -310,10 +310,11 @@ internal fun UserMessageBubble(
             }
         }
 
-        if (!isEditing && showActions) {
+        if (!isEditing && showActions && actionRevealed) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.then(contextAlpha)
+                modifier = Modifier.then(contextAlpha),
+                horizontalArrangement = Arrangement.End,
             ) {
                 if (!actionCopyText.isNullOrBlank()) {
                     IconButton(onClick = { clipboardManager.setText(AnnotatedString(actionCopyText)); haptics.confirm() }, modifier = Modifier.size(48.dp)) {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.DragInteraction
@@ -66,6 +67,8 @@ import com.lxseek.chat.model.StableModelAliases
 import com.lxseek.chat.model.ToolCallDisplayModes
 import com.lxseek.chat.model.ThinkingSegmentDisplayModes
 import com.lxseek.chat.ui.chat.message.GroupedSegmentAutoExpansionController
+import com.lxseek.chat.ui.chat.message.rememberMouseDetector
+import com.lxseek.chat.ui.chat.message.ChatEmptySuggestions
 import com.lxseek.chat.ui.chat.message.MessageItem
 import com.lxseek.chat.ui.chat.message.ContextCompactProgressPill
 import com.lxseek.chat.ui.chat.message.REGENERATION_ABORT_RESTORE_DURATION_MS
@@ -137,6 +140,8 @@ internal fun MessageList(
     onMediaClick: (List<String>, Int) -> Unit = { _, _ -> },
     onFileContentClick: ((fileName: String, content: String) -> Unit)? = null,
     onPdfPagesClick: ((pages: List<String>, startIndex: Int) -> Unit)? = null,
+    // ChatGPT 风格空状态建议问题：点击后把文本填入输入框并聚焦。
+    onSuggestionClick: (String) -> Unit = {},
     thoughtExpandedStates: SnapshotStateMap<String, Boolean> = remember { mutableStateMapOf() },
     lifecycleAppearanceRegistry: MessageLifecycleAppearanceRegistry =
         remember { MessageLifecycleAppearanceRegistry() },
@@ -148,6 +153,8 @@ internal fun MessageList(
     val groupedSegmentAutoExpansionController = remember(conversationId) {
         GroupedSegmentAutoExpansionController()
     }
+    // ChatGPT 风格：桌面端鼠标悬停消息时才浮现操作行；触摸端恒显示。
+    val mouseDetector = rememberMouseDetector()
     var editingMessageId by remember { mutableStateOf<String?>(null) }
     var pendingEditMessageId by remember { mutableStateOf<String?>(null) }
     var pendingEditVisualReplacement by remember(conversationId) {
@@ -660,6 +667,7 @@ internal fun MessageList(
 
         MessageItem(
             message = message,
+            hoverRevealEnabled = mouseDetector.hasMouse,
             segmentAppearanceRegistry = segmentAppearanceRegistry,
             modifier = if (message.id in regenerationExitIds) {
                 Modifier.graphicsLayer {
@@ -851,7 +859,11 @@ internal fun MessageList(
     Box(modifier = modifier) {
         LazyColumn(
             modifier = Modifier
+                .then(mouseDetector.modifier)
                 .fillMaxSize()
+                // ChatGPT 风格：对话列在大屏上居中限宽（768dp ≈ 48rem），手机端不受影响。
+                .widthIn(max = 768.dp)
+                .align(Alignment.CenterHorizontally)
                 .onGloballyPositioned { coordinates ->
                     listRootY = coordinates.positionInRoot().y
                 },
@@ -875,6 +887,14 @@ internal fun MessageList(
                         modifier = Modifier.fillMaxSize(),
                         title = stringResource(R.string.chat_empty_title),
                         description = stringResource(R.string.chat_empty_desc),
+                    )
+                    ChatEmptySuggestions(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                        onSuggestionClick = { text ->
+                            onSuggestionClick(text)
+                        },
                     )
                 }
             }

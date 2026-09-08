@@ -82,6 +82,8 @@ internal fun MessageItem(
         remember { GroupedSegmentAutoExpansionController() },
     onStartEdit: () -> Unit = {},
     onCancelEdit: () -> Unit = {},
+    // 桌面端鼠标悬停消息时才浮现操作行；触摸端恒显示。
+    hoverRevealEnabled: Boolean = false,
     showActions: Boolean = true,
     actionCopyText: String? = message.text,
     showBranchSelector: Boolean = true,
@@ -120,6 +122,8 @@ internal fun MessageItem(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showLongPressMenu by remember { mutableStateOf(false) }
     var showCompactDetail by remember(message.id) { mutableStateOf(false) }
+    // ChatGPT 风格：桌面端鼠标悬停消息时才浮现操作行，触摸端始终可见。
+    val actionsRevealed = rememberHoverRevealState(hoverRevealEnabled, showActions)
     val haptics = LocalLxChatHaptics.current
     val motionPolicy = LocalLxChatMotionPolicy.current
     val clipboardManager = LocalClipboardManager.current
@@ -217,13 +221,14 @@ internal fun MessageItem(
     }
 
     val backgroundColor = when (message.participant) {
-        Participant.USER -> MaterialTheme.colorScheme.primaryContainer
+        // ChatGPT 风格：用户气泡用中性灰阶（surfaceVariant）而非品牌青碧，避免彩色气泡喧宾夺主。
+        Participant.USER -> MaterialTheme.colorScheme.surfaceVariant
         Participant.MODEL -> Color.Transparent
         Participant.ERROR -> MaterialTheme.colorScheme.errorContainer
     }
 
     val textColor = when (message.participant) {
-        Participant.USER -> MaterialTheme.colorScheme.onPrimaryContainer
+        Participant.USER -> MaterialTheme.colorScheme.onSurfaceVariant
         Participant.MODEL -> MaterialTheme.colorScheme.onSurface
         Participant.ERROR -> MaterialTheme.colorScheme.onErrorContainer
     }
@@ -296,6 +301,7 @@ internal fun MessageItem(
         Box(
             modifier = Modifier
                 .weight(1f)
+                .then(actionsRevealed.modifier)
                 .pointerInput(selectionMode) {
                     if (!selectionMode) detectTapGestures(onLongPress = { showLongPressMenu = true })
                 },
@@ -331,6 +337,7 @@ internal fun MessageItem(
                         isLoading = isLoading,
                         isEditingAllowed = isEditingAllowed,
                         showActions = showActions,
+                        actionRevealed = actionsRevealed.revealed,
                         actionCopyText = actionCopyText,
                         showBranchSelector = showBranchSelector,
                         branchIndex = branchIndex,
@@ -356,8 +363,10 @@ internal fun MessageItem(
                         isRegenerationExiting = isRegenerationExiting,
                         isEditingAllowed = isEditingAllowed,
                         showActions = showActions,
+                        actionRevealed = actionsRevealed.revealed,
                         actionCopyText = actionCopyText,
                         showBranchSelector = showBranchSelector,
+                        modelAliases = modelAliases.map,
                         toolCallDisplayMode = toolCallDisplayMode,
                         thinkingSegmentDisplayMode = thinkingSegmentDisplayMode,
                         autoExpandActiveGroup = autoExpandActiveGroup &&

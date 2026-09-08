@@ -44,12 +44,9 @@ object LxDesign {
     val shapeL = RoundedCornerShape(cornerL)
     val shapeXL = RoundedCornerShape(cornerXL)
 
-    /** 消息气泡：用户侧右上角收窄形成"尾迹"，其余 16dp —— 视觉基因的对称破缺。 */
-    val shapeBubbleUser = RoundedCornerShape(
-        topStart = cornerM, topEnd = cornerM,
-        bottomStart = cornerM, bottomEnd = cornerXS,
-    )
-    val shapeBubbleModel = RoundedCornerShape(cornerM)
+    /** 消息气泡：用户侧与模型侧统一为全圆角，去掉尾巴 —— ChatGPT 式对称、柔和观感。 */
+    val shapeBubbleUser = RoundedCornerShape(cornerL)
+    val shapeBubbleModel = RoundedCornerShape(cornerL)
 
     /** 抽屉：仅右侧两角 20dp，左侧贴合屏幕缘。 */
     val shapeDrawer = RoundedCornerShape(topEnd = cornerL, bottomEnd = cornerL)

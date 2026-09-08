@@ -861,6 +861,10 @@
     <string name="conversation_list_empty">未找到任何对话。</string>
     <string name="chat_empty_title">开始一段对话</string>
     <string name="chat_empty_desc">问点什么，或创建任务。</string>
+    <string name="chat_empty_suggest_1">总结最新的科技新闻</string>
+    <string name="chat_empty_suggest_2">帮写一封关于季度汇报的邮件</string>
+    <string name="chat_empty_suggest_3">解释一下 SQL 连接查询的原理</string>
+    <string name="chat_empty_suggest_4">规划一个周末旅行路线</string>
     <string name="plaza_title">模型广场</string>
     <string name="plaza_subtitle">发现好模型，一键连接服务商。</string>
     <string name="plaza_search_hint">搜索模型或服务商</string>

@@ -171,8 +171,10 @@ internal fun AssistantMessageContent(
     isRegenerationExiting: Boolean,
     isEditingAllowed: Boolean,
     showActions: Boolean,
+    actionRevealed: Boolean = true,
     actionCopyText: String?,
     showBranchSelector: Boolean,
+    modelAliases: Map<String, String> = emptyMap(),
     toolCallDisplayMode: String,
     thinkingSegmentDisplayMode: String,
     autoExpandActiveGroup: Boolean,
@@ -236,6 +238,23 @@ internal fun AssistantMessageContent(
             .then(if (isStreaming) Modifier.nestedScroll(horizontalScrollEater) else Modifier)
     ) {
         Column {
+            // ChatGPT 风格：助手消息顶部模型名小字头部（Open WebUI 每轮助手消息上方显示模型名）。
+            if (message.participant == Participant.MODEL) {
+                val modelHeaderName = message.modelName?.let { raw ->
+                    com.lxseek.chat.model.ModelId.parse(raw)?.let { parsed ->
+                        modelAliases[raw] ?: parsed.apiModelName
+                    } ?: raw
+                }
+                if (!modelHeaderName.isNullOrBlank()) {
+                    Text(
+                        text = modelHeaderName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
+            }
+
             // Status Header
             if (message.participant == Participant.MODEL) {
                 val thinkingStatus = stringResource(R.string.thinking_ellipsis)
@@ -550,6 +569,19 @@ internal fun AssistantMessageContent(
                         isLoading = isLoading,
                         regenerateRequested = regenerationActionsExiting,
                     )
+                    // 悬停揭示：桌面端未悬停时整行淡出（含分支切换与操作按钮），触摸端恒显示。
+                    val revealAlpha by animateFloatAsState(
+                        targetValue = if (actionRevealed) 1f else 0f,
+                        animationSpec = tween(
+                            durationMillis = if (actionRevealed) {
+                                ACTIONS_ENTER_DURATION_MS
+                            } else {
+                                ACTIONS_EXIT_DURATION_MS
+                            },
+                            easing = LinearEasing,
+                        ),
+                        label = "assistantReveal:${message.id}",
+                    )
                     val informationActionsAlpha by animateFloatAsState(
                         targetValue = if (actionAvailability.informationVisible) 1f else 0f,
                         animationSpec = tween(
@@ -590,7 +622,8 @@ internal fun AssistantMessageContent(
                             // Reserve the terminal action row from the first Sending frame. Only
                             // its draw alpha changes, so completion cannot grow the message item.
                             .height(44.dp)
-                            .padding(top = 12.dp),
+                            .padding(top = 12.dp)
+                            .graphicsLayer { alpha = revealAlpha },
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

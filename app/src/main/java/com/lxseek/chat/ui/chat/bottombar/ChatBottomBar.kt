@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 
-internal val CHAT_BOTTOM_BAR_OUTER_RADIUS = 12.dp
+internal val CHAT_BOTTOM_BAR_OUTER_RADIUS = 24.dp
 internal val CHAT_BOTTOM_BAR_OUTER_SHAPE = RoundedCornerShape(CHAT_BOTTOM_BAR_OUTER_RADIUS)
 
 /**
@@ -161,10 +161,7 @@ fun ChatBottomBar(
     var showThinkingSheet by rememberSaveable { mutableStateOf(false) }
     var showOpenAiServiceTierSheet by rememberSaveable { mutableStateOf(false) }
     val composerOcclusionColor = MaterialTheme.colorScheme.surfaceContainer
-    val composerOcclusionShape = RoundedCornerShape(
-        topStart = 12.dp,
-        topEnd = 12.dp,
-    )
+    val composerOcclusionShape = CHAT_BOTTOM_BAR_OUTER_SHAPE
 
     LaunchedEffect(fullScreenViewerUrls) {
         if (fullScreenViewerUrls == null && composer.pdfDialogHiddenForPreview && composer.pendingPdfUri != null) {
@@ -249,6 +246,7 @@ fun ChatBottomBar(
                             Modifier
                         },
                     )
+                    // ChatGPT 风格：输入框容器圆角与底栏 Surface 对齐（24dp），用 surfaceContainer 底色承接。
                     .clip(composerOcclusionShape)
                     .background(composerOcclusionColor)
                     .zIndex(1f),

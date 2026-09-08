@@ -156,10 +156,10 @@ internal fun ChatAppBottomBarSection(
                         .then(if (isExpanded) Modifier.weight(1f) else Modifier),
                     // 输入框卡片化：用 surfaceVariant 背景增强卡片感，与消息列表形成微妙层次
                     color = MaterialTheme.colorScheme.surfaceVariant,
-                    // 微妙的 tonal elevation 增加层次感，避免硬阴影
+                    // ChatGPT 风格：柔和阴影托起输入框卡片，与消息列表拉开层次
                     tonalElevation = 1.dp,
-                    shadowElevation = 0.dp,
-                    // 圆角从 12dp 提升到 24dp，更圆润现代，符合当代 Material 设计趋势
+                    shadowElevation = 3.dp,
+                    // 圆角 24dp，更圆润现代，符合当代 Material 设计趋势
                     shape = RoundedCornerShape(24.dp),
                 ) {
                     Box(

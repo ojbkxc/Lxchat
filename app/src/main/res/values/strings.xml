@@ -796,6 +796,10 @@
     <string name="conversation_list_empty">No conversations found.</string>
     <string name="chat_empty_title">Start a conversation</string>
     <string name="chat_empty_desc">Ask anything or set up a task — LxChat will handle the rest, your way.</string>
+    <string name="chat_empty_suggest_1">Summarize the latest tech news</string>
+    <string name="chat_empty_suggest_2">Draft an email about the Q3 report</string>
+    <string name="chat_empty_suggest_3">Explain how a SQL join works</string>
+    <string name="chat_empty_suggest_4">Plan a weekend trip itinerary</string>
     <string name="plaza_title">Model Plaza</string>
     <string name="plaza_subtitle">Discover models and connect a provider in one tap.</string>
     <string name="plaza_search_hint">Search models or providers</string>

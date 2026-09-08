@@ -693,6 +693,10 @@ fun ChatApp(
                                 onPdfPagesClick = { pages, idx ->
                                     onPdfPagesClick?.invoke(pages, idx)
                                 },
+                                onSuggestionClick = { text ->
+                                    textFieldState.edit { replace(0, length, text) }
+                                    inputFocusRequester.requestFocus()
+                                },
                                 thoughtExpandedStates = thoughtExpandedStates,
                                 contentPadding = PaddingValues(
                                     start = 8.dp,
