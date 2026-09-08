@@ -40,9 +40,7 @@ internal fun ChatEmptySuggestions(
         stringResource(R.string.chat_empty_suggest_4),
     )
     Column(
-        modifier = modifier
-            .widthIn(max = 720.dp)
-            .align(Alignment.CenterHorizontally),
+        modifier = modifier.widthIn(max = 720.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(28.dp))
