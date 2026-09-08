@@ -858,7 +858,7 @@ internal fun MessageList(
 
     Box(
         modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.CenterHorizontally,
+        contentAlignment = Alignment.TopCenter,
     ) {
         LazyColumn(
             modifier = Modifier
