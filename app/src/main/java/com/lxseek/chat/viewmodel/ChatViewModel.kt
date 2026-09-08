@@ -329,6 +329,10 @@ class ChatViewModel(
             clearPendingConversationSettings = { _pendingConversationSettings.value = null },
             abortRegeneration = { regenerationTransitions.abortCurrent() },
             persistDefaultModel = { settings.setSelectedModel(it) },
+            resolveConversationModel = { storedModelId ->
+                storedModelId?.takeIf { it.isNotBlank() }
+                    ?: settings.selectedModel.value
+            },
         )
     }
 

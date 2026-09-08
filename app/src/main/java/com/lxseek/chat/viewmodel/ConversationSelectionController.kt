@@ -43,6 +43,16 @@ internal class ConversationSelectionController(
      * after the user picked a different one in the chat model picker.
      */
     private val persistDefaultModel: (String) -> Unit = {},
+    /**
+     * Resolves a conversation's effective model id. A conversation created before the
+     * per-conversation model column existed (or by import / IM / task / notification
+     * paths) stores `modelId = null`, which [selectConversation] previously propagated
+     * into `_activeModelOverride` as a blank string. A blank override collapses
+     * [currentActiveModel] to the eager [defaultModel] fallback, so the user's picker
+     * choice is silently ignored on the next send. Falling back to the supplied
+     * [defaultModel] keeps the selected model authoritative.
+     */
+    private val resolveConversationModel: (String?) -> String = { it.orEmpty() },
 ) {
     private val switching = SwitchingCoordinator()
     private var switchingJob: Job? = null
@@ -154,7 +164,11 @@ internal class ConversationSelectionController(
                 }
                 _isNewChatMode.value = false
                 _currentConversationId.value = conversationId
-                _activeModelOverride.value = conversation.modelId
+                // Keep the model override authoritative even for conversations that never
+                // persisted a model id (null stored by import/IM/task/notification paths):
+                // an empty override would otherwise collapse currentActiveModel to the
+                // eager default and make the user's picker choice appear to be ignored.
+                _activeModelOverride.value = resolveConversationModel(conversation.modelId)
                 switching.markConversationReady(request.id)
             } catch (error: CancellationException) {
                 if (switching.isCurrent(request.id)) {

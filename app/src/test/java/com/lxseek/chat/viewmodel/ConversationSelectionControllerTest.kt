@@ -75,6 +75,23 @@ class ConversationSelectionControllerTest {
     }
 
     @Test
+    fun nullConversationModelFallsBackToResolvedDefault() = runTest {
+        val fixture = Fixture(
+            scope = backgroundScope,
+            resolveConversationModel = { it?.takeIf { s -> s.isNotBlank() } ?: "default-model" },
+        )
+        coEvery { fixture.conversations.getConversation("conversation") } returns
+            ChatEntity("conversation", "Title", modelId = null)
+
+        fixture.controller.selectConversation("conversation", hapticOnCompletion = false)
+        runCurrent()
+
+        assertEquals("conversation", fixture.controller.currentConversationId.value)
+        assertEquals("default-model", fixture.controller.currentActiveModel.value)
+        assertFalse(fixture.controller.isNewChatMode.value)
+    }
+
+    @Test
     fun newerConversationSelectionSupersedesPendingNewChat() = runTest {
         val fadeGate = CompletableDeferred<Unit>()
         val fixture = Fixture(backgroundScope, fadeDelay = { fadeGate.await() })
@@ -208,6 +225,7 @@ class ConversationSelectionControllerTest {
     private class Fixture(
         scope: CoroutineScope,
         fadeDelay: suspend () -> Unit = {},
+        resolveConversationModel: (String?) -> String = { it.orEmpty() },
     ) {
         val conversations = mockk<ConversationRepository>()
         val registry = ConversationStateRegistry()
@@ -228,6 +246,7 @@ class ConversationSelectionControllerTest {
             clearPendingConversationSettings = { clearSettingsCount += 1 },
             abortRegeneration = { abortRegenerationCount += 1 },
             fadeDelay = fadeDelay,
+            resolveConversationModel = resolveConversationModel,
         )
     }
 
