@@ -71,7 +71,7 @@ class WeixinChannel(
     private val config: com.lxseek.chat.im.ImGatewayConfig,
     private val api: WeixinIlinkApi = WeixinIlinkApi(),
     /** 应用缓存目录，用于把入站图片写成临时文件，作为真多模态附件喂给模型。 */
-    private val cacheDir: File = File(System.getProperty("java.io.tmpdir") ?: "."),
+    private val cacheDir: File,
 ) : MessageChannel, WeixinCompanionChannel {
 
     override val channelId: String get() = "wechat"
