@@ -191,7 +191,7 @@ class SettingsRepository(
     val petPromptInjectionEnabled: StateFlow<Boolean> get() = petSettingsStore.petPromptInjectionEnabled
     val exactExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.exactExecutionEnabled, false)
     val proxyEnabled: StateFlow<Boolean> = hot(settingsManager.proxyEnabled, false)
-    val allowCleartextHttp: StateFlow<Boolean> = hot(settingsManager.allowCleartextHttp, false)
+    val allowCleartextHttp: StateFlow<Boolean> = hot(settingsManager.allowCleartextHttp, true)
     val proxyType: StateFlow<String> = hot(settingsManager.proxyType, "http")
     val proxyHost: StateFlow<String> = hot(settingsManager.proxyHost, com.lxseek.chat.data.SettingsManager.DEFAULT_PROXY_HOST)
     val proxyPort: StateFlow<String> = hot(settingsManager.proxyPort, com.lxseek.chat.data.SettingsManager.DEFAULT_PROXY_PORT)

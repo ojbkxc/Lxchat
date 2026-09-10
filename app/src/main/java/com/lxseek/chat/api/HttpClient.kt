@@ -54,9 +54,9 @@ object HttpClient {
      * 全局「允许明文 HTTP」开关，由用户在设置页显式开启（默认关闭）。开启后
      * [guardCleartextCredentials] 不再拦截任何 http:// 端点 —— 但仅放宽应用层
      * 守卫；是否真正能连上明文端点仍取决于系统 network_security_config。
-     * 关闭（默认）时守卫保持 fail-closed：公网 http + 凭据头/敏感体一律拦截。
+     * 默认打开，因此公网 http + 凭据头/敏感体不再拦截；用户可在设置中关闭。
      */
-    @Volatile private var allowCleartextHttp = false
+    @Volatile private var allowCleartextHttp = true
 
     /** Set (or clear) the global cleartext-HTTP override. */
     fun setAllowCleartextHttp(enabled: Boolean) {
