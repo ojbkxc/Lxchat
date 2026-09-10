@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -135,6 +136,7 @@ internal fun ComposerToolBar(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         ModelPickerMenu(
+            modifier = Modifier.weight(1f, fill = false),
             isActive = activeMenu == "model",
             onToggle = {
                 val now = System.currentTimeMillis()
@@ -255,6 +257,7 @@ internal fun ComposerToolBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ModelPickerMenu(
+    modifier: Modifier = Modifier,
     isActive: Boolean,
     onToggle: () -> Unit,
     onDismiss: () -> Unit,
@@ -267,6 +270,7 @@ private fun ModelPickerMenu(
     onModelSelect: (String) -> Unit,
 ) {
     ExposedDropdownMenuBox(
+        modifier = modifier,
         expanded = isActive,
         onExpandedChange = { },
     ) {

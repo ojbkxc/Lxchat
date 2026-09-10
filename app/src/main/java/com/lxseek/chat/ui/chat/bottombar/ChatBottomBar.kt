@@ -322,6 +322,7 @@ fun ChatBottomBar(
                     )
 
                     ComposerToolBar(
+                        modifier = Modifier.weight(1f),
                         enabledModels = enabledModels,
                         selectedModel = selectedModel,
                         modelAliases = modelAliases,
@@ -361,8 +362,6 @@ fun ChatBottomBar(
                         onShowThinkingSheet = { showThinkingSheet = true },
                         onShowOpenAiServiceTierSheet = { showOpenAiServiceTierSheet = true },
                     )
-
-                    Spacer(modifier = Modifier.weight(1f))
 
                     ComposerVoiceButton(
                         singleAsrRecording = singleAsrRecording,
