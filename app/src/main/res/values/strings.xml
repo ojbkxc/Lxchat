@@ -1349,6 +1349,9 @@
     <string name="settings_proxy_desc">Route network traffic through an HTTP or SOCKS proxy</string>
     <string name="proxy_enable">Enable Proxy</string>
     <string name="proxy_enable_desc">Route all app network traffic through the proxy</string>
+    <string name="settings_cleartext_http">Cleartext HTTP</string>
+    <string name="allow_cleartext_http">Allow cleartext HTTP</string>
+    <string name="allow_cleartext_http_desc">Allow unencrypted http:// requests to public hosts (including API credentials). Prefer LAN or Tailscale for self-hosted endpoints; enable only when necessary.</string>
     <string name="proxy_type">Type</string>
     <string name="proxy_host">Host</string>
     <string name="proxy_port">Port</string>

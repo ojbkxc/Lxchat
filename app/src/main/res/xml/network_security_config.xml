@@ -1,47 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  明文（http://）放行范围须与 HttpClient.isLocalHost 的语义保持一致：凭据守卫
-  放行的本地/LAN/Tailscale 端点，也必须真正能建立明文连接，否则出现"守卫放行、
-  系统拦截"的落差。注意两点差异：
-  1. NSC 的 domain 不支持前导点通配（".local" 是非法写法），须用 "*.local"。
-  2. NSC 不支持 CIDR 段，RFC1918/CGNAT IP（10.x、192.168.x、172.16-31.x、
-     100.64-127.x）只能逐条枚举常用地址；未枚举到的 IP 即使 isLocalHost 判定
-     为本地，也会被系统层拦下 —— 属于预期内的收紧，不算回退。
-  裸 LAN 主机名（如 http://ollama:11434）在 NSC 中无法用通配表达，系统层会拦截；
-  这类地址请使用 LAN IP 或带 .local/.lan 后缀的主机名。
+  明文（http://）放行不再依赖系统层的逐条枚举：base-config 直接放开 cleartext，
+  把「是否允许向公网明文传输凭据」的决策收口到应用层凭据守卫
+  （HttpClient.guardCleartextCredentials + 设置页的 allow_cleartext_http 开关）。
+
+  原因：
+  1. 系统 NSC 无法表达"仅放行到公网的自托管 http 端点"这一用户意图——它要么全
+     禁（本地/Tailscale 明文也会被拦），要么全放（绕不过应用层守卫）。
+  2. 用户显式在设置页开启 allow_cleartext_http 后，若系统层仍拦截，会出现
+     "设置开了、请求仍被系统拒"的落差。
+
+  安全边界仍在：应用层守卫默认 fail-closed，只有用户显式开启才放行公网明文。
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false">
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <!-- Loopback -->
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
-        <domain includeSubdomains="true">::1</domain>
-        <!-- Android 模拟器宿主回环 -->
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <!-- LAN 主机名后缀（与 isLocalHost 的 .local/.lan/.home/.internal 对齐） -->
-        <domain includeSubdomains="false">*.local</domain>
-        <domain includeSubdomains="false">*.lan</domain>
-        <domain includeSubdomains="false">*.home</domain>
-        <domain includeSubdomains="false">*.internal</domain>
-        <!-- Tailscale MagicDNS -->
-        <domain includeSubdomains="true">ts.net</domain>
-        <!-- RFC1918 / CGNAT 常用网段逐条枚举（NSC 不支持 CIDR） -->
-        <domain includeSubdomains="false">10.0.0.0</domain>
-        <domain includeSubdomains="false">10.1.1.1</domain>
-        <domain includeSubdomains="false">10.0.2.15</domain>
-        <domain includeSubdomains="false">172.16.0.0</domain>
-        <domain includeSubdomains="false">172.17.0.1</domain>
-        <domain includeSubdomains="false">192.168.0.1</domain>
-        <domain includeSubdomains="false">192.168.1.1</domain>
-        <domain includeSubdomains="false">192.168.1.100</domain>
-        <domain includeSubdomains="false">192.168.31.1</domain>
-        <domain includeSubdomains="false">192.168.50.1</domain>
-        <domain includeSubdomains="false">100.64.0.0</domain>
-        <domain includeSubdomains="false">100.100.100.100</domain>
-    </domain-config>
 </network-security-config>

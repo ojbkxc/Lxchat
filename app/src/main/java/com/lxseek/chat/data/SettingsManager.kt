@@ -131,6 +131,7 @@ class SettingsManager(private val context: Context) {
             EXACT_EXECUTION_ENABLED,
             PROXY_ENABLED,
             PROXY_TYPE,
+            ALLOW_CLEARTEXT_HTTP,
             PROXY_HOST,
             PROXY_PORT,
             PROXY_USERNAME,
@@ -329,6 +330,7 @@ class SettingsManager(private val context: Context) {
     val petPromptInjectionEnabled: Flow<Boolean> = context.dataStore.data.map { it[PET_PROMPT_INJECTION_ENABLED] ?: true }
     val exactExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[EXACT_EXECUTION_ENABLED] ?: false }
     val proxyEnabled: Flow<Boolean> = context.dataStore.data.map { it[PROXY_ENABLED] ?: false }
+    val allowCleartextHttp: Flow<Boolean> = context.dataStore.data.map { it[ALLOW_CLEARTEXT_HTTP] ?: false }
     val proxyType: Flow<String> = context.dataStore.data.map { it[PROXY_TYPE] ?: "http" }
     val proxyHost: Flow<String> = context.dataStore.data.map { it[PROXY_HOST] ?: DEFAULT_PROXY_HOST }
     val proxyPort: Flow<String> = context.dataStore.data.map { it[PROXY_PORT] ?: DEFAULT_PROXY_PORT }
@@ -954,6 +956,7 @@ class SettingsManager(private val context: Context) {
     }
     suspend fun saveExactExecutionEnabled(enabled: Boolean) { context.dataStore.edit { it[EXACT_EXECUTION_ENABLED] = enabled } }
     suspend fun saveProxyEnabled(enabled: Boolean) { context.dataStore.edit { it[PROXY_ENABLED] = enabled } }
+    suspend fun saveAllowCleartextHttp(enabled: Boolean) { context.dataStore.edit { it[ALLOW_CLEARTEXT_HTTP] = enabled } }
     suspend fun saveProxyType(type: String) { context.dataStore.edit { it[PROXY_TYPE] = type } }
     suspend fun saveProxyHost(host: String) { context.dataStore.edit { it[PROXY_HOST] = host } }
     suspend fun saveProxyPort(port: String) { context.dataStore.edit { it[PROXY_PORT] = port } }

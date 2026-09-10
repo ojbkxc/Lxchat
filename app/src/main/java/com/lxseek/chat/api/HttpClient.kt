@@ -50,6 +50,19 @@ object HttpClient {
     // Header names that carry secret credentials across the providers.
     private val CREDENTIAL_HEADERS = setOf("authorization", "x-api-key", "x-goog-api-key", "api-key")
 
+    /**
+     * 全局「允许明文 HTTP」开关，由用户在设置页显式开启（默认关闭）。开启后
+     * [guardCleartextCredentials] 不再拦截任何 http:// 端点 —— 但仅放宽应用层
+     * 守卫；是否真正能连上明文端点仍取决于系统 network_security_config。
+     * 关闭（默认）时守卫保持 fail-closed：公网 http + 凭据头/敏感体一律拦截。
+     */
+    @Volatile private var allowCleartextHttp = false
+
+    /** Set (or clear) the global cleartext-HTTP override. */
+    fun setAllowCleartextHttp(enabled: Boolean) {
+        allowCleartextHttp = enabled
+    }
+
     /** True for loopback / RFC-1918 / link-local hosts, bare LAN hostnames
      *  (e.g. "ollama", "nas.local"), and Tailscale tailnet addresses. Public FQDNs like
      *  api.openai.com return false.
@@ -93,6 +106,7 @@ object HttpClient {
         sensitiveBody: Boolean = false,
     ) {
         if (!url.startsWith("http://", ignoreCase = true)) return
+        if (allowCleartextHttp) return
         val host = try { java.net.URI(url).host ?: "" } catch (_: Exception) { "" }
         if (isLocalHost(host)) return
         if (sensitiveBody || headers.keys.any { it.lowercase() in CREDENTIAL_HEADERS }) {

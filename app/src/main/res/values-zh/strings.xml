@@ -1422,6 +1422,9 @@
     <string name="settings_proxy_desc">通过 HTTP 或 SOCKS 代理转发网络流量</string>
     <string name="proxy_enable">启用代理</string>
     <string name="proxy_enable_desc">将应用的所有网络流量通过代理转发</string>
+    <string name="settings_cleartext_http">明文 HTTP</string>
+    <string name="allow_cleartext_http">允许明文 HTTP 请求</string>
+    <string name="allow_cleartext_http_desc">允许向公网主机发送未加密的 http:// 请求（包括 API 凭据）。自托管端点建议优先使用 LAN 地址或 Tailscale，仅在确需时开启。</string>
     <string name="proxy_type">类型</string>
     <string name="proxy_host">主机</string>
     <string name="proxy_port">端口</string>

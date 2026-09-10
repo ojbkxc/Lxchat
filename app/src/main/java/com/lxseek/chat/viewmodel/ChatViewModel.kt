@@ -249,6 +249,11 @@ class ChatViewModel(
 
     private fun startInitJobs() {
         proxySettingsSynchronizer.start()
+        viewModelScope.launch {
+            settings.allowCleartextHttp.collect { enabled ->
+                com.lxseek.chat.api.HttpClient.setAllowCleartextHttp(enabled)
+            }
+        }
         startupMaintenance.start()
         localModelCatalogSynchronizer.start()
         // Provider map / model-list sync jobs now run on the process-scoped registry

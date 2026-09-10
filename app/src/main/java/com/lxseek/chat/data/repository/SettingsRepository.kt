@@ -17,6 +17,7 @@ import com.lxseek.chat.data.SettingsManager
 import com.lxseek.chat.data.ShellDeviceConfig
 import com.lxseek.chat.data.McpServerConfig
 import com.lxseek.chat.data.SystemPromptEntry
+import com.lxseek.chat.api.BaseUrlResolver
 import com.lxseek.chat.model.ModelId
 import com.lxseek.chat.model.OpenAiServiceTiers
 import com.lxseek.chat.model.ToolCallDisplayModes
@@ -190,6 +191,7 @@ class SettingsRepository(
     val petPromptInjectionEnabled: StateFlow<Boolean> get() = petSettingsStore.petPromptInjectionEnabled
     val exactExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.exactExecutionEnabled, false)
     val proxyEnabled: StateFlow<Boolean> = hot(settingsManager.proxyEnabled, false)
+    val allowCleartextHttp: StateFlow<Boolean> = hot(settingsManager.allowCleartextHttp, false)
     val proxyType: StateFlow<String> = hot(settingsManager.proxyType, "http")
     val proxyHost: StateFlow<String> = hot(settingsManager.proxyHost, com.lxseek.chat.data.SettingsManager.DEFAULT_PROXY_HOST)
     val proxyPort: StateFlow<String> = hot(settingsManager.proxyPort, com.lxseek.chat.data.SettingsManager.DEFAULT_PROXY_PORT)
@@ -397,6 +399,24 @@ class SettingsRepository(
     }
 
     // Custom provider CRUD. ProviderRegistry owns live instance construction.
+
+    /** 保存期把 OpenAI/Anthropic 协议的 Base URL 归一化为带 /v1 的形态，
+     *  这样即使用户只填 "http://host" 也会持久化成 "http://host/v1"。GOOGLE
+     *  走自己的 v1beta 补全逻辑，此处保持原样。 */
+    private fun normalizeBaseUrl(protocol: CustomEndpointProtocol, baseUrl: String): String {
+        if (baseUrl.isBlank()) return baseUrl
+        return when (protocol) {
+            CustomEndpointProtocol.OPENAI, CustomEndpointProtocol.ANTHROPIC ->
+                BaseUrlResolver.withV1(baseUrl.trim().trimEnd('/'))
+            else -> baseUrl
+        }
+    }
+
+    /** 解析某 provider 当前的自定义协议；内置/未注册 provider 返回 UNKNOWN，不做归一化。 */
+    private fun protocolOf(provider: String): CustomEndpointProtocol =
+        customProviders.value.firstOrNull { it.name == provider }?.protocol
+            ?: CustomEndpointProtocol.UNKNOWN
+
     fun addCustomProvider(config: CustomProviderConfig, baseUrl: String) {
         if (
             CustomProviderNamePolicy.hasConflict(
@@ -406,7 +426,7 @@ class SettingsRepository(
         ) return
         scope.launch {
             settingsManager.saveCustomEndpointResolution(config.name, null)
-            settingsManager.saveProviderBaseUrl(config.name, baseUrl)
+            settingsManager.saveProviderBaseUrl(config.name, normalizeBaseUrl(config.protocol, baseUrl))
             settingsManager.saveCustomProviders(customProviders.value + config)
         }
     }
@@ -489,7 +509,7 @@ class SettingsRepository(
     fun setVisualizeContextRollout(enabled: Boolean) = scope.launch { settingsManager.saveVisualizeContextRollout(enabled) }
     fun setProviderBaseUrl(provider: String, url: String) = scope.launch {
         settingsManager.saveCustomEndpointResolution(provider, null)
-        settingsManager.saveProviderBaseUrl(provider, url)
+        settingsManager.saveProviderBaseUrl(provider, normalizeBaseUrl(protocolOf(provider), url))
     }
     fun setTitleGenerationEnabled(enabled: Boolean) = scope.launch { settingsManager.saveTitleGenerationEnabled(enabled) }
     fun setTitleGenerationNotificationsEnabled(enabled: Boolean) =
@@ -537,6 +557,7 @@ class SettingsRepository(
     fun setAutomationToolsEnabled(enabled: Boolean) = scope.launch { settingsManager.saveAutomationToolsEnabled(enabled) }
     fun setExactExecutionEnabled(enabled: Boolean) = scope.launch { settingsManager.saveExactExecutionEnabled(enabled) }
     fun setProxyEnabled(enabled: Boolean) = scope.launch { settingsManager.saveProxyEnabled(enabled) }
+    fun setAllowCleartextHttp(enabled: Boolean) = scope.launch { settingsManager.saveAllowCleartextHttp(enabled) }
     fun setProxyType(type: String) = scope.launch { settingsManager.saveProxyType(type) }
     fun setProxyHost(host: String) = scope.launch { settingsManager.saveProxyHost(host) }
     fun setProxyPort(port: String) = scope.launch { settingsManager.saveProxyPort(port) }

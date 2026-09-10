@@ -34,6 +34,7 @@ import com.lxseek.chat.viewmodel.ChatViewModel
 fun SettingsProxyPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     // ── Proxy state ──
     val enabled by viewModel.settings.proxyEnabled.collectAsState()
+    val allowCleartextHttp by viewModel.settings.allowCleartextHttp.collectAsState()
     val type by viewModel.settings.proxyType.collectAsState()
     val host by viewModel.settings.proxyHost.collectAsState()
     val port by viewModel.settings.proxyPort.collectAsState()
@@ -152,6 +153,24 @@ fun SettingsProxyPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     })
                 )
             }
+
+            // ── Cleartext HTTP ──
+            SettingsGroup(
+                title = stringResource(R.string.settings_cleartext_http),
+                items = buildList {
+                    add {
+                        SettingsItem(
+                            headlineContent = { Text(stringResource(R.string.allow_cleartext_http)) },
+                            supportingContent = { Text(stringResource(R.string.allow_cleartext_http_desc)) },
+                            leadingContent = { Icon(Icons.Default.Lan, null, tint = MaterialTheme.colorScheme.primary) },
+                            trailingContent = {
+                                Switch(checked = allowCleartextHttp, onCheckedChange = { viewModel.settings.setAllowCleartextHttp(it) })
+                            },
+                            modifier = Modifier.clickable { viewModel.settings.setAllowCleartextHttp(!allowCleartextHttp) }
+                        )
+                    }
+                },
+            )
 
             // ── DNS group ──
             SettingsGroup(

@@ -92,6 +92,8 @@ internal val ACTIVE_PET_ID = stringPreferencesKey("active_pet_id")
 internal val PET_PROMPT_INJECTION_ENABLED = booleanPreferencesKey("pet_prompt_injection_enabled")
 internal val EXACT_EXECUTION_ENABLED = booleanPreferencesKey("exact_execution_enabled")
 internal val PROXY_ENABLED = booleanPreferencesKey("proxy_enabled")
+/** 允许向非本地公网主机发送明文 HTTP 请求（含凭据）。默认关闭。 */
+internal val ALLOW_CLEARTEXT_HTTP = booleanPreferencesKey("allow_cleartext_http")
 internal val PROXY_TYPE = stringPreferencesKey("proxy_type")
 internal val PROXY_HOST = stringPreferencesKey("proxy_host")
 internal val PROXY_PORT = stringPreferencesKey("proxy_port")
